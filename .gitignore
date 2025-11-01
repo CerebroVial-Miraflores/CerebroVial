@@ -201,6 +201,15 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# --- Project Specific Ignores ---
+# Ignore datasets, models, and other large files.
+# It's crucial to not commit these to the repository.
+/data/
+/models/
+*.pt
+*.pth
+*.weights
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
