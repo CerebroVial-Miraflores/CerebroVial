@@ -1,6 +1,6 @@
 import cv2
-import streamlink
 import threading
+import yt_dlp
 from flask import Flask, Response, render_template
 
 from components.object_detector import ObjectDetector
@@ -24,12 +24,17 @@ lock = threading.Lock()
 app = Flask(__name__)
 
 def get_video_stream_url(url):
-    """Usa streamlink para obtener la URL del stream de mejor calidad."""
+    """Usa yt-dlp para obtener la URL directa del stream de mejor calidad."""
+    ydl_opts = {
+        'format': 'best[ext=mp4][height<=720]/best[height<=720]', # Prioriza mp4 hasta 720p
+        'quiet': True
+    }
     try:
-        streams = streamlink.streams(url)
-        return streams["best"].url if streams else None
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return info.get('url')
     except Exception as e:
-        print(f"Error al obtener el stream con streamlink: {e}")
+        print(f"Error al obtener el stream con yt-dlp: {e}")
         return None
 
 def process_video_stream():
