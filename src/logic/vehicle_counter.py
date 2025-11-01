@@ -1,37 +1,70 @@
-from collections import defaultdict
+# /Users/rasec/Documents/github/Proyecto de Tesis/CerebroVial/src/logic/vehicle_counter.py
 
 class VehicleCounter:
-    def __init__(self, line_y: int):
+    """
+    Gestiona la lógica de conteo de vehículos que cruzan una línea horizontal.
+    """
+    def __init__(self, line_y: int, direction: str = 'down'):
         """
         Inicializa el contador de vehículos.
+
         :param line_y: La coordenada 'y' de la línea de conteo.
+        :param direction: La dirección del tráfico a contar ('down' o 'up').
         """
         self.line_y = line_y
-        self.track_history = defaultdict(list)
+        self.direction = direction.lower()
+        self.track_history = {}
         self.counted_ids = set()
         self.vehicle_count = 0
 
-    def update(self, track_id: int, box: tuple) -> bool:
+        if self.direction not in ['down', 'up']:
+            raise ValueError("La dirección debe ser 'down' o 'up'.")
+
+    def update(self, track_id: int, box: list) -> bool:
         """
-        Actualiza el estado de un vehículo y determina si debe ser contado.
-        :param track_id: El ID del vehículo.
-        :param box: La tupla (x1, y1, x2, y2) de la caja detectada.
+        Actualiza el estado de un vehículo rastreado y determina si debe contarse.
+
+        :param track_id: El ID de seguimiento del objeto.
+        :param box: La caja delimitadora [x1, y1, x2, y2] del objeto.
         :return: True si el vehículo acaba de ser contado, False en caso contrario.
         """
-        x1, y1, x2, y2 = box
-        center_y = int(y2) # Usamos el borde inferior
+        # Usamos el borde inferior de la caja como punto de referencia
+        center_y = int(box[3])
 
-        # Guardar historial de posiciones
-        prev_y = self.track_history[track_id][-1] if self.track_history[track_id] else center_y
-        self.track_history[track_id].append(center_y)
+        # Si el vehículo ya fue contado, no hacer nada más
+        if track_id in self.counted_ids:
+            return False
 
-        # Lógica de cruce de línea (de arriba hacia abajo)
-        if prev_y < self.line_y and center_y >= self.line_y and track_id not in self.counted_ids:
+        # Si es un vehículo nuevo, registrar su posición y continuar
+        if track_id not in self.track_history:
+            self.track_history[track_id] = center_y
+            return False
+
+        prev_y = self.track_history[track_id]
+        
+        crossed = False
+        if self.direction == 'down':
+            # Cruce de arriba hacia abajo
+            if prev_y < self.line_y and center_y >= self.line_y:
+                crossed = True
+        elif self.direction == 'up':
+            # Cruce de abajo hacia arriba
+            if prev_y > self.line_y and center_y <= self.line_y:
+                crossed = True
+
+        # Actualizar el historial de posición
+        self.track_history[track_id] = center_y
+
+        if crossed:
             self.vehicle_count += 1
             self.counted_ids.add(track_id)
             return True
-        
+
         return False
 
     def get_count(self) -> int:
+        """
+        Devuelve el conteo total de vehículos.
+        """
         return self.vehicle_count
+

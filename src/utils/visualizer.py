@@ -11,8 +11,20 @@ class Visualizer:
         cv2.line(frame, (0, self.line_y), (w, self.line_y), self.line_color, 2)
 
     def draw_count(self, frame, count):
-        cv2.putText(frame, f'Conteo Total: {count}', (50, 50), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, self.text_color, 2)
+        text = f'Conteo Total: {count}'
+        font_scale = 1
+        font_thickness = 2
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        # Obtener el tamaño del texto para posicionarlo correctamente
+        (text_w, text_h), _ = cv2.getTextSize(text, font, font_scale, font_thickness)
+
+        # Obtener el ancho del frame
+        frame_h, frame_w, _ = frame.shape
+
+        # Posicionar en la esquina superior derecha con un padding de 20px
+        position = (frame_w - text_w - 20, text_h + 20)
+        cv2.putText(frame, text, position, font, font_scale, self.text_color, font_thickness)
 
     def draw_detections(self, frame, results):
         # El método plot() de YOLO es una forma rápida de dibujar
