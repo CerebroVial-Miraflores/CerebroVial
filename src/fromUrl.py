@@ -3,94 +3,156 @@ from components.object_detector import ObjectDetector
 from components.object_tracker import ObjectTracker
 from logic.vehicle_counter import VehicleCounter
 from utils.visualizer import Visualizer
+from utils.logger import setup_logger
 import streamlink
 
-# --- CONFIGURACIÓN ---
-# URL del stream de la cámara IP.
-# Formato RTSP: "rtsp://usuario:contraseña@direccion_ip:puerto/ruta_del_stream"
-# Formato HTTP: "http://direccion_ip/video.mjpg"
-# Para probar con una webcam local, usa 0: VIDEO_SOURCE = 0
-# VIDEO_SOURCE = "https://kamere.mup.gov.rs:4443/Horgos/horgos1.m3u8"
-VIDEO_SOURCE = "https://youtu.be/qMYlpMsWsBE"
+# Configurar logger
+logger = setup_logger("CerebroVial.Stream")
 
+# --- CONFIGURACIÓN ---
+VIDEO_SOURCE = "https://youtu.be/qMYlpMsWsBE"
 MODEL_PATH = 'yolov8n.pt'
 VEHICLE_CLASSES = [2, 3, 5, 7] # car, motorcycle, bus, truck
-LINE_Y_RATIO = 0.75 # Línea a la mitad de la altura
+LINE_Y_RATIO = 0.75
+MAX_RETRIES = 3  # Intentos de reconexión
 
-def get_video_stream(url):
-    """Usa streamlink para obtener la URL del stream de mejor calidad."""
+def get_video_stream(url, retry_count=0):
+    """
+    Usa streamlink para obtener la URL del stream de mejor calidad.
+    Incluye reintentos en caso de fallo.
+    """
     try:
+        logger.info(f"Obteniendo stream desde: {url}")
         streams = streamlink.streams(url)
+        
         if not streams:
-            print("No se encontraron streams en la URL.")
+            logger.error("No se encontraron streams disponibles en la URL")
             return None
-        return streams["best"].url
+        
+        stream_url = streams["best"].url
+        logger.info(f"Stream obtenido exitosamente: calidad 'best'")
+        return stream_url
+        
+    except streamlink.exceptions.NoPluginError:
+        logger.error(f"Streamlink no puede manejar esta URL: {url}")
+        return None
     except Exception as e:
-        print(f"Error al obtener el stream con streamlink: {e}")
+        logger.error(f"Error al obtener stream (intento {retry_count + 1}/{MAX_RETRIES}): {e}")
+        
+        # Reintentar si no hemos alcanzado el límite
+        if retry_count < MAX_RETRIES - 1:
+            logger.info("Reintentando en 3 segundos...")
+            import time
+            time.sleep(3)
+            return get_video_stream(url, retry_count + 1)
+        
         return None
 
 def main():
-    # 1. Inicialización de componentes
+    logger.info("=== Iniciando CerebroVial Stream ===")
+    
+    # 1. Obtener stream URL
     stream_url = get_video_stream(VIDEO_SOURCE)
     if not stream_url:
+        logger.critical("No se pudo obtener la URL del stream. Abortando.")
         return
-
-    cap = cv2.VideoCapture(stream_url)
-    if not cap.isOpened():
-        print(f"Error: OpenCV no pudo abrir el stream de video desde {stream_url}")
-        return
-
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    line_y = int(h * LINE_Y_RATIO)
-
-    detector = ObjectDetector(model_path=MODEL_PATH)
-    tracker = ObjectTracker(detector)
-    counter = VehicleCounter(line_y=line_y, direction='up') # <-- CAMBIO CLAVE: Especificar dirección
-    visualizer = Visualizer(line_y=line_y)
-
-    print("Iniciando stream... Presiona 'q' en la ventana para salir.")
-
-    # 2. Bucle principal de procesamiento
-    while cap.isOpened():
-        print("Leyendo frame del stream...")
-        success, frame = cap.read()
-        if not success:
-            print("Stream finalizado o error al leer frame.")
-            break
-
-        # Realizar seguimiento de objetos
-        results = tracker.track_objects(frame, classes_to_track=VEHICLE_CLASSES)
+    
+    # 2. Inicializar captura de video
+    try:
+        cap = cv2.VideoCapture(stream_url)
+        if not cap.isOpened():
+            raise ValueError(f"OpenCV no pudo abrir el stream: {stream_url}")
         
-        # El método plot() de ultralytics es una forma rápida de dibujar las cajas y los IDs.
-        # Lo usamos como base para nuestro frame anotado.
-        annotated_frame = results[0].plot()
-
-        if results[0].boxes is not None and results[0].boxes.id is not None:
-            boxes = results[0].boxes.xyxy.cpu().numpy()
-            track_ids = results[0].boxes.id.cpu().numpy()
-
-            for box, track_id in zip(boxes, track_ids):
-                # Actualizar el contador y verificar si se contó un nuevo vehículo
-                if counter.update(track_id, box):
-                    # Si se contó, dibujar un indicador visual en el frame ya anotado
-                    visualizer.draw_crossing_indicator(annotated_frame, box)
+        # Obtener propiedades del stream
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        line_y = int(h * LINE_Y_RATIO)
         
-        # Dibujar la línea y el contador en el frame que ya tiene las detecciones
-        visualizer.draw_line(annotated_frame)
-        visualizer.draw_count(annotated_frame, counter.get_count())
-
-        # Mostrar el frame final con todas las anotaciones
-        cv2.imshow("CerebroVial - Stream en Vivo", annotated_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # 3. Limpieza
-    cap.release()
-    cv2.destroyAllWindows()
-    print(f"Procesamiento finalizado. Conteo total: {counter.get_count()}")
+        logger.info(f"Stream iniciado: {w}x{h} @ {fps:.2f} FPS")
+        logger.info(f"Línea de conteo en Y={line_y}")
+        
+        # 3. Inicializar componentes
+        logger.info(f"Cargando modelo YOLO: {MODEL_PATH}")
+        detector = ObjectDetector(model_path=MODEL_PATH)
+        tracker = ObjectTracker(detector)
+        counter = VehicleCounter(line_y=line_y, direction='up')
+        visualizer = Visualizer(line_y=line_y)
+        
+        logger.info("Componentes inicializados. Presiona 'q' para salir.")
+        
+        # 4. Bucle principal
+        frame_count = 0
+        error_count = 0
+        MAX_CONSECUTIVE_ERRORS = 30  # Salir después de 30 errores seguidos
+        
+        while cap.isOpened():
+            success, frame = cap.read()
+            
+            if not success:
+                error_count += 1
+                logger.warning(f"Error al leer frame (errores consecutivos: {error_count})")
+                
+                if error_count >= MAX_CONSECUTIVE_ERRORS:
+                    logger.error("Demasiados errores consecutivos. Stream finalizado.")
+                    break
+                continue
+            
+            # Resetear contador de errores si leímos bien
+            error_count = 0
+            frame_count += 1
+            
+            # Log cada 300 frames (~10 seg a 30fps)
+            if frame_count % 300 == 0:
+                logger.info(f"Frames procesados: {frame_count}, Conteo actual: {counter.get_count()}")
+            
+            # Procesamiento
+            try:
+                results = tracker.track_objects(frame, classes_to_track=VEHICLE_CLASSES)
+                annotated_frame = results[0].plot()
+                
+                if results[0].boxes is not None and results[0].boxes.id is not None:
+                    boxes = results[0].boxes.xyxy.cpu().numpy()
+                    track_ids = results[0].boxes.id.cpu().numpy()
+                    
+                    for box, track_id in zip(boxes, track_ids):
+                        if counter.update(track_id, box):
+                            visualizer.draw_crossing_indicator(annotated_frame, box)
+                            logger.debug(f"Vehículo {int(track_id)} contado")
+                
+                visualizer.draw_line(annotated_frame)
+                visualizer.draw_count(annotated_frame, counter.get_count())
+                
+                cv2.imshow("CerebroVial - Stream en Vivo", annotated_frame)
+                
+            except Exception as e:
+                logger.error(f"Error procesando frame {frame_count}: {e}")
+                continue
+            
+            # Salir con 'q'
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                logger.info("Salida solicitada por usuario")
+                break
+        
+        # 5. Limpieza
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        logger.info("=== Stream Finalizado ===")
+        logger.info(f"Total de frames procesados: {frame_count}")
+        logger.info(f"Conteo final: {counter.get_count()} vehículos")
+        
+    except Exception as e:
+        logger.critical(f"Error fatal en el stream: {e}", exc_info=True)
+        raise
+    finally:
+        cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.warning("Programa interrumpido (Ctrl+C)")
+    except Exception as e:
+        logger.critical(f"Error no manejado: {e}", exc_info=True)

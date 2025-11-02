@@ -31,12 +31,19 @@ class VehicleCounter:
         # Usamos el borde inferior de la caja como punto de referencia
         center_y = int(box[3])
 
-        # Si el vehículo ya fue contado, no hacer nada más
-        if track_id in self.counted_ids:
+        # Si es un vehículo nuevo, registrar su posición y continuar
+        # También verificamos si ya fue contado para evitar reprocesamiento innecesario.
+        if track_id not in self.track_history:
+            self.track_history[track_id] = center_y
+            # Si el vehículo aparece por primera vez ya habiendo cruzado la línea,
+            # lo añadimos a los contados para no registrarlo si retrocede y vuelve a cruzar.
+            if (self.direction == 'down' and center_y > self.line_y) or \
+               (self.direction == 'up' and center_y < self.line_y):
+                self.counted_ids.add(track_id)
             return False
 
-        # Si es un vehículo nuevo, registrar su posición y continuar
-        if track_id not in self.track_history:
+        # Si el vehículo ya fue contado, solo actualizamos su posición y salimos.
+        if track_id in self.counted_ids:
             self.track_history[track_id] = center_y
             return False
 
@@ -67,4 +74,3 @@ class VehicleCounter:
         Devuelve el conteo total de vehículos.
         """
         return self.vehicle_count
-
