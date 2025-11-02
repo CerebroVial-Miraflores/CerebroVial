@@ -1,7 +1,8 @@
 import cv2
 import threading
 import yt_dlp
-from flask import Flask, Response, render_template
+from flask import Flask, Response, render_template, jsonify
+from flask_cors import CORS
 
 from components.object_detector import ObjectDetector
 from components.object_tracker import ObjectTracker
@@ -19,9 +20,14 @@ LINE_Y_RATIO = 0.75
 output_frame = None
 # Lock para asegurar que el frame no se lea y escriba al mismo tiempo
 lock = threading.Lock()
+# Instancia global del contador para poder acceder a su valor desde la API
+vehicle_counter = None
 
 # Inicializar la aplicación Flask
 app = Flask(__name__)
+# Habilitar CORS para permitir que el frontend (en otro dominio) acceda a esta API.
+# En producción, deberías restringir los orígenes: CORS(app, origins=["http://tu-frontend.com"])
+CORS(app)
 
 def get_video_stream_url(url):
     """Usa yt-dlp para obtener la URL directa del stream de mejor calidad."""
@@ -42,7 +48,7 @@ def process_video_stream():
     Función que se ejecuta en un hilo separado para procesar el video.
     Lee frames, los procesa y actualiza la variable global 'output_frame'.
     """
-    global output_frame, lock
+    global output_frame, lock, vehicle_counter
 
     stream_url = get_video_stream_url(VIDEO_SOURCE)
     if not stream_url:
@@ -60,7 +66,7 @@ def process_video_stream():
 
     detector = ObjectDetector(model_path=MODEL_PATH)
     tracker = ObjectTracker(detector)
-    counter = VehicleCounter(line_y=line_y, direction='up')
+    vehicle_counter = VehicleCounter(line_y=line_y, direction='up') # Asignar a la variable global
     visualizer = Visualizer(line_y=line_y)
 
     print("Hilo de procesamiento iniciado. Procesando frames...")
@@ -80,11 +86,11 @@ def process_video_stream():
             track_ids = results[0].boxes.id.cpu().numpy()
 
             for box, track_id in zip(boxes, track_ids):
-                if counter.update(track_id, box):
+                if vehicle_counter.update(track_id, box):
                     visualizer.draw_crossing_indicator(annotated_frame, box)
         
         visualizer.draw_line(annotated_frame)
-        visualizer.draw_count(annotated_frame, counter.get_count())
+        visualizer.draw_count(annotated_frame, vehicle_counter.get_count())
 
         # Actualizar el frame de salida de forma segura
         with lock:
@@ -101,6 +107,7 @@ def generate_frames():
 
     while True:
         with lock:
+            # Si el frame de salida no está disponible, saltar esta iteración
             if output_frame is None:
                 continue
             
@@ -111,8 +118,12 @@ def generate_frames():
                 continue
 
         # Devolver el frame como parte de la respuesta multipart
-        yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + 
-              bytearray(encoded_image) + b'\r\n')
+        try:
+            yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + 
+                  bytearray(encoded_image) + b'\r\n')
+        except GeneratorExit:
+            # El cliente se desconectó
+            return
 
 @app.route("/")
 def index():
@@ -124,6 +135,16 @@ def video_feed():
     """Ruta que sirve el stream de video."""
     return Response(generate_frames(),
                     mimetype="multipart/x-mixed-replace; boundary=frame")
+
+@app.route("/api/count")
+def count():
+    """Endpoint de API que devuelve el conteo actual en formato JSON."""
+    global vehicle_counter
+    count = 0
+    if vehicle_counter:
+        count = vehicle_counter.get_count()
+    
+    return jsonify({"vehicle_count": count})
 
 if __name__ == '__main__':
     # Iniciar el hilo de procesamiento de video en segundo plano
