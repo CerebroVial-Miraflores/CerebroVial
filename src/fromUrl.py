@@ -114,14 +114,17 @@ def main():
                 if results[0].boxes is not None and results[0].boxes.id is not None:
                     boxes = results[0].boxes.xyxy.cpu().numpy()
                     track_ids = results[0].boxes.id.cpu().numpy()
+                    class_ids = results[0].boxes.cls.cpu().numpy()
                     
-                    for box, track_id in zip(boxes, track_ids):
-                        if counter.update(track_id, box):
+                    for box, track_id, class_id in zip(boxes, track_ids, class_ids):
+                        if counter.update(track_id, box, int(class_id)):
                             visualizer.draw_crossing_indicator(annotated_frame, box)
-                            logger.debug(f"Vehículo {int(track_id)} contado")
+                            vehicle_type = counter.CLASS_NAMES.get(int(class_id), 'Desconocido')
+                            logger.debug(f"Vehículo {int(track_id)} ({vehicle_type}) contado")
                 
                 visualizer.draw_line(annotated_frame)
                 visualizer.draw_count(annotated_frame, counter.get_count())
+                visualizer.draw_counts_breakdown(annotated_frame, counter.get_counts_summary())
                 
                 cv2.imshow("CerebroVial - Stream en Vivo", annotated_frame)
                 
