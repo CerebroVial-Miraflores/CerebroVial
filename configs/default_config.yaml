@@ -59,3 +59,8 @@ stream:
 performance:
   max_fps: null  # Limitar FPS de procesamiento (null = sin límite)
   skip_frames: 0  # Procesar 1 de cada N frames (0 = procesar todos)
+
+# Servidor Web
+web:
+  host: '0.0.0.0'  # '0.0.0.0' = accesible desde red, '127.0.0.1' = solo local
+  port: 8080
