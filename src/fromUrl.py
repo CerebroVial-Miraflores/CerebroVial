@@ -102,7 +102,13 @@ def main():
         
         # Usar colores desde config
         colors = config.get_visualization_colors()
-        visualizer = Visualizer(line_y=line_y, text_color=colors['text'], line_color=colors['line'])
+        visualizer = Visualizer(
+            line_y=line_y, 
+            text_color=colors['text'], 
+            line_color=colors['line'],
+            show_trajectories=config.get('visualization.show_trajectories', True),
+            trajectory_length=config.get('visualization.trajectory_length', 30)
+        )
         
         # Inicializar persistencia
         results_dir = config.get('paths.results_dir', 'data/results')

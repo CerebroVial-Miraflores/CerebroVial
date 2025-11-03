@@ -27,6 +27,8 @@ visualization:
   crossing_indicator_color: [0, 0, 255]  # RGB - Rojo
   show_fps: true
   show_breakdown: true  # Mostrar desglose por tipo
+  show_trajectories: true  # Mostrar trayectorias de vehículos
+  trajectory_length: 30  # Número de puntos a mostrar en la trayectoria
 
 # Serie temporal
 timeseries:

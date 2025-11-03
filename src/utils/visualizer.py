@@ -1,10 +1,19 @@
 import cv2
+import numpy as np
+from collections import defaultdict, deque
 
 class Visualizer:
-    def __init__(self, line_y: int, text_color=(255, 255, 255), line_color=(0, 255, 0)):
+    def __init__(self, line_y: int, text_color=(255, 255, 255), line_color=(0, 255, 0), 
+                 show_trajectories=True, trajectory_length=30):
         self.line_y = line_y
         self.text_color = text_color
         self.line_color = line_color
+        self.show_trajectories = show_trajectories
+        self.trajectory_length = trajectory_length
+        
+        # Almacenar trayectorias de cada vehículo
+        # {track_id: deque([(x, y), (x, y), ...])}
+        self.trajectories = defaultdict(lambda: deque(maxlen=trajectory_length))
         
         # Colores por tipo de vehículo
         self.class_colors = {
