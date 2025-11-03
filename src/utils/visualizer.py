@@ -100,3 +100,50 @@ class Visualizer:
         cv2.circle(frame, (center_x, center_y), 8, (0, 0, 255), -1)
         # Borde blanco para mejor visibilidad
         cv2.circle(frame, (center_x, center_y), 8, (255, 255, 255), 2)
+
+    def update_trajectories(self, results):
+        """
+        Actualiza las trayectorias con las nuevas posiciones de los vehículos.
+        
+        :param results: Resultados del tracker de YOLO.
+        """
+        if not self.show_trajectories or results[0].boxes is None or results[0].boxes.id is None:
+            return
+
+        boxes = results[0].boxes.xyxy.cpu().numpy()
+        track_ids = results[0].boxes.id.cpu().numpy()
+
+        for box, track_id in zip(boxes, track_ids):
+            x1, y1, x2, y2 = box
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            self.trajectories[int(track_id)].append((center_x, center_y))
+
+    def draw_trajectories(self, frame, results):
+        """
+        Dibuja las trayectorias de los vehículos en el frame.
+        
+        :param frame: Frame donde dibujar.
+        :param results: Resultados del tracker de YOLO para obtener el color por clase.
+        """
+        if not self.show_trajectories:
+            return
+
+        if results[0].boxes is not None and results[0].boxes.id is not None:
+            track_ids = results[0].boxes.id.cpu().numpy()
+            class_ids = results[0].boxes.cls.cpu().numpy()
+            id_to_class = {int(tid): int(cid) for tid, cid in zip(track_ids, class_ids)}
+
+            for track_id, path in self.trajectories.items():
+                if len(path) > 1:
+                    class_id = id_to_class.get(track_id)
+                    color = self.class_colors.get(class_id, (200, 200, 200)) # Gris por defecto
+                    
+                    points = np.array(path, np.int32).reshape((-1, 1, 2))
+                    cv2.polylines(frame, [points], isClosed=False, color=color, thickness=2)
+
+    def clear_old_trajectories(self, active_track_ids: set):
+        """Elimina trayectorias de IDs que ya no están activos."""
+        inactive_ids = set(self.trajectories.keys()) - active_track_ids
+        for inactive_id in inactive_ids:
+            del self.trajectories[inactive_id]

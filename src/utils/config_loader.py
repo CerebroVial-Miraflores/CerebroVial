@@ -16,7 +16,7 @@ class Config:
         """
         if config_path is None:
             # Buscar config por defecto
-            script_dir = Path(__file__).parent.parent
+            script_dir = Path(__file__).parent.parent.parent
             config_path = script_dir / 'configs' / 'default_config.yaml'
         
         self.config_path = Path(config_path)
