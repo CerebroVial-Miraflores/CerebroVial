@@ -5,6 +5,8 @@ from components.object_tracker import ObjectTracker
 from logic.vehicle_counter import VehicleCounter
 from utils.visualizer import Visualizer
 from utils.logger import setup_logger
+from utils.data_persistence import DataPersistence, TimeSeriesTracker
+from datetime import datetime
 
 # Configurar logger
 logger = setup_logger("CerebroVial.Main")
@@ -105,6 +107,13 @@ def main():
         logger.info("=== Procesamiento Finalizado ===")
         logger.info(f"Frames procesados: {frame_count}/{total_frames}")
         logger.info(f"Conteo total: {counter.get_count()} vehículos")
+        
+        # Desglose por tipo
+        counts_summary = counter.get_counts_summary()
+        logger.info("Desglose por tipo:")
+        for vehicle_type, count in counts_summary.items():
+            logger.info(f"  - {vehicle_type}: {count}")
+        
         logger.info(f"Video de salida guardado en: {VIDEO_OUT_PATH}")
         
     except Exception as e:

@@ -4,6 +4,8 @@ from components.object_tracker import ObjectTracker
 from logic.vehicle_counter import VehicleCounter
 from utils.visualizer import Visualizer
 from utils.logger import setup_logger
+from utils.data_persistence import DataPersistence, TimeSeriesTracker
+from datetime import datetime
 import streamlink
 
 # Configurar logger
@@ -144,6 +146,12 @@ def main():
         logger.info("=== Stream Finalizado ===")
         logger.info(f"Total de frames procesados: {frame_count}")
         logger.info(f"Conteo final: {counter.get_count()} vehículos")
+        
+        # Desglose por tipo
+        counts_summary = counter.get_counts_summary()
+        logger.info("Desglose por tipo:")
+        for vehicle_type, count in counts_summary.items():
+            logger.info(f"  - {vehicle_type}: {count}")
         
     except Exception as e:
         logger.critical(f"Error fatal en el stream: {e}", exc_info=True)
