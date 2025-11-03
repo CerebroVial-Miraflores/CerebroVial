@@ -3,9 +3,10 @@
 # Modelo YOLO
 model:
   path: 'yolov8n.pt'  # Opciones: yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
-  device: 'auto'  # 'auto', 'cpu', 'cuda', 'mps'
+  device: 'auto'  # 'auto' (detecta GPU), 'cpu', 'cuda', 'cuda:0', 'mps' (Apple Silicon)
   confidence: 0.25  # Umbral de confianza (0.0 - 1.0)
   iou: 0.45  # Umbral de IoU para NMS
+  half_precision: true  # Usar FP16 en GPU para mejor rendimiento (solo si GPU disponible)
 
 # Clases de vehículos a detectar (COCO dataset)
 vehicle_classes:

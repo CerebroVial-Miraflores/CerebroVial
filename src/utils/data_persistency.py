@@ -146,6 +146,9 @@ class TimeSeriesTracker:
         :param interval_seconds: Duración de cada intervalo en segundos
         :param fps: FPS del video para calcular frames por intervalo
         """
+        if fps <= 0:
+            raise ValueError("FPS debe ser mayor que 0")
+        
         self.interval_seconds = interval_seconds
         self.frames_per_interval = int(fps * interval_seconds)
         

@@ -43,10 +43,10 @@ def main():
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        line_y = int(h * LINE_Y_RATIO)
+        line_y = config.get_line_y(h)
         
         logger.info(f"Propiedades del video: {w}x{h} @ {fps:.2f} FPS, {total_frames} frames")
-        logger.info(f"Línea de conteo en Y={line_y} (ratio: {LINE_Y_RATIO})")
+        logger.info(f"Línea de conteo en Y={line_y} (ratio: {config.get('counter.line_y_ratio')})")
         
         # 3. Asegurar directorio de salida
         os.makedirs(os.path.dirname(VIDEO_OUT_PATH), exist_ok=True)
@@ -54,14 +54,35 @@ def main():
         
         # 4. Inicialización de componentes
         logger.info(f"Cargando modelo YOLO: {MODEL_PATH}")
-        detector = ObjectDetector(model_path=MODEL_PATH)
+        detector = ObjectDetector(
+            model_path=MODEL_PATH,
+            device=config.get('model.device', 'auto'),
+            half_precision=config.get('model.half_precision', True),
+            confidence=config.get('model.confidence', 0.25),
+            iou=config.get('model.iou', 0.45)
+        )
+        
+        # Log de información del dispositivo
+        device_info = detector.get_device_info()
+        logger.info(f"Dispositivo: {device_info['device']}")
+        if 'gpu_name' in device_info:
+            logger.info(f"GPU: {device_info['gpu_name']} ({device_info['gpu_memory']})")
+        
         tracker = ObjectTracker(detector)
-        counter = VehicleCounter(line_y=line_y, direction='down')
-        visualizer = Visualizer(line_y=line_y)
+        counter = VehicleCounter(line_y=line_y, direction=config.get('counter.direction', 'down'))
+        
+        # Usar colores desde config
+        colors = config.get_visualization_colors()
+        visualizer = Visualizer(line_y=line_y, text_color=colors['text'], line_color=colors['line'])
         
         # Inicializar persistencia de datos
-        persistence = DataPersistence()
-        timeseries_tracker = TimeSeriesTracker(interval_seconds=TIMESERIES_INTERVAL_SEC, fps=fps)
+        results_dir = config.get('paths.results_dir', 'data/results')
+        persistence = DataPersistence(output_dir=results_dir)
+        
+        if config.get('timeseries.enabled', True):
+            timeseries_tracker = TimeSeriesTracker(interval_seconds=TIMESERIES_INTERVAL_SEC, fps=fps)
+        else:
+            timeseries_tracker = None
         
         logger.info("Todos los componentes inicializados correctamente")
         logger.info("Procesando video... Presiona 'q' en la ventana para salir.")
@@ -97,7 +118,8 @@ def main():
                         logger.debug(f"Vehículo {int(track_id)} ({vehicle_type}) contado en frame {frame_count}")
             
             # Actualizar serie temporal
-            timeseries_tracker.update(frame_count, counter)
+            if timeseries_tracker:
+                timeseries_tracker.update(frame_count, counter)
             
             visualizer.draw_line(annotated_frame)
             visualizer.draw_count(annotated_frame, counter.get_count())
@@ -153,7 +175,7 @@ def main():
             counter=counter,
             video_info=video_info,
             processing_info=processing_info,
-            time_series=timeseries_tracker.get_time_series()
+            time_series=timeseries_tracker.get_time_series() if timeseries_tracker else None
         )
         
         logger.info("=== Resultados Guardados ===")

@@ -50,9 +50,8 @@ def get_video_stream(url, retry_count=0):
         
         # Reintentar si no hemos alcanzado el límite
         if retry_count < MAX_RETRIES - 1:
-            logger.info("Reintentando en 3 segundos...")
-            import time
-            time.sleep(3)
+            logger.info(f"Reintentando en {RETRY_DELAY} segundos...")
+            time.sleep(RETRY_DELAY)
             return get_video_stream(url, retry_count + 1)
         
         return None
@@ -77,28 +76,48 @@ def main():
         w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
-        line_y = int(h * LINE_Y_RATIO)
+        line_y = config.get_line_y(h)
         
         logger.info(f"Stream iniciado: {w}x{h} @ {fps:.2f} FPS")
         logger.info(f"Línea de conteo en Y={line_y}")
         
         # 3. Inicializar componentes
         logger.info(f"Cargando modelo YOLO: {MODEL_PATH}")
-        detector = ObjectDetector(model_path=MODEL_PATH)
+        detector = ObjectDetector(
+            model_path=MODEL_PATH,
+            device=config.get('model.device', 'auto'),
+            half_precision=config.get('model.half_precision', True),
+            confidence=config.get('model.confidence', 0.25),
+            iou=config.get('model.iou', 0.45)
+        )
+        
+        # Log de información del dispositivo
+        device_info = detector.get_device_info()
+        logger.info(f"Dispositivo: {device_info['device']}")
+        if 'gpu_name' in device_info:
+            logger.info(f"GPU: {device_info['gpu_name']} ({device_info['gpu_memory']})")
+        
         tracker = ObjectTracker(detector)
-        counter = VehicleCounter(line_y=line_y, direction='up')
-        visualizer = Visualizer(line_y=line_y)
+        counter = VehicleCounter(line_y=line_y, direction=config.get('counter.direction', 'up'))
+        
+        # Usar colores desde config
+        colors = config.get_visualization_colors()
+        visualizer = Visualizer(line_y=line_y, text_color=colors['text'], line_color=colors['line'])
         
         # Inicializar persistencia
-        persistence = DataPersistence()
-        timeseries_tracker = TimeSeriesTracker(interval_seconds=TIMESERIES_INTERVAL_SEC, fps=fps)
+        results_dir = config.get('paths.results_dir', 'data/results')
+        persistence = DataPersistence(output_dir=results_dir)
+        
+        if config.get('timeseries.enabled', True):
+            timeseries_tracker = TimeSeriesTracker(interval_seconds=TIMESERIES_INTERVAL_SEC, fps=fps)
+        else:
+            timeseries_tracker = None
         
         logger.info("Componentes inicializados. Presiona 'q' para salir.")
         
         # 4. Bucle principal
         frame_count = 0
         error_count = 0
-        MAX_CONSECUTIVE_ERRORS = 30  # Salir después de 30 errores seguidos
         
         while cap.isOpened():
             success, frame = cap.read()
@@ -137,7 +156,8 @@ def main():
                             logger.debug(f"Vehículo {int(track_id)} ({vehicle_type}) contado")
                 
                 # Actualizar serie temporal
-                timeseries_tracker.update(frame_count, counter)
+                if timeseries_tracker:
+                    timeseries_tracker.update(frame_count, counter)
                 
                 visualizer.draw_line(annotated_frame)
                 visualizer.draw_count(annotated_frame, counter.get_count())
@@ -193,7 +213,7 @@ def main():
             counter=counter,
             video_info=video_info,
             processing_info=processing_info,
-            time_series=timeseries_tracker.get_time_series()
+            time_series=timeseries_tracker.get_time_series() if timeseries_tracker else None
         )
         
         logger.info("=== Resultados Guardados ===")
