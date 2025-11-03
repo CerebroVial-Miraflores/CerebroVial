@@ -4,12 +4,17 @@ from collections import defaultdict, deque
 
 class Visualizer:
     def __init__(self, line_y: int, text_color=(255, 255, 255), line_color=(0, 255, 0), 
-                 show_trajectories=True, trajectory_length=30):
+                 show_trajectories=True, trajectory_length=30, speed_line_color=(255, 0, 0)):
         self.line_y = line_y
         self.text_color = text_color
         self.line_color = line_color
         self.show_trajectories = show_trajectories
         self.trajectory_length = trajectory_length
+
+        # Propiedades para las líneas de velocidad
+        self.speed_line_top_y = None
+        self.speed_line_bottom_y = None
+        self.speed_line_color = speed_line_color
         
         # Almacenar trayectorias de cada vehículo
         # {track_id: deque([(x, y), (x, y), ...])}
@@ -23,10 +28,24 @@ class Visualizer:
             7: (255, 255, 100)   # Camiones - Cyan
         }
 
-    def draw_line(self, frame):
-        """Dibuja la línea de conteo horizontal."""
+    def set_speed_measurement_lines(self, line_top_y: int, line_bottom_y: int):
+        """
+        Establece las coordenadas para las líneas de medición de velocidad.
+        """
+        self.speed_line_top_y = line_top_y
+        self.speed_line_bottom_y = line_bottom_y
+
+    def draw_lines(self, frame):
+        """Dibuja todas las líneas configuradas (conteo y velocidad)."""
         h, w, _ = frame.shape
-        cv2.line(frame, (0, self.line_y), (w, self.line_y), self.line_color, 2)
+        # Dibujar línea de conteo (Verde)
+        cv2.line(frame, (0, self.line_y), (w, self.line_y), self.line_color, 3)
+
+        # Dibujar líneas de velocidad (Azul/Rojo por defecto)
+        if self.speed_line_top_y is not None:
+            cv2.line(frame, (0, self.speed_line_top_y), (w, self.speed_line_top_y), self.speed_line_color, 2)
+        if self.speed_line_bottom_y is not None:
+            cv2.line(frame, (0, self.speed_line_bottom_y), (w, self.speed_line_bottom_y), self.speed_line_color, 2)
 
     def draw_count(self, frame, count):
         """
@@ -74,6 +93,30 @@ class Visualizer:
             text = f'{vehicle_type}: {count}'
             position = (x, y + i * line_height)
             cv2.putText(frame, text, position, font, font_scale, self.text_color, font_thickness)
+
+    def draw_speed_stats(self, frame, avg_speed: float):
+        """
+        Dibuja la velocidad promedio en la esquina superior derecha, debajo del conteo.
+        """
+        text = f'Vel. Promedio: {avg_speed:.2f} km/h'
+        font_scale = 0.8
+        font_thickness = 2
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        (text_w, text_h), _ = cv2.getTextSize(text, font, font_scale, font_thickness)
+        frame_h, frame_w, _ = frame.shape
+
+        # Posición debajo del conteo total
+        position = (frame_w - text_w - 20, (text_h + 20) * 2)
+        cv2.putText(frame, text, position, font, font_scale, self.text_color, font_thickness)
+
+    def draw_speed_on_box(self, frame, box, speed_kmh: float):
+        """
+        Dibuja la velocidad individual sobre la caja del vehículo.
+        """
+        x1, y1, _, _ = [int(coord) for coord in box]
+        text = f"{speed_kmh:.1f} km/h"
+        cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
     def draw_detections(self, frame, results):
         """

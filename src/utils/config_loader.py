@@ -88,6 +88,21 @@ class Config:
         ratio = self.get('counter.line_y_ratio', 0.5)
         return int(frame_height * ratio)
     
+    def get_speed_line_y_coords(self, frame_height: int) -> tuple:
+        """
+        Calcula las posiciones Y para las líneas de medición de velocidad.
+        
+        :param frame_height: Altura del frame en píxeles
+        :return: Tupla (line_entry_y, line_exit_y)
+        """
+        if not self.get('speed_calculator.enabled', False):
+            return None, None
+            
+        entry_ratio = self.get('speed_calculator.line_entry_ratio', 0.75)
+        exit_ratio = self.get('speed_calculator.line_exit_ratio', 0.50)
+        
+        return int(frame_height * entry_ratio), int(frame_height * exit_ratio)
+
     def get_visualization_colors(self) -> Dict[str, tuple]:
         """
         Retorna los colores configurados para visualización.
