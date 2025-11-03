@@ -6,20 +6,25 @@ from logic.vehicle_counter import VehicleCounter
 from utils.visualizer import Visualizer
 from utils.logger import setup_logger
 from utils.data_persistence import DataPersistence, TimeSeriesTracker
+from utils.config_loader import load_config
 from datetime import datetime
 
-# Configurar logger
-logger = setup_logger("CerebroVial.Main")
+# Cargar configuración
+config = load_config()
 
-# --- CONFIGURACIÓN ---
-VIDEO_IN_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'input', 'traffic_test.mp4')
-VIDEO_OUT_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'output', 'traffic_test_output.mp4')
-MODEL_PATH = 'yolov8n.pt'
-VEHICLE_CLASSES = [2, 3, 5, 7] # car, motorcycle, bus, truck
-LINE_Y_RATIO = 0.5
+# Configurar logger con nivel desde config
+logger = setup_logger("CerebroVial.Main", log_level=config.get('logging.level', 'INFO'))
+
+# --- CONFIGURACIÓN DESDE YAML ---
+VIDEO_IN_PATH = config.get('paths.input_video')
+VIDEO_OUT_PATH = config.get('paths.output_video')
+MODEL_PATH = config.get('model.path', 'yolov8n.pt')
+VEHICLE_CLASSES = config.get_vehicle_classes()
+TIMESERIES_INTERVAL_SEC = config.get('timeseries.interval_seconds', 60)
 
 def main():
     logger.info("=== Iniciando CerebroVial ===")
+    processing_start = datetime.now()
     
     # 1. Validación de archivos
     if not os.path.exists(VIDEO_IN_PATH):
@@ -54,6 +59,10 @@ def main():
         counter = VehicleCounter(line_y=line_y, direction='down')
         visualizer = Visualizer(line_y=line_y)
         
+        # Inicializar persistencia de datos
+        persistence = DataPersistence()
+        timeseries_tracker = TimeSeriesTracker(interval_seconds=TIMESERIES_INTERVAL_SEC, fps=fps)
+        
         logger.info("Todos los componentes inicializados correctamente")
         logger.info("Procesando video... Presiona 'q' en la ventana para salir.")
         
@@ -87,6 +96,9 @@ def main():
                         vehicle_type = counter.CLASS_NAMES.get(int(class_id), 'Desconocido')
                         logger.debug(f"Vehículo {int(track_id)} ({vehicle_type}) contado en frame {frame_count}")
             
+            # Actualizar serie temporal
+            timeseries_tracker.update(frame_count, counter)
+            
             visualizer.draw_line(annotated_frame)
             visualizer.draw_count(annotated_frame, counter.get_count())
             visualizer.draw_counts_breakdown(annotated_frame, counter.get_counts_summary())
@@ -104,8 +116,12 @@ def main():
         cv2.destroyAllWindows()
         
         # 7. Resumen final
+        processing_end = datetime.now()
+        processing_duration = (processing_end - processing_start).total_seconds()
+        
         logger.info("=== Procesamiento Finalizado ===")
         logger.info(f"Frames procesados: {frame_count}/{total_frames}")
+        logger.info(f"Duración: {processing_duration:.2f} segundos")
         logger.info(f"Conteo total: {counter.get_count()} vehículos")
         
         # Desglose por tipo
@@ -115,6 +131,36 @@ def main():
             logger.info(f"  - {vehicle_type}: {count}")
         
         logger.info(f"Video de salida guardado en: {VIDEO_OUT_PATH}")
+        
+        # 8. Guardar resultados
+        video_info = {
+            "path": VIDEO_IN_PATH,
+            "width": w,
+            "height": h,
+            "fps": fps,
+            "total_frames": total_frames
+        }
+        
+        processing_info = {
+            "frames_processed": frame_count,
+            "duration_sec": round(processing_duration, 2),
+            "line_y": line_y,
+            "direction": counter.direction,
+            "model": MODEL_PATH
+        }
+        
+        saved_files = persistence.save_results(
+            counter=counter,
+            video_info=video_info,
+            processing_info=processing_info,
+            time_series=timeseries_tracker.get_time_series()
+        )
+        
+        logger.info("=== Resultados Guardados ===")
+        logger.info(f"JSON: {saved_files['json']}")
+        logger.info(f"CSV Resumen: {saved_files['csv_summary']}")
+        if saved_files['csv_timeseries']:
+            logger.info(f"CSV Serie Temporal: {saved_files['csv_timeseries']}")
         
     except Exception as e:
         logger.error(f"Error durante el procesamiento: {e}", exc_info=True)

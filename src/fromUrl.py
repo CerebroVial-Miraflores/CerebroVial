@@ -5,18 +5,25 @@ from logic.vehicle_counter import VehicleCounter
 from utils.visualizer import Visualizer
 from utils.logger import setup_logger
 from utils.data_persistence import DataPersistence, TimeSeriesTracker
+from utils.config_loader import load_config
 from datetime import datetime
 import streamlink
+import time
+
+# Cargar configuración
+config = load_config()
 
 # Configurar logger
-logger = setup_logger("CerebroVial.Stream")
+logger = setup_logger("CerebroVial.Stream", log_level=config.get('logging.level', 'INFO'))
 
-# --- CONFIGURACIÓN ---
-VIDEO_SOURCE = "https://youtu.be/qMYlpMsWsBE"
-MODEL_PATH = 'yolov8n.pt'
-VEHICLE_CLASSES = [2, 3, 5, 7] # car, motorcycle, bus, truck
-LINE_Y_RATIO = 0.75
-MAX_RETRIES = 3  # Intentos de reconexión
+# --- CONFIGURACIÓN DESDE YAML ---
+VIDEO_SOURCE = config.get('stream.url', 'https://youtu.be/qMYlpMsWsBE')
+MODEL_PATH = config.get('model.path', 'yolov8n.pt')
+VEHICLE_CLASSES = config.get_vehicle_classes()
+MAX_RETRIES = config.get('stream.max_retries', 3)
+RETRY_DELAY = config.get('stream.retry_delay_sec', 3)
+MAX_CONSECUTIVE_ERRORS = config.get('stream.max_consecutive_errors', 30)
+TIMESERIES_INTERVAL_SEC = config.get('timeseries.interval_seconds', 60)
 
 def get_video_stream(url, retry_count=0):
     """
@@ -52,6 +59,7 @@ def get_video_stream(url, retry_count=0):
 
 def main():
     logger.info("=== Iniciando CerebroVial Stream ===")
+    processing_start = datetime.now()
     
     # 1. Obtener stream URL
     stream_url = get_video_stream(VIDEO_SOURCE)
@@ -80,6 +88,10 @@ def main():
         tracker = ObjectTracker(detector)
         counter = VehicleCounter(line_y=line_y, direction='up')
         visualizer = Visualizer(line_y=line_y)
+        
+        # Inicializar persistencia
+        persistence = DataPersistence()
+        timeseries_tracker = TimeSeriesTracker(interval_seconds=TIMESERIES_INTERVAL_SEC, fps=fps)
         
         logger.info("Componentes inicializados. Presiona 'q' para salir.")
         
@@ -124,6 +136,9 @@ def main():
                             vehicle_type = counter.CLASS_NAMES.get(int(class_id), 'Desconocido')
                             logger.debug(f"Vehículo {int(track_id)} ({vehicle_type}) contado")
                 
+                # Actualizar serie temporal
+                timeseries_tracker.update(frame_count, counter)
+                
                 visualizer.draw_line(annotated_frame)
                 visualizer.draw_count(annotated_frame, counter.get_count())
                 visualizer.draw_counts_breakdown(annotated_frame, counter.get_counts_summary())
@@ -143,8 +158,12 @@ def main():
         cap.release()
         cv2.destroyAllWindows()
         
+        processing_end = datetime.now()
+        processing_duration = (processing_end - processing_start).total_seconds()
+        
         logger.info("=== Stream Finalizado ===")
         logger.info(f"Total de frames procesados: {frame_count}")
+        logger.info(f"Duración: {processing_duration:.2f} segundos")
         logger.info(f"Conteo final: {counter.get_count()} vehículos")
         
         # Desglose por tipo
@@ -152,6 +171,36 @@ def main():
         logger.info("Desglose por tipo:")
         for vehicle_type, count in counts_summary.items():
             logger.info(f"  - {vehicle_type}: {count}")
+        
+        # Guardar resultados
+        video_info = {
+            "source": VIDEO_SOURCE,
+            "width": w,
+            "height": h,
+            "fps": fps,
+            "type": "stream"
+        }
+        
+        processing_info = {
+            "frames_processed": frame_count,
+            "duration_sec": round(processing_duration, 2),
+            "line_y": line_y,
+            "direction": counter.direction,
+            "model": MODEL_PATH
+        }
+        
+        saved_files = persistence.save_results(
+            counter=counter,
+            video_info=video_info,
+            processing_info=processing_info,
+            time_series=timeseries_tracker.get_time_series()
+        )
+        
+        logger.info("=== Resultados Guardados ===")
+        logger.info(f"JSON: {saved_files['json']}")
+        logger.info(f"CSV Resumen: {saved_files['csv_summary']}")
+        if saved_files['csv_timeseries']:
+            logger.info(f"CSV Serie Temporal: {saved_files['csv_timeseries']}")
         
     except Exception as e:
         logger.critical(f"Error fatal en el stream: {e}", exc_info=True)
