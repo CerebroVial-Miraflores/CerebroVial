@@ -17,8 +17,16 @@ vehicle_classes:
 
 # Configuración del contador
 counter:
-  line_y_ratio: 0.5  # Posición de la línea (0.0 = arriba, 1.0 = abajo)
-  direction: 'down'  # 'up' o 'down'
+  line_y_ratio: 0.80  # Posición de la línea (0.0 = arriba, 1.0 = abajo)
+  direction: 'up'  # 'up' o 'down'
+
+# Configuración del calculador de velocidad
+speed_calculator:
+  enabled: true
+  line_entry_ratio: 0.90  # Línea de entrada a la zona de medición
+  line_exit_ratio: 0.68   # Línea de salida de la zona de medición
+  real_world_distance_m: 5.0  # Distancia REAL en metros entre las dos líneas
+  avg_speed_update_interval_sec: 3 # Intervalo para recalcular la velocidad promedio
 
 # Visualización
 visualization:

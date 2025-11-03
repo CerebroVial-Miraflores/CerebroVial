@@ -8,6 +8,7 @@ import time
 from components.object_detector import ObjectDetector
 from components.object_tracker import ObjectTracker
 from logic.vehicle_counter import VehicleCounter
+from logic.speed_calculator import SpeedCalculator
 from utils.visualizer import Visualizer
 from utils.logger import setup_logger
 from utils.config_loader import load_config
@@ -28,6 +29,7 @@ lock = threading.Lock()
 # Estadísticas globales
 stats = {
     'counter': None,
+    'speed_calculator': None,
     'start_time': None,
     'frames_processed': 0,
     'fps': 0,
@@ -89,8 +91,16 @@ def process_video_stream():
         return
     
     # Inicialización
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps == 0:
+        logger.warning("FPS del stream es 0, usando 25.0 como valor por defecto.")
+        fps = 25.0
+
     line_y = config.get_line_y(h)
+    speed_line_entry_y, speed_line_exit_y = config.get_speed_line_y_coords(h)
+    speed_calc_enabled = config.get('speed_calculator.enabled', False)
     
     detector = ObjectDetector(
         model_path=MODEL_PATH,
@@ -102,6 +112,21 @@ def process_video_stream():
     
     tracker = ObjectTracker(detector)
     counter = VehicleCounter(line_y=line_y, direction=config.get('counter.direction', 'up'))
+    speed_calc = None
+    
+    if speed_calc_enabled:
+        logger.info("Calculador de velocidad habilitado.")
+        speed_calc = SpeedCalculator(
+            line_a_y=speed_line_entry_y,
+            line_b_y=speed_line_exit_y,
+            real_world_distance_m=config.get('speed_calculator.real_world_distance_m', 15.0),
+            fps=fps,
+            direction=config.get('counter.direction', 'up') # Usar la misma dirección que el contador
+        )
+        # Guardar referencia para la API
+        stats['speed_calculator'] = speed_calc
+    else:
+        logger.info("Calculador de velocidad deshabilitado.")
     
     colors = config.get_visualization_colors()
     visualizer = Visualizer(
@@ -112,12 +137,22 @@ def process_video_stream():
         trajectory_length=config.get('visualization.trajectory_length', 30)
     )
     
+    # Configurar líneas de velocidad en el visualizador si están habilitadas
+    if speed_calc_enabled:
+        visualizer.set_speed_measurement_lines(speed_line_entry_y, speed_line_exit_y)
+    
     # Guardar referencia al contador para API
     stats['counter'] = counter
     stats['start_time'] = datetime.now()
     
     logger.info("Procesamiento de video iniciado")
     
+    # Variables para el cálculo de velocidad promedio
+    frame_counter = 0
+    current_avg_speed = 0.0
+    avg_speed_interval = int(fps * config.get('speed_calculator.avg_speed_update_interval_sec', 3))
+
+
     while True:
         success, frame = cap.read()
         if not success:
@@ -125,6 +160,7 @@ def process_video_stream():
             break
         
         # Procesamiento
+        frame_counter += 1
         results = tracker.track_objects(frame, classes_to_track=VEHICLE_CLASSES)
         annotated_frame = results[0].plot()
         
@@ -142,13 +178,29 @@ def process_video_stream():
             for box, track_id, class_id in zip(boxes, track_ids, class_ids):
                 if counter.update(track_id, box, int(class_id)):
                     visualizer.draw_crossing_indicator(annotated_frame, box)
+                
+                # Actualizar calculador de velocidad si está habilitado
+                if speed_calc:
+                    speed_calc.update(track_id, box, frame_counter)
+                    speed = speed_calc.get_speed(track_id)
+                    if speed is not None:
+                        visualizer.draw_speed_on_box(annotated_frame, box, speed)
+        
+        # Actualizar y dibujar velocidad promedio periódicamente
+        if speed_calc and frame_counter % avg_speed_interval == 0:
+            current_avg_speed = speed_calc.get_average_speed()
+            speed_calc.reset_interval()
         
         # Dibujar visualizaciones
         visualizer.draw_trajectories(annotated_frame, results)
-        visualizer.draw_line(annotated_frame)
+        visualizer.draw_lines(annotated_frame) # Ahora dibuja todas las líneas
         visualizer.draw_count(annotated_frame, counter.get_count())
         visualizer.draw_counts_breakdown(annotated_frame, counter.get_counts_summary())
         
+        # Dibujar estadísticas de velocidad si está habilitado
+        if speed_calc:
+            visualizer.draw_speed_stats(annotated_frame, current_avg_speed)
+
         # Dibujar FPS
         if config.get('visualization.show_fps', True):
             cv2.putText(
@@ -225,17 +277,21 @@ def api_stats():
     
     uptime = (datetime.now() - stats['start_time']).total_seconds()
     
-    return jsonify({
+    response_data = {
         "total_count": stats['counter'].get_count(),
         "counts_by_type": stats['counter'].get_counts_summary(),
         "counts_by_class_id": stats['counter'].get_counts_by_class(),
         "fps": round(stats['fps'], 2),
         "uptime_seconds": round(uptime, 2),
         "frames_processed": stats['frames_processed'],
-        "start_time": stats['start_time'].isoformat(),
-        "line_y": stats['counter'].line_y,
-        "direction": stats['counter'].direction
-    })
+        "start_time": stats['start_time'].isoformat()
+    }
+    
+    # Añadir datos de velocidad si está disponible
+    if stats['speed_calculator']:
+        response_data['average_speed_kmh'] = round(stats['speed_calculator'].get_average_speed(), 2)
+
+    return jsonify(response_data)
 
 
 @app.route("/api/health")
