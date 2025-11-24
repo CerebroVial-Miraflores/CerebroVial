@@ -72,3 +72,8 @@ performance:
 web:
   host: '0.0.0.0'  # '0.0.0.0' = accesible desde red, '127.0.0.1' = solo local
   port: 8080
+
+# Model Deployment
+deployment:
+  model_path: 'models/traffic_prediction_model.h5' # O .keras si usas Keras 3+
+  scaler_path: 'models/traffic_scaler.pkl'

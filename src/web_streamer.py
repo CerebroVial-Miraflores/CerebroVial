@@ -1,7 +1,12 @@
 import cv2
 import threading
 import yt_dlp
-from flask import Flask, Response, render_template, jsonify
+from flask import Flask, Response, render_template, jsonify, request
+from flask_cors import CORS # Importar CORS
+from flask import request # Importar request para manejar peticiones POST
+import numpy as np # Para operaciones numéricas y predicciones
+import tensorflow as tf # Para cargar el modelo Keras
+import joblib # Para cargar el StandardScaler
 from datetime import datetime
 import time
 
@@ -26,6 +31,11 @@ VEHICLE_CLASSES = config.get_vehicle_classes()
 output_frame = None
 lock = threading.Lock()
 
+# Variables globales para el modelo de IA y el escalador
+traffic_prediction_model = None
+traffic_scaler = None
+
+
 # Estadísticas globales
 stats = {
     'counter': None,
@@ -37,8 +47,17 @@ stats = {
     'frame_times': []
 }
 
+# Mapeo de tráfico (necesario para post-procesar predicciones)
+# Debe ser el mismo que se usó en el entrenamiento
+traffic_mapping = {'low': 0, 'normal': 1, 'high': 2, 'heavy' : 3}
+inverse_traffic_mapping = {v: k for k, v in traffic_mapping.items()}
+
 # Inicializar Flask
 app = Flask(__name__)
+
+# --- HABILITAR CORS ---
+# Esto permitirá que tu frontend en localhost:3000 (o cualquier otro) se comunique con tu API.
+CORS(app)
 
 
 def get_video_stream_url(url):
@@ -55,6 +74,22 @@ def get_video_stream_url(url):
         logger.error(f"Error obteniendo stream: {e}")
         return None
 
+def load_prediction_model_and_scaler():
+    """Carga el modelo de predicción de tráfico y el escalador."""
+    global traffic_prediction_model, traffic_scaler
+    
+    model_path = config.get('deployment.model_path')
+    scaler_path = config.get('deployment.scaler_path')
+    
+    try:
+        traffic_prediction_model = tf.keras.models.load_model(model_path)
+        traffic_scaler = joblib.load(scaler_path)
+        logger.info(f"Modelo de predicción cargado desde: {model_path}")
+        logger.info(f"Escalador cargado desde: {scaler_path}")
+    except Exception as e:
+        logger.error(f"Error al cargar el modelo o escalador de predicción: {e}")
+        traffic_prediction_model = None
+        traffic_scaler = None
 
 def calculate_fps():
     """Calcula FPS actual basado en frames recientes."""
@@ -308,6 +343,57 @@ def api_health():
     })
 
 
+@app.route("/api/predict_traffic", methods=['POST'])
+def api_predict_traffic():
+    """
+    API endpoint para predecir la situación del tráfico futura (+15, +30, +45 min).
+    
+    Ejemplo: POST /api/predict_traffic
+    Body:
+        {
+            "features": [0.0, 25, 2, 70, 8, 3, 22, 103, 1]
+        }
+    Retorna:
+        {
+            "predicted_15_min": "normal",
+            "predicted_30_min": "high",
+            "predicted_45_min": "heavy"
+        }
+    """
+    if traffic_prediction_model is None or traffic_scaler is None:
+        return jsonify({"error": "Modelo de predicción no cargado o no disponible"}), 503
+
+    data = request.get_json()
+    if not data or 'features' not in data:
+        return jsonify({"error": "Formato de solicitud inválido. Se espera un JSON con 'features'."}), 400
+
+    input_features = data['features']
+    if not isinstance(input_features, list) or len(input_features) != 9:
+        return jsonify({"error": "Las 'features' deben ser una lista de 9 valores numéricos."}), 400
+
+    try:
+        # Convertir a array de numpy y escalar
+        input_array = np.array([input_features], dtype=np.float32)
+        input_scaled = traffic_scaler.transform(input_array)
+
+        # Realizar predicción
+        predictions_prob = traffic_prediction_model.predict(input_scaled, verbose=0)
+
+        # Obtener la clase predicha para cada salida
+        predicted_15 = inverse_traffic_mapping[np.argmax(predictions_prob[0][0])]
+        predicted_30 = inverse_traffic_mapping[np.argmax(predictions_prob[1][0])]
+        predicted_45 = inverse_traffic_mapping[np.argmax(predictions_prob[2][0])]
+
+        return jsonify({
+            "predicted_15_min": predicted_15,
+            "predicted_30_min": predicted_30,
+            "predicted_45_min": predicted_45
+        })
+    except Exception as e:
+        logger.error(f"Error durante la predicción: {e}")
+        return jsonify({"error": f"Error interno del servidor durante la predicción: {str(e)}"}), 500
+
+
 if __name__ == '__main__':
     logger.info("=== Iniciando CerebroVial Web Streamer ===")
     
@@ -315,6 +401,9 @@ if __name__ == '__main__':
     processing_thread = threading.Thread(target=process_video_stream)
     processing_thread.daemon = True
     processing_thread.start()
+    
+    # Cargar el modelo de predicción y el escalador
+    load_prediction_model_and_scaler()
     
     # Dar tiempo para inicialización
     time.sleep(2)
@@ -328,6 +417,7 @@ if __name__ == '__main__':
     logger.info("  - /                 : Interfaz web")
     logger.info("  - /video_feed       : Stream de video")
     logger.info("  - /api/stats        : Estadísticas JSON")
+    logger.info("  - /api/predict_traffic: Predicción de tráfico (POST)")
     logger.info("  - /api/health       : Health check")
     
     app.run(host=host, port=port, debug=False, threaded=True, use_reloader=False)
