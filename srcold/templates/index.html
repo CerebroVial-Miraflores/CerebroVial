@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CerebroVial - Monitoreo en Tiempo Real</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .video-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .stats-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .breakdown {
+            margin-top: 10px;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .breakdown-label {
+            color: #555;
+        }
+
+        .breakdown-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #4caf50;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .metric-small {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.95em;
+        }
+
+        .metric-small .label {
+            color: #666;
+        }
+
+        .metric-small .value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 CerebroVial</h1>
+            <p class="subtitle">Sistema de Monitoreo de Tráfico en Tiempo Real</p>
+        </header>
+
+        <div class="content">
+            <div class="video-container">
+                <img src="{{ url_for('video_feed') }}" alt="Video en vivo">
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <span class="status-indicator online"></span>
+                        Estado del Sistema
+                    </div>
+                    <div class="stat-value" id="total-count">0</div>
+                    <div class="stat-label">Vehículos Contados</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-label">Desglose por Tipo</div>
+                    <div class="breakdown" id="breakdown">
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">Autos</span>
+                            <span class="breakdown-value" id="count-autos">0</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">Motos</span>
+                            <span class="breakdown-value" id="count-motos">0</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">Buses</span>
+                            <span class="breakdown-value" id="count-buses">0</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">Camiones</span>
+                            <span class="breakdown-value" id="count-camiones">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-label">Métricas de Rendimiento</div>
+                    <div class="metric-small">
+                        <span class="label">FPS:</span>
+                        <span class="value" id="fps">0</span>
+                    </div>
+                    <div class="metric-small">
+                        <span class="label">Tiempo Activo:</span>
+                        <span class="value" id="uptime">0s</span>
+                    </div>
+                    <div class="metric-small">
+                        <span class="label">Frames Procesados:</span>
+                        <span class="value" id="frames">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>CerebroVial - Proyecto de Tesis UPC | Desarrollado con YOLO v8</p>
+        </footer>
+    </div>
+
+    <script>
+        // Actualizar estadísticas cada 2 segundos
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Conteo total
+                    document.getElementById('total-count').textContent = data.total_count;
+
+                    // Desglose por tipo
+                    document.getElementById('count-autos').textContent = data.counts_by_type.Autos || 0;
+                    document.getElementById('count-motos').textContent = data.counts_by_type.Motos || 0;
+                    document.getElementById('count-buses').textContent = data.counts_by_type.Buses || 0;
+                    document.getElementById('count-camiones').textContent = data.counts_by_type.Camiones || 0;
+
+                    // Métricas
+                    document.getElementById('fps').textContent = data.fps.toFixed(1);
+                    document.getElementById('uptime').textContent = formatUptime(data.uptime_seconds);
+                    document.getElementById('frames').textContent = data.frames_processed.toLocaleString();
+                })
+                .catch(error => console.error('Error fetching stats:', error));
+        }
+
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${secs}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+
+        // Actualizar cada 2 segundos
+        setInterval(updateStats, 2000);
+
+        // Primera actualización inmediata
+        updateStats();
+    </script>
+</body>
+</html>
