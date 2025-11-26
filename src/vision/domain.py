@@ -1,8 +1,8 @@
 """
 Domain entities for the Computer Vision module.
 """
-from dataclasses import dataclass
-from typing import List, Tuple, Iterator
+from typing import List, Tuple, Iterator, Protocol, Dict, Optional
+from dataclasses import dataclass, field
 
 @dataclass
 class DetectedVehicle:
@@ -14,7 +14,7 @@ class DetectedVehicle:
     confidence: float
     bbox: Tuple[int, int, int, int]  # x1, y1, x2, y2
     timestamp: float
-    speed: float = None # km/h
+    speed: Optional[float] = None # km/h
 
 @dataclass
 class ZoneVehicleCount:
@@ -25,6 +25,8 @@ class ZoneVehicleCount:
     vehicle_count: int
     timestamp: float = 0.0
     vehicles: List[str] = None # List of vehicle IDs
+    avg_speed: float = 0.0
+    vehicle_types: Dict[str, int] = field(default_factory=dict)
 
 @dataclass
 class FrameAnalysis:
@@ -37,26 +39,26 @@ class FrameAnalysis:
     total_count: int
     zones: List[ZoneVehicleCount] = None # Optional for backward compatibility
 
-class VehicleDetector:
+class VehicleDetector(Protocol):
     """
-    Abstract base class for vehicle detection.
+    Protocol for vehicle detection.
     """
-    def detect(self, frame) -> FrameAnalysis:
-        raise NotImplementedError
+    def detect(self, frame: object, frame_id: int) -> FrameAnalysis:
+        ...
 
-class VehicleTracker:
+class VehicleTracker(Protocol):
     """
-    Abstract base class for vehicle tracking.
+    Protocol for vehicle tracking.
     """
     def track(self, detections: List[DetectedVehicle]) -> List[DetectedVehicle]:
-        raise NotImplementedError
+        ...
 
-class SpeedEstimator:
+class SpeedEstimator(Protocol):
     """
-    Abstract base class for speed estimation.
+    Protocol for speed estimation.
     """
     def estimate(self, vehicles: List[DetectedVehicle]) -> List[DetectedVehicle]:
-        raise NotImplementedError
+        ...
 
 @dataclass
 class Frame:

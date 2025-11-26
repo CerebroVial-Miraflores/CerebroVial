@@ -6,6 +6,7 @@ from ultralytics import YOLO
 from typing import List, Dict
 from ..domain import VehicleDetector, FrameAnalysis, DetectedVehicle
 from ...common.logging import setup_logger, log_execution_time
+from ...common.exceptions import DetectionError
 
 class YoloDetector(VehicleDetector):
     """
@@ -54,11 +55,5 @@ class YoloDetector(VehicleDetector):
             )
         except Exception as e:
             self.logger.error(f"Detection failed on frame {frame_id}: {e}")
-            # Return empty analysis on failure to keep pipeline running
-            return FrameAnalysis(
-                frame_id=frame_id,
-                timestamp=time.time(),
-                vehicles=[],
-                total_count=0
-            )
+            raise DetectionError(f"YOLO inference failed: {e}") from e
 

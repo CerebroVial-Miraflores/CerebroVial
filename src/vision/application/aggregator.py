@@ -52,23 +52,33 @@ class TrafficDataAggregator:
             counts = [s.vehicle_count for s in statuses]
             avg_density = sum(counts) / len(counts)
             
-            # Avg Speed & Types (Need to look at vehicles in zone)
-            # This is tricky because ZoneVehicleCount only has count.
-            # Ideally ZoneVehicleCount should have more info, or we look at vehicles in buffer
-            # For now, let's approximate speed from ALL vehicles in frame if we can't filter by zone easily here
-            # OR we update ZoneVehicleCount to include speed stats.
+            # Avg Speed
+            # Weighted average by vehicle count in each frame to be more accurate
+            total_speed_sum = 0.0
+            total_vehicles_with_speed = 0
             
-            # Let's do a simpler approach for now:
-            # We will just aggregate what we have. Speed might need to be added to ZoneVehicleCount later.
-            # For now, avg_speed will be 0 if not tracked per zone.
+            for s in statuses:
+                if s.avg_speed > 0 and s.vehicle_count > 0:
+                    total_speed_sum += s.avg_speed * s.vehicle_count
+                    total_vehicles_with_speed += s.vehicle_count
             
-            # TODO: Improve ZoneVehicleCount to include speed/types per zone.
-            # For now, we will just use the global frame analysis for types if needed, 
-            # but that's inaccurate for specific zones.
+            avg_speed = total_speed_sum / total_vehicles_with_speed if total_vehicles_with_speed > 0 else 0.0
             
-            # Let's leave speed/types empty/approx for now to get the pipeline working.
-            avg_speed = 0.0
-            vehicle_types = {} 
+            # Vehicle Types
+            vehicle_types = defaultdict(int)
+            for s in statuses:
+                for v_type, count in s.vehicle_types.items():
+                    vehicle_types[v_type] += count
+            
+            # Normalize types to average per frame (density-like) or total seen?
+            # TrafficData definition says "Count of unique vehicles". 
+            # Since we don't track unique IDs across frames in aggregator easily without a set,
+            # and ZoneVehicleCount.vehicles gives us IDs, we can use that if we want unique counts.
+            # But simpler for now: Average distribution per frame (density breakdown)
+            # OR: Total observations (accumulated).
+            # Let's go with Average Density per Type for consistency with avg_density.
+            
+            avg_vehicle_types = {k: v / len(statuses) for k, v in vehicle_types.items()}
             
             data = TrafficData(
                 timestamp=timestamp,
@@ -76,7 +86,7 @@ class TrafficDataAggregator:
                 duration_seconds=duration,
                 avg_density=avg_density,
                 avg_speed=avg_speed,
-                vehicle_types=vehicle_types
+                vehicle_types=avg_vehicle_types
             )
             
             self.repository.save(data)

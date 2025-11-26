@@ -58,14 +58,36 @@ class ZoneCounter:
         for zone_id, zone in self.zones.items():
             # trigger returns a boolean mask of detections inside the zone
             mask = zone.trigger(detections=sv_detections)
-            count = int(np.sum(mask))
             
-            # Get IDs of vehicles in zone if possible (requires tracking ID in detections)
-            # For now just count
+            # Get indices of detections in this zone
+            indices = np.where(mask)[0]
+            count = len(indices)
+            
+            vehicles_in_zone = [detections[i] for i in indices]
+            
+            # Calculate metrics
+            avg_speed = 0.0
+            vehicle_types = {}
+            vehicle_ids = []
+            
+            if count > 0:
+                # Speed
+                speeds = [v.speed for v in vehicles_in_zone if v.speed is not None]
+                if speeds:
+                    avg_speed = sum(speeds) / len(speeds)
+                
+                # Types
+                for v in vehicles_in_zone:
+                    vehicle_types[v.type] = vehicle_types.get(v.type, 0) + 1
+                    vehicle_ids.append(v.id)
+
             zone_counts.append(ZoneVehicleCount(
                 zone_id=zone_id, 
                 vehicle_count=count,
-                timestamp=current_time
+                timestamp=current_time,
+                vehicles=vehicle_ids,
+                avg_speed=avg_speed,
+                vehicle_types=vehicle_types
             ))
             
         return zone_counts
