@@ -1,0 +1,23 @@
+source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
+source_type: "youtube"
+
+# LOW LATENCY PROFILE: Prioritize minimal delay (~1-2 seconds)
+performance:
+  # Lower resolution for faster download and processing
+  target_width: 640
+  target_height: 360
+
+  # Minimum buffering
+  opencv_buffer_size: 1
+
+  # Detect less frequently to keep up with stream
+  detect_every_n_frames: 5
+
+  # Request lowest quality stream from YouTube
+  youtube_format: "worst"
+
+model:
+  path: "yolo11n.pt"
+  conf_threshold: 0.5
+
+display: true

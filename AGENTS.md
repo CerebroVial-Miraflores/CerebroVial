@@ -1,16 +1,36 @@
-# AGENTS.md - Directivas para Agentes de Google Antigravity
+# Contexto del Proyecto: CerebroVial (Monolito Modular)
 
-## Identidad
-Eres un Arquitecto de Software experto en Sistemas Inteligentes de Transporte y MLOps.
+Este documento describe la arquitectura y estructura del proyecto para guiar a los agentes de IA.
 
-## Protocolo de Memoria (Memory Bank)
-1.  **Lectura:** Al iniciar cualquier tarea, DEBES leer [memory-bank/activeContext.md](file:///Users/rasec/Documents/github/Proyecto%20de%20Tesis/CerebroVial/memory-bank/activeContext.md) y [memory-bank/systemPatterns.md](file:///Users/rasec/Documents/github/Proyecto%20de%20Tesis/CerebroVial/memory-bank/systemPatterns.md).
-2.  **Escritura:** Al finalizar, actualiza [memory-bank/progress.md](file:///Users/rasec/Documents/github/Proyecto%20de%20Tesis/CerebroVial/memory-bank/progress.md) con tus logros.
+## Arquitectura: Monolito Modular
 
-## Estándares Técnicos (Strict)
-* **Arquitectura:** Hexagonal. El Dominio ([src/core](file:///Users/rasec/Documents/github/Proyecto%20de%20Tesis/CerebroVial/src/core)) es sagrado; no importes nada externo allí.
-* **Stack:** Python 3.10+, FastAPI, Poetry, YOLOv8.
-* **Seguridad:** No uses `pickle`. Valida inputs con `Pandera`.
+El proyecto sigue una arquitectura de Monolito Modular, dividiendo la lógica en tres dominios principales dentro de un único repositorio.
 
-## Flujo de Trabajo
-No ejecutes comandos destructivos sin confirmación. Si creas código de ML, asegúrate de que sea reproducible, no dejes "números mágicos" hardcodeados.
+### Estructura de Directorios
+
+- **`data/`**: Almacenamiento de datos, separado por dominio.
+  - `vision/`: Imágenes y videos (raw, interim, processed).
+  - `prediction/`: Datos de sensores y tráfico (raw, interim, processed).
+  - `control/`: Logs de control semafórico.
+
+- **`src/`**: Código fuente, estructurado como paquetes Python.
+  - **`common/`**: Utilidades compartidas y feature engineering reutilizable.
+  - **`vision/`**: Lógica de Visión por Computadora (detección de vehículos).
+    - `domain.py`: Entidades del dominio (e.g., `DetectedVehicle`).
+    - `infrastructure/`: Adaptadores para cámaras/video.
+    - `pipelines/`: Flujos de procesamiento.
+  - **`prediction/`**: Lógica de Predicción de Congestión (modelos de series temporales).
+    - `domain.py`: Entidades del dominio (e.g., `TrafficFlowData`).
+    - `models.py`: Arquitecturas de modelos (LSTM, GNN).
+  - **`control/`**: Lógica de Gestión Semafórica (Control).
+    - `domain.py`: Entidades (e.g., `TrafficLightPhase`).
+    - `services/`: Lógica de negocio para decisiones de control.
+
+- **`models/`**: Artefactos de modelos entrenados (binarios), separados por dominio.
+- **`conf/`**: Configuración centralizada (Hydra o similar), separada por dominio.
+
+## Reglas de Desarrollo
+
+1.  **Desacoplamiento**: Los módulos (`vision`, `prediction`, `control`) deben comunicarse a través de interfaces definidas en `domain.py` o `common/`. Evitar dependencias circulares.
+2.  **Inmutabilidad de Datos**: Los datos en `data/raw` nunca deben modificarse.
+3.  **Testing**: Cada módulo debe tener sus propias pruebas unitarias.

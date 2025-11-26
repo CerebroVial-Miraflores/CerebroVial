@@ -1,0 +1,23 @@
+source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
+source_type: "youtube"
+
+# BALANCED PROFILE: Good balance between quality and latency (~3-5 seconds)
+performance:
+  # Medium resolution
+  target_width: 854
+  target_height: 480
+
+  # Small buffer for smoothness
+  opencv_buffer_size: 2
+
+  # Moderate detection frequency
+  detect_every_n_frames: 3
+
+  # Medium quality stream
+  youtube_format: "best[height<=480]"
+
+model:
+  path: "yolo11n.pt"
+  conf_threshold: 0.5
+
+display: true
