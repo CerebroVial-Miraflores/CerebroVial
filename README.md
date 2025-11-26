@@ -1,32 +1,38 @@
 # CerebroVial
 
-Repositorio para el proyecto de tesis UPC, enfocado en el desarrollo de un modelo de Inteligencia Artificial para la detección de vehículos en tiempo real.
+Sistema inteligente de gestión de tráfico urbano basado en Visión por Computadora y Machine Learning.
 
 ## Estructura del Proyecto
 
-El proyecto sigue una estructura estándar para facilitar el desarrollo y la mantenibilidad.
+Este proyecto utiliza una arquitectura de **Monolito Modular** para gestionar tres componentes interconectados:
 
-```plaintext
-CerebroVial/
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── data_config.yaml
-├── models/
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_model_training_test.ipynb
-│   └── 03_results_visualization.ipynb
-├── src/
-│   ├── data/
-│   │   └── preprocessing.py
-│   ├── model/
-│   │   └── architecture.py
-│   ├── train.py
-│   ├── evaluate.py
-│   └── inference.py
-│
-├── .gitignore
-├── README.md
-└── requirements.txt
+1.  **Visión por Computadora (`src/vision`)**: Detecta y clasifica vehículos en tiempo real.
+2.  **Predicción de Congestión (`src/prediction`)**: Predice niveles de tráfico futuros basándose en datos históricos y en tiempo real.
+3.  **Control Adaptativo (`src/control`)**: Optimiza los ciclos semafóricos basándose en las predicciones.
+
+## Organización de Carpetas
+
+```
+├── data/               # Datos separados por dominio (vision, prediction, control)
+├── src/                # Código fuente modular
+│   ├── common/         # Utilidades compartidas
+│   ├── vision/         # Módulo de Visión
+│   ├── prediction/     # Módulo de Predicción
+│   ├── control/        # Módulo de Control
+│   └── main.py         # Punto de entrada
+├── models/             # Modelos entrenados
+├── conf/               # Configuración
+└── AGENTS.md           # Contexto para asistentes de IA
+```
+
+## Cómo Ejecutar
+
+El punto de entrada principal es `src/main.py`.
+
+```bash
+# Ejecutar módulo de visión
+python src/main.py vision
+
+# Ejecutar módulo de predicción
+python src/main.py prediction
 ```
