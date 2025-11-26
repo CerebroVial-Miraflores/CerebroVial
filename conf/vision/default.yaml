@@ -1,0 +1,6 @@
+source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
+source_type: "youtube" # webcam, file, youtube, ip_cam
+model:
+  path: "yolo11n.pt"
+  conf_threshold: 0.5
+display: true
