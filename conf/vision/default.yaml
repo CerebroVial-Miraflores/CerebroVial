@@ -1,6 +1,24 @@
 source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
 source_type: "youtube" # webcam, file, youtube, ip_cam
+
+# Performance tuning for latency and fluidity
+performance:
+  # Target resolution (lower = less latency, less bandwidth)
+  target_width: 1280
+  target_height: 720
+
+  # OpenCV buffer size (1 = minimum latency, higher = smoother but more delay)
+  opencv_buffer_size: 3
+
+  # Frame processing
+  detect_every_n_frames: 3 # Run YOLO detection every N frames
+
+  # YouTube stream quality (affects download speed and latency)
+  # Options: "worst", "best[height<=480]", "best[height<=720]", "best"
+  youtube_format: "best"
+
 model:
   path: "yolo11n.pt"
   conf_threshold: 0.5
+
 display: true

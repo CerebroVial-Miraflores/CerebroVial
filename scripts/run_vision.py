@@ -46,31 +46,55 @@ def main(cfg: DictConfig):
         conf_threshold=vision_cfg.model.conf_threshold
     )
     
-    print(f"Opening source: {vision_cfg.source} (Type: {vision_cfg.source_type})...")
+    # Get performance settings
+    perf_cfg = vision_cfg.get('performance', {})
+    target_width = perf_cfg.get('target_width', None)
+    target_height = perf_cfg.get('target_height', None)
+    buffer_size = perf_cfg.get('opencv_buffer_size', 3)
+    detect_every_n = perf_cfg.get('detect_every_n_frames', 3)
+    youtube_format = perf_cfg.get('youtube_format', 'best')
+    
+    print(f"\nPerformance Settings:")
+    print(f"  Resolution: {target_width}x{target_height}" if target_width else "  Resolution: Native")
+    print(f"  Buffer size: {buffer_size}")
+    print(f"  Detection frequency: every {detect_every_n} frames")
+    print(f"  YouTube format: {youtube_format}")
+    
+    print(f"\nOpening source: {vision_cfg.source} (Type: {vision_cfg.source_type})...")
     try:
-        source = VideoSource(str(vision_cfg.source))
+        source = VideoSource(
+            str(vision_cfg.source),
+            target_width=target_width,
+            target_height=target_height,
+            buffer_size=buffer_size,
+            youtube_format=youtube_format
+        )
     except Exception as e:
         print(f"Failed to open source: {e}")
         return
 
-    print("Starting detection. Press 'q' to exit.")
+    print("\nStarting video processing. Press 'q' to exit.")
+    
+    last_analysis = None
     
     try:
         for frame_id, frame in source:
-            # Detect
-            analysis = detector.detect(frame, frame_id)
+            # Run detection periodically
+            if frame_id % detect_every_n == 0:
+                last_analysis = detector.detect(frame, frame_id)
             
-            # Draw
-            frame = draw_results(frame, analysis)
+            # Draw results if available
+            if last_analysis:
+                frame = draw_results(frame, last_analysis)
             
             if vision_cfg.display:
                 cv2.imshow("CerebroVial Vision", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
             else:
-                # Just print progress if no display
-                if frame_id % 30 == 0:
-                    print(f"Frame {frame_id}: Detected {analysis.total_count} vehicles")
+                # Print progress if no display
+                if frame_id % 30 == 0 and last_analysis:
+                    print(f"Frame {frame_id}: Detected {last_analysis.total_count} vehicles")
                     
     except KeyboardInterrupt:
         print("Interrupted by user.")
