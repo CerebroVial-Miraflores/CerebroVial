@@ -17,12 +17,14 @@ class DetectedVehicle:
     speed: float = None # km/h
 
 @dataclass
-class ZoneStatus:
+class ZoneVehicleCount:
     """
     Status of a specific zone.
     """
     zone_id: str
-    count: int
+    vehicle_count: int
+    timestamp: float = 0.0
+    vehicles: List[str] = None # List of vehicle IDs
 
 @dataclass
 class FrameAnalysis:
@@ -33,7 +35,7 @@ class FrameAnalysis:
     timestamp: float
     vehicles: List[DetectedVehicle]
     total_count: int
-    zones: List[ZoneStatus] = None # Optional for backward compatibility
+    zones: List[ZoneVehicleCount] = None # Optional for backward compatibility
 
 class VehicleDetector:
     """

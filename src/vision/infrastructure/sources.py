@@ -2,7 +2,8 @@ import cv2
 import yt_dlp
 import time
 import numpy as np
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Dict, Type
+from abc import ABC, abstractmethod
 from ..domain import FrameProducer, Frame
 
 class OpenCVSource(FrameProducer):
@@ -122,18 +123,75 @@ class YouTubeSource(OpenCVSource):
             print(f"Error loading YouTube video: {e}")
             raise
 
-def create_source(
-    source_config: str | int, 
-    source_type: str = "auto",
-    **kwargs
-) -> FrameProducer:
+class SourceFactory(ABC):
     """
-    Factory function to create the appropriate FrameProducer.
+    Abstract factory for creating video sources.
     """
-    if source_type == "youtube" or (isinstance(source_config, str) and ("youtube.com" in source_config or "youtu.be" in source_config)):
-        return YouTubeSource(source_config, **kwargs)
-    elif source_type == "webcam" or (isinstance(source_config, str) and source_config.isdigit()) or isinstance(source_config, int):
-        device_id = int(source_config)
+    
+    @abstractmethod
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        pass
+    
+    @abstractmethod
+    def can_handle(self, config: str, source_type: str) -> bool:
+        pass
+
+
+class YouTubeFactory(SourceFactory):
+    def can_handle(self, config: str, source_type: str) -> bool:
+        return source_type == "youtube" or \
+               (isinstance(config, str) and ("youtube.com" in config or "youtu.be" in config))
+    
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        return YouTubeSource(config, **kwargs)
+
+
+class WebcamFactory(SourceFactory):
+    def can_handle(self, config: str, source_type: str) -> bool:
+        return source_type == "webcam" or \
+               (isinstance(config, (int, str)) and str(config).isdigit())
+    
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        device_id = int(config)
         return WebcamSource(device_id, **kwargs)
-    else:
-        return VideoFileSource(source_config, **kwargs)
+
+
+class VideoFileFactory(SourceFactory):
+    def can_handle(self, config: str, source_type: str) -> bool:
+        return source_type == "file" or source_type == "auto"
+    
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        return VideoFileSource(config, **kwargs)
+
+
+class SourceRegistry:
+    """
+    Centralized registry for source factories.
+    """
+    
+    def __init__(self):
+        self._factories: Dict[str, SourceFactory] = {}
+    
+    def register(self, name: str, factory: SourceFactory):
+        self._factories[name] = factory
+    
+    def create_source(self, config: str, source_type: str = "auto", **kwargs) -> FrameProducer:
+        for factory in self._factories.values():
+            if factory.can_handle(config, source_type):
+                return factory.create(config, **kwargs)
+        
+        raise ValueError(f"No factory found for source: {config}")
+
+
+# Setup global registry
+_registry = SourceRegistry()
+_registry.register("youtube", YouTubeFactory())
+_registry.register("webcam", WebcamFactory())
+_registry.register("file", VideoFileFactory())
+
+
+def create_source(source_config: str, source_type: str = "auto", **kwargs) -> FrameProducer:
+    """
+    Factory function to create the appropriate FrameProducer using the registry.
+    """
+    return _registry.create_source(source_config, source_type, **kwargs)

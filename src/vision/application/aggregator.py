@@ -3,7 +3,7 @@ from typing import List, Dict
 from collections import defaultdict
 from ..domain import FrameAnalysis, TrafficData, TrafficRepository
 
-class TrafficAggregator:
+class TrafficDataAggregator:
     """
     Aggregates frame analysis results over a time window and saves to repository.
     """
@@ -13,7 +13,7 @@ class TrafficAggregator:
         self.buffer: List[FrameAnalysis] = []
         self.last_flush_time = time.time()
 
-    def process(self, analysis: FrameAnalysis):
+    def aggregate_and_persist(self, analysis: FrameAnalysis):
         """
         Add analysis to buffer and flush if window exceeded.
         """
@@ -49,20 +49,20 @@ class TrafficAggregator:
                 continue
                 
             # Avg Density
-            counts = [s.count for s in statuses]
+            counts = [s.vehicle_count for s in statuses]
             avg_density = sum(counts) / len(counts)
             
             # Avg Speed & Types (Need to look at vehicles in zone)
-            # This is tricky because ZoneStatus only has count.
-            # Ideally ZoneStatus should have more info, or we look at vehicles in buffer
+            # This is tricky because ZoneVehicleCount only has count.
+            # Ideally ZoneVehicleCount should have more info, or we look at vehicles in buffer
             # For now, let's approximate speed from ALL vehicles in frame if we can't filter by zone easily here
-            # OR we update ZoneStatus to include speed stats.
+            # OR we update ZoneVehicleCount to include speed stats.
             
             # Let's do a simpler approach for now:
-            # We will just aggregate what we have. Speed might need to be added to ZoneStatus later.
+            # We will just aggregate what we have. Speed might need to be added to ZoneVehicleCount later.
             # For now, avg_speed will be 0 if not tracked per zone.
             
-            # TODO: Improve ZoneStatus to include speed/types per zone.
+            # TODO: Improve ZoneVehicleCount to include speed/types per zone.
             # For now, we will just use the global frame analysis for types if needed, 
             # but that's inaccurate for specific zones.
             

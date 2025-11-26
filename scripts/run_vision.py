@@ -10,12 +10,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.vision.infrastructure.yolo_detector import YoloDetector
 from src.vision.infrastructure.sources import create_source
 from src.vision.infrastructure.visualization import OpenCVVisualizer
-from src.vision.infrastructure.zones import ZoneManager
+from src.vision.infrastructure.zones import ZoneCounter
 from src.vision.infrastructure.interaction import ZoneSelector
 from src.vision.infrastructure.tracking import SupervisionTracker, SimpleSpeedEstimator
 from src.vision.infrastructure.repositories import CSVTrafficRepository
-from src.vision.application.aggregator import TrafficAggregator
+from src.vision.application.aggregator import TrafficDataAggregator
 from src.vision.application.pipeline import VisionPipeline
+from src.common.metrics import MetricsCollector
+from src.vision.application.processors import (
+    DetectionProcessor, TrackingProcessor, SpeedEstimationProcessor, 
+    ZoneProcessor, AggregationProcessor
+)
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
@@ -44,23 +49,22 @@ def main(cfg: DictConfig):
     print(f"  Detection frequency: every {detect_every_n} frames")
     print(f"  YouTube format: {youtube_format}")
 
-    # Setup Zones
-    zone_manager = None
-    zones_config = None
-    if 'zones' in vision_cfg and vision_cfg.zones:
-        print("Initializing zones...")
-        # Convert OmegaConf to dict
-        zones_config = {k: list(v) for k, v in vision_cfg.zones.items()}
-        zone_manager = ZoneManager(zones_config, resolution=(target_width or 1280, target_height or 720))
 
-    visualizer = OpenCVVisualizer(zones_config=zones_config)
+    # Setup Zones
+    print("Initializing zones...")
+    # Convert OmegaConf to dict if needed, or use directly if it's already a dict/list structure
+    # Hydra configs are DictConfig/ListConfig, usually compatible but let's be safe
+    zones_config = {k: list(v) for k, v in vision_cfg.zones.items()} if vision_cfg.zones else {}
     
-    # Setup Tracking & Speed
-    tracker = None
+    zone_counter = ZoneCounter(zones_config, resolution=(target_width or 1280, target_height or 720))
+    visualizer = OpenCVVisualizer(zones_config=zones_config)
+
+    # Setup Tracking & Speed (Optional)
+    print("Initializing tracking and speed estimation...")
+    tracker = SupervisionTracker()
+    
     speed_estimator = None
-    if vision_cfg.get('speed_estimation', {}).get('enabled', False):
-        print("Initializing tracking and speed estimation...")
-        tracker = SupervisionTracker()
+    if vision_cfg.speed_estimation.enabled:
         pixels_per_meter = vision_cfg.speed_estimation.pixels_per_meter
         speed_estimator = SimpleSpeedEstimator(pixels_per_meter=pixels_per_meter)
 
@@ -74,31 +78,58 @@ def main(cfg: DictConfig):
         
         if repo_type == 'csv':
             repository = CSVTrafficRepository(output_dir=output_dir)
-            aggregator = TrafficAggregator(repository=repository, window_duration=interval)
+            aggregator = TrafficDataAggregator(repository=repository, window_duration=interval)
 
     print(f"\nOpening source: {vision_cfg.source} (Type: {vision_cfg.source_type})...")
     try:
         source = create_source(
-            vision_cfg.source,
+            source_config=vision_cfg.source,
             source_type=vision_cfg.source_type,
-            target_width=target_width,
-            target_height=target_height,
-            buffer_size=buffer_size,
-            format=youtube_format # For YouTube
+            buffer_size=vision_cfg.performance.opencv_buffer_size,
+            target_width=vision_cfg.performance.target_width,
+            target_height=vision_cfg.performance.target_height,
+            format=vision_cfg.performance.youtube_format
         )
     except Exception as e:
         print(f"Failed to open source: {e}")
         return
 
-    # 2. Setup Application
+    # Setup Metrics
+    metrics_collector = MetricsCollector()
+
+    # 2. Setup Application (Chain of Responsibility)
+    # Base processor: Detection
+    processor_chain = DetectionProcessor(detector, detect_every_n=detect_every_n, metrics_collector=metrics_collector)
+    current_link = processor_chain
+    
+    # Add Tracking
+    if tracker:
+        tracking_processor = TrackingProcessor(tracker, metrics_collector=metrics_collector)
+        current_link.set_next(tracking_processor)
+        current_link = tracking_processor
+        
+    # Add Speed Estimation
+    if speed_estimator:
+        speed_processor = SpeedEstimationProcessor(speed_estimator)
+        current_link.set_next(speed_processor)
+        current_link = speed_processor
+        
+    # Add Zones
+    if zone_counter:
+        zone_processor = ZoneProcessor(zone_counter)
+        current_link.set_next(zone_processor)
+        current_link = zone_processor
+        
+    # Add Aggregation
+    if aggregator:
+        agg_processor = AggregationProcessor(aggregator)
+        current_link.set_next(agg_processor)
+        current_link = agg_processor
+
     pipeline = VisionPipeline(
         source=source,
-        detector=detector,
-        tracker=tracker,
-        speed_estimator=speed_estimator,
-        zone_manager=zone_manager,
-        aggregator=aggregator,
-        detect_every_n_frames=detect_every_n
+        processor_chain=processor_chain,
+        metrics_collector=metrics_collector
     )
 
     print("\nStarting video processing. Press 'q' to exit.")
@@ -115,25 +146,19 @@ def main(cfg: DictConfig):
                 if key == ord('q'):
                     break
                 elif key == ord('r'):
-                    # Interactive ROI selection
-                    print("Pausing for ROI selection...")
-                    selector = ZoneSelector("CerebroVial Vision")
-                    points = selector.select_zone(frame.image)
-                    
+                    # Enter ROI selection mode
+                    print("\nSelect ROI...")
+                    selector = ZoneSelector(frame.image)
+                    points = selector.select_zone()
                     if points:
-                        print(f"New zone points: {points}")
-                        if not zone_manager:
-                            # Initialize if it didn't exist
-                            zone_manager = ZoneManager({}, resolution=(frame.image.shape[1], frame.image.shape[0]))
-                            pipeline.zone_manager = zone_manager
-                        
-                        # Update zone (defaulting to 'zone1' for single zone interaction)
-                        zone_manager.update_zone("zone1", points)
-                        
-                        # Update visualizer config
+                        print(f"Zone selected: {points}")
+                        # Update zone manager
+                        zone_counter.update_zone("zone1", points)
+                        # Update visualizer
                         if visualizer.zones_config is None:
                             visualizer.zones_config = {}
                         visualizer.zones_config["zone1"] = points
+                        visualizer.zones = zone_counter.zones
                         
                         print("Zone updated. You can copy the points above to your config file.")
             else:

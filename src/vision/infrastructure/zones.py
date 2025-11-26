@@ -1,9 +1,9 @@
 import numpy as np
 import supervision as sv
 from typing import List, Dict, Any
-from ..domain import ZoneStatus, DetectedVehicle
+from ..domain import ZoneVehicleCount, DetectedVehicle
 
-class ZoneManager:
+class ZoneCounter:
     """
     Manages detection zones and counts vehicles within them.
     Uses supervision library for polygon operations.
@@ -30,12 +30,12 @@ class ZoneManager:
             polygon=polygon
         )
 
-    def update(self, detections: List[DetectedVehicle]) -> List[ZoneStatus]:
+    def count_vehicles_in_zones(self, detections: List[DetectedVehicle]) -> List[ZoneVehicleCount]:
         """
         Updates zone counts based on current detections.
         """
         if not detections:
-            return [ZoneStatus(zone_id=zid, count=0) for zid in self.zones]
+            return [ZoneVehicleCount(zone_id=zid, vehicle_count=0) for zid in self.zones]
 
         # Convert domain detections to supervision Detections
         # sv.Detections(xyxy=..., confidence=..., class_id=...)
@@ -51,11 +51,21 @@ class ZoneManager:
             class_id=class_ids
         )
 
-        zone_statuses = []
+        zone_counts = []
+        import time
+        current_time = time.time()
+        
         for zone_id, zone in self.zones.items():
             # trigger returns a boolean mask of detections inside the zone
             mask = zone.trigger(detections=sv_detections)
             count = int(np.sum(mask))
-            zone_statuses.append(ZoneStatus(zone_id=zone_id, count=count))
             
-        return zone_statuses
+            # Get IDs of vehicles in zone if possible (requires tracking ID in detections)
+            # For now just count
+            zone_counts.append(ZoneVehicleCount(
+                zone_id=zone_id, 
+                vehicle_count=count,
+                timestamp=current_time
+            ))
+            
+        return zone_counts

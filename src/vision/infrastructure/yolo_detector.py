@@ -1,8 +1,11 @@
+
+import logging
 import time
-from typing import List
 import numpy as np
 from ultralytics import YOLO
+from typing import List, Dict
 from ..domain import VehicleDetector, FrameAnalysis, DetectedVehicle
+from ...common.logging import setup_logger, log_execution_time
 
 class YoloDetector(VehicleDetector):
     """
@@ -11,38 +14,51 @@ class YoloDetector(VehicleDetector):
     def __init__(self, model_path: str = "yolo11n.pt", conf_threshold: float = 0.5):
         self.model = YOLO(model_path)
         self.conf_threshold = conf_threshold
-        # COCO class mapping: {2: 'car', 3: 'motorcycle', 5: 'bus', 7: 'truck'}
+        # COCO classes: 2=car, 3=motorcycle, 5=bus, 7=truck
         self.target_classes = {2: 'car', 3: 'motorcycle', 5: 'bus', 7: 'truck'}
+        self.logger = setup_logger(__name__)
 
+    @log_execution_time(logging.getLogger(__name__))
     def detect(self, frame: np.ndarray, frame_id: int = 0) -> FrameAnalysis:
         """
-        Detect vehicles in a single frame.
+        Detects vehicles in the given frame.
         """
-        start_time = time.time()
-        
-        # Run inference
-        results = self.model(frame, verbose=False, conf=self.conf_threshold)[0]
-        
-        detected_vehicles: List[DetectedVehicle] = []
-        
-        for box in results.boxes:
-            cls_id = int(box.cls[0])
-            if cls_id in self.target_classes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = float(box.conf[0])
+        try:
+            # Run inference
+            results = self.model(frame, verbose=False, conf=self.conf_threshold)[0]
+            
+            vehicles = []
+            
+            # Process detections
+            for box in results.boxes:
+                class_id = int(box.cls[0])
                 
-                vehicle = DetectedVehicle(
-                    id="", # ID is assigned by tracker, not detector
-                    type=self.target_classes[cls_id],
-                    confidence=conf,
-                    bbox=(x1, y1, x2, y2),
-                    timestamp=start_time
-                )
-                detected_vehicles.append(vehicle)
-                
-        return FrameAnalysis(
-            frame_id=frame_id,
-            timestamp=start_time,
-            vehicles=detected_vehicles,
-            total_count=len(detected_vehicles)
-        )
+                if class_id in self.target_classes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    confidence = float(box.conf[0])
+                    
+                    vehicle = DetectedVehicle(
+                        id=f"{frame_id}_{len(vehicles)}", # Temporary ID, tracking will assign real ID
+                        type=self.target_classes[class_id],
+                        confidence=confidence,
+                        bbox=(x1, y1, x2, y2),
+                        timestamp=time.time()
+                    )
+                    vehicles.append(vehicle)
+            
+            return FrameAnalysis(
+                frame_id=frame_id,
+                timestamp=time.time(),
+                vehicles=vehicles,
+                total_count=len(vehicles)
+            )
+        except Exception as e:
+            self.logger.error(f"Detection failed on frame {frame_id}: {e}")
+            # Return empty analysis on failure to keep pipeline running
+            return FrameAnalysis(
+                frame_id=frame_id,
+                timestamp=time.time(),
+                vehicles=[],
+                total_count=0
+            )
+

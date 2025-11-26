@@ -29,7 +29,7 @@ class OpenCVVisualizer:
                     if M["m00"] != 0:
                         cX = int(M["m10"] / M["m00"])
                         cY = int(M["m01"] / M["m00"])
-                        cv2.putText(frame, f"{zone_id}: {zone_status.count}", (cX - 20, cY), 
+                        cv2.putText(frame, f"{zone_id}: {zone_status.vehicle_count}", (cX - 20, cY), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
         if not analysis:

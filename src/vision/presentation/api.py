@@ -62,3 +62,12 @@ def video_feed():
 @app.get("/status")
 def status():
     return {"status": "running", "pipeline_active": pipeline is not None}
+
+@app.get("/metrics")
+async def get_metrics():
+    """
+    Returns current system performance metrics.
+    """
+    if pipeline and pipeline.metrics_collector:
+        return pipeline.metrics_collector.get_metrics().to_dict()
+    return {"error": "Metrics not available"}
