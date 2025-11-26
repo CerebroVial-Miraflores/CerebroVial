@@ -11,3 +11,4 @@ outputs/
 *.pth
 .idea/
 .vscode/
+data/

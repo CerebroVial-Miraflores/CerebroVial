@@ -74,3 +74,22 @@ class FrameProducer:
     
     def release(self):
         raise NotImplementedError
+
+@dataclass
+class TrafficData:
+    """
+    Aggregated traffic data for a specific zone and time window.
+    """
+    timestamp: float # Unix timestamp of the end of the window
+    zone_id: str
+    duration_seconds: float
+    avg_density: float # Average number of vehicles in zone
+    avg_speed: float # Average speed in km/h (if available)
+    vehicle_types: dict # Count of unique vehicles by type (approximate)
+
+class TrafficRepository:
+    """
+    Abstract base class for saving traffic data.
+    """
+    def save(self, data: TrafficData):
+        raise NotImplementedError

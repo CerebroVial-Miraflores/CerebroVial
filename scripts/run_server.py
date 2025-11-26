@@ -12,6 +12,8 @@ from src.vision.infrastructure.sources import create_source
 from src.vision.infrastructure.visualization import OpenCVVisualizer
 from src.vision.infrastructure.zones import ZoneManager
 from src.vision.infrastructure.tracking import SupervisionTracker, SimpleSpeedEstimator
+from src.vision.infrastructure.repositories import CSVTrafficRepository
+from src.vision.application.aggregator import TrafficAggregator
 from src.vision.application.pipeline import VisionPipeline
 from src.vision.presentation.api import app, set_pipeline
 
@@ -56,6 +58,18 @@ def main(cfg: DictConfig):
         pixels_per_meter = vision_cfg.speed_estimation.pixels_per_meter
         speed_estimator = SimpleSpeedEstimator(pixels_per_meter=pixels_per_meter)
 
+    # Setup Persistence
+    aggregator = None
+    if vision_cfg.get('persistence', {}).get('enabled', False):
+        print("Initializing data persistence...")
+        repo_type = vision_cfg.persistence.type
+        output_dir = vision_cfg.persistence.output_dir
+        interval = vision_cfg.persistence.interval_seconds
+        
+        if repo_type == 'csv':
+            repository = CSVTrafficRepository(output_dir=output_dir)
+            aggregator = TrafficAggregator(repository=repository, window_duration=interval)
+
     print(f"\nOpening source: {vision_cfg.source} (Type: {vision_cfg.source_type})...")
     try:
         source = create_source(
@@ -77,6 +91,7 @@ def main(cfg: DictConfig):
         tracker=tracker,
         speed_estimator=speed_estimator,
         zone_manager=zone_manager,
+        aggregator=aggregator,
         detect_every_n_frames=detect_every_n
     )
     

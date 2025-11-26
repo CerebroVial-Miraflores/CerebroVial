@@ -13,6 +13,7 @@ class VisionPipeline:
         tracker: VehicleTracker = None,
         speed_estimator: SpeedEstimator = None,
         zone_manager: object = None, # Optional ZoneManager
+        aggregator: object = None, # Optional TrafficAggregator
         detect_every_n_frames: int = 1
     ):
         self.source = source
@@ -20,6 +21,7 @@ class VisionPipeline:
         self.tracker = tracker
         self.speed_estimator = speed_estimator
         self.zone_manager = zone_manager
+        self.aggregator = aggregator
         self.detect_every_n_frames = detect_every_n_frames
 
     def run(self) -> Iterator[Tuple[Frame, FrameAnalysis]]:
@@ -44,6 +46,10 @@ class VisionPipeline:
                 # Update zones if manager exists
                 if self.zone_manager and last_analysis:
                     last_analysis.zones = self.zone_manager.update(last_analysis.vehicles)
+                
+                # Aggregate data
+                if self.aggregator and last_analysis:
+                    self.aggregator.process(last_analysis)
             
             yield frame, last_analysis
 
