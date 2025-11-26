@@ -2,7 +2,7 @@
 Domain entities for the Computer Vision module.
 """
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Iterator
 
 @dataclass
 class DetectedVehicle:
@@ -14,6 +14,15 @@ class DetectedVehicle:
     confidence: float
     bbox: Tuple[int, int, int, int]  # x1, y1, x2, y2
     timestamp: float
+    speed: float = None # km/h
+
+@dataclass
+class ZoneStatus:
+    """
+    Status of a specific zone.
+    """
+    zone_id: str
+    count: int
 
 @dataclass
 class FrameAnalysis:
@@ -24,10 +33,44 @@ class FrameAnalysis:
     timestamp: float
     vehicles: List[DetectedVehicle]
     total_count: int
+    zones: List[ZoneStatus] = None # Optional for backward compatibility
 
 class VehicleDetector:
     """
     Abstract base class for vehicle detection.
     """
     def detect(self, frame) -> FrameAnalysis:
+        raise NotImplementedError
+
+class VehicleTracker:
+    """
+    Abstract base class for vehicle tracking.
+    """
+    def track(self, detections: List[DetectedVehicle]) -> List[DetectedVehicle]:
+        raise NotImplementedError
+
+class SpeedEstimator:
+    """
+    Abstract base class for speed estimation.
+    """
+    def estimate(self, vehicles: List[DetectedVehicle]) -> List[DetectedVehicle]:
+        raise NotImplementedError
+
+@dataclass
+class Frame:
+    """
+    Represents a single video frame.
+    """
+    id: int
+    timestamp: float
+    image: object # numpy array
+
+class FrameProducer:
+    """
+    Abstract base class for frame production (video source).
+    """
+    def __iter__(self) -> Iterator[Frame]:
+        raise NotImplementedError
+    
+    def release(self):
         raise NotImplementedError

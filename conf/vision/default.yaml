@@ -1,6 +1,25 @@
 source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
 source_type: "youtube" # webcam, file, youtube, ip_cam
 
+# ROI Zones for counting
+zones:
+  zone1:
+    - [6, 504]
+    - [337, 423]
+    - [1274, 414]
+    - [1273, 604]
+    - [1208, 711]
+    - [12, 706]
+    - [6, 506]
+
+speed_estimation:
+  enabled: true
+  pixels_per_meter: 10.0
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
 # Performance tuning for latency and fluidity
 performance:
   # Target resolution (lower = less latency, less bandwidth)

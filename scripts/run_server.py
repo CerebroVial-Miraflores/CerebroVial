@@ -1,7 +1,7 @@
 import os
-import cv2
 import sys
 import hydra
+import uvicorn
 from omegaconf import DictConfig
 
 # Add src to path
@@ -11,9 +11,9 @@ from src.vision.infrastructure.yolo_detector import YoloDetector
 from src.vision.infrastructure.sources import create_source
 from src.vision.infrastructure.visualization import OpenCVVisualizer
 from src.vision.infrastructure.zones import ZoneManager
-from src.vision.infrastructure.interaction import ZoneSelector
 from src.vision.infrastructure.tracking import SupervisionTracker, SimpleSpeedEstimator
 from src.vision.application.pipeline import VisionPipeline
+from src.vision.presentation.api import app, set_pipeline
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
@@ -36,12 +36,6 @@ def main(cfg: DictConfig):
     detect_every_n = perf_cfg.get('detect_every_n_frames', 3)
     youtube_format = perf_cfg.get('youtube_format', 'best')
     
-    print(f"\nPerformance Settings:")
-    print(f"  Resolution: {target_width}x{target_height}" if target_width else "  Resolution: Native")
-    print(f"  Buffer size: {buffer_size}")
-    print(f"  Detection frequency: every {detect_every_n} frames")
-    print(f"  YouTube format: {youtube_format}")
-
     # Setup Zones
     zone_manager = None
     zones_config = None
@@ -85,52 +79,14 @@ def main(cfg: DictConfig):
         zone_manager=zone_manager,
         detect_every_n_frames=detect_every_n
     )
-
-    print("\nStarting video processing. Press 'q' to exit.")
     
-    try:
-        for frame, analysis in pipeline.run():
-            # Visualization
-            if analysis:
-                frame.image = visualizer.draw(frame.image, analysis)
-            
-            if vision_cfg.display:
-                cv2.imshow("CerebroVial Vision", frame.image)
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord('q'):
-                    break
-                elif key == ord('r'):
-                    # Interactive ROI selection
-                    print("Pausing for ROI selection...")
-                    selector = ZoneSelector("CerebroVial Vision")
-                    points = selector.select_zone(frame.image)
-                    
-                    if points:
-                        print(f"New zone points: {points}")
-                        if not zone_manager:
-                            # Initialize if it didn't exist
-                            zone_manager = ZoneManager({}, resolution=(frame.image.shape[1], frame.image.shape[0]))
-                            pipeline.zone_manager = zone_manager
-                        
-                        # Update zone (defaulting to 'zone1' for single zone interaction)
-                        zone_manager.update_zone("zone1", points)
-                        
-                        # Update visualizer config
-                        if visualizer.zones_config is None:
-                            visualizer.zones_config = {}
-                        visualizer.zones_config["zone1"] = points
-                        
-                        print("Zone updated. You can copy the points above to your config file.")
-            else:
-                # Print progress if no display
-                if frame.id % 30 == 0 and analysis:
-                    print(f"Frame {frame.id}: Detected {analysis.total_count} vehicles")
-                    
-    except KeyboardInterrupt:
-        print("Interrupted by user.")
-    finally:
-        pipeline.stop()
-        cv2.destroyAllWindows()
+    # 3. Setup API
+    set_pipeline(pipeline, visualizer)
+    
+    # 4. Start Server
+    server_cfg = vision_cfg.get('server', {'host': '0.0.0.0', 'port': 8000})
+    print(f"Starting server at http://{server_cfg.host}:{server_cfg.port}")
+    uvicorn.run(app, host=server_cfg.host, port=server_cfg.port)
 
 if __name__ == "__main__":
     main()

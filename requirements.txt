@@ -10,3 +10,7 @@ geoalchemy2
 ultralytics
 cap_from_youtube
 imageio-ffmpeg
+supervision
+fastapi
+uvicorn
+python-multipart
