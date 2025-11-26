@@ -7,3 +7,6 @@ hydra-core
 sqlalchemy
 psycopg2-binary
 geoalchemy2
+ultralytics
+cap_from_youtube
+imageio-ffmpeg

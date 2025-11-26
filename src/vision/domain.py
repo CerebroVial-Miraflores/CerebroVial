@@ -24,3 +24,10 @@ class FrameAnalysis:
     timestamp: float
     vehicles: List[DetectedVehicle]
     total_count: int
+
+class VehicleDetector:
+    """
+    Abstract base class for vehicle detection.
+    """
+    def detect(self, frame) -> FrameAnalysis:
+        raise NotImplementedError
