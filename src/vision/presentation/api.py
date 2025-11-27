@@ -75,6 +75,22 @@ def video_feed(service: VisionService = Depends(get_vision_service)):
 def status():
     return {"status": "running", "pipeline_active": _service is not None}
 
+@app.get("/health", status_code=200)
+async def health_check():
+    """Health check endpoint for monitoring"""
+    if _service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Vision service not ready"
+        )
+    
+    metrics = _service.get_metrics()
+    return {
+        "status": "healthy",
+        "fps": metrics.get("fps", 0),
+        "frames_processed": metrics.get("frames_processed", 0)
+    }
+
 @app.get("/metrics")
 async def get_metrics(service: VisionService = Depends(get_vision_service)):
     return service.get_metrics()

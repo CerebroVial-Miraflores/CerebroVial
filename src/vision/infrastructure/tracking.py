@@ -7,8 +7,12 @@ class SupervisionTracker(VehicleTracker):
     """
     Wrapper around supervision's ByteTrack.
     """
-    def __init__(self):
+    def __init__(self, vehicle_classes: Dict[str, int]):
         self.tracker = sv.ByteTrack()
+        # Map class ID (int) to class name (str)
+        self.id_to_name = {v: k for k, v in vehicle_classes.items()}
+        # Map class name (str) to class ID (int)
+        self.name_to_id = vehicle_classes
 
     def track(self, detections: List[DetectedVehicle]) -> List[DetectedVehicle]:
         if not detections:
@@ -17,7 +21,9 @@ class SupervisionTracker(VehicleTracker):
         # Convert to supervision Detections
         xyxy = np.array([d.bbox for d in detections])
         conf = np.array([d.confidence for d in detections])
-        class_ids = np.zeros(len(detections), dtype=int) # We don't need class for tracking usually
+        
+        # Map types to IDs for the tracker
+        class_ids = np.array([self.name_to_id.get(d.type, 0) for d in detections])
         
         sv_detections = sv.Detections(
             xyxy=xyxy,
@@ -26,23 +32,6 @@ class SupervisionTracker(VehicleTracker):
         )
         
         # Update tracker
-        tracked_detections = self.tracker.update_with_detections(sv_detections)
-        
-        # Map back to domain objects
-        # Note: ByteTrack might return fewer detections than input if not matched
-        # We need to preserve the original vehicle type if possible.
-        # Since supervision doesn't store our custom data, we might need a heuristic or just assume 'car' if lost
-        # Or better, we can try to match by IoU or just use the tracker's output.
-        
-        # Ideally, we should pass the class_id to the tracker.
-        # Let's map types to IDs for the tracker
-        type_map = {'car': 0, 'bus': 1, 'truck': 2, 'motorcycle': 3}
-        inv_type_map = {v: k for k, v in type_map.items()}
-        
-        # Re-create detections with class IDs
-        class_ids = np.array([type_map.get(d.type, 0) for d in detections])
-        sv_detections.class_id = class_ids
-        
         tracked_detections = self.tracker.update_with_detections(sv_detections)
         
         results = []
@@ -55,7 +44,7 @@ class SupervisionTracker(VehicleTracker):
             
             vehicle = DetectedVehicle(
                 id=str(tracker_id),
-                type=inv_type_map.get(class_id, 'car'),
+                type=self.id_to_name.get(class_id, 'car'),
                 confidence=float(confidence),
                 bbox=tuple(map(int, bbox)),
                 timestamp=detections[0].timestamp if detections else 0 # Approx timestamp

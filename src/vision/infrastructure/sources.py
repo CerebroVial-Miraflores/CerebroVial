@@ -2,9 +2,24 @@ import cv2
 import yt_dlp
 import time
 import numpy as np
-from typing import Iterator, Optional, Dict, Type
+from typing import Iterator, Optional, Dict, Type, Union
 from abc import ABC, abstractmethod
+from pydantic import BaseModel, validator, Field
 from ..domain import FrameProducer, Frame
+from ...common.exceptions import SourceError
+
+class SourceConfig(BaseModel):
+    """Configuración validada para fuentes de video"""
+    buffer_size: int = Field(3, ge=1, le=10, description="OpenCV buffer size")
+    target_width: Optional[int] = Field(None, gt=0, description="Target width in pixels")
+    target_height: Optional[int] = Field(None, gt=0, description="Target height in pixels")
+    format: str = Field("best", description="YouTube format")
+
+    @validator('target_width', 'target_height')
+    def validate_resolution(cls, v, values):
+        if v is not None and v % 2 != 0:
+            raise ValueError('Resolution must be even number for video encoding')
+        return v
 
 class OpenCVSource(FrameProducer):
     """
@@ -12,29 +27,31 @@ class OpenCVSource(FrameProducer):
     """
     def __init__(
         self, 
-        source: str | int, 
-        buffer_size: int = 3,
-        target_width: int = None,
-        target_height: int = None
+        source: Union[str, int], 
+        config: SourceConfig
     ):
         self.source = source
-        self.buffer_size = buffer_size
-        self.target_width = target_width
-        self.target_height = target_height
+        self.config = config
         self.cap = None
         self._initialize()
 
     def _initialize(self):
-        print(f"Opening video source: {self.source}")
-        self.cap = cv2.VideoCapture(self.source)
-        if not self.cap.isOpened():
-            raise ValueError(f"Could not open video source: {self.source}")
-        
-        # Set buffer size to reduce latency
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.buffer_size)
-        
-        if self.target_width and self.target_height:
-             print(f"Will resize frames to {self.target_width}x{self.target_height}")
+        try:
+            print(f"Opening video source: {self.source}")
+            self.cap = cv2.VideoCapture(self.source)
+            if not self.cap.isOpened():
+                raise SourceError(
+                    f"Could not open video source: {self.source}. "
+                    f"Check if the file exists or the camera is connected."
+                )
+            
+            # Set buffer size to reduce latency
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.buffer_size)
+            
+            if self.config.target_width and self.config.target_height:
+                 print(f"Will resize frames to {self.config.target_width}x{self.config.target_height}")
+        except cv2.error as e:
+            raise SourceError(f"OpenCV error initializing source: {e}") from e
 
     def __iter__(self) -> Iterator[Frame]:
         frame_id = 0
@@ -46,8 +63,8 @@ class OpenCVSource(FrameProducer):
             if not ret:
                 break
             
-            if self.target_width and self.target_height:
-                img = cv2.resize(img, (self.target_width, self.target_height))
+            if self.config.target_width and self.config.target_height:
+                img = cv2.resize(img, (self.config.target_width, self.config.target_height))
                 
             yield Frame(
                 id=frame_id,
@@ -74,11 +91,9 @@ class WebcamSource(OpenCVSource):
     def __init__(
         self, 
         device_id: int, 
-        buffer_size: int = 1, # Minimal buffer for live feed
-        target_width: int = None,
-        target_height: int = None
+        config: SourceConfig
     ):
-        super().__init__(device_id, buffer_size, target_width, target_height)
+        super().__init__(device_id, config)
 
 class YouTubeSource(OpenCVSource):
     """
@@ -87,17 +102,11 @@ class YouTubeSource(OpenCVSource):
     def __init__(
         self, 
         url: str, 
-        format: str = "best",
-        buffer_size: int = 3,
-        target_width: int = None,
-        target_height: int = None
+        config: SourceConfig
     ):
         self.original_url = url
-        self.format = format
         # We don't call super().__init__ immediately because we need to extract the URL first
-        self.buffer_size = buffer_size
-        self.target_width = target_width
-        self.target_height = target_height
+        self.config = config
         self.cap = None
         
         self._initialize_youtube()
@@ -106,7 +115,7 @@ class YouTubeSource(OpenCVSource):
         print(f"Attempting to load YouTube video: {self.original_url}")
         
         ydl_opts = {
-            'format': self.format,
+            'format': self.config.format,
             'noplaylist': True,
             'quiet': True
         }
@@ -121,7 +130,7 @@ class YouTubeSource(OpenCVSource):
                 self._initialize()
         except Exception as e:
             print(f"Error loading YouTube video: {e}")
-            raise
+            raise SourceError(f"Failed to load YouTube video: {e}") from e
 
 class SourceFactory(ABC):
     """
@@ -136,6 +145,9 @@ class SourceFactory(ABC):
     def can_handle(self, config: str, source_type: str) -> bool:
         pass
 
+    def _create_config(self, **kwargs) -> SourceConfig:
+        return SourceConfig(**kwargs)
+
 
 class YouTubeFactory(SourceFactory):
     def can_handle(self, config: str, source_type: str) -> bool:
@@ -143,7 +155,8 @@ class YouTubeFactory(SourceFactory):
                (isinstance(config, str) and ("youtube.com" in config or "youtu.be" in config))
     
     def create(self, config: str, **kwargs) -> FrameProducer:
-        return YouTubeSource(config, **kwargs)
+        source_config = self._create_config(**kwargs)
+        return YouTubeSource(config, source_config)
 
 
 class WebcamFactory(SourceFactory):
@@ -153,7 +166,8 @@ class WebcamFactory(SourceFactory):
     
     def create(self, config: str, **kwargs) -> FrameProducer:
         device_id = int(config)
-        return WebcamSource(device_id, **kwargs)
+        source_config = self._create_config(**kwargs)
+        return WebcamSource(device_id, source_config)
 
 
 class VideoFileFactory(SourceFactory):
@@ -161,7 +175,8 @@ class VideoFileFactory(SourceFactory):
         return source_type == "file" or source_type == "auto"
     
     def create(self, config: str, **kwargs) -> FrameProducer:
-        return VideoFileSource(config, **kwargs)
+        source_config = self._create_config(**kwargs)
+        return VideoFileSource(config, source_config)
 
 
 class SourceRegistry:

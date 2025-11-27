@@ -58,7 +58,23 @@ class VisionApplicationBuilder:
 
     def build_tracker(self) -> 'VisionApplicationBuilder':
         print("Initializing tracking...")
-        self.tracker = SupervisionTracker()
+        try:
+            # Load vehicle classes from external config
+            from omegaconf import OmegaConf
+            import os
+            
+            config_path = "conf/vision/vehicle_classes.yaml"
+            if os.path.exists(config_path):
+                vc_cfg = OmegaConf.load(config_path)
+                vehicle_classes = dict(vc_cfg.vehicle_classes)
+            else:
+                print(f"Warning: {config_path} not found, using defaults.")
+                vehicle_classes = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
+        except Exception as e:
+            print(f"Warning: Failed to load vehicle classes: {e}. Using defaults.")
+            vehicle_classes = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
+            
+        self.tracker = SupervisionTracker(vehicle_classes)
         return self
 
     def build_speed_estimator(self) -> 'VisionApplicationBuilder':
