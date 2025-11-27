@@ -4,13 +4,16 @@ source_type: "youtube" # webcam, file, youtube, ip_cam
 # ROI Zones for counting
 zones:
   zone1:
-    - [6, 504]
-    - [337, 423]
-    - [1274, 414]
-    - [1273, 604]
-    - [1208, 711]
-    - [12, 706]
-    - [6, 506]
+    camera_id: "CAM_001"
+    street: "Av. Javier Prado"
+    polygon:
+      - [6, 504]
+      - [337, 423]
+      - [1274, 414]
+      - [1273, 604]
+      - [1208, 711]
+      - [12, 706]
+      - [6, 506]
 
 speed_estimation:
   enabled: true

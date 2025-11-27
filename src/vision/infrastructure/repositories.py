@@ -24,8 +24,9 @@ class CSVTrafficRepository(TrafficRepository):
             with open(filename, mode='w', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                    "timestamp", "datetime", "zone_id", "duration_seconds", 
-                    "avg_density", "avg_speed", "vehicle_types"
+                    "timestamp", "camera_id", "street_monitored", "car_count", "bus_count", 
+                    "truck_count", "motorcycle_count", "total_vehicles", "occupancy_rate", 
+                    "flow_rate_per_min", "avg_speed", "avg_density", "zone_id", "duration_seconds"
                 ])
 
     def save(self, data: TrafficData):
@@ -36,13 +37,26 @@ class CSVTrafficRepository(TrafficRepository):
             
         with open(filename, mode='a', newline='') as f:
             writer = csv.writer(f)
-            dt_str = datetime.fromtimestamp(data.timestamp).strftime("%Y-%m-%d %H:%M:%S")
+            # dt_str = datetime.fromtimestamp(data.timestamp).strftime("%Y-%m-%d %H:%M:%S")
+            # We follow CameraTrafficData schema which just has timestamp float, 
+            # but usually CSVs are better with readable time. 
+            # However, to be EXACTLY compatible with the schema/generator, let's stick to the requested fields.
+            # The generator has: timestamp, camera_id, street_monitored, counts..., total, occupancy, flow.
+            # I added avg_speed, avg_density, zone_id, duration as extras at the end.
+            
             writer.writerow([
-                data.timestamp,
-                dt_str,
-                data.zone_id,
-                data.duration_seconds,
+                f"{data.timestamp:.2f}",
+                data.camera_id,
+                data.street_monitored,
+                data.car_count,
+                data.bus_count,
+                data.truck_count,
+                data.motorcycle_count,
+                data.total_vehicles,
+                f"{data.avg_occupancy:.4f}",
+                data.flow_rate_per_min,
+                f"{data.avg_speed:.2f}" if data.avg_speed else "0.00",
                 f"{data.avg_density:.2f}",
-                f"{data.avg_speed:.2f}" if data.avg_speed else "",
-                str(data.vehicle_types)
+                data.zone_id,
+                f"{data.duration_seconds:.2f}"
             ])

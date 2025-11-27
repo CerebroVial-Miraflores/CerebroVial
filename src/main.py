@@ -21,7 +21,8 @@ def main():
             from src.vision.infrastructure.interaction import InteractiveZoneSelector
             
             # Load configuration
-            cfg = OmegaConf.load("conf/vision/default.yaml")
+            vision_raw_cfg = OmegaConf.load("conf/vision/default.yaml")
+            cfg = OmegaConf.create({"vision": vision_raw_cfg})
             vision_cfg = cfg.vision
             
             # Build application
@@ -38,7 +39,15 @@ def main():
             )
             
             # Setup Visualizer
-            zones_config = {k: list(v) for k, v in vision_cfg.zones.items()} if vision_cfg.zones else {}
+            # Handle new zone structure (dict with polygon) or old list format
+            zones_config = {}
+            if vision_cfg.zones:
+                for k, v in vision_cfg.zones.items():
+                    if isinstance(v, list) or OmegaConf.is_list(v):
+                        zones_config[k] = list(v)
+                    else:
+                        # It's a dict/config object with 'polygon' key
+                        zones_config[k] = list(v.polygon)
             visualizer = OpenCVVisualizer(zones_config=zones_config)
             
             # Get zone counter for updates

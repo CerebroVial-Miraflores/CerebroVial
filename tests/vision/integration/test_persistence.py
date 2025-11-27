@@ -34,7 +34,11 @@ def test_persistence_integration(temp_output_dir):
                 'target_height': 720
             },
             'zones': {
-                'zone1': [[0,0], [100,0], [100,100], [0,100]]
+                'zone1': {
+                    'polygon': [[0,0], [100,0], [100,100], [0,100]],
+                    'camera_id': 'TEST_CAM',
+                    'street': 'Test Street'
+                }
             },
             'speed_estimation': {'enabled': False},
             'persistence': {
@@ -69,7 +73,16 @@ def test_persistence_integration(temp_output_dir):
                 ],
                 total_count=1,
                 zones=[
-                    ZoneVehicleCount(zone_id="zone1", vehicle_count=1, timestamp=time.time(), vehicles=["1"], vehicle_types={"car": 1})
+                    ZoneVehicleCount(
+                        zone_id="zone1", 
+                        vehicle_count=1, 
+                        timestamp=time.time(), 
+                        vehicles=["1"], 
+                        vehicle_types={"car": 1}, 
+                        occupancy=0.5,
+                        camera_id="TEST_CAM",
+                        street_monitored="Test Street"
+                    )
                 ]
             )
             
@@ -113,11 +126,27 @@ def test_persistence_integration(temp_output_dir):
                     
                 assert len(lines) > 1, "CSV file is empty or only has header"
                 header = lines[0].strip().split(',')
-                assert "zone_id" in header
-                assert "avg_density" in header
+                assert "camera_id" in header
+                assert "street_monitored" in header
+                assert "car_count" in header
+                assert "occupancy_rate" in header
+                assert "flow_rate_per_min" in header
                 
                 # Check data row
                 data_row = lines[1].strip().split(',')
-                # Find index of zone_id
-                zone_idx = header.index("zone_id")
-                assert data_row[zone_idx] == "zone1"
+                
+                # Check camera_id
+                cam_idx = header.index("camera_id")
+                assert data_row[cam_idx] == "TEST_CAM"
+                
+                # Check occupancy (should be 0.1600)
+                occ_idx = header.index("occupancy_rate")
+                assert float(data_row[occ_idx]) == 0.16
+                
+                # Check flow rate (should be 1)
+                flow_idx = header.index("flow_rate_per_min")
+                assert int(data_row[flow_idx]) == 1
+                
+                # Check car count (should be 1)
+                car_idx = header.index("car_count")
+                assert int(data_row[car_idx]) == 1

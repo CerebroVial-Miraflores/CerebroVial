@@ -87,7 +87,9 @@ class VisionApplicationBuilder:
     def build_zones(self) -> 'VisionApplicationBuilder':
         if 'zones' in self.vision_cfg and self.vision_cfg.zones:
             print("Initializing zones...")
-            zones_config = {k: list(v) for k, v in self.vision_cfg.zones.items()}
+            # Convert OmegaConf to dict/list to preserve structure (dict with metadata or list of points)
+            from omegaconf import OmegaConf
+            zones_config = OmegaConf.to_container(self.vision_cfg.zones, resolve=True)
             perf_cfg = self.vision_cfg.get('performance', {})
             resolution = (
                 perf_cfg.get('target_width', 1280), 

@@ -26,7 +26,10 @@ class ZoneVehicleCount:
     timestamp: float = 0.0
     vehicles: List[str] = None # List of vehicle IDs
     avg_speed: float = 0.0
+    occupancy: float = 0.0 # Percentage of zone area occupied (0.0 - 1.0)
     vehicle_types: Dict[str, int] = field(default_factory=dict)
+    camera_id: str = "unknown"
+    street_monitored: str = "unknown"
 
 @dataclass
 class FrameAnalysis:
@@ -83,13 +86,35 @@ class FrameProducer:
 class TrafficData:
     """
     Aggregated traffic data for a specific zone and time window.
+    Standardized to match CameraTrafficData schema.
     """
     timestamp: float # Unix timestamp of the end of the window
     zone_id: str
+    camera_id: str
+    street_monitored: str
     duration_seconds: float
-    avg_density: float # Average number of vehicles in zone
-    avg_speed: float # Average speed in km/h (if available)
-    vehicle_types: dict # Count of unique vehicles by type (approximate)
+    
+    # Metrics
+    total_vehicles: int # Average number of vehicles (density) or total unique? 
+                        # CameraTrafficData says "Total number of vehicles". 
+                        # In aggregator we decided avg_density is average count per frame.
+                        # Let's map total_vehicles to avg_density (rounded) for now, or keep separate?
+                        # User said: "Remove avg_density (replaced by total_vehicles)".
+                        # But then said: "Keep avg_density".
+                        # So we have both.
+    
+    avg_density: float # Average number of vehicles in zone (float precision)
+    avg_speed: float # Average speed in km/h
+    avg_occupancy: float # Average percentage of zone area occupied
+    flow_rate_per_min: int # Number of unique vehicles seen in the window
+    
+    # Vehicle Counts (Breakdown)
+    car_count: int
+    bus_count: int
+    truck_count: int
+    motorcycle_count: int
+    
+    vehicle_types: dict # Keep original dict for debug/flexibility
 
 class TrafficRepository:
     """
