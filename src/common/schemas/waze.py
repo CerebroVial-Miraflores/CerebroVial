@@ -48,3 +48,28 @@ class WazeIrregularity(BaseModel):
     current_speed_mps: float = Field(..., description="Current speed")
     trend: float = Field(..., description="Trend indicator")
     line_geometry: List[dict] = Field(..., description="Geometry of the irregularity")
+
+class WazeTrafficData(BaseModel):
+    """
+    Represents the flattened traffic data structure for ML training.
+    """
+    uuid: str = Field(..., description="Unique identifier for the record")
+    timestamp: float = Field(..., description="Timestamp of the record")
+    city: str = Field(..., description="City name")
+    street: str = Field(..., description="Street name")
+    road_type: int = Field(..., description="Waze road type ID")
+    location_lat: float = Field(..., description="Latitude of the center")
+    location_lon: float = Field(..., description="Longitude of the center")
+    length_meters: int = Field(..., description="Length of the affected segment")
+    speed_kmh: float = Field(..., description="Average speed in km/h")
+    delay_seconds: int = Field(..., description="Delay in seconds")
+    level: int = Field(..., ge=0, le=5, description="Traffic level (0-5)")
+
+class WazeTrafficFeatures(WazeTrafficData):
+    """
+    Represents Waze traffic data with additional engineered features.
+    """
+    hour_of_day: int = Field(..., ge=0, le=23, description="Hour of the day (0-23)")
+    day_of_week: int = Field(..., ge=0, le=6, description="Day of the week (0=Monday, 6=Sunday)")
+    is_weekend: bool = Field(..., description="True if it is a weekend")
+    lag_delay_1h: Optional[int] = Field(None, description="Delay 1 hour ago (if available)")
