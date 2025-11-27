@@ -1,13 +1,16 @@
 from pydantic import BaseModel, Field
-from typing import Optional
 
-class Camera(BaseModel):
+class CameraTrafficData(BaseModel):
     """
-    Represents a physical camera sensor in the network.
+    Represents traffic data derived from camera footage (YOLO output).
     """
+    timestamp: float = Field(..., description="Timestamp of the record")
     camera_id: str = Field(..., description="Unique identifier for the camera")
-    node_id: Optional[str] = Field(None, description="ID of the intersection/node this camera monitors")
-    lat: float = Field(..., description="Latitude of the camera")
-    lon: float = Field(..., description="Longitude of the camera")
-    heading: float = Field(..., ge=0, le=360, description="Direction the camera is facing (degrees, 0=North)")
-    fov: float = Field(..., gt=0, description="Field of view in degrees")
+    street_monitored: str = Field(..., description="Name of the street being monitored")
+    car_count: int = Field(..., ge=0, description="Number of cars detected")
+    bus_count: int = Field(..., ge=0, description="Number of buses detected")
+    truck_count: int = Field(..., ge=0, description="Number of trucks detected")
+    motorcycle_count: int = Field(..., ge=0, description="Number of motorcycles detected")
+    total_vehicles: int = Field(..., ge=0, description="Total number of vehicles")
+    occupancy_rate: float = Field(..., ge=0.0, le=1.0, description="Percentage of street area occupied (0.0 - 1.0)")
+    flow_rate_per_min: int = Field(..., ge=0, description="Vehicles per minute passing a line")
