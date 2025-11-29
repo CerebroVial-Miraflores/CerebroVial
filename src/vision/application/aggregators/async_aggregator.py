@@ -122,18 +122,34 @@ class AsyncTrafficDataAggregator:
                     unique_vehicles.update(s.vehicles)
             flow_rate_per_min = len(unique_vehicles)
             
-            # Breakdown by type
-            unique_vehicles_by_type = defaultdict(set)
+            # Breakdown by type with conflict resolution (Majority Vote)
+            vehicle_type_observations = defaultdict(list)
             for s in statuses:
                 if s.vehicle_details:
                     for v_id, v_type in s.vehicle_details.items():
-                        unique_vehicles_by_type[v_type].add(v_id)
+                        vehicle_type_observations[v_id].append(v_type)
             
-            car_count = len(unique_vehicles_by_type.get('car', set()))
-            bus_count = len(unique_vehicles_by_type.get('bus', set()))
-            truck_count = len(unique_vehicles_by_type.get('truck', set()))
-            motorcycle_count = len(unique_vehicles_by_type.get('motorcycle', set()))
-            total_vehicles = flow_rate_per_min
+            # Resolve type for each vehicle ID
+            resolved_vehicle_types = {}
+            for v_id, types in vehicle_type_observations.items():
+                if not types:
+                    continue
+                # Pick most frequent type
+                resolved_type = max(set(types), key=types.count)
+                resolved_vehicle_types[v_id] = resolved_type
+            
+            # Count by resolved type
+            counts_by_type = defaultdict(int)
+            for v_type in resolved_vehicle_types.values():
+                counts_by_type[v_type] += 1
+            
+            car_count = counts_by_type['car']
+            bus_count = counts_by_type['bus']
+            truck_count = counts_by_type['truck']
+            motorcycle_count = counts_by_type['motorcycle']
+            
+            # Total vehicles is the number of unique IDs
+            total_vehicles = len(resolved_vehicle_types)
             
             # Metadata
             metadata = statuses[0]
@@ -153,7 +169,7 @@ class AsyncTrafficDataAggregator:
                 bus_count=bus_count,
                 truck_count=truck_count,
                 motorcycle_count=motorcycle_count,
-                vehicle_types={k: len(v) for k, v in unique_vehicles_by_type.items()}
+                vehicle_types=dict(counts_by_type)
             )
             results.append(data)
         

@@ -17,6 +17,8 @@ class SupervisionTracker(VehicleTracker):
         self.id_to_name = {v: k for k, v in vehicle_classes.items()}
         # Map class name (str) to class ID (int)
         self.name_to_id = vehicle_classes
+        # History of class IDs for each tracker ID: {tracker_id: [class_id1, class_id2, ...]}
+        self.class_history: Dict[int, List[int]] = {}
 
     def track(self, detections: List[DetectedVehicle]) -> List[DetectedVehicle]:
         if not detections:
@@ -43,12 +45,26 @@ class SupervisionTracker(VehicleTracker):
             # tracked_detections is a Detections object
             bbox = tracked_detections.xyxy[i]
             tracker_id = tracked_detections.tracker_id[i]
-            class_id = tracked_detections.class_id[i]
+            current_class_id = tracked_detections.class_id[i]
             confidence = tracked_detections.confidence[i] if tracked_detections.confidence is not None else 0.0
+            
+            # Update class history
+            if tracker_id not in self.class_history:
+                self.class_history[tracker_id] = []
+            self.class_history[tracker_id].append(current_class_id)
+            
+            # Keep history size limited (e.g., last 30 frames)
+            if len(self.class_history[tracker_id]) > 30:
+                self.class_history[tracker_id].pop(0)
+            
+            # Determine stable class using majority vote
+            history = self.class_history[tracker_id]
+            # Find most frequent class_id
+            stable_class_id = max(set(history), key=history.count)
             
             vehicle = DetectedVehicle(
                 id=str(tracker_id),
-                type=self.id_to_name.get(class_id, 'car'),
+                type=self.id_to_name.get(stable_class_id, 'car'),
                 confidence=float(confidence),
                 bbox=tuple(map(int, bbox)),
                 timestamp=detections[0].timestamp if detections else 0 # Approx timestamp

@@ -77,29 +77,34 @@ class TrafficDataAggregator:
                     unique_vehicles.update(s.vehicles)
             flow_rate_per_min = len(unique_vehicles)
             
-            # Vehicle Types Breakdown (Total unique vehicles per type)
-            # We use the vehicle_details map (ID -> Type) to count unique vehicles by type
-            unique_vehicles_by_type = defaultdict(set)
-            
+            # Breakdown by type with conflict resolution (Majority Vote)
+            vehicle_type_observations = defaultdict(list)
             for s in statuses:
                 if s.vehicle_details:
                     for v_id, v_type in s.vehicle_details.items():
-                        unique_vehicles_by_type[v_type].add(v_id)
+                        vehicle_type_observations[v_id].append(v_type)
             
-            # Counts of unique vehicles
-            car_count = len(unique_vehicles_by_type.get('car', set()))
-            bus_count = len(unique_vehicles_by_type.get('bus', set()))
-            truck_count = len(unique_vehicles_by_type.get('truck', set()))
-            motorcycle_count = len(unique_vehicles_by_type.get('motorcycle', set()))
+            # Resolve type for each vehicle ID
+            resolved_vehicle_types = {}
+            for v_id, types in vehicle_type_observations.items():
+                if not types:
+                    continue
+                # Pick most frequent type
+                resolved_type = max(set(types), key=types.count)
+                resolved_vehicle_types[v_id] = resolved_type
             
-            # Total unique vehicles (Flow Rate)
-            # Note: A vehicle might be detected as different types in different frames (flickering),
-            # but usually the ID persists. We should count unique IDs overall for flow_rate.
-            # flow_rate_per_min is already calculated above as len(unique_vehicles)
+            # Count by resolved type
+            counts_by_type = defaultdict(int)
+            for v_type in resolved_vehicle_types.values():
+                counts_by_type[v_type] += 1
             
-            # For consistency, total_vehicles in CameraTrafficData usually refers to the sum of counts or flow.
-            # Let's map total_vehicles to flow_rate_per_min (Total Unique)
-            total_vehicles = flow_rate_per_min
+            car_count = counts_by_type['car']
+            bus_count = counts_by_type['bus']
+            truck_count = counts_by_type['truck']
+            motorcycle_count = counts_by_type['motorcycle']
+            
+            # Total vehicles is the number of unique IDs
+            total_vehicles = len(resolved_vehicle_types)
             
             # Metadata (take from first status)
             camera_id = statuses[0].camera_id
@@ -120,7 +125,7 @@ class TrafficDataAggregator:
                 bus_count=bus_count,
                 truck_count=truck_count,
                 motorcycle_count=motorcycle_count,
-                vehicle_types={k: len(v) for k, v in unique_vehicles_by_type.items()}
+                vehicle_types=dict(counts_by_type)
             )
             
             self.repository.save(data)
