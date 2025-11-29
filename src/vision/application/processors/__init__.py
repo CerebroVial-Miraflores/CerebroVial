@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 import time
-from ..domain.entities import Frame, FrameAnalysis, DetectedVehicle
-from ..domain.protocols import VehicleDetector, VehicleTracker, SpeedEstimator
-from ..infrastructure.zones.zone_counter import ZoneCounter
-from .aggregators.sync_aggregator import TrafficDataAggregator
-from ...common.metrics import MetricsCollector
+from ...domain.entities import Frame, FrameAnalysis, DetectedVehicle
+from ...domain.protocols import VehicleDetector, VehicleTracker, SpeedEstimator
+from ...infrastructure.zones.zone_counter import ZoneCounter
+from ..aggregators.sync_aggregator import TrafficDataAggregator
+from ....common.metrics import MetricsCollector
 
 class FrameProcessor(ABC):
     """

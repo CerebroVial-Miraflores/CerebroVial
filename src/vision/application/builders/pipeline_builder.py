@@ -14,6 +14,7 @@ from ..processors import (
     FrameProcessor, DetectionProcessor, TrackingProcessor, 
     SpeedEstimationProcessor, ZoneProcessor, AggregationProcessor
 )
+from ..processors.smart_detection import SmartDetectionProcessor
 from ..pipelines.sync_pipeline import VisionPipeline
 from ..pipelines.async_pipeline import AsyncVisionPipeline
 from ....common.metrics import MetricsCollector
@@ -123,10 +124,11 @@ class VisionApplicationBuilder:
         # Build Chain
         detect_every_n = self.vision_cfg.get('performance', {}).get('detect_every_n_frames', 3)
         
-        processor_chain = DetectionProcessor(
+        processor_chain = SmartDetectionProcessor(
             self.detector, 
             detect_every_n=detect_every_n, 
-            metrics_collector=self.metrics_collector
+            metrics_collector=self.metrics_collector,
+            interpolate=True
         )
         current_link = processor_chain
         
