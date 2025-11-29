@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 from src.vision.application.pipelines.async_pipeline import AsyncVisionPipeline
 from src.vision.domain.entities import Frame
 
-def test_drop_oldest_strategy():
+def test_drop_newest_strategy():
     # Setup
     source = MagicMock()
     processor = MagicMock()
@@ -30,22 +30,22 @@ def test_drop_oldest_strategy():
     pipeline.frame_queue.put_nowait(f2)
     assert pipeline.frame_queue.full()
     
-    # 3. Put f3 (Should drop f1 and add f3 -> Queue: [f2, f3])
+    # 3. Put f3 (Should drop f3 and keep [f1, f2])
     try:
         pipeline.frame_queue.put_nowait(f3)
     except queue.Full:
-        # Simulate drop logic
-        pipeline.frame_queue.get_nowait() # Drop f1
-        pipeline.frame_queue.put_nowait(f3) # Add f3
+        # Simulate drop logic (Drop Newest)
         pipeline._dropped_frames += 1
+        # No queue modification needed for Drop Newest
 
     # Verify queue content
     assert pipeline.frame_queue.qsize() == 2
     item1 = pipeline.frame_queue.get_nowait()
     item2 = pipeline.frame_queue.get_nowait()
     
-    assert item1.id == 2
-    assert item2.id == 3
+    # Expect f1 and f2 (f3 was dropped)
+    assert item1.id == 1
+    assert item2.id == 2
     assert pipeline._dropped_frames == 1
 
 def test_rate_limited_logging(capsys):
@@ -62,8 +62,7 @@ def test_rate_limited_logging(capsys):
         try:
             pipeline.frame_queue.put_nowait(f)
         except queue.Full:
-            pipeline.frame_queue.get_nowait()
-            pipeline.frame_queue.put_nowait(f)
+            # Drop Newest: just increment counter
             pipeline._dropped_frames += 1
             if pipeline._dropped_frames % 30 == 0:
                 print(f"[WARNING] Pipeline congested. Dropped {pipeline._dropped_frames} frames so far.")

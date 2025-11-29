@@ -75,16 +75,14 @@ class AsyncVisionPipeline:
                     # Non-blocking put
                     self.frame_queue.put_nowait(frame)
                 except queue.Full:
-                    # Drop oldest strategy
-                    try:
-                        self.frame_queue.get_nowait() # Remove oldest
-                        self.frame_queue.put_nowait(frame) # Add newest
-                        
-                        self._dropped_frames += 1
-                        if self._dropped_frames % 30 == 0:
-                            print(f"[WARNING] Pipeline congested. Dropped {self._dropped_frames} frames so far (last: {frame.id}).")
-                    except:
-                        pass # Queue state changed rapidly, ignore
+                    # Drop Newest strategy (better for fluidity)
+                    # If queue is full, we simply discard the new frame.
+                    # This ensures that the frames already in the queue (which form a smooth sequence)
+                    # are processed and displayed.
+                    self._dropped_frames += 1
+                    if self._dropped_frames % 30 == 0:
+                        print(f"[WARNING] Pipeline congested. Dropped {self._dropped_frames} frames so far (last: {frame.id}).")
+                    continue
         except Exception as e:
             print(f"[ERROR] Capture thread failed: {e}")
         finally:
