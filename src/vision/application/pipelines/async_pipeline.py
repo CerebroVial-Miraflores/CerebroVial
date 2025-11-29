@@ -42,6 +42,7 @@ class AsyncVisionPipeline:
         # Shared state (thread-safe)
         self._latest_analysis = None
         self._analysis_lock = threading.Lock()
+        self._dropped_frames = 0
 
     def start(self):
         """Starts capture and processing threads."""
@@ -71,12 +72,19 @@ class AsyncVisionPipeline:
                     break
                     
                 try:
-                    # Non-blocking put with timeout
-                    self.frame_queue.put(frame, timeout=0.1)
+                    # Non-blocking put
+                    self.frame_queue.put_nowait(frame)
                 except queue.Full:
-                    # If queue is full, skip frame (avoid memory leak)
-                    print(f"[WARNING] Frame {frame.id} dropped - queue full")
-                    continue
+                    # Drop oldest strategy
+                    try:
+                        self.frame_queue.get_nowait() # Remove oldest
+                        self.frame_queue.put_nowait(frame) # Add newest
+                        
+                        self._dropped_frames += 1
+                        if self._dropped_frames % 30 == 0:
+                            print(f"[WARNING] Pipeline congested. Dropped {self._dropped_frames} frames so far (last: {frame.id}).")
+                    except:
+                        pass # Queue state changed rapidly, ignore
         except Exception as e:
             print(f"[ERROR] Capture thread failed: {e}")
         finally:
