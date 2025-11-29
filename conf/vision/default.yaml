@@ -39,7 +39,7 @@ performance:
   opencv_buffer_size: 3
 
   # Frame processing
-  detect_every_n_frames: 3 # Run YOLO detection every N frames
+  detect_every_n_frames: 1 # Run YOLO detection every N frames
 
   # YouTube stream quality (affects download speed and latency)
   # Options: "worst", "best[height<=480]", "best[height<=720]", "best"

@@ -1,3 +1,5 @@
+import cv2
+import time
 import numpy as np
 import supervision as sv
 from typing import List, Dict, Any
@@ -11,6 +13,7 @@ class ZoneCounter:
     def __init__(self, zones_config: Dict[str, Any], resolution: tuple = (1280, 720)):
         self.zones: Dict[str, sv.PolygonZone] = {}
         self.zone_metadata: Dict[str, dict] = {}
+        self.zone_areas: Dict[str, float] = {} # Cache for zone areas
         self.resolution = resolution
         
         for zone_id, config in zones_config.items():
@@ -29,6 +32,9 @@ class ZoneCounter:
                 polygon=polygon
             )
             self.zone_metadata[zone_id] = metadata
+            
+            # Pre-calculate zone area
+            self.zone_areas[zone_id] = cv2.contourArea(polygon)
 
     def update_zone(self, zone_id: str, points: List[List[int]], resolution: tuple = None):
         """
@@ -44,6 +50,9 @@ class ZoneCounter:
         # Preserve existing metadata if updating, or set default
         if zone_id not in self.zone_metadata:
              self.zone_metadata[zone_id] = {"camera_id": "unknown", "street": "unknown"}
+             
+        # Update cached area
+        self.zone_areas[zone_id] = cv2.contourArea(polygon)
 
     def count_vehicles_in_zones(self, detections: List[DetectedVehicle]) -> List[ZoneVehicleCount]:
         """
@@ -60,11 +69,8 @@ class ZoneCounter:
             ]
 
         # Convert domain detections to supervision Detections
-        # sv.Detections(xyxy=..., confidence=..., class_id=...)
         xyxy = np.array([d.bbox for d in detections])
         conf = np.array([d.confidence for d in detections])
-        # We don't strictly need class_id for counting if we already filtered by vehicle type in detector
-        # But let's map types back to IDs if needed, or just use 0
         class_ids = np.zeros(len(detections), dtype=int) 
         
         sv_detections = sv.Detections(
@@ -74,7 +80,6 @@ class ZoneCounter:
         )
 
         zone_counts = []
-        import time
         current_time = time.time()
         
         for zone_id, zone in self.zones.items():
@@ -85,49 +90,40 @@ class ZoneCounter:
             indices = np.where(mask)[0]
             count = len(indices)
             
-            vehicles_in_zone = [detections[i] for i in indices]
-            
             # Calculate metrics
             avg_speed = 0.0
             vehicle_types = {}
             vehicle_ids = []
+            vehicle_details = {}
             occupancy = 0.0
             
             if count > 0:
+                vehicles_in_zone = [detections[i] for i in indices]
+                
                 # Speed
                 speeds = [v.speed for v in vehicles_in_zone if v.speed is not None]
                 if speeds:
                     avg_speed = sum(speeds) / len(speeds)
                 
                 # Types and IDs
+                # Optimize: Single pass for types and IDs
+                vehicle_details = {}
                 for v in vehicles_in_zone:
                     vehicle_types[v.type] = vehicle_types.get(v.type, 0) + 1
                     vehicle_ids.append(v.id)
+                    vehicle_details[v.id] = v.type
                 
                 # Occupancy (Geometric Estimation)
-                # Calculate total area of vehicles in zone
-                # Note: This is an approximation. Ideally we should clip bboxes to the polygon.
-                # But for performance, summing bbox areas is a good proxy.
-                # We use the polygon area from supervision.
-                
-                # sv.PolygonZone doesn't expose area directly easily without accessing geometry
-                # But we can calculate it from the polygon points.
-                # Let's cache zone areas in __init__ for performance.
-                
-                # For now, let's calculate bbox area sum
-                total_vehicle_area = 0.0
-                for v in vehicles_in_zone:
-                    w = v.bbox[2] - v.bbox[0]
-                    h = v.bbox[3] - v.bbox[1]
-                    total_vehicle_area += w * h
-                
-                # Get zone area (we need to calculate it)
-                # Using Shoelace formula or shapely if available. 
-                # Supervision uses cv2.contourArea for polygons usually.
-                import cv2
-                zone_area = cv2.contourArea(zone.polygon)
+                # Use cached zone area
+                zone_area = self.zone_areas.get(zone_id, 0.0)
                 
                 if zone_area > 0:
+                    # Calculate total vehicle area
+                    # Vectorized calculation if possible, but list comprehension is fast enough for small N
+                    total_vehicle_area = sum(
+                        (v.bbox[2] - v.bbox[0]) * (v.bbox[3] - v.bbox[1]) 
+                        for v in vehicles_in_zone
+                    )
                     occupancy = min(total_vehicle_area / zone_area, 1.0)
 
             metadata = self.zone_metadata[zone_id]
@@ -136,6 +132,7 @@ class ZoneCounter:
                 vehicle_count=count,
                 timestamp=current_time,
                 vehicles=vehicle_ids,
+                vehicle_details=vehicle_details,
                 avg_speed=avg_speed,
                 occupancy=occupancy,
                 vehicle_types=vehicle_types,

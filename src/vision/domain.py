@@ -25,6 +25,7 @@ class ZoneVehicleCount:
     vehicle_count: int
     timestamp: float = 0.0
     vehicles: List[str] = None # List of vehicle IDs
+    vehicle_details: Dict[str, str] = field(default_factory=dict) # Map ID -> Type
     avg_speed: float = 0.0
     occupancy: float = 0.0 # Percentage of zone area occupied (0.0 - 1.0)
     vehicle_types: Dict[str, int] = field(default_factory=dict)

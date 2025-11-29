@@ -76,33 +76,29 @@ class TrafficDataAggregator:
                     unique_vehicles.update(s.vehicles)
             flow_rate_per_min = len(unique_vehicles)
             
-            # Vehicle Types Breakdown (Average per frame to represent density/composition)
-            # OR Total unique vehicles per type?
-            # CameraTrafficData says "Number of cars detected". 
-            # If flow_rate_per_min is unique vehicles, then type counts should probably sum up to flow_rate_per_min (roughly).
-            # Let's count unique vehicles per type.
-            
+            # Vehicle Types Breakdown (Total unique vehicles per type)
+            # We use the vehicle_details map (ID -> Type) to count unique vehicles by type
             unique_vehicles_by_type = defaultdict(set)
-            for s in statuses:
-                if s.vehicles and s.vehicle_types:
-                    # This is tricky because s.vehicle_types is a summary dict, not linked to IDs directly in the struct
-                    # But s.vehicles has IDs. We need to know the type of each ID.
-                    # ZoneVehicleCount doesn't map ID to type directly in the current struct (it has list of IDs and dict of types).
-                    # We can approximate by accumulating the max count seen or averaging.
-                    # BUT, for flow rate we used unique IDs.
-                    # Let's assume for now we just want the average count per frame (Density of cars, Density of buses...)
-                    # This is more robust for "how many cars are there right now".
-                    pass
-
-            # Actually, let's use the accumulated counts from the frames and average them (Average Density per Type)
-            # This matches "car_count" as "Average number of cars present".
             
-            type_counts = defaultdict(list)
             for s in statuses:
-                for v_type, count in s.vehicle_types.items():
-                    type_counts[v_type].append(count)
+                if s.vehicle_details:
+                    for v_id, v_type in s.vehicle_details.items():
+                        unique_vehicles_by_type[v_type].add(v_id)
             
-            avg_type_counts = {k: sum(v) / len(statuses) for k, v in type_counts.items()}
+            # Counts of unique vehicles
+            car_count = len(unique_vehicles_by_type.get('car', set()))
+            bus_count = len(unique_vehicles_by_type.get('bus', set()))
+            truck_count = len(unique_vehicles_by_type.get('truck', set()))
+            motorcycle_count = len(unique_vehicles_by_type.get('motorcycle', set()))
+            
+            # Total unique vehicles (Flow Rate)
+            # Note: A vehicle might be detected as different types in different frames (flickering),
+            # but usually the ID persists. We should count unique IDs overall for flow_rate.
+            # flow_rate_per_min is already calculated above as len(unique_vehicles)
+            
+            # For consistency, total_vehicles in CameraTrafficData usually refers to the sum of counts or flow.
+            # Let's map total_vehicles to flow_rate_per_min (Total Unique)
+            total_vehicles = flow_rate_per_min
             
             # Metadata (take from first status)
             camera_id = statuses[0].camera_id
@@ -115,15 +111,15 @@ class TrafficDataAggregator:
                 street_monitored=street_monitored,
                 duration_seconds=duration,
                 avg_density=avg_density,
-                total_vehicles=int(avg_density), # Mapping avg_density to total_vehicles (rounded)
+                total_vehicles=total_vehicles,
                 avg_speed=avg_speed,
                 avg_occupancy=avg_occupancy,
                 flow_rate_per_min=flow_rate_per_min,
-                car_count=int(avg_type_counts.get('car', 0)),
-                bus_count=int(avg_type_counts.get('bus', 0)),
-                truck_count=int(avg_type_counts.get('truck', 0)),
-                motorcycle_count=int(avg_type_counts.get('motorcycle', 0)),
-                vehicle_types=avg_type_counts
+                car_count=car_count,
+                bus_count=bus_count,
+                truck_count=truck_count,
+                motorcycle_count=motorcycle_count,
+                vehicle_types={k: len(v) for k, v in unique_vehicles_by_type.items()}
             )
             
             self.repository.save(data)
