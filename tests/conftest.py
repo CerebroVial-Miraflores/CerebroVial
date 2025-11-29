@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from src.vision.domain import Frame, FrameAnalysis, DetectedVehicle
+from src.vision.domain.entities import Frame, FrameAnalysis, DetectedVehicle
 
 @pytest.fixture
 def mock_frame():

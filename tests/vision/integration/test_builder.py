@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from omegaconf import OmegaConf
-from src.vision.application.builder import VisionApplicationBuilder
+from src.vision.application.builders.pipeline_builder import VisionApplicationBuilder
 
 def test_builder_constructs_complete_pipeline():
     """Test that the builder constructs a complete functional pipeline."""
@@ -23,8 +23,8 @@ def test_builder_constructs_complete_pipeline():
     })
     
     # Mock cv2.VideoCapture and YOLO to avoid external dependencies
-    with patch('src.vision.infrastructure.sources.cv2.VideoCapture') as mock_cap, \
-         patch('src.vision.infrastructure.yolo_detector.YOLO') as mock_yolo:
+    with patch('src.vision.infrastructure.sources.video_source.cv2.VideoCapture') as mock_cap, \
+         patch('src.vision.infrastructure.detection.yolo_detector.YOLO') as mock_yolo:
         
         mock_cap.return_value.isOpened.return_value = True
         

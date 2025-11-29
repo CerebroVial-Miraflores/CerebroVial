@@ -1,12 +1,14 @@
 
 import logging
+import cv2
 import time
 import numpy as np
 from ultralytics import YOLO
-from typing import List, Dict
-from ..domain import VehicleDetector, FrameAnalysis, DetectedVehicle
-from ...common.logging import setup_logger, log_execution_time
-from ...common.exceptions import DetectionError
+from typing import List, Tuple
+from ...domain.entities import FrameAnalysis, DetectedVehicle
+from ...domain.protocols import VehicleDetector
+from ....common.logging import setup_logger, log_execution_time
+from ....common.exceptions import DetectionError
 
 class YoloDetector(VehicleDetector):
     """

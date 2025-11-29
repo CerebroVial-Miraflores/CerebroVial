@@ -1,7 +1,7 @@
 from .waze import WazeJam, WazeAlert, WazeIrregularity, WazeTrafficData, WazeTrafficFeatures
 from .vision import VisionTrack, VisionFlow
 from .graph import GraphNode, GraphEdge, GraphTopology, GraphConnection
-from .camera import CameraTrafficData
+from .camera import CameraTrafficData, Camera
 
 __all__ = [
     "WazeJam",
@@ -16,4 +16,5 @@ __all__ = [
     "GraphTopology",
     "GraphConnection",
     "CameraTrafficData",
+    "Camera",
 ]

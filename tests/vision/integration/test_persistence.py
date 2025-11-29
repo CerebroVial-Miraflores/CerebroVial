@@ -5,8 +5,8 @@ import time
 import numpy as np
 from unittest.mock import patch, MagicMock
 from omegaconf import OmegaConf
-from src.vision.application.builder import VisionApplicationBuilder
-from src.vision.domain import Frame, FrameAnalysis, DetectedVehicle, ZoneVehicleCount
+from src.vision.application.builders.pipeline_builder import VisionApplicationBuilder
+from src.vision.domain.entities import Frame, FrameAnalysis, DetectedVehicle, ZoneVehicleCount
 
 @pytest.fixture
 def temp_output_dir():
@@ -52,7 +52,7 @@ def test_persistence_integration(temp_output_dir):
 
     # 2. Mock Dependencies
     # Mock VideoCapture to return a few dummy frames
-    with patch('src.vision.infrastructure.sources.cv2.VideoCapture') as mock_cap:
+    with patch('src.vision.infrastructure.sources.video_source.cv2.VideoCapture') as mock_cap:
         mock_cap.return_value.isOpened.return_value = True
         
         # Create a dummy frame (black image)
@@ -62,7 +62,7 @@ def test_persistence_integration(temp_output_dir):
         mock_cap.return_value.read.side_effect = [(True, dummy_frame)] * 5 + [(False, None)]
         
         # Mock YOLO to return dummy detections
-        with patch('src.vision.infrastructure.yolo_detector.YOLO') as mock_yolo:
+        with patch('src.vision.infrastructure.detection.yolo_detector.YOLO') as mock_yolo:
             # Mock detector to return a vehicle in the zone
             mock_detector = MagicMock()
             mock_detector.detect.return_value = FrameAnalysis(
@@ -89,7 +89,7 @@ def test_persistence_integration(temp_output_dir):
             # We need to patch the YoloDetector class to return our mock instance
             # But wait, YoloDetector is instantiated inside build_detector.
             # Let's patch the class itself.
-            with patch('src.vision.application.builder.YoloDetector', return_value=mock_detector):
+            with patch('src.vision.application.builders.pipeline_builder.YoloDetector', return_value=mock_detector):
                 
                 # 3. Build Pipeline
                 builder = VisionApplicationBuilder(cfg)
@@ -111,7 +111,14 @@ def test_persistence_integration(temp_output_dir):
                 
                 # Force flush to ensure data is written
                 if builder.aggregator:
-                    builder.aggregator.flush()
+                    if hasattr(builder.aggregator, 'force_flush'):
+                        builder.aggregator.force_flush()
+                    elif hasattr(builder.aggregator, 'flush'):
+                        builder.aggregator.flush()
+                    
+                    # Stop aggregator to clean up threads
+                    if hasattr(builder.aggregator, 'stop'):
+                        builder.aggregator.stop()
                 
                 # 5. Verify Output
                 files = os.listdir(temp_output_dir)

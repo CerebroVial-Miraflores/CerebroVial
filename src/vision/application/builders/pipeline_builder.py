@@ -1,19 +1,22 @@
 from omegaconf import DictConfig
 from typing import Optional, Dict, List
 
-from ..domain import FrameProducer, VehicleDetector, VehicleTracker, SpeedEstimator
-from ..infrastructure.yolo_detector import YoloDetector
-from ..infrastructure.sources import create_source
-from ..infrastructure.tracking import SupervisionTracker, SimpleSpeedEstimator
-from ..infrastructure.zones import ZoneCounter
-from ..infrastructure.repositories import CSVTrafficRepository
-from ..application.aggregator import TrafficDataAggregator
-from ..application.processors import (
+from ...domain.protocols import FrameProducer, VehicleDetector, VehicleTracker, SpeedEstimator
+from ...infrastructure.detection.yolo_detector import YoloDetector
+from ...infrastructure.sources import create_source
+from ...infrastructure.tracking.supervision_tracker import SupervisionTracker
+from ...infrastructure.tracking.speed_estimator import SimpleSpeedEstimator
+from ...infrastructure.zones.zone_counter import ZoneCounter
+from ...infrastructure.persistence.csv_repository import CSVTrafficRepository
+from ..aggregators.sync_aggregator import TrafficDataAggregator
+from ..aggregators.async_aggregator import AsyncTrafficDataAggregator
+from ..processors import (
     FrameProcessor, DetectionProcessor, TrackingProcessor, 
     SpeedEstimationProcessor, ZoneProcessor, AggregationProcessor
 )
-from ..application.pipeline import VisionPipeline
-from ...common.metrics import MetricsCollector
+from ..pipelines.sync_pipeline import VisionPipeline
+from ..pipelines.async_pipeline import AsyncVisionPipeline
+from ....common.metrics import MetricsCollector
 
 class VisionApplicationBuilder:
     """
@@ -31,9 +34,9 @@ class VisionApplicationBuilder:
         self.tracker: Optional[VehicleTracker] = None
         self.speed_estimator: Optional[SpeedEstimator] = None
         self.zone_counter: Optional[ZoneCounter] = None
-        self.aggregator: Optional[TrafficDataAggregator] = None
+        self.aggregator: Optional[AsyncTrafficDataAggregator] = None
         self.source: Optional[FrameProducer] = None
-        self.pipeline: Optional[VisionPipeline] = None
+        self.pipeline: Optional[AsyncVisionPipeline] = None
 
     def build_detector(self) -> 'VisionApplicationBuilder':
         print(f"Loading model: {self.vision_cfg.model.path}...")
@@ -107,10 +110,11 @@ class VisionApplicationBuilder:
             
             if repo_type == 'csv':
                 repository = CSVTrafficRepository(output_dir=output_dir)
-                self.aggregator = TrafficDataAggregator(repository=repository, window_duration=interval)
+                # Use AsyncTrafficDataAggregator
+                self.aggregator = AsyncTrafficDataAggregator(repository=repository, window_duration=interval)
         return self
 
-    def build_pipeline(self) -> VisionPipeline:
+    def build_pipeline(self) -> AsyncVisionPipeline:
         if not self.detector:
             self.build_detector()
         if not self.source:
@@ -146,10 +150,13 @@ class VisionApplicationBuilder:
             current_link.set_next(agg_processor)
             current_link = agg_processor
 
-        self.pipeline = VisionPipeline(
+        # Use AsyncVisionPipeline
+        self.pipeline = AsyncVisionPipeline(
             source=self.source,
             processor_chain=processor_chain,
-            metrics_collector=self.metrics_collector
+            metrics_collector=self.metrics_collector,
+            frame_buffer_size=self.vision_cfg.get('performance', {}).get('frame_buffer_size', 10),
+            result_buffer_size=self.vision_cfg.get('performance', {}).get('result_buffer_size', 30)
         )
         return self.pipeline
 

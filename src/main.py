@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description="CerebroVial - Modular Monolith Entry Point")
     parser.add_argument('module', choices=['vision', 'prediction', 'control'], help="Module to run")
     
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     
     print(f"Starting module: {args.module}")
     
@@ -20,14 +20,21 @@ def main():
         print("Initializing Computer Vision Module...")
         try:
             import cv2
-            from omegaconf import OmegaConf
-            from src.vision.application.builder import VisionApplicationBuilder
-            from src.vision.infrastructure.visualization import OpenCVVisualizer
+            import hydra
+            from omegaconf import DictConfig, OmegaConf
+            from src.vision.application.builders.pipeline_builder import VisionApplicationBuilder
+            from src.common.logging import setup_logger
+            from src.vision.presentation.visualization.opencv_visualizer import OpenCVVisualizer
             from src.vision.infrastructure.interaction import InteractiveZoneSelector
             
             # Load configuration
             vision_raw_cfg = OmegaConf.load("conf/vision/default.yaml")
-            cfg = OmegaConf.create({"vision": vision_raw_cfg})
+            base_cfg = OmegaConf.create({"vision": vision_raw_cfg})
+            
+            # Merge with CLI overrides
+            cli_cfg = OmegaConf.from_dotlist(unknown)
+            cfg = OmegaConf.merge(base_cfg, cli_cfg)
+            
             vision_cfg = cfg.vision
             
             # Build application

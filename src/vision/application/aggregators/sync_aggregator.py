@@ -1,7 +1,8 @@
 import time
-from typing import List, Dict
+from typing import List, Dict, Optional
 from collections import defaultdict
-from ..domain import FrameAnalysis, TrafficData, TrafficRepository
+from ...domain.entities import FrameAnalysis, TrafficData, ZoneVehicleCount
+from ...domain.repositories import TrafficRepository
 
 class TrafficDataAggregator:
     """

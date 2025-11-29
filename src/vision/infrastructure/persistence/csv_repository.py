@@ -1,8 +1,10 @@
 import os
 import csv
-import time
+import os
 from datetime import datetime
-from ..domain import TrafficRepository, TrafficData
+from typing import List
+from ...domain.entities import TrafficData
+from ...domain.repositories import TrafficRepository
 
 class CSVTrafficRepository(TrafficRepository):
     """

@@ -1,8 +1,8 @@
 """
 Domain entities for the Computer Vision module.
 """
-from typing import List, Tuple, Iterator, Protocol, Dict, Optional
 from dataclasses import dataclass, field
+from typing import List, Tuple, Dict, Optional
 
 @dataclass
 class DetectedVehicle:
@@ -43,27 +43,6 @@ class FrameAnalysis:
     total_count: int
     zones: List[ZoneVehicleCount] = None # Optional for backward compatibility
 
-class VehicleDetector(Protocol):
-    """
-    Protocol for vehicle detection.
-    """
-    def detect(self, frame: object, frame_id: int) -> FrameAnalysis:
-        ...
-
-class VehicleTracker(Protocol):
-    """
-    Protocol for vehicle tracking.
-    """
-    def track(self, detections: List[DetectedVehicle]) -> List[DetectedVehicle]:
-        ...
-
-class SpeedEstimator(Protocol):
-    """
-    Protocol for speed estimation.
-    """
-    def estimate(self, vehicles: List[DetectedVehicle]) -> List[DetectedVehicle]:
-        ...
-
 @dataclass
 class Frame:
     """
@@ -72,16 +51,6 @@ class Frame:
     id: int
     timestamp: float
     image: object # numpy array
-
-class FrameProducer:
-    """
-    Abstract base class for frame production (video source).
-    """
-    def __iter__(self) -> Iterator[Frame]:
-        raise NotImplementedError
-    
-    def release(self):
-        raise NotImplementedError
 
 @dataclass
 class TrafficData:
@@ -96,14 +65,7 @@ class TrafficData:
     duration_seconds: float
     
     # Metrics
-    total_vehicles: int # Average number of vehicles (density) or total unique? 
-                        # CameraTrafficData says "Total number of vehicles". 
-                        # In aggregator we decided avg_density is average count per frame.
-                        # Let's map total_vehicles to avg_density (rounded) for now, or keep separate?
-                        # User said: "Remove avg_density (replaced by total_vehicles)".
-                        # But then said: "Keep avg_density".
-                        # So we have both.
-    
+    total_vehicles: int 
     avg_density: float # Average number of vehicles in zone (float precision)
     avg_speed: float # Average speed in km/h
     avg_occupancy: float # Average percentage of zone area occupied
@@ -116,10 +78,3 @@ class TrafficData:
     motorcycle_count: int
     
     vehicle_types: dict # Keep original dict for debug/flexibility
-
-class TrafficRepository:
-    """
-    Abstract base class for saving traffic data.
-    """
-    def save(self, data: TrafficData):
-        raise NotImplementedError

@@ -1,12 +1,12 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from src.vision.infrastructure.yolo_detector import YoloDetector
-from src.vision.domain import DetectedVehicle
+from src.vision.infrastructure.detection.yolo_detector import YoloDetector
+from src.vision.domain.entities import DetectedVehicle
 
 @pytest.fixture
 def mock_yolo():
-    with patch("src.vision.infrastructure.yolo_detector.YOLO") as mock:
+    with patch("src.vision.infrastructure.detection.yolo_detector.YOLO") as mock:
         yield mock
 
 def test_yolo_detector_initialization(mock_yolo):
