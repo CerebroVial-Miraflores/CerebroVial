@@ -10,7 +10,7 @@ from ....common.exceptions import SourceError
 
 class SourceConfig(BaseModel):
     """Validated configuration for video sources"""
-    buffer_size: int = Field(3, ge=1, le=10, description="OpenCV buffer size")
+    buffer_size: int = Field(3, ge=1, le=120, description="OpenCV buffer size")
     target_width: Optional[int] = Field(None, gt=0, description="Target width in pixels")
     target_height: Optional[int] = Field(None, gt=0, description="Target height in pixels")
     format: str = Field("best", description="YouTube format")

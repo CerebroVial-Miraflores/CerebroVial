@@ -158,7 +158,8 @@ class VisionApplicationBuilder:
             processor_chain=processor_chain,
             metrics_collector=self.metrics_collector,
             frame_buffer_size=self.vision_cfg.get('performance', {}).get('frame_buffer_size', 30),
-            result_buffer_size=self.vision_cfg.get('performance', {}).get('result_buffer_size', 30)
+            result_buffer_size=self.vision_cfg.get('performance', {}).get('result_buffer_size', 30),
+            target_fps=self.vision_cfg.get('performance', {}).get('target_fps', 30)
         )
         return self.pipeline
 

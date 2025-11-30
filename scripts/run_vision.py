@@ -2,14 +2,14 @@ import os
 import cv2
 import sys
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.vision.infrastructure.visualization import OpenCVVisualizer
+from src.vision.presentation.visualization.opencv_visualizer import OpenCVVisualizer
 from src.vision.infrastructure.interaction import InteractiveZoneSelector
-from src.vision.application.builder import VisionApplicationBuilder
+from src.vision.application.builders.pipeline_builder import VisionApplicationBuilder
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
@@ -34,7 +34,13 @@ def main(cfg: DictConfig):
     zone_counter = components['zone_counter']
     
     # Setup Visualizer
-    zones_config = {k: list(v) for k, v in vision_cfg.zones.items()} if vision_cfg.zones else {}
+    zones_config = {}
+    if vision_cfg.zones:
+        for k, v in vision_cfg.zones.items():
+            if isinstance(v, list) or OmegaConf.is_list(v):
+                zones_config[k] = list(v)
+            else:
+                zones_config[k] = list(v.polygon)
     visualizer = OpenCVVisualizer(zones_config=zones_config)
 
     print("\nStarting video processing. Press 'q' to exit.")

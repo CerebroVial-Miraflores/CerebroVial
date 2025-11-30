@@ -28,7 +28,8 @@ class YouTubeSource(OpenCVSource):
         ydl_opts = {
             'format': self.config.format,
             'noplaylist': True,
-            'quiet': True
+            'quiet': True,
+            'extractor_args': {'youtube': {'player_client': ['default']}}
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

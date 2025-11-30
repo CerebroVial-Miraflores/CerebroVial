@@ -1,0 +1,49 @@
+# conf/vision/javier_prado.yaml
+#
+# Configuración para cámara en vivo: Javier Prado
+# Stream HLS: https://live.smartechlatam.online/claro/javierprado/index.m3u8
+
+source: "https://live.smartechlatam.online/claro/javierprado/index.m3u8"
+source_type: "file" # "file" usa cv2.VideoCapture directo, que soporta .m3u8
+
+# ROI Zones (Ajustar si la cámara tiene diferente encuadre)
+zones:
+  zone1:
+    camera_id: "CAM_JAVIER_PRADO"
+    street: "Av. Javier Prado"
+    # Polígono inicial (ajustar con 'r' al iniciar)
+    polygon:
+      - [100, 500]
+      - [400, 500]
+      - [400, 700]
+      - [100, 700]
+
+speed_estimation:
+  enabled: true
+  pixels_per_meter: 10.0
+
+persistence:
+  enabled: true
+  type: "csv"
+  interval_seconds: 60
+  output_dir: "data/traffic_logs"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+performance:
+  target_width: 1280
+  target_height: 720
+  opencv_buffer_size: 60
+  detect_every_n_frames: 3
+  frame_buffer_size: 30
+  result_buffer_size: 30
+  capture_buffer_size: 60
+  target_fps: 30
+
+model:
+  path: "yolo11n.pt"
+  conf_threshold: 0.5
+
+display: true

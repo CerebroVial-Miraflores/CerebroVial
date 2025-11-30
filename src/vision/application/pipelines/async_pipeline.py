@@ -24,15 +24,18 @@ class AsyncVisionPipeline:
         processor_chain: FrameProcessor,
         metrics_collector: Optional[MetricsCollector] = None,
         frame_buffer_size: int = 10,  # Avoid memory overflow
-        result_buffer_size: int = 30
+        result_buffer_size: int = 30,
+        target_fps: int = 30
     ):
         self.source = source
         self.processor_chain = processor_chain
         self.metrics_collector = metrics_collector
+        self.target_fps = target_fps
         
         # Thread-safe queues
         self.frame_queue = queue.Queue(maxsize=frame_buffer_size)
         self.result_queue = queue.Queue(maxsize=result_buffer_size)
+        self.display_queue = queue.Queue(maxsize=60)  # High FPS display queue
         
         # Thread control
         self._stop_event = threading.Event()
@@ -71,17 +74,29 @@ class AsyncVisionPipeline:
                 if self._stop_event.is_set():
                     break
                     
+                # 1. Feed Display Queue (High Priority - Drop Oldest)
+                try:
+                    self.display_queue.put_nowait(frame)
+                except queue.Full:
+                    try:
+                        self.display_queue.get_nowait()
+                        self.display_queue.put_nowait(frame)
+                    except:
+                        pass
+
+                # 2. Feed Processing Queue (Low Priority - Drop Newest)
                 try:
                     # Non-blocking put
                     self.frame_queue.put_nowait(frame)
                 except queue.Full:
                     # Drop Newest strategy (better for fluidity)
-                    # If queue is full, we simply discard the new frame.
+                    # If queue is full, we simply discard the new frame for processing.
                     # This ensures that the frames already in the queue (which form a smooth sequence)
-                    # are processed and displayed.
+                    # are processed.
                     self._dropped_frames += 1
                     if self._dropped_frames % 30 == 0:
-                        print(f"[WARNING] Pipeline congested. Dropped {self._dropped_frames} frames so far (last: {frame.id}).")
+                        # Log only occasionally to avoid spam
+                        pass
                     continue
         except Exception as e:
             print(f"[ERROR] Capture thread failed: {e}")
@@ -112,11 +127,11 @@ class AsyncVisionPipeline:
                 if self.metrics_collector:
                     self.metrics_collector.increment_frames()
                 
-                # Send result
+                # We don't strictly need result_queue for display anymore, 
+                # but we keep it if we want to consume processed results elsewhere.
                 try:
                     self.result_queue.put((frame, analysis), block=False)
                 except queue.Full:
-                    # If full, remove oldest and add new
                     try:
                         self.result_queue.get_nowait()
                         self.result_queue.put((frame, analysis), block=False)
@@ -130,19 +145,39 @@ class AsyncVisionPipeline:
 
     def run(self) -> Iterator[Tuple[Frame, FrameAnalysis]]:
         """
-        Generator that yields processed results.
-        Consumes from result_queue without blocking.
+        Generator that yields frames for display immediately.
+        Attaches the latest available analysis.
         """
         self.start()
         
+        # Pre-buffering: Wait for queue to fill to avoid immediate stutter
+        print("[INFO] Pre-buffering video stream...")
+        while self.display_queue.qsize() < 50 and not self._stop_event.is_set():
+            time.sleep(0.1)
+        print("[INFO] buffer full, starting playback.")
+        
+        frame_duration = 1.0 / self.target_fps
+        
         try:
             while not self._stop_event.is_set():
+                start_time = time.time()
+                
                 try:
-                    frame, analysis = self.result_queue.get(timeout=0.05)
+                    # Get from Display Queue (Fast)
+                    frame = self.display_queue.get(timeout=0.05)
+                    
+                    # Get latest analysis (Thread-safe)
+                    with self._analysis_lock:
+                        analysis = self._latest_analysis
+                    
                     yield frame, analysis
+                    
+                    # Pacing: Sleep to maintain target FPS
+                    elapsed = time.time() - start_time
+                    if elapsed < frame_duration:
+                        time.sleep(frame_duration - elapsed)
+                    
                 except queue.Empty:
-                    # No results ready, yield None or continue to avoid blocking UI
-                    # Here we continue to simulate non-blocking generator behavior
                     continue
         except KeyboardInterrupt:
             print("\n[INFO] Interrupted by user")
