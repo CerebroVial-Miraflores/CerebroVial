@@ -48,6 +48,7 @@ class AsyncVisionPipeline:
         self._latest_analysis = None
         self._analysis_lock = threading.Lock()
         self._dropped_frames = 0
+        self._latest_capture_ts = 0.0 # Track latest network frame time
 
     def start(self):
         """Starts capture and processing threads."""
@@ -79,6 +80,9 @@ class AsyncVisionPipeline:
             for frame in self.source:
                 if self._stop_event.is_set():
                     break
+                
+                # Update latest capture timestamp for lag calculation
+                self._latest_capture_ts = frame.timestamp
                     
                 # Feed Processing Queue (Blocking - Backpressure)
                 # We use a large buffer (3s) to absorb network jitter.
@@ -102,6 +106,7 @@ class AsyncVisionPipeline:
     def _processing_loop(self):
         """Thread dedicated to processing (CPU bound)."""
         analysis = None
+        skipped_counter = 0
         
         try:
             while not self._stop_event.is_set():
@@ -109,6 +114,28 @@ class AsyncVisionPipeline:
                     frame = self.frame_queue.get(timeout=0.1)
                 except queue.Empty:
                     continue
+                
+                # Smart Catch-Up Logic
+                # Calculate lag between the latest captured frame (Network) and this frame (Processing)
+                # We use the shared _latest_capture_ts updated by the capture thread
+                current_lag = self._latest_capture_ts - frame.timestamp
+                
+                should_process = True
+                
+                if current_lag > 1.5:
+                    skipped_counter += 1
+                    # If lag > 1.5s, process only 50% of frames (2x speed)
+                    if current_lag <= 2.5:
+                        if skipped_counter % 2 != 0:
+                            should_process = False
+                    # If lag > 2.5s, process only 33% of frames (3x speed)
+                    else:
+                        if skipped_counter % 3 != 0:
+                            should_process = False
+                            
+                    if not should_process:
+                        # print(f"[DEBUG] Catch-up: Dropping frame. Lag: {current_lag:.2f}s")
+                        continue
                 
                 # Process
                 analysis = self.processor_chain.process(frame, analysis)

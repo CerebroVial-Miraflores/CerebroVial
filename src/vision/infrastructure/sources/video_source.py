@@ -24,7 +24,7 @@ class OpenCVSource(FrameProducer):
                 import streamlink
                 session = streamlink.Streamlink()
                 # Low latency options
-                session.set_option("hls-live-edge", 3)
+                session.set_option("hls-live-edge", 2)
                 session.set_option("hls-segment-threads", 3)
                 session.set_option("stream-timeout", 15)
                 
