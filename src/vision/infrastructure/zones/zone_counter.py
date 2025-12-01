@@ -29,6 +29,16 @@ class ZoneCounter:
                     "street": config.get('street', 'unknown')
                 }
             
+            # Calculate scaling factors
+            # Assuming config points are based on 1280x720 (default reference)
+            ref_w, ref_h = 1280, 720
+            target_w, target_h = self.resolution
+            scale_x = target_w / ref_w
+            scale_y = target_h / ref_h
+            
+            # Scale polygon points
+            polygon = (polygon * [scale_x, scale_y]).astype(int)
+            
             self.zones[zone_id] = sv.PolygonZone(
                 polygon=polygon
             )

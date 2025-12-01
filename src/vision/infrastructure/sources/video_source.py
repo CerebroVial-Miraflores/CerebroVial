@@ -22,10 +22,16 @@ class OpenCVSource(FrameProducer):
         if isinstance(source, str) and (source.startswith("http") or source.startswith("https")):
             try:
                 import streamlink
-                streams = streamlink.streams(source)
+                session = streamlink.Streamlink()
+                # Low latency options
+                session.set_option("hls-live-edge", 3)
+                session.set_option("hls-segment-threads", 3)
+                session.set_option("stream-timeout", 15)
+                
+                streams = session.streams(source)
                 if "best" in streams:
                     resolved_url = streams["best"].url
-                    print(f"[INFO] Streamlink resolved URL: {resolved_url[:50]}...")
+                    print(f"[INFO] Streamlink resolved URL (Low Latency): {resolved_url[:50]}...")
                     self.source = resolved_url
             except Exception as e:
                 print(f"[WARNING] Streamlink resolution failed: {e}. Using original URL.")

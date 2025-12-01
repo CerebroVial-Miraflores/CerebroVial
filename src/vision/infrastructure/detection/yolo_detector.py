@@ -15,7 +15,18 @@ class YoloDetector(VehicleDetector):
     Implementation of VehicleDetector using YOLO.
     """
     def __init__(self, model_path: str = "yolo11n.pt", conf_threshold: float = 0.5):
+        # Dynamic device selection
+        import torch
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+            
+        print(f"[INFO] Using inference device: {device}")
         self.model = YOLO(model_path)
+        self.model.to(device)
         self.conf_threshold = conf_threshold
         # COCO classes: 2=car, 3=motorcycle, 5=bus, 7=truck
         self.target_classes = {2: 'car', 3: 'motorcycle', 5: 'bus', 7: 'truck'}

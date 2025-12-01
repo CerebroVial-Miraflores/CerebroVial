@@ -1,5 +1,7 @@
 # source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
-source: "https://www.youtube.com/watch?v=6dp-bvQ7RWo"
+# source: "https://www.youtube.com/watch?v=6dp-bvQ7RWo"
+# source: "https://www.youtube.com/watch?v=0IgonpX1jMg"
+source: "https://www.youtube.com/watch?v=rPxWUFTKgds"
 source_type: "youtube" # webcam, file, youtube, ip_cam
 
 # ROI Zones for counting
@@ -35,7 +37,7 @@ performance:
   target_height: 720
 
   # OpenCV buffer size (1 = minimum latency, higher = smoother but more delay)
-  opencv_buffer_size: 60
+  opencv_buffer_size: 90
 
   # Frame processing
   detect_every_n_frames: 1 # Run YOLO detection every N frames
@@ -45,9 +47,9 @@ performance:
   youtube_format: "best"
 
   # Pipeline buffers
-  frame_buffer_size: 30
-  result_buffer_size: 30
-  capture_buffer_size: 60
+  frame_buffer_size: 90
+  result_buffer_size: 90
+  capture_buffer_size: 120
   target_fps: 30
   source_fps: 30
 

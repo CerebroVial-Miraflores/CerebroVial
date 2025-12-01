@@ -81,8 +81,9 @@ class AsyncVisionPipeline:
                     break
                     
                 # Feed Processing Queue (Blocking - Backpressure)
+                # We use a large buffer (3s) to absorb network jitter.
+                # If buffer fills, we block to prevent memory overflow, effectively pausing capture.
                 try:
-                    # Wait up to 1s to put frame
                     while not self._stop_event.is_set():
                         try:
                             self.frame_queue.put(frame, timeout=0.5)
@@ -153,19 +154,23 @@ class AsyncVisionPipeline:
         
         try:
             while not self._stop_event.is_set():
-                start_time = time.time()
-                
                 try:
                     # Get from Result Queue (Synchronized)
                     # This contains the frame AND its exact analysis
                     frame, analysis = self.result_queue.get(timeout=0.1)
                     
+                    # Start timer AFTER getting frame to decouple network lag from pacing
+                    start_time = time.time()
+                    
                     yield frame, analysis
                     
                     # Pacing: Sleep to maintain target FPS (if processing is faster than target)
                     elapsed = time.time() - start_time
+                    sleep_time = 0.0
                     if elapsed < frame_duration:
-                        time.sleep(frame_duration - elapsed)
+                        sleep_time = frame_duration - elapsed
+                        time.sleep(sleep_time)
+
                     
                 except queue.Empty:
                     continue
