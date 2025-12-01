@@ -91,6 +91,10 @@ class ZoneCounter:
             indices = np.where(mask)[0]
             count = len(indices)
             
+            # Debug: Print zone counts
+            # if count > 0:
+            #    print(f"[DEBUG] Zone {zone_id}: {count} vehicles inside")
+            
             # Calculate metrics
             avg_speed = 0.0
             vehicle_types = {}

@@ -58,4 +58,8 @@ class OpenCVVisualizer:
         cv2.putText(frame, f"Vehicles: {analysis.total_count}", (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
         
+        # Draw raw detection count (Debug)
+        cv2.putText(frame, f"Raw Detections: {analysis.raw_detection_count}", (20, 80), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+        
         return frame

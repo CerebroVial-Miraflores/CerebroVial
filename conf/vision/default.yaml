@@ -1,4 +1,5 @@
-source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
+# source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
+source: "https://www.youtube.com/watch?v=6dp-bvQ7RWo"
 source_type: "youtube" # webcam, file, youtube, ip_cam
 
 # ROI Zones for counting
@@ -7,13 +8,11 @@ zones:
     camera_id: "CAM_001"
     street: "Av. Javier Prado"
     polygon:
-      - [6, 504]
-      - [337, 423]
-      - [1274, 414]
-      - [1273, 604]
-      - [1208, 711]
-      - [12, 706]
-      - [6, 506]
+      - [370, 560]
+      - [813, 190]
+      - [1215, 304]
+      - [1076, 714]
+      - [626, 716]
 
 speed_estimation:
   enabled: true
@@ -36,7 +35,7 @@ performance:
   target_height: 720
 
   # OpenCV buffer size (1 = minimum latency, higher = smoother but more delay)
-  opencv_buffer_size: 3
+  opencv_buffer_size: 60
 
   # Frame processing
   detect_every_n_frames: 1 # Run YOLO detection every N frames
@@ -48,9 +47,12 @@ performance:
   # Pipeline buffers
   frame_buffer_size: 30
   result_buffer_size: 30
+  capture_buffer_size: 60
+  target_fps: 30
+  source_fps: 30
 
 model:
   path: "yolo11n.pt"
-  conf_threshold: 0.5
+  conf_threshold: 0.3
 
 display: true

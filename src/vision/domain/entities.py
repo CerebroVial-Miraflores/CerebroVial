@@ -41,6 +41,7 @@ class FrameAnalysis:
     timestamp: float
     vehicles: List[DetectedVehicle]
     total_count: int
+    raw_detection_count: int = 0 # Debug: Count of raw detections before tracking
     zones: List[ZoneVehicleCount] = None # Optional for backward compatibility
 
 @dataclass

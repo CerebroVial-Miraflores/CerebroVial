@@ -12,7 +12,13 @@ class SupervisionTracker(VehicleTracker):
     Wrapper around supervision's ByteTrack.
     """
     def __init__(self, vehicle_classes: Dict[str, int]):
-        self.tracker = sv.ByteTrack()
+        # Tune ByteTrack for lower confidence detections
+        self.tracker = sv.ByteTrack(
+            track_activation_threshold=0.15,  # Lower threshold to keep tracks alive
+            minimum_matching_threshold=0.8,   # IoU threshold for matching
+            lost_track_buffer=60,    # Keep lost tracks for 2 seconds (30fps * 2)
+            frame_rate=30
+        )
         # Map class ID (int) to class name (str)
         self.id_to_name = {v: k for k, v in vehicle_classes.items()}
         # Map class name (str) to class ID (int)
@@ -21,15 +27,16 @@ class SupervisionTracker(VehicleTracker):
         self.class_history: Dict[int, List[int]] = {}
 
     def track(self, detections: List[DetectedVehicle]) -> List[DetectedVehicle]:
-        if not detections:
-            return []
-
         # Convert to supervision Detections
-        xyxy = np.array([d.bbox for d in detections])
-        conf = np.array([d.confidence for d in detections])
-        
-        # Map types to IDs for the tracker
-        class_ids = np.array([self.name_to_id.get(d.type, 0) for d in detections])
+        if detections:
+            xyxy = np.array([d.bbox for d in detections])
+            conf = np.array([d.confidence for d in detections])
+            # Map types to IDs for the tracker
+            class_ids = np.array([self.name_to_id.get(d.type, 0) for d in detections])
+        else:
+            xyxy = np.empty((0, 4))
+            conf = np.array([])
+            class_ids = np.array([])
         
         sv_detections = sv.Detections(
             xyxy=xyxy,

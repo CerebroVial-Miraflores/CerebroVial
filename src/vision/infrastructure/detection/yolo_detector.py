@@ -49,6 +49,9 @@ class YoloDetector(VehicleDetector):
                     )
                     vehicles.append(vehicle)
             
+            # Debug: Print raw detection count
+            # print(f"[DEBUG] Frame {frame_id}: Raw detections: {len(vehicles)}")
+            
             return FrameAnalysis(
                 frame_id=frame_id,
                 timestamp=time.time(),

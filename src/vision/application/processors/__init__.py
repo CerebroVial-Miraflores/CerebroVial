@@ -84,14 +84,30 @@ class TrackingProcessor(FrameProcessor):
         self.metrics_collector = metrics_collector
     
     def _process(self, frame: Frame, analysis: Optional[FrameAnalysis]) -> Optional[FrameAnalysis]:
-        if analysis and analysis.vehicles:
-            start = time.time()
-            analysis.vehicles = self.tracker.track(analysis.vehicles)
-            duration_ms = (time.time() - start) * 1000
+        # If analysis is None (skipped detection), we still want to track (predict)
+        # If analysis exists but has no vehicles, we also track (predict/clear)
+        
+        vehicles_to_track = analysis.vehicles if (analysis and analysis.vehicles) else []
+        
+        start = time.time()
+        tracked_vehicles = self.tracker.track(vehicles_to_track)
+        duration_ms = (time.time() - start) * 1000
+        
+        if self.metrics_collector:
+            self.metrics_collector.record_tracking(duration_ms)
             
-            if self.metrics_collector:
-                self.metrics_collector.record_tracking(duration_ms)
-                
+        # If we had no analysis, create one to hold the tracked vehicles
+        if not analysis:
+            analysis = FrameAnalysis(
+                frame_id=frame.id,
+                timestamp=time.time(),
+                vehicles=tracked_vehicles,
+                total_count=len(tracked_vehicles)
+            )
+        else:
+            analysis.vehicles = tracked_vehicles
+            analysis.total_count = len(tracked_vehicles)
+            
         return analysis
 
 
@@ -120,8 +136,10 @@ class ZoneProcessor(FrameProcessor):
         self.zone_counter = zone_counter
     
     def _process(self, frame: Frame, analysis: Optional[FrameAnalysis]) -> Optional[FrameAnalysis]:
-        if analysis and analysis.vehicles:
-            analysis.zones = self.zone_counter.count_vehicles_in_zones(analysis.vehicles)
+        if analysis:
+            # Always update zones, even if no vehicles (to ensure they are drawn)
+            vehicles = analysis.vehicles if analysis.vehicles else []
+            analysis.zones = self.zone_counter.count_vehicles_in_zones(vehicles)
         return analysis
 
 
