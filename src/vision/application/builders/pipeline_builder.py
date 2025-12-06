@@ -120,6 +120,14 @@ class VisionApplicationBuilder:
             self.build_detector()
         if not self.source:
             self.build_source()
+        if not self.tracker:
+            self.build_tracker()
+        if not self.speed_estimator:
+            self.build_speed_estimator()
+        if not self.zone_counter:
+            self.build_zones()
+        if not self.aggregator:
+            self.build_persistence()
             
         # Build Chain
         detect_every_n = self.vision_cfg.get('performance', {}).get('detect_every_n_frames', 3)

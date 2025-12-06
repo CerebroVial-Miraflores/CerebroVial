@@ -102,8 +102,10 @@ class ZoneCounter:
             count = len(indices)
             
             # Debug: Print zone counts
-            # if count > 0:
-            #    print(f"[DEBUG] Zone {zone_id}: {count} vehicles inside")
+            if count > 0:
+               print(f"[DEBUG] Zone {zone_id}: {count} vehicles inside. Detections: {len(detections)}")
+            elif len(detections) > 0:
+               print(f"[DEBUG] Zone {zone_id}: 0 vehicles inside. Detections: {len(detections)}")
             
             # Calculate metrics
             avg_speed = 0.0

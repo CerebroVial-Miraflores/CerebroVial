@@ -11,9 +11,15 @@ from ....infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaste
 app = FastAPI()
 
 # Singleton broadcaster
-_broadcaster = RealtimeBroadcaster()
+_broadcaster = None
+
+def init_broadcaster(broadcaster: RealtimeBroadcaster):
+    global _broadcaster
+    _broadcaster = broadcaster
 
 def get_broadcaster() -> RealtimeBroadcaster:
+    if _broadcaster is None:
+        raise HTTPException(500, "Broadcaster not initialized")
     return _broadcaster
 
 @app.get("/stream/{camera_id}")

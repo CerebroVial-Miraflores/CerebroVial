@@ -26,6 +26,7 @@ class RealtimeBroadcaster:
         Subscribes a client to updates from a specific camera.
         Returns an async queue that will receive the data.
         """
+        print(f"[Broadcaster] New subscriber for {camera_id}")
         queue = asyncio.Queue(maxsize=queue_size)
         
         async with self._lock:
@@ -61,6 +62,10 @@ class RealtimeBroadcaster:
         async with self._lock:
             subscribers = self._subscribers.get(camera_id, set()).copy()
         
+        if subscribers:
+            # print(f"[Broadcaster] Broadcasting to {len(subscribers)} clients for {camera_id}")
+            pass
+
         # Send to each subscriber (non-blocking)
         for queue in subscribers:
             try:
@@ -73,11 +78,39 @@ class RealtimeBroadcaster:
         """
         Converts FrameAnalysis to JSON-serializable dict.
         """
+        # Calculate global metrics
+        avg_speed = 0.0
+        density = 0.0
+        congestion_level = "Bajo"
+        pedestrians = 0
+        
+        if frame_analysis.zones:
+            total_speed = sum(z.avg_speed for z in frame_analysis.zones if z.avg_speed > 0)
+            count_speed = sum(1 for z in frame_analysis.zones if z.avg_speed > 0)
+            if count_speed > 0:
+                avg_speed = total_speed / count_speed
+                
+            total_occupancy = sum(z.occupancy for z in frame_analysis.zones)
+            density = (total_occupancy / len(frame_analysis.zones)) * 100 # Convert to percentage
+            
+            if density > 70:
+                congestion_level = "Alto"
+            elif density > 30:
+                congestion_level = "Moderado"
+                
+        if frame_analysis.vehicles:
+            pedestrians = sum(1 for v in frame_analysis.vehicles if v.type == 'person')
+
         return {
             "camera_id": camera_id,
             "timestamp": datetime.now().isoformat(),
             "frame_id": frame_analysis.frame_id,
             "total_vehicles": frame_analysis.total_count,
+            "avg_speed": round(avg_speed, 1),
+            "density": f"{round(density)}%",
+            "congestion_level": congestion_level,
+            "pedestrians": pedestrians,
+            "incidents": 0, # Placeholder
             "vehicles": [
                 {
                     "id": v.id,

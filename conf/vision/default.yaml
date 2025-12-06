@@ -1,7 +1,8 @@
 # source: "https://www.youtube.com/watch?v=qMYlpMsWsBE"
-# source: "https://www.youtube.com/watch?v=6dp-bvQ7RWo"
+source: "https://www.youtube.com/watch?v=6dp-bvQ7RWo"
+
 # source: "https://www.youtube.com/watch?v=0IgonpX1jMg"
-source: "https://www.youtube.com/watch?v=rPxWUFTKgds"
+# source: "https://www.youtube.com/watch?v=rPxWUFTKgds"
 source_type: "youtube" # webcam, file, youtube, ip_cam
 
 # ROI Zones for counting
@@ -15,6 +16,30 @@ zones:
       - [1215, 304]
       - [1076, 714]
       - [626, 716]
+  zone2:
+    camera_id: "CAM_002"
+    street: "Av. Arequipa"
+    polygon:
+      - [100, 100]
+      - [1180, 100]
+      - [1180, 620]
+      - [100, 620]
+  zone3:
+    camera_id: "CAM_003"
+    street: "Av. Salaverry"
+    polygon:
+      - [100, 100]
+      - [1180, 100]
+      - [1180, 620]
+      - [100, 620]
+  zone4:
+    camera_id: "CAM_004"
+    street: "Av. Petit Thouars"
+    polygon:
+      - [100, 100]
+      - [1180, 100]
+      - [1180, 620]
+      - [100, 620]
 
 speed_estimation:
   enabled: true

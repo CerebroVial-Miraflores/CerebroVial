@@ -15,22 +15,29 @@ class OpenCVVisualizer:
         Draws bounding boxes, labels, and zones on the frame.
         """
         # Draw zones if present in analysis
-        if analysis and analysis.zones and self.zones_config:
-            for zone_status in analysis.zones:
-                zone_id = zone_status.zone_id
-                points = self.zones_config.get(zone_id)
+        # Draw zones (Always draw configured zones)
+        if self.zones_config:
+            for zone_id, points in self.zones_config.items():
                 if points:
                     pts = np.array(points, np.int32)
                     pts = pts.reshape((-1, 1, 2))
                     # Draw polygon
                     cv2.polylines(frame, [pts], True, (255, 0, 0), 2)
-                    # Draw count
+                    
+                    # Draw label/count if available in analysis
+                    count = 0
+                    if analysis and analysis.zones:
+                        for z in analysis.zones:
+                            if z.zone_id == zone_id:
+                                count = z.vehicle_count
+                                break
+                    
                     # Find center for text
                     M = cv2.moments(pts)
                     if M["m00"] != 0:
                         cX = int(M["m10"] / M["m00"])
                         cY = int(M["m01"] / M["m00"])
-                        cv2.putText(frame, f"{zone_id}: {zone_status.vehicle_count}", (cX - 20, cY), 
+                        cv2.putText(frame, f"{zone_id}: {count}", (cX - 20, cY), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
         if not analysis:
