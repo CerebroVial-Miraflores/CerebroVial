@@ -4,7 +4,7 @@
 > Proyecto de tesis de ingeniería de software · ejecución individual con asistencia de IA.
 >
 > **Estado del documento:** en construcción incremental, sección por sección.
-> **Última actualización:** 2026-05-20.
+> **Última actualización:** 2026-05-20 · cuerpo completo (§0–§12 + vista de desarrollo + DHU-021).
 
 ---
 
@@ -37,6 +37,34 @@ El SDD no reabre lo ya cerrado en el corpus documental; lo cita y construye sobr
 ### 0.4 Convenciones
 
 Las referencias cruzadas usan los identificadores canónicos del proyecto: decisiones técnicas `D-00N`, decisiones metodológicas `DHU-0NN`, historias de usuario `HU-NN`, tareas técnicas habilitadoras `TTH-NN`, requisitos funcionales `RF-0NN`, requisitos no funcionales `RNF-XXX-NN`, criterios de aceptación `CA-NN.N` (HU) y `CT-NN.N` (TTH), y deltas de auditoría `Delta-NN`. Los nombres de archivos, módulos, clases y rutas del repositorio se escriben en `estilo de código`.
+
+---
+
+---
+
+## 1. Introducción
+
+### 1.1 El problema
+
+El control de semáforos por tiempos fijos —el ingeniero calcula los verdes una vez y los deja iguales— funciona razonablemente bajo demanda estable, pero sirve mal en una ciudad real, donde la demanda cambia con la hora pico, el fin de semana, un evento o un accidente. CerebroVial aborda ese problema con control adaptativo: un sistema que recalcula los tiempos de semáforo en función de la demanda observada y anticipada, sobre una intersección de Miraflores, Lima, como caso de uso.
+
+### 1.2 El sistema
+
+CerebroVial integra cuatro capacidades sobre una arquitectura común. Un **sensor de estado** por visión computacional (YOLO11n en el nodo edge) observa el tráfico y produce métricas de flujo, cola y densidad. Un **modelo predictivo** (GRU univariado por intersección) anticipa la congestión a un horizonte configurable. Un **motor adaptativo** de control —aporte central del sistema— selecciona entre estrategias clásicas (Webster) y reactivas (MaxPressure) y aplica una capa de cumplimiento normativo del Manual MTC peruano que garantiza la seguridad vial de cada decisión. Y un **entorno de validación** con SUMO mide cuantitativamente el aporte del sistema comparándolo contra tiempos fijos. Las tres Personas del producto —Operador, Gerente y Administrador— consumen el sistema a través de vistas diferenciadas por rol.
+
+Un rasgo de diseño atraviesa todo el sistema: está desacoplado de la fuente de su variable de estado (§3.3). La misma variable de congestión puede provenir de la visión en operación, de SUMO en validación o de un feed externo a futuro, sin que el modelo predictivo ni el motor lo noten. Ese desacople es lo que permite validar cuantitativamente sin depender de la visión, y lo que da al diseño su flexibilidad.
+
+### 1.3 Propósito y alcance del documento
+
+Este documento es el Documento de Diseño de Software (SDD) del proyecto: describe la arquitectura objetivo del sistema en el marco de vistas 4+1 de Kruchten, con los atributos de calidad clasificados según ISO/IEC 25010:2023 y las decisiones arquitectónicas registradas como ADR ligeros. Adopta una postura As-designed (§0.1): el cuerpo describe el diseño objetivo; el estado real de construcción —aproximadamente 25% del backlog al momento de redacción— se confina a la matriz de trazabilidad (§10) y al análisis de brecha (§11).
+
+El SDD es un proyecto de tesis de ingeniería de software de ejecución individual con asistencia de IA, enmarcado metodológicamente en Lean Inception adaptado y SCRUM. Corresponde a los artefactos `plan.md` y `data-model.md` del proceso GitHub Spec Kit, adoptado en modo brownfield: el corpus documental ya curado (21 HU, 11 TTH, 22 RF, 53 RNF, 20 DHU, 9 decisiones técnicas) se mapea a las plantillas de Spec Kit, no se regenera.
+
+### 1.4 Estructura del documento
+
+El documento sigue las vistas del modelo 4+1, precedidas por las decisiones fundacionales y seguidas por las secciones de calidad, decisiones y estado. La §2 destila las restricciones arquitectónicas que las decisiones ya cerradas imponen. La §3 (componentes), §4 (datos), §5 (proceso) y §6 (despliegue) son las vistas estáticas y dinámicas del 4+1, complementadas por la vista de desarrollo (organización del código). La §7 inventaria el stack. La §8 trata los atributos de calidad. La §9 cataloga las decisiones arquitectónicas. La §10 y §11 confrontan el diseño con el estado real. La §12 reúne glosario y referencias.
+
+---
 
 ---
 
@@ -123,3 +151,444 @@ El componente de **consumo de visión** (vision-consumer) recibe del `edge_devic
 ### 3.3 Frontera con las fuentes de estado
 
 Un rasgo de diseño que conviene hacer explícito, derivado de D-009 y D-008: el sistema está desacoplado de la fuente de la variable de estado. La misma variable (jam level / ratio velocidad-flujo-libre) puede provenir del `edge_device` (visión propia, en operación), de SUMO (en el entorno de validación cuantitativa) o, como extensión futura, de un feed externo tipo Waze. El componente de predicción y el de control operan sobre la variable de estado, no sobre su fuente. Esto permite intercambiar la fuente sin reentrenar el modelo ni alterar la lógica de control, y es la razón por la que SUMO puede sustituir a la visión en el loop de validación (D-007/D-008) sin que el núcleo lo note.
+
+---
+
+## 4. Modelo de datos
+
+Esta sección describe el esquema de persistencia de la arquitectura objetivo. Parte del modelo de datos vigente del proyecto —siete tablas que cubren el grafo vial, los feeds de Waze y la visión computacional— y lo extiende con las dos entidades que la operación del motor adaptativo requiere y que aún no existen: el historial de decisiones del motor y su estado vigente por intersección. La descripción es de diseño: enuncia las entidades, sus relaciones y las restricciones que las gobiernan, sin marcar grado de avance; el estado real de construcción de cada tabla vive en la matriz de §10.
+
+El detalle columna por columna del modelo heredado es canónico en `DATA_MODEL.md`; esta sección lo resume por dominios para situar las extensiones y no lo reproduce íntegro.
+
+### 4.1 El modelo heredado: grafo vial, Waze y visión
+
+El modelo de datos vigente organiza el dominio en tres familias de entidades.
+
+La **topología vial** se modela como un grafo dirigido sobre PostGIS. `graph_nodes` representa cada intersección física como un punto georreferenciado; `graph_edges` representa cada calle dirigida entre dos nodos —una vía de doble sentido es dos aristas— con su geometría, distancia y número de carriles. Esta es la columna vertebral espacial del sistema: todo lo demás se ancla, directa o indirectamente, a un nodo o a una arista. Es estructura estática, sembrada una vez y consultada después.
+
+Los **feeds externos de Waze** se modelan como series temporales. `waze_jams` guarda snapshots de congestión asociados a una arista, donde `congestion_level` (entero 1-5) es la clasificación que Waze produce internamente y que el modelo predictivo adopta como variable objetivo de entrenamiento. `waze_alerts` guarda eventos puntuales (accidentes, peligros, cierres) reportados por usuarios. Ambas son candidatas a hypertable de TimescaleDB, particionadas por su timestamp, por su naturaleza de alto volumen y origen continuo.
+
+La **visión computacional** se modela con `cameras` (metadata espacial de cada cámara: ubicación, orientación, campo de visión) y dos tablas de datos observados, `vision_tracks` (trayectorias individuales de vehículos) y `vision_flows` (flujos direccionales por arista). El diseño contempla además una tabla `vision_aggregates`, alineada con el esquema que el pipeline de visión ya produce hoy (conteos por tipo de vehículo, ocupación y flujo por ventana temporal). La relación entre estas tres tablas refleja una decisión de modelado tomada en la auditoría del modelo de datos (registrada el 2026-05-03): la visión persiste agregados compatibles con su salida real, mientras `vision_tracks` y `vision_flows` quedan modeladas para integración futura del pipeline a base de datos. La separación honra el desacople de fuente que el sistema mantiene (§3.3): el modelo predictivo no depende de la visión para entrenar, lo que permite que `vision_tracks`/`vision_flows` existan en el diseño sin condicionar el loop de validación.
+
+> Las decisiones de visión de esa auditoría se citan aquí por contenido y fecha, no por identificador `D-00N`: la serie `D-006/D-007/D-008` de la auditoría (2026-05-03) colisiona con la serie canónica de `DECISIONS.md` (2026-05-11). El SDD usa exclusivamente la numeración canónica de `DECISIONS.md`.
+
+### 4.2 Extensión para el motor adaptativo
+
+El motor adaptativo (§3.2) impone dos necesidades de persistencia que el modelo heredado no cubre, ambas con mandato explícito. La alineación de la especificación con el código (DHU-020 §E) estableció que HU-05 describe una vista pasiva del *estado vigente* del motor, concepto que el backend actual no posee —solo tiene una calculadora invocada a demanda— y delegó su diseño a esta sección. La auditoría de implementación (Delta-10) estableció que HU-08 requiere un historial de decisiones del motor que tampoco existe. §4 satisface ambos con dos entidades nuevas, ancladas a `graph_nodes`.
+
+#### 4.2.1 `motor_decisions` — historial de decisiones
+
+Registro append-only: cada recomendación que el motor produce se inserta como una fila y no se modifica después. Su esquema reproduce el contrato de salida del motor, de modo que cada decisión sea auditable y reproducible.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `decision_id` | uuid PK | Identificador único de la decisión. |
+| `node_id` | string FK → `graph_nodes` | La intersección sobre la que se decide. Resuelve el `intersection_id` del contrato del motor contra el grafo. |
+| `decided_at` | datetime | Momento del cálculo. |
+| `mode` | string | Estrategia activada: `webster` o `max_pressure`. |
+| `cycle_seconds` | float | Ciclo final, compuesto por la capa MTC. |
+| `flow_total` | float | Suma de flujos del input; discriminante peak/off-peak. |
+| `y_load_factor` | float, nullable | Factor de carga Y de Webster; nulo en el caso de saturación severa (`webster_infeasible`). |
+| `next_phase` | string, nullable | Fase que MaxPressure elige entrar primero; nulo en modo Webster. |
+| `reasoning` | text | Razonamiento textual del motor; sustrato directo de HU-06. |
+| `phase_timings` | jsonb | Arreglo de `{phase_id, green, yellow, all_red}` por fase. |
+| `adjustments` | jsonb | Arreglo de ajustes normativos aplicados por la capa MTC; vacío si no hubo. |
+| `inputs_snapshot` | jsonb, nullable | Payload de fases que originó la decisión (`flow`, `saturation`, `queue`, `pedestrian` por fase). Hace la decisión reproducible. |
+
+Se indexa por `(node_id, decided_at DESC)`, que sirve las dos consultas naturales: el historial completo de una intersección (HU-08) y su decisión más reciente.
+
+Dos rasgos de diseño merecen explicitarse. Primero, el detalle de las fases se persiste como `jsonb` (`phase_timings`, `adjustments`, `inputs_snapshot`) en lugar de normalizarse en una tabla hija de fases. Esto es fiel al sistema real: el motor recibe las fases en el cuerpo de la petición y emite su salida como estructura anidada, no las lee ni las escribe como filas relacionales. Normalizar las fases inventaría una estructura que el código no produce. Segundo, `motor_decisions` se modela como **tabla relacional, no como hypertable**, pese a su naturaleza temporal: el volumen de una intersección piloto —una decisión por ciclo semafórico— no justifica el particionamiento de TimescaleDB, y modelarla relacional mantiene limpias las claves foráneas que dependen de ella. La conversión a hypertable es una operación posterior y de bajo costo si la productivización multiplica el volumen; §11 la registra como deuda consciente del plan de productivización.
+
+#### 4.2.2 `engine_active_state` — estado vigente del motor
+
+Registro mutable: exactamente una fila por intersección, actualizada cuando se activa una estrategia. Materializa el "estado vigente" que DHU-020 §E exige.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `node_id` | string PK FK → `graph_nodes` | La intersección. Como clave primaria, garantiza una única estrategia vigente por intersección. |
+| `active_decision_id` | uuid FK → `motor_decisions` | Puntero a la decisión actualmente activada. |
+| `activated_at` | datetime | Timestamp de activación que exige DHU-020 §E. |
+| `activated_by` | string, nullable | Origen de la activación (operador o automático); soporta HU-05 y HU-07 sin acoplar todavía el modelo de usuarios. |
+
+La distinción entre `engine_active_state` y `motor_decisions` no es redundancia: separa dos eventos distintos. `motor_decisions.decided_at` registra cuándo el motor *calculó* una recomendación; `engine_active_state.activated_at` registra cuándo esa recomendación se *activó* en la intersección. El motor puede calcular recomendaciones que no se activan, y la activación puede ocurrir después del cálculo. Por eso el estado vigente es una entidad propia con puntero a la decisión activada, y no una vista derivada del historial (que solo podría inferir "la última calculada", semántica distinta de "la actualmente vigente").
+
+### 4.3 La frontera grafo↔intersección
+
+El modelo de datos razona en términos de grafo vial dirigido (nodos, aristas, congestión por arista); el motor adaptativo razona en términos de *fases* que agrupan *approaches*, con flujo, saturación y cola por fase. Entre ambos lenguajes existe una traducción —qué cámara observa qué approach, qué approaches componen qué fase, cómo se convierte un nivel ordinal de congestión en un flujo en veh/h— que el diseño del sistema reconoce como un adaptador de dominio.
+
+Este adaptador es **frontera de diseño diferida**: no se esquematiza en tablas en esta sección. La razón es arquitectónica, no de omisión. El motor consume las fases como payload de cada petición, no las persiste ni las lee de base de datos; por tanto la operación vigente del motor —y las dos entidades que §4.2 introduce para soportarla— no requieren un modelo relacional de fases para funcionar. La construcción del adaptador (mapeo cámara→approach→fase y conversión nivel→flujo, ambos dependientes del despliegue físico de cada intersección) es trabajo identificado para una etapa posterior. §4 ancla las decisiones del motor a la intersección (`graph_nodes`) y deja el interior de la intersección —su descomposición en approaches y fases— como extensión futura del modelo, coherente con el alcance vigente.
+
+---
+
+> ## Notas de trabajo — §4 (no forman parte del cuerpo del SDD)
+>
+> *Este bloque se retira del documento final. Las afirmaciones inferidas se eliminan al verificarse; las candidatas a DHU-021 se consolidan al cerrar el SDD.*
+>
+> ### Afirmaciones inferidas — verificar contra el repo (Claude Code)
+>
+> 1. **Convención de identificador de intersección.** `DATA_MODEL.md` muestra `node_id` legibles (p. ej. `"larco_diagonal"`); el contrato del motor en `motor_adaptativo_teoria.md` usa `"INT_001"`. Verificar qué identificador usa el código real del motor y, si difiere de `node_id`, decidir mapeo o unificación antes de la migración. La FK `motor_decisions.node_id → graph_nodes.node_id` asume que el motor opera sobre el mismo identificador del grafo.
+> 2. **`motor_decisions` relacional, no hypertable.** Confirmar que no haya una decisión previa en el repo (configuración Alembic, modelos ORM) que asuma hypertable para esta entidad. La FK simple desde `engine_active_state` depende de que `motor_decisions` tenga PK de una sola columna (`decision_id`).
+> 3. **Tipo de `node_id`.** Se asume `string` por consistencia con `graph_nodes` en `DATA_MODEL.md`. Verificar tipo real en el modelo ORM.
+> 4. **Capacidad `jsonb` del motor de BD.** PostgreSQL soporta `jsonb` nativamente; confirmar que la capa ORM (`shared/cerebrovial_shared/database/`) no imponga una serialización distinta para los campos `phase_timings`/`adjustments`/`inputs_snapshot`.
+> 5. **Contrato de salida del motor.** El esquema de `motor_decisions` reproduce el contrato del Anexo de `motor_adaptativo_teoria.md` (`mode`, `cycle_seconds`, `next_phase`, `reasoning`, `phase_timings`, `adjustments`). Verificar que el código real del endpoint del motor emita exactamente esos campos antes de fijar el esquema.
+>
+> ### Candidatas nuevas a DHU-021 (acumular, no redactar aún)
+>
+> - **§4-a — Detalle de fases en `jsonb`, no en tabla normalizada.** Las fases entran por payload y el motor no las persiste como filas; normalizarlas inventaría estructura que el código no produce. Decisión de fidelidad al sistema real sobre pureza relacional.
+> - **§4-b — `motor_decisions` relacional pese a su naturaleza temporal.** Volumen acotado de la intersección piloto no justifica hypertable; conversión diferida a productivización. Defendible ante el contraste con `waze_jams` por volumen y origen (sistema propio vs. feed externo).
+> - **§4-c — Frontera grafo↔intersección diferida.** El adaptador cámara→approach→fase y la conversión nivel→flujo no se esquematizan en §4; las decisiones del motor se anclan a `graph_nodes` y el interior de la intersección queda como extensión futura, coherente con el alcance vigente.
+> - **§4-d — Estado vigente como entidad propia con puntero, no como vista derivada.** Separa el evento de cálculo (`decided_at`) del evento de activación (`activated_at`), semánticas distintas que una vista no captura.
+
+---
+
+## 5. Vista de proceso
+
+Esta sección describe el comportamiento dinámico del sistema: cómo colaboran los componentes de §3 en tiempo de ejecución, qué flujos de datos los recorren y cómo se propaga un cambio de estado a través del sistema. El modelo 4+1 reserva la vista de proceso para los aspectos de concurrencia, comunicación y secuencia temporal que la vista estática de componentes no captura.
+
+El sistema tiene dos procesos de primera clase, gobernados por restricciones distintas: el **loop operativo**, que va del sensor de estado a la presentación al operador, y el **loop de validación con SUMO**, que sustituye la fuente de estado por el simulador para medir cuantitativamente el aporte del sistema. Ambos comparten el núcleo —predicción y control operan idénticos— y difieren solo en la fuente de la variable de estado, exactamente como la frontera de §3.3 anticipa.
+
+### 5.1 El loop operativo
+
+En operación, el ciclo de vida de una observación recorre cuatro etapas. El `edge_device` procesa el video de cámara y produce métricas de estado del tráfico (flujo, cola, densidad por zona). El componente de consumo de visión del núcleo recibe esas métricas por HTTP y las pone a disposición de la predicción y el control. El componente de control, ante una solicitud de recomendación, recibe las fases de la intersección como payload, calcula la estrategia (Webster u MaxPressure según el umbral de demanda, con la capa MTC componiendo la salida normativa) y emite una decisión. La decisión se persiste en `motor_decisions` (§4) y, cuando se activa, actualiza `engine_active_state`. Finalmente, la presentación expone al operador el estado vigente, la explicación de la decisión y la notificación de cambios.
+
+El sistema **no** opera el motor en un lazo cerrado autónomo en el alcance vigente: la conexión predicción→motor que cerraría el lazo proactivo es trabajo identificado para una etapa posterior (la frontera de §4.3). En el alcance del documento, el motor calcula a demanda y el operador es quien observa y, donde corresponde, activa. Esta es una afirmación de diseño que el código confirma: el motor expone una calculadora invocable, no un planificador continuo.
+
+### 5.2 El canal de tiempo real (HU-07)
+
+La notificación de cambios de estrategia del motor (HU-07) requiere que el frontend reciba actualizaciones del servidor sin sondeo activo. El diseño adopta **Server-Sent Events (SSE)** como mecanismo del canal de tiempo real. La elección se sigue de la naturaleza del flujo: la comunicación relevante es unidireccional —el servidor empuja al cliente la notificación de que la estrategia vigente cambió—, que es precisamente el caso de uso de SSE. Un canal bidireccional con WebSocket sería capacidad excedente para tráfico que no necesita ida y vuelta del cliente al servidor; el sondeo periódico (polling) desperdiciaría peticiones y añadiría latencia de detección. SSE corre además sobre HTTP plano, coherente con la comunicación edge↔núcleo que D-004 fija por HTTP/SSE y que §2 y §3 ya enuncian.
+
+El estado que el frontend lee —la estrategia vigente de una intersección— se consulta **de la base de datos a través de la API del núcleo** (`engine_active_state`, §4), no de un cache en memoria del núcleo. Para una intersección piloto, la lectura directa desde la base de datos es suficiente y elimina el problema de coherencia que un cache introduce. Un cache de estado vigente en memoria es optimización pertinente solo si la productivización multiplica intersecciones y frecuencia de consulta; §11 lo registra como deuda consciente, no como omisión.
+
+### 5.3 El loop de validación con SUMO
+
+La validación cuantitativa del sistema (D-008) no usa la visión: sustituye la fuente de estado por SUMO, que provee al núcleo las mismas métricas de estado que la visión proveería en producción. El proceso de validación ejecuta dos configuraciones de la misma intersección en el simulador —una con tiempos fijos precalibrados, otra con el motor adaptativo recibiendo el estado del simulador— y compara la demora promedio por vehículo entre ambas. La integración con SUMO es por TraCI, y es componente de primera clase del diseño (D-008): no un accesorio de la validación final, sino el sustrato sobre el que se mide el aporte del sistema.
+
+Este loop es la materialización de la frontera de §3.3: el motor y la predicción operan idénticos en validación y en operación, porque ambos consumen la variable de estado y no su fuente. SUMO ocupa, en validación, el lugar que el `edge_device` ocupa en operación. El desacople de fuente es lo que permite que la validación sea cuantitativamente honesta sin depender de la visión (D-007).
+
+### 5.4 Concurrencia y modos de fallo
+
+El sistema mantiene una postura de degradación graceful ante la pérdida de la fuente de estado, fijada por la lógica de fallback en cascada (TTH-04, TTH-05). Cuando la fuente de estado se interrumpe —cámara caída en operación—, el motor no puede recibir las métricas obligatorias que su contrato requiere (flujo, saturación, cola por fase) y el diseño contempla la caída a un programa de tiempos fijos precargado para esa intersección. El diseño concreto de los niveles de degradado vive en TTH-04/TTH-05; §5 lo registra como el comportamiento dinámico ante fallo de la fuente, no como detalle de implementación.
+
+> **Afirmaciones inferidas — verificar en repo (Claude Code):**
+> - **§5-i1.** El mecanismo SSE del canal de tiempo real debe confirmarse contra el código real del `core_management_api`: verificar si HU-07 ya tiene un endpoint de eventos implementado y, si lo tiene, si usa SSE, WebSocket o polling. El diseño fija SSE como objetivo; si el código vigente difiere, marcar el delta.
+> - **§5-i2.** La lectura de estado vigente "vía API desde BD, sin cache" asume que no existe ya un cache en memoria en el núcleo. Verificar.
+> - **§5-i3.** El loop de validación con SUMO asume integración por TraCI (TTH-07). Verificar el estado real de la integración SUMO y si el harness de comparación tiempos-fijos vs. motor existe o está pendiente.
+> - **§5-i4.** La caída a tiempos fijos ante fallo de cámara (TTH-05) se enuncia como diseño; verificar si está implementada o pendiente.
+
+---
+
+## 6. Vista de despliegue
+
+Esta sección describe cómo se mapean los componentes lógicos de §3 sobre infraestructura física: qué corre dónde, cómo se orquesta y cómo se comunica entre nodos. Está gobernada por dos decisiones fundacionales: el despliegue local con Docker (D-003) y el edge físico como demostración conceptual (D-004).
+
+### 6.1 Topología de despliegue vigente
+
+En el alcance entregable, el sistema se despliega en **una sola máquina** mediante orquestación de contenedores con Docker Compose (D-003). No hay nube. Los cuatro contenedores de runtime —`edge_device`, `core_management_api`, `frontend_ui` y `db`— se levantan con `docker compose up` y se comunican por la red interna de Docker Compose. El quinto módulo, `ia_prediction_service`, no participa del runtime: produce offline el artefacto de modelo que el núcleo carga (D-001, §3.1).
+
+La contenerización independiente de cada módulo es lo que sostiene la afirmación arquitectónica de D-004: que el sistema *es desplegable* en hardware distribuido aunque no se entregue así. Cada contenedor es una unidad de despliegue autónoma; que hoy corran todos en una máquina es una configuración de despliegue, no una propiedad de acoplamiento del diseño.
+
+### 6.2 Mapeo conceptual edge/servidor
+
+D-004 exige documentar cómo se distribuiría el sistema en un despliegue productivo con nodo edge físico, sin entregarlo. El mapeo conceptual es directo y se deriva de la responsabilidad de cada componente:
+
+| Nodo | Módulos que alojaría | Justificación |
+|---|---|---|
+| Nodo edge (junto a la cámara) | `edge_device` | El sensor de estado corre donde está el video, para no transmitir el flujo de video crudo por la red; solo viajan las métricas de estado ya extraídas. |
+| Servidor central | `core_management_api`, `frontend_ui`, `db` | La lógica de predicción y control, la presentación y la persistencia residen centralizadas, consumiendo las métricas que el edge les envía. |
+
+La comunicación entre el nodo edge y el servidor central es por HTTP (métricas de estado) y SSE (canal de eventos), tal como §5 establece. Esta separación es la misma que el componente de consumo de visión refleja en §3.2: el sensor en el edge, su consumo en el servidor.
+
+### 6.3 Persistencia y volúmenes
+
+La base de datos (`db`) es un contenedor PostgreSQL con las extensiones TimescaleDB y PostGIS. Su estado persiste en un volumen de Docker para sobrevivir reinicios del contenedor. Las migraciones de esquema se gestionan con Alembic, incluyendo la exclusión de las tablas internas de PostGIS del autogenerate (configurada en el entorno de migraciones).
+
+### 6.4 Plan de productivización
+
+El paso de la topología vigente (una máquina, Docker Compose) a una productiva (nodo edge físico + servidor) es el contenido del plan de productivización que D-003 y D-004 prometen documentar sin entregar. Sus piezas: desplegar `edge_device` en hardware edge (p. ej. Raspberry Pi) con la cámara real; centralizar el resto en un servidor; reemplazar la red interna de Compose por comunicación de red real HTTP/SSE entre nodos. El diseño no requiere cambios estructurales para ese paso —solo de configuración de despliegue—, lo que es precisamente la propiedad que D-004 busca demostrar. §11 retoma este plan como parte de la brecha entre lo diseñado y lo entregado.
+
+> **Afirmaciones inferidas — verificar en repo (Claude Code):**
+> - **§6-i1.** La existencia y el contenido del `docker-compose.yml` (cuántos servicios define, sus nombres exactos, redes y volúmenes) debe verificarse. §6 asume cuatro servicios de runtime con los nombres de §3.1.
+> - **§6-i2.** Verificar que `ia_prediction_service` efectivamente no esté en el `docker-compose.yml` de runtime (coherente con D-001).
+> - **§6-i3.** El volumen de persistencia de `db` y la configuración Alembic de exclusión PostGIS se enuncian de diseño; verificar contra `env.py` y la definición de volúmenes real.
+> - **§6-i4.** Confirmar que la imagen de `db` incluye TimescaleDB y PostGIS (no solo PostgreSQL base).
+
+---
+
+## 7. Vista de implementación (stack tecnológico)
+
+Esta sección inventaria el stack tecnológico de cada componente y justifica las elecciones que tienen consecuencia arquitectónica. No es un listado exhaustivo de dependencias —eso vive en los manifiestos del repositorio—, sino el mapa de las tecnologías que definen la forma del sistema. Todo el contenido de esta sección es particularmente sensible a verificación contra el repo: las versiones y librerías exactas deben confirmarse antes de fijarse.
+
+### 7.1 Stack por componente
+
+| Componente | Lenguaje | Framework / librerías principales | Rol del stack |
+|---|---|---|---|
+| `edge_device` | Python | YOLO11n (detección), supervision (tracking) | Visión computacional: detección y conteo de vehículos, extracción de métricas de estado. |
+| `core_management_api` | Python | FastAPI, SQLAlchemy / GeoAlchemy2, Alembic | Núcleo: API HTTP, ORM con soporte espacial, migraciones. Aloja predicción, control y consumo de visión. |
+| `frontend_ui` | TypeScript | React | Presentación: vistas por rol, consumo de la API y del canal SSE. |
+| `db` | — | PostgreSQL, TimescaleDB, PostGIS | Persistencia: relacional, series temporales y datos espaciales. |
+| `ia_prediction_service` | Python | PyTorch | Entrenamiento offline del modelo GRU univariado. |
+| Validación | Python | SUMO, TraCI | Simulación de escenarios y harness de validación cuantitativa. |
+| `shared` | Python | (paquete pip local) | Base común consolidada: modelos ORM, utilidades transversales. |
+
+### 7.2 Elecciones con consecuencia arquitectónica
+
+Algunas elecciones de stack no son intercambiables sin alterar el diseño, y conviene hacer explícita su razón.
+
+La separación **PyTorch (entrenamiento) / artefacto cargado por el núcleo (inferencia)** es la materialización de D-001: el entrenamiento es un pipeline offline que no corre en runtime. El núcleo no importa el servicio de entrenamiento; carga el modelo ya serializado. Esto permite que `ia_prediction_service` quede fuera del `docker-compose.yml` de runtime sin que el núcleo pierda capacidad de predicción.
+
+La elección de **PostgreSQL con TimescaleDB y PostGIS en una sola base** —en lugar de tres almacenes especializados— es coherente con D-001 (un sistema, no microservicios con bases separadas). Una única instancia sirve los tres tipos de dato (relacional, temporal, espacial) mediante extensiones, evitando la complejidad de sincronizar almacenes heterogéneos.
+
+La cascada de modelos (D-002) impone que el componente de predicción mantenga **dos implementaciones tras un contrato de endpoint estable**: el GRU principal (PyTorch) y el RandomForest de respaldo. El stack de inferencia debe poder servir ambos sin que el consumidor (motor, presentación) note cuál responde.
+
+> **Afirmaciones inferidas — verificar en repo (Claude Code):**
+> - **§7-i1.** Versiones exactas de todo: Python, FastAPI, React, PostgreSQL, TimescaleDB, PostGIS, PyTorch, YOLO (confirmar YOLO11n, no YOLOv8), versión de SUMO. Tomar de los manifiestos reales (`pyproject.toml`/`requirements.txt`, `package.json`).
+> - **§7-i2.** Confirmar que `edge_device` usa la librería `supervision` para tracking (verificación pendiente heredada de §3).
+> - **§7-i3.** Confirmar que `frontend_ui` es React + TypeScript (verificación pendiente heredada de §3) y qué herramienta de build usa (Vite, CRA, Next, etc.).
+> - **§7-i4.** Confirmar el ORM real: SQLAlchemy con GeoAlchemy2 (el `DATA_MODEL.md` menciona GeoAlchemy2 y Alembic; verificar versión y si hay capa de repositorios sobre el ORM).
+> - **§7-i5.** Confirmar que `shared` es efectivamente un paquete pip local instalable y qué expone (los modelos ORM viven ahí según `DATA_MODEL_AUDIT.md`).
+> - **§7-i6.** Confirmar el formato de serialización del artefacto de modelo GRU (state_dict de PyTorch, TorchScript, ONNX, etc.) y cómo lo carga el núcleo.
+
+### Candidatas nuevas a DHU-021 acumuladas en esta tanda
+
+> - **§5-a — SSE como mecanismo del canal de tiempo real.** Elegido sobre WebSocket (excedente para flujo unidireccional) y polling (desperdicia peticiones, añade latencia). Coherente con HTTP/SSE de D-004.
+> - **§5-b — Estado vigente leído vía API desde BD, sin cache en memoria.** Suficiente para intersección piloto; cache diferido a productivización.
+> - **§5-c — Dos loops de primera clase (operativo y validación SUMO) que comparten núcleo y difieren solo en la fuente de estado.** Materializa la frontera de §3.3 en la vista de proceso.
+> - **§6-a — Topología vigente de una máquina con Docker Compose, con mapeo conceptual edge/servidor documentado pero no entregado.** Destilado de D-003/D-004; el plan de productivización no exige cambios estructurales, solo de configuración.
+
+---
+
+## 8. Atributos de calidad
+
+El backlog clasifica 53 requisitos no funcionales en las nueve características de calidad de ISO/IEC 25010:2023 (`RF_RNF_LITE.md`, documento normativo `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md`). Esta sección no recorre las nueve una por una —eso sería un eco del catálogo—; destila los atributos que la arquitectura *forma*, no solo los que cumple: aquellos cuya satisfacción es consecuencia directa de una decisión de diseño y no de buenas prácticas genéricas. El resto se reconoce en la tabla-resumen de §8.5, que remite al catálogo normativo para el detalle.
+
+### 8.1 Reemplazabilidad del modelo predictivo (RNF-FLX-02)
+
+La cascada de modelos de D-002 es, en sí misma, un atributo de calidad hecho estructura. El componente de predicción mantiene el GRU principal y el `RandomForest` de respaldo tras un contrato de endpoint estable; los consumidores —motor adaptativo y vistas del Operador— no conocen cuál responde. Esto satisface la reemplazabilidad (RNF-FLX-02) por diseño: sustituir el modelo principal no propaga cambios río abajo. La calidad no se añade después; está en la forma del componente.
+
+### 8.2 Seguridad vial y operación fail-safe (RNF-SAF-01, RNF-SAF-02, RNF-SAF-03)
+
+La seguridad de operar sobre infraestructura de tránsito real se materializa en dos piezas de diseño. La **capa MTC** del motor (§3.2) garantiza el cumplimiento de las constantes normativas del Manual MTC peruano (RNF-SAF-02): eleva, recorta o compone la salida estratégica de Webster/MaxPressure para que ningún tiempo viole los mínimos y máximos legales. La separación de esta capa respecto de los algoritmos estratégicos no es estética: permite que la regulación cambie sin tocar la optimización, y hace que el cumplimiento sea auditable —cada ajuste queda registrado como un `adjustment` en la decisión (§4)—. El **comportamiento fail-safe** (RNF-SAF-01) ante caída del motor se sostiene en la lógica de fallback en cascada (TTH-04/TTH-05): el sistema aplica tiempos preconfigurados conservadores en vez de detenerse o aplicar decisiones inconsistentes. Y los valores por defecto seguros desde el primer arranque (RNF-SAF-03) son los mismos tiempos preconfigurados, disponibles sin ajuste manual previo.
+
+### 8.3 Auditabilidad e inmutabilidad de registros (RNF-SEC-01)
+
+La inmutabilidad append-only de los registros del sistema (RNF-SEC-01) es la razón de la forma de `motor_decisions` en §4: una tabla a la que solo se inserta, nunca se modifica. El historial de decisiones del motor (HU-08) es auditable y durable porque su sustrato de datos lo es por construcción. La separación entre `motor_decisions` (historial inmutable) y `engine_active_state` (puntero mutable al vigente) preserva esa inmutabilidad sin sacrificar la noción de estado actual: lo que cambia es el puntero, no el registro histórico.
+
+### 8.4 Portabilidad del despliegue (RNF-FLX-01)
+
+La portabilidad —desplegar en máquina limpia con un solo comando (RNF-FLX-01)— es consecuencia directa de D-003 y de la contenerización de cada módulo (§6). `docker compose up` levanta el sistema completo; el quickstart documentado es suficiente para un evaluador académico. La misma contenerización independiente que da portabilidad es la que sostiene el mapeo conceptual edge/servidor de D-004: portabilidad y desplegabilidad-distribuida son dos caras de la misma decisión.
+
+### 8.5 Las nueve características y su cobertura
+
+| Característica ISO 25010:2023 | RNF | Tratamiento arquitectónico |
+|---|---|---|
+| Functional Suitability | 6 | Corrección en casos límite (datos faltantes, degeneración matemática del ciclo de Webster); el motor responde 422 ante saturación severa en lugar de producir tiempos absurdos. |
+| Performance Efficiency | 13 | Latencias de respuesta y actualización; sustrato de series temporales (hypertables Timescale) para consultas eficientes sobre datos de tráfico. |
+| Compatibility | 2 | Coexistencia de los servicios contenerizados; interoperabilidad por contratos HTTP/SSE. |
+| Interaction Capability | 7 | Vistas diferenciadas por rol; explicaciones en lenguaje del dominio (catálogo de plantillas, §3.2). |
+| Reliability | 9 | Degradación graceful (cascada de fallback), atomicidad de transiciones de estado operativo, comportamiento conservador ante fallo del detector de salud. |
+| Security | 7 | Autenticación JWT/bcrypt, control de acceso por rol validado en backend, no filtración en errores 403, inmutabilidad append-only (§8.3). |
+| Maintainability | 3 | Catálogos de plantillas como datos (no hardcoded), parametrización sin redespliegue. |
+| Flexibility | 3 | Reemplazabilidad del modelo (§8.1), portabilidad (§8.4), escalabilidad con límite declarado (univariado por intersección, D-006). |
+| Safety | 3 | Capa MTC, fail-safe a tiempos preconfigurados, defaults seguros (§8.2). |
+
+El detalle de cada RNF, su prioridad MoSCoW y su trazabilidad fina viven en el documento normativo; esta tabla es el mapa de cómo el diseño los aloja.
+
+---
+
+## Vista de desarrollo (organización del código)
+
+El modelo 4+1 reserva la vista de desarrollo para la organización estática del código: cómo se estructuran los módulos internamente, qué convenciones siguen y cómo se reparten las responsabilidades dentro de cada uno. Es el complemento de la vista de componentes (§3): §3 dice qué piezas existen y cómo colaboran; esta vista dice cómo está organizado el código dentro de cada pieza.
+
+### Estructura interna por Domain-Driven Design
+
+Cada módulo del backend organiza su código según una estructura por capas de Domain-Driven Design: `domain` (entidades, reglas de negocio y contratos de repositorio), `application` (casos de uso que orquestan el dominio), `infrastructure` (implementaciones concretas: persistencia, modelos ML, clientes externos) y `presentation` (la capa que expone hacia afuera: routers HTTP, esquemas de entrada/salida). Esta organización mantiene el dominio independiente de la tecnología: las reglas del motor o de la predicción no dependen de FastAPI ni de SQLAlchemy, que viven en `infrastructure` y `presentation`.
+
+La estructura se hace visible, por ejemplo, en el módulo de visión (`edge_device/src/vision/`), donde el contrato de repositorio vive en `domain/repositories.py` y sus implementaciones concretas en `infrastructure/persistence/`; y en el de predicción, donde los modelos ML concretos viven en `infrastructure/`. El motor de control sigue la misma separación entre la lógica estratégica de dominio (Webster, MaxPressure, capa MTC) y su exposición por la capa de presentación.
+
+### La base común `shared`
+
+El paquete `shared` consolida lo transversal —los modelos ORM del esquema de datos, utilidades comunes— como paquete pip local instalable por los módulos que lo necesitan. Esto materializa D-001: en un monolito modular, la base común se comparte como biblioteca, no como un servicio que se invoque por red. Los modelos ORM del modelo de datos (§4) residen aquí, lo que permite que el núcleo y las migraciones compartan una única definición del esquema.
+
+### Convenciones y restricción de no-refactor
+
+El proyecto mantiene una restricción operativa explícita sobre `edge_device/src/vision/`: no refactorizar ese código sin que el sprint correspondiente lo aborde. Es una salvaguarda de estabilidad sobre el módulo de visión existente, que funciona y tiene cobertura de pruebas. La vista de desarrollo la registra como convención vigente; su eventual levantamiento es una decisión de planificación, no de arquitectura.
+
+> **Afirmaciones inferidas — verificar en repo (Claude Code):**
+> - **VD-i1.** La estructura `domain/application/infrastructure/presentation` se afirma como convención uniforme de los módulos del backend; verificar que efectivamente los tres (`edge_device`, `core_management_api`, y la organización de `prediction`/`control`/`vision-consumer`) la siguen, y si hay desviaciones.
+> - **VD-i2.** Confirmar que `shared` aloja los modelos ORM y es paquete pip local instalable.
+> - **VD-i3.** Confirmar la vigencia y el alcance exacto de la restricción de no-refactor sobre `edge_device/src/vision/` (heredada de `CLAUDE.md` del repo).
+
+---
+
+## 9. Catálogo de decisiones arquitectónicas (ADR)
+
+Esta sección registra las decisiones técnicas del producto en formato ADR ligero —contexto, decisión, consecuencias, estado—, sin reproducir la justificación completa que vive en `DECISIONS.md`. El propósito es dar trazabilidad arquitectónica: cada decisión que forma el sistema queda registrada con su razón y sus consecuencias, citables desde el resto del SDD y desde el informe de tesis. Se incluyen las nueve decisiones técnicas canónicas (D-001…D-009) y la restricción heredada DHU-020 §E, por su peso arquitectónico. Las decisiones puramente metodológicas (serie DHU) no entran aquí; se consolidan aparte (DHU-021).
+
+**ADR D-001 — Monolito modular.** *Contexto:* proyecto de tesis individual; la complejidad de microservicios no se justifica. *Decisión:* un único sistema desplegable organizado en módulos sin API HTTP interna; `ia_prediction_service` fuera del runtime. *Consecuencias:* fija la vista de componentes (§3); base común como paquete pip (`shared`); entrenamiento ML offline. *Estado:* vigente.
+
+**ADR D-002 — Modelo predictivo RNN con respaldo.** *Contexto:* el sistema necesita un predictor robusto y reemplazable. *Decisión:* modelo principal de la familia RNN con `RandomForest` de respaldo invocable, tras un contrato de endpoint estable. *Consecuencias:* cascada de modelos (§3.2, §8.1); sustenta RNF-FLX-02. *Estado:* vigente.
+
+**ADR D-003 — Despliegue local con Docker.** *Contexto:* defensa académica sin infraestructura de nube. *Decisión:* despliegue en una máquina con Docker Compose; la arquitectura distribuible se demuestra conceptualmente. *Consecuencias:* fija la vista de despliegue (§6); sustenta portabilidad RNF-FLX-01. *Estado:* vigente.
+
+**ADR D-004 — Edge físico como demostración conceptual.** *Contexto:* no se entrega hardware en la defensa. *Decisión:* demostrar que la arquitectura es desplegable en nodo edge separado vía contenerización independiente y comunicación HTTP/SSE. *Consecuencias:* mapeo conceptual edge/servidor (§6.2); canal SSE (§5.2). *Estado:* vigente.
+
+**ADR D-005 — Números de validación reportados como reales.** *Contexto:* honestidad académica sobre las métricas del sistema. *Decisión:* las cifras de desempeño se reportan con valores reales obtenidos tras validación, no como cifras de ejemplo o aspiracionales. *Consecuencias:* condiciona la presentación de métricas (§8 Functional Suitability) y la validación con SUMO (§5.3). *Estado:* vigente. *(Texto canónico a confirmar contra `DECISIONS.md`; reconstruido aquí desde referencias cruzadas.)*
+
+**ADR D-006 — GRU univariado por intersección.** *Contexto:* concreción del modelo principal de D-002. *Decisión:* GRU univariado que trata cada intersección de forma independiente; se descartan arquitecturas espacio-temporales (STGNN) como trabajo futuro. *Consecuencias:* una serie temporal por dirección, sin grafo espacial entre intersecciones (§4); acota RNF-FLX-03. *Estado:* vigente.
+
+**ADR D-007 — Visión como sensor demostrable, fuera del loop de validación.** *Contexto:* la visión es funcional pero su integración cuantitativa al sistema es costosa y no aporta a la tesis. *Decisión:* la visión es sensor de estado en operación, validada por métricas propias (precisión, recall, mAP); no participa del loop de validación cuantitativa. *Consecuencias:* la validación del sistema no depende de la visión (§5.3); frontera de fuentes de estado (§3.3). *Estado:* vigente.
+
+**ADR D-008 — SUMO como columna vertebral de datos.** *Contexto:* sin acceso a datos reales de tráfico de Miraflores ni a la API de Waze. *Decisión:* SUMO genera el dataset de entrenamiento y los escenarios de validación (con/sin sistema), con particiones independientes; integración por TraCI como componente de primera clase. *Consecuencias:* loop de validación (§5.3); SUMO sustituye a la visión en validación sin que el núcleo lo note. *Estado:* vigente.
+
+**ADR D-009 — Ratio continuo entrenado, nivel ordinal presentado, fuente desacoplada.** *Contexto:* la variable de estado debe ser entrenable con precisión y presentable de forma legible. *Decisión:* el modelo se entrena sobre el ratio continuo velocidad/flujo-libre; la discretización al nivel ordinal 0-5 (jam level) ocurre en presentación; el sistema se desacopla de la fuente de la variable. *Consecuencias:* modelo de datos y componentes operan sobre la variable, no sobre su fuente (§3.3, §4); permite intercambiar visión/SUMO/Waze. *Estado:* vigente.
+
+**ADR DHU-020 §E — Persistencia de estado vigente del motor.** *Contexto:* HU-05 describe una vista pasiva del estado vigente, concepto que el backend no poseía. *Decisión:* construir el concepto de estado vigente persistido por intersección con timestamp de activación; diseño delegado al modelo de datos. *Consecuencias:* entidades `engine_active_state` y `motor_decisions` (§4); separación calculado/activado. *Estado:* vigente; diseño concretado en §4 de este documento.
+
+---
+
+## 10. Trazabilidad
+
+Esta sección es la matriz bidireccional que conecta el backlog (HU/TTH) con los componentes del diseño (§3) y con el estado real de construcción y sus deltas. Es el único lugar del SDD —junto con §11— donde el estado de avance entra explícitamente: el cuerpo As-designed (§1–§9) describe el diseño objetivo; aquí se confronta con el punto de partida. El estado y los deltas provienen de la auditoría HU↔código (`AUDITORIA_HU_CODIGO.md`, 2026-05-18). Los deltas se identifican por su ID (`Delta-NN`); su descripción y acción propuesta están en §11 y en la auditoría.
+
+### 10.1 Tareas técnicas habilitadoras
+
+| TTH | Componente (§3) | Estado | Deltas |
+|---|---|---|---|
+| TTH-01 Autenticación JWT/bcrypt | core (transversal) | No iniciado | Delta-02 |
+| TTH-02 Docker Compose | despliegue (§6) | Completo | — |
+| TTH-03 Repo Git + CI | transversal | Parcial | Delta-03 |
+| TTH-04 Fallback en cascada | core (control) | No iniciado | — |
+| TTH-05 Tiempos preconfigurados degradado | core (control) | No iniciado | — |
+| TTH-06 Capa de DTOs | transversal | Fuera de scope (Trabajos Futuros) | — |
+| TTH-07 Integración SUMO/TraCI | validación (§5.3) | No iniciado | — |
+| TTH-08 Módulo de visión | `edge_device` | Parcial | Delta-04, Delta-05 |
+| TTH-09 GRU servido vía API | core (predicción) | No iniciado | Delta-01 |
+| TTH-10 Motor adaptativo | core (control) | Parcial | Delta-09, Delta-10 |
+| TTH-11 Spike hiperparámetros | `ia_prediction_service` | No iniciado | — |
+
+### 10.2 Historias de usuario
+
+| HU | Componente (§3) | Estado | Deltas |
+|---|---|---|---|
+| HU-01 Autenticación | `frontend_ui` + core | No iniciado | Delta-02 |
+| HU-02 Estado del tráfico por acceso | `frontend_ui` + vision-consumer | No iniciado | Delta-06, Delta-07 |
+| HU-03 Predicción por acceso | `frontend_ui` + predicción | No iniciado | Delta-01, Delta-07 |
+| HU-04 Vista combinada estado+predicción | `frontend_ui` + predicción | No iniciado | Delta-06, Delta-07 |
+| HU-05 Estrategia vigente | `frontend_ui` + control | Parcial | Delta-07, Delta-08 |
+| HU-06 Explicación de la estrategia | `frontend_ui` + control | Parcial | Delta-07, Delta-09 |
+| HU-07 Notificación de cambios | `frontend_ui` + control (SSE) | No iniciado | Delta-07 |
+| HU-08 Historial de decisiones | core (control) + `db` | No iniciado | Delta-10 |
+| HU-09 Notas operativas | `frontend_ui` + core | No iniciado | — |
+| HU-10 Alerta transversal | `frontend_ui` | No iniciado | Delta-11 |
+| HU-11, HU-12 Soporte degradado al Operador | `frontend_ui` + core | No iniciado | — |
+| HU-13 Vista de salud (Admin) | `frontend_ui` + core | No iniciado | Delta-12 |
+| HU-14 Métricas del modelo | `frontend_ui` + predicción | No iniciado | Delta-12 |
+| HU-15 Configuración de parámetros | `frontend_ui` + core | No iniciado | — |
+| HU-16, HU-17 Reportería del Gerente | `frontend_ui` + core | No iniciado | — |
+| HU-18, HU-19, HU-20, HU-21 (MVP2) | varios | No iniciado | Delta-10, Delta-13 |
+
+> **Nota de método:** esta matriz refleja el estado de la auditoría del 2026-05-18 (≈25% del backlog vivo). El propio acto de redactar este SDD —y el Sprint 4— mueven varios de estos estados; la matriz se actualiza con cada auditoría, no con cada commit. Claude Code la revalida contra el repo al confrontar el documento.
+
+---
+
+## 11. Estado de implementación y brecha
+
+Esta sección confronta la arquitectura objetivo (el cuerpo del documento) con el estado real de construcción al momento de redacción, y caracteriza la brecha. No es una sección de diseño: es el reconocimiento honesto del punto de partida, en cumplimiento de la postura del documento (§0.1).
+
+### 11.1 Magnitud de la brecha
+
+La auditoría HU↔código (2026-05-18) clasificó 32 elementos del backlog: 1 completo (TTH-02), 5 parciales (TTH-03, TTH-08, TTH-10, HU-05, HU-06), 25 no iniciados y 1 fuera de scope (TTH-06). La cobertura implementada es de aproximadamente 25% del backlog vivo, lo que constituye una brecha estructural para el MVP1. El diseño que este documento describe es, en su mayor parte, arquitectura objetivo aún por construir; lo construido es el andamiaje de despliegue (Docker), parte del motor (calculadora sin persistencia ni integración) y parte de la visión (pipeline funcional que persiste a CSV).
+
+### 11.2 Naturaleza de los deltas
+
+Los 13 deltas de la auditoría no son homogéneos; se agrupan en cuatro naturalezas, y conviene leerlos por tipo más que por número.
+
+Hay **conflictos entre el código y el backlog**, donde existe implementación pero con semántica distinta de la especificada. El motor de predicción expone hoy un endpoint con contrato divergente del diseño —per-cámara con RandomForest y niveles discretos, en vez de per-intersección con GRU y ratio continuo (Delta-01)—. El dashboard actual es una vista multi-intersección de supervisión de red, no la vista intra-intersección con colas por acceso que el backlog describe (Delta-06). La `ControlView` es un simulador interactivo tipo playground, no la vista pasiva del estado vigente que HU-05 especifica (Delta-08) —exactamente la tensión que motivó el mandato de estado vigente de §4—. El `reasoning` del motor se presenta como log técnico, no en lenguaje del dominio del Operador (Delta-09). La vista de alertas es una vista dedicada, no el banner transversal que HU-10 exige (Delta-11).
+
+Hay **funcionalidad declarada en el backlog pero aún no construida**: la autenticación (Delta-02, con una inconsistencia de nomenclatura de roles entre fuentes a cerrar antes de implementar), la cobertura de CI sobre todos los módulos (Delta-03), la tabla `vision_aggregates` y su cableado (Delta-05), y —centralmente— la ausencia total de infraestructura de tiempo real (Delta-07) y de persistencia de decisiones del motor (Delta-10). Delta-07 y Delta-10 son precisamente las brechas que §5 (canal SSE) y §4 (`motor_decisions`) diseñan para cerrar; el diseño antecede a la construcción, como corresponde a un SDD.
+
+Hay una **tensión entre el backlog y una restricción operativa**: el spec de visión pide reconstruir el módulo desde cero, mientras la regla de no-refactor de `edge_device/src/vision/` lo protege (Delta-04). La resolución registrada (decisión humana del 2026-05-18) es que el refactor se ejecutará cuando el sprint lo aborde, no antes; hasta entonces el código vigente es la base operativa.
+
+Y hay **deuda de UI invertida y features huérfanas**: scaffolding visual construido antes que la integración de datos (Delta-12), y funcionalidades en el frontend sin HU que las respalde (Delta-13). Entre estas últimas, la integración con una API externa de IA generativa (Gemini) para generar reportes de incidentes merece atención particular: no está priorizada por el backlog y tiene implicaciones de privacidad y de envío de datos a un tercero que deben discutirse antes de conservarla. El diseño objetivo de este SDD no la contempla; §11 la señala para decisión metodológica explícita.
+
+### 11.3 Plan de cierre de la brecha
+
+El cierre de la brecha es el contenido del Sprint 4 y siguientes, no de este documento. El SDD aporta el destino —la arquitectura objetivo contra la cual cada delta se resuelve— y la matriz de §10 como mapa del punto de partida. La productivización (paso de la topología de una máquina al despliegue edge/servidor, §6.4) es brecha de otra naturaleza: no de funcionalidad faltante, sino de configuración de despliegue que el diseño ya admite sin cambios estructurales.
+
+---
+
+## 12. Anexos
+
+### 12.1 Glosario
+
+| Término | Definición |
+|---|---|
+| Approach (acceso) | Una de las ramas que entran a la intersección (norte, sur, este, oeste). |
+| Fase | Conjunto de approaches con verde simultáneo. |
+| Jam level | Nivel ordinal de congestión 0-5 presentado al usuario; se deriva del ratio continuo velocidad/flujo-libre (D-009). |
+| Webster | Algoritmo clásico de cálculo de ciclo óptimo bajo demanda estable. |
+| MaxPressure | Algoritmo reactivo que elige la próxima fase por presión de colas. |
+| Capa MTC | Capa de cumplimiento normativo del Manual MTC peruano que corrige la salida estratégica (RNF-SAF-02). |
+| Estado vigente | La estrategia actualmente activada en una intersección, con su timestamp de activación (`engine_active_state`, §4). |
+| Delta | Discrepancia entre lo diseñado/especificado y lo construido, registrada por la auditoría. |
+| As-designed | Postura del documento: describe la arquitectura objetivo sin marcar avance en la prosa (§0.1). |
+
+### 12.2 Referencias a documentos del proyecto
+
+Los documentos fuente del corpus (backlog, requisitos, decisiones, auditoría, planificación, modelo de datos, teoría del motor) se enumeran en §0.3. El SDD corresponde a los artefactos `plan.md` + `data-model.md` del proceso Spec Kit adoptado en modo brownfield (`SPECKIT_MAPPING.md`).
+
+### 12.3 Referencias técnicas
+
+- Webster, F. V. (1958). *Traffic signal settings*. Road Research Laboratory.
+- Varaiya, P. (2013). *Max pressure control of a network of signalized intersections*. Transportation Research Part C, 36, 177-195.
+- Koonce, P., et al. (2008). *Traffic Signal Timing Manual* (FHWA-HOP-08-024). Federal Highway Administration.
+- Lopez, P. A., et al. (2018). *Microscopic traffic simulation using SUMO*. IEEE ITSC.
+- Manual de Dispositivos de Control del Tránsito (R.D. N.° 26-2024-MTC/18, octubre 2024). Ministerio de Transportes y Comunicaciones del Perú.
+- ISO/IEC 25010:2023. *Systems and software Quality Requirements and Evaluation (SQuaRE) — Product quality model.*
+- Kruchten, P. (1995). *Architectural Blueprints — The "4+1" View Model of Software Architecture.* IEEE Software.
+
+---
+
+# DHU-021 — Decisiones metodológicas de redacción del SDD (consolidada)
+
+> **Naturaleza:** decisión metodológica consolidada, análoga a DHU-014/016/017/019. Registra las meta-decisiones de redacción del propio SDD, tomadas durante su diseño. No es contenido del cuerpo As-designed; se ubica en `DECISIONS_HU.md` al cerrar el SDD. Se reproduce aquí como anexo de cierre del documento para trazabilidad.
+>
+> **Verificación previa a asignar el ID:** confirmar que DHU-021 sigue libre en `DECISIONS_HU.md` (última cerrada al iniciar: DHU-020).
+
+**Contexto.** La redacción del SDD generó decisiones de método —postura del documento, proceso, estructura, tratamiento de conflictos del corpus— que no son decisiones de producto (serie D) ni del backlog (serie DHU previas), sino del propio acto de documentar la arquitectura. Se acordó acumularlas y consolidarlas en una sola DHU al cerrar el SDD.
+
+**Decisiones consolidadas:**
+
+1. **Conciliación As-designed / matriz rica confinada a §10.** El cuerpo (§1–§9) es As-designed puro; el estado y los deltas se confinan a §10 (matriz bidireccional HU/TTH ↔ componente ↔ estado ↔ delta) y §11 (brecha). Honra simultáneamente As-designed, la matriz con estado/delta y la separación de avance, y es la forma de menor confusión para los agentes de código.
+
+2. **Formato Markdown, construcción incremental y convenciones de cita.** Único archivo Markdown construido sección por sección con verificación de coherencia antes de avanzar; convenciones de cita uniformes con el corpus (`D-00N`, `DHU-0NN`, `HU-NN`, `TTH-NN`, `RF-0NN`, `RNF-XXX-NN`, `CA/CT-NN.N`, `Delta-NN`; rutas en estilo de código).
+
+3. **Proceso Spec Kit + estructura híbrida 4+1 / ISO 25010 / ADR.** Spec Kit gobierna el proceso (Spec→Plan→Tasks→Implement); el híbrido 4+1 (vistas) + ISO 25010 (calidad) + ADR ligero (decisiones) gobierna la estructura interna. El SDD corresponde a `plan.md` + `data-model.md`.
+
+4. **Adopción brownfield de Spec Kit (mapear, no regenerar).** El corpus curado se mapea a las plantillas; no se ejecutan comandos generativos. Preserva la trazabilidad fina y las 20 DHU.
+
+5. **`ARCHITECTURE_TARGET.md` archivado en legacy, no citado.** Versión pre-Inception (Azure/microservicios/YOLOv8/motor de reglas/MongoDB) que contradice D-001, D-003, TTH-10 y la auditoría. Se archiva en `legacy/` y no se menciona en el SDD; la narrativa de evolución vive en `EVOLUCION_TESIS.md`.
+
+6. **Colisión de IDs D entre el audit viejo y `DECISIONS.md` canónico.** El SDD usa la numeración canónica de `DECISIONS.md`; las decisiones del `DATA_MODEL_AUDIT.md` (2026-05-03) se citan por contenido y fecha, no por su ID-D, para evitar ambigüedad.
+
+7. **Notación C4 reservada al informe; SDD no la usa.** El SDD usa el formato del híbrido 4+1 (prosa + tablas + diagramas propios), sin C4; C4 se reserva para el informe/sustentación.
+
+8. **SDD como fuente canónica de componentes; el C4 del informe deriva de él.** El SDD es la fuente de verdad de la descomposición; si el informe usa C4, deriva del SDD (mismos nombres, misma descomposición), evitando divergencia.
+
+9. **Profundidad de §3 a dos niveles; detalle DDD a la vista de desarrollo.** §3 se descompone en contenedores + interior del núcleo; la estructura DDD interna se documenta en la vista de desarrollo, no en §3.
+
+10. **Estado vigente e historial del motor como dos entidades, con `jsonb` para las fases (§4).** `motor_decisions` (historial append-only) y `engine_active_state` (puntero mutable, FK a la decisión activada); las fases se persisten como `jsonb` —no como tabla normalizada— por fidelidad al sistema real (el motor recibe las fases por payload, no las lee de BD).
+
+11. **`motor_decisions` relacional pese a su naturaleza temporal (§4).** El volumen de una intersección piloto no justifica hypertable; la conversión se difiere a productivización. Defendible frente al contraste con `waze_jams` por volumen y origen (sistema propio vs. feed externo).
+
+12. **Frontera grafo↔intersección diferida (§4.3).** El adaptador cámara→approach→fase y la conversión nivel→flujo no se esquematizan; las decisiones del motor se anclan a `graph_nodes` y el interior de la intersección queda como extensión futura, coherente con el alcance.
+
+13. **Estado vigente como entidad propia con puntero, no como vista derivada (§4).** Separa el evento de cálculo (`decided_at`) del de activación (`activated_at`), semánticas que una vista no captura.
+
+14. **SSE como mecanismo del canal de tiempo real (§5.2).** Elegido sobre WebSocket (excedente para flujo unidireccional) y polling (desperdicia peticiones); coherente con HTTP/SSE de D-004. Validado por Delta-07, que sugiere SSE como default razonable.
+
+15. **Estado vigente leído vía API desde BD, sin cache en memoria (§5.2).** Suficiente para la intersección piloto; el cache se difiere a productivización.
+
+16. **Dos loops de primera clase, operativo y de validación SUMO (§5).** Comparten núcleo y difieren solo en la fuente de estado; materializan la frontera de §3.3 en la vista de proceso.
+
+17. **Topología vigente de una máquina con Docker Compose; mapeo edge/servidor documentado, no entregado (§6).** El plan de productivización no exige cambios estructurales, solo de configuración de despliegue.
