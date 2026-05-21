@@ -20,7 +20,7 @@ Fecha de instalación: 2026-05-20 · Branch: `feature/SDD` · Spec Kit: v0.8.11
 | `specs/NNN-*/spec.md` | `documentation/lean-inception/2-backlog/HU_BLOQUE_A.md` … `HU_BLOQUE_F.md`, `HU_LITE.md`, `HU_MVP2.md`; `documentation/lean-inception/3-requisitos/REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md`, `RF_RNF_LITE.md`; `documentation/lean-inception/BACKLOG_OVERVIEW.md` | El "qué" y el "por qué": 21 HU + 22 RF + 53 RNF. |
 | `specs/NNN-*/plan.md` | **`documentation/sdd/SDD_CEREBROVIAL.md`** (SDD verificado contra el repo, 2026-05-20) | Fuente única del plan técnico (estructura híbrida 4+1). `ARCHITECTURE_TARGET.md` quedó archivado en `legacy/` (DHU-021 §5) y NO se usa. |
 | `specs/NNN-*/data-model.md` | §4 de `documentation/sdd/SDD_CEREBROVIAL.md` + `documentation/docs/DATA_MODEL.md`; `documentation/docs/DATA_MODEL_AUDIT.md` | Modelo heredado + las dos entidades nuevas (`motor_decisions`, `engine_active_state`) verificadas; estado vigente (DHU-020). |
-| `specs/NNN-*/tasks.md` | `documentation/lean-inception/planificacion/REPORTE_PLANIFICACION_SPRINT_4.md` (+ `DISTRIBUCION_SPRINTS.md`, `HU_PRIORIZADAS_SPRINTS.md`, `PROTOCOLO_DISTRIBUCION_SPRINTS.md`) | Desglose de tareas del sprint vigente. |
+| `specs/NNN-*/tasks.md` | `documentation/lean-inception/planificacion/REPORTE_PLANIFICACION_SPRINT_4.md` + `ESTIMACION_SP.md` + `AUDITORIA_HU_CODIGO.md` + `MOSCOW_RATIFICADA.md` (+ `DISTRIBUCION_SPRINTS.md`, `HU_PRIORIZADAS_SPRINTS.md`, `PROTOCOLO_DISTRIBUCION_SPRINTS.md`) | Inventario de 32 elementos (estado + MoSCoW + SP) + Sprint 4 vigente. |
 | Estado real / auditoría (insumo de `/speckit-analyze` y matriz de trazabilidad) | `documentation/lean-inception/planificacion/AUDITORIA_HU_CODIGO.md` | Auditoría HU↔código (deltas implementación vs spec). |
 
 > **Corrección respecto del prompt original:** los nombres "ideales" del prompt
@@ -72,8 +72,17 @@ sesión de verificación + poblado:
 
 ## 4. Estado del poblado
 
-`specs/001-cerebrovial-mvp/plan.md` y `specs/001-cerebrovial-mvp/data-model.md` se pueblan
-**mapeando** desde el SDD verificado y `DATA_MODEL.md` — **no** se regeneran con comandos
-generativos (`/speckit-plan`, `/speckit-specify`, etc.). El `constitution.md`, el `spec.md`
-y el `tasks.md` quedan pendientes de poblado en una sesión posterior, según la tabla de §1.
-La regla brownfield sigue vigente: mapear, no regenerar.
+**Los cinco artefactos están poblados (2026-05-20), todos por mapeo brownfield — sin comandos
+generativos.** La regla sigue vigente: mapear, no regenerar.
+
+| Artefacto | Estado | Fuente del mapeo |
+|---|---|---|
+| `.specify/memory/constitution.md` | ✓ poblado (2026-05-20) | `DECISIONS.md` (D-001…009) + `DECISIONS_HU.md` (DHU-001…022). 22 artículos: Tít. I (8, D-002+D-006 fusionados) + Tít. II (Arts. 9-22, 14 artículos cubriendo las 22 DHU por fusión y agrupación). |
+| `specs/001-cerebrovial-mvp/spec.md` | ✓ poblado (2026-05-20) | `BACKLOG_OVERVIEW.md` + `HU_BLOQUE_*`/`HU_MVP2` + `RF_RNF_LITE.md`. 21 HU por bloque/Persona; IDs nativos; CAs Gherkin enlazados, no copiados. |
+| `specs/001-cerebrovial-mvp/plan.md` | ✓ poblado (2026-05-20) | `SDD_CEREBROVIAL.md`. |
+| `specs/001-cerebrovial-mvp/data-model.md` | ✓ poblado (2026-05-20) | `SDD_CEREBROVIAL.md` §4 + `DATA_MODEL.md`. |
+| `specs/001-cerebrovial-mvp/tasks.md` | ✓ poblado (2026-05-20) | `REPORTE_PLANIFICACION_SPRINT_4.md` + `ESTIMACION_SP.md` + `AUDITORIA_HU_CODIGO.md` + `MOSCOW_RATIFICADA.md`. Inventario de 32 elementos con nota de protección; estado reverificado contra HEAD (sin avance de construcción tras la auditoría del 2026-05-18). |
+
+Regla de fuente común a los cinco: cada artefacto referencia su fuente por ID y archivo; no
+duplica texto Gherkin, justificaciones ni catálogos. El SDD sigue siendo canónico de arquitectura
+y `DECISIONS.md`/`DECISIONS_HU.md` de las decisiones.
