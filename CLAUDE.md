@@ -122,3 +122,8 @@ Antes de clonar o pull, instalar git-lfs y configurarlo:
 
 Sin LFS, los archivos binarios van a venir como pointers de texto y
 `docker compose up` va a fallar al cargar modelos.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
