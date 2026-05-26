@@ -7,7 +7,7 @@
 > **Relación con `DECISIONS.md`:** El documento `DECISIONS.md` registra decisiones técnicas del producto (arquitectura, modelo, datos). Este documento registra decisiones metodológicas sobre cómo se redacta el backlog. Los códigos no se solapan: `D-xxx` para técnicas, `DHU-xxx` para HUs.
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-05-18 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
+> **Última actualización:** 2026-05-20 (**DHU-021 y DHU-022 agregadas.** DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
 
 ---
 
@@ -34,6 +34,9 @@
 | DHU-017 | Decisiones de redacción del MVP2 (clasificación HU/TTH de las 4 features pendientes, numeración compactada, F16 como HU única, F19 sustrato inglobado, F28 como HU única con Operador protagonista, alcance del escalamiento, alcance del drill-down de F15, conexión F15 ↔ HU-16/HU-17, sustrato inglobado vs TTH, política MVP2 heredada, robustez Caso B) | 2026-05-16 | Cerrada |
 | DHU-018 | Patrón "Resumen ejecutivo" agregado retroactivamente al inicio de cada HU del Product Backlog | 2026-05-17 | Cerrada |
 | DHU-019 | Decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF): adopción de ISO/IEC 25010:2023, reasignación de categorías DHU-007, plantillas unificadas, derivación de RF, resolución de inconsistencias, política aditiva, nota RF vs RNF-FUN, modelo de dos documentos | 2026-05-18 | Cerrada |
+| DHU-020 | Semántica de ControlView: cierre de Delta-08 (vista pasiva de HU-05 prevalece, playground preservado como herramienta de Administrador, Delta-07/08/09 en bloque, persistencia de estado vigente autorizada como cambio estructural) | 2026-05-20 | Cerrada |
+| DHU-021 | Decisiones metodológicas de redacción del SDD (17 de redacción + 4 ajustes derivados de la verificación SDD↔repo: node_id FK con resolución al persistir, campos del motor conservados, ratificación sin-lazo-cerrado, Gemini fuera de la arquitectura objetivo) | 2026-05-20 | Cerrada |
+| DHU-022 | Nomenclatura de roles del sistema: `operator/manager/admin` como claims técnicos canónicos + labels en español en el frontend (cierre de Delta-02) | 2026-05-20 | Cerrada |
 
 ---
 
@@ -2175,6 +2178,194 @@ Resumen ejecutivo de las nueve subsecciones:
 
 ---
 
+## DHU-020 — Semántica de ControlView: cierre de Delta-08 y refactor en bloque hacia vista pasiva
+
+**Fecha:** 2026-05-20.
+**Tipo:** Decisión metodológica de alineación especificación↔código (cierre de discrepancia de auditoría).
+**Estado:** Cerrada.
+**Origen:** Delta-08 de `AUDITORIA_HU_CODIGO.md`, clasificado como riesgo R1 en `REPORTE_PLANIFICACION_SPRINT_4.md`. Evidencia consolidada en `DELTA_08_ANALISIS.md` (análisis de campo sobre el repositorio vivo `CerebroVial/`).
+**Documentos afectados al cierre:** `AUDITORIA_HU_CODIGO.md` (cierre de Delta-08), `REPORTE_PLANIFICACION_SPRINT_4.md` (resolución de R1), y este registro en `DECISIONS_HU.md`. No se modifica `HU_BLOQUE_B.md`: HU-05 se mantiene tal cual está redactada.
+
+### Contexto
+
+HU-05 ("Estrategia activa") especifica una **vista pasiva del estado vigente del motor adaptativo**: el Operador observa qué estrategia corre en producción, con qué parámetros y desde cuándo, sin disparar ni alterar la decisión del motor. La semántica pasiva está ratificada de forma redundante en la propia HU (resumen ejecutivo, notas clave, verbo "visualizar") y de forma cruzada por HU-06, HU-07 y HU-08, que referencian a HU-05 como "vista pasiva del estado actual".
+
+El código actual (`frontend_ui/src/components/views/control/ControlView.tsx` y su familia) implementa, en cambio, un **playground interactivo request-response**: el usuario edita un estado de intersección hipotético (vía editor de fases, slider de tiempo perdido, presets de demostración) y pulsa "Recomendar" para obtener un cálculo del motor mediante `POST /control/recommend`. El endpoint es una función pura sin estado.
+
+El análisis de campo (`DELTA_08_ANALISIS.md`, Hallazgo #3) estableció que el delta no es de presentación sino de **semántica de la fuente y dirección del flujo**, y reveló un hecho determinante: **el backend no tiene la noción de "estrategia vigente en producción"**. No existe un motor corriendo solo cuya decisión vigente se persista; existe una calculadora invocada a demanda sobre estados inventados. Por tanto, alinear el código a HU-05 no es solo retirar interactividad del frontend, sino *construir* el concepto de estado vigente persistido por intersección con timestamp de activación.
+
+### Decisión
+
+#### Subsección A — Semántica normativa: gana la vista pasiva. HU-05 se mantiene sin enmiendas.
+
+La especificación es la fuente normativa del proyecto y prevalece sobre la implementación. HU-05 conserva su redacción actual (cabecera, descripción y CA-05.1 a CA-05.5). El código se alinea a la HU, no a la inversa.
+
+Se descarta explícitamente la opción de enmendar HU-05 para legitimar la semántica playground, por tres razones:
+
+1. HU-05 es el núcleo del Objetivo 3 del producto (naturaleza adaptativa). Convertirla en simulador vaciaría su justificación declarada: trazabilidad operativa y coherencia percibida del Operador.
+2. HU-06, HU-07 y HU-08 referencian cruzadamente a HU-05 como vista pasiva. Enmendarla forzaría a deshacer la coherencia consolidada del Bloque B completo.
+3. CA-05.2 (timestamp de activación) y CA-05.3 (auto-update ≤5 s) solo tienen sentido sobre un estado que evoluciona por sí mismo; bajo semántica playground quedarían huérfanas.
+
+#### Subsección B — Destino del playground: se preserva como herramienta de Administrador / validación, no se elimina.
+
+El playground actual (edición de estado, presets pedagógicos, métricas instructivas en vivo, tarjeta del caso `webster_infeasible`) **no se destruye**. Se reubica como vista interna separada, fuera del flujo del Operador, accesible bajo rol de Administrador o como herramienta de validación.
+
+Fundamento:
+
+- **Valor docente para la tesis.** Los presets, las métricas instructivas (Y = Σflow/sat, umbral 1500, badge PEAK/OFF-PEAK) y la tarjeta del caso patológico de Webster demuestran *cómo decide el motor*. Es evidencia construida, directamente útil en la defensa. Eliminarla es costo sin retorno.
+- **Costo de backend idéntico.** Las opciones "eliminar" y "preservar" requieren exactamente el mismo trabajo nuevo de backend (estado vigente persistido + endpoint de lectura + infraestructura realtime). La diferencia es que eliminar además invierte esfuerzo en *destruir* lo que ya funciona. Preservar evita ese esfuerzo de destrucción.
+- **Consistencia con la planificación.** Coincide con la nota informal de R1 del Sprint 4 ("vista pasiva + tab admin oculto con el playground actual").
+
+`POST /control/recommend` se conserva como endpoint del playground. La nueva vista pasiva consume un endpoint distinto de lectura del estado vigente (ver Subsección D).
+
+#### Subsección C — Pendiente declarado: el playground requiere un elemento de backlog propio.
+
+El playground reubicado no puede vivir huérfano en el SDD. Queda pendiente de formalización un elemento de backlog (HU de Administrador o TTH de herramienta de validación) que lo cubra. **No se redacta en esta DHU**; se declara como pendiente explícito para que el SDD no documente un componente sin trazabilidad a backlog. Identificador provisional del pendiente: la herramienta de exploración del motor adaptativo, a clasificar HU/TTH en sesión dedicada.
+
+#### Subsección D — Alcance del refactor: se abordan Delta-07, Delta-08 y Delta-09 en un solo bloque.
+
+Los tres deltas tocan los mismos archivos (`ControlView.tsx`, `RecommendationPanel.tsx`, `controlService.ts`) y son interdependientes:
+
+- **Delta-08** (este): semántica pasiva vs. playground.
+- **Delta-07**: ausencia de infraestructura realtime. CA-05.3 (auto-update ≤5 s) es imposible sin polling o SSE/WebSocket, hoy inexistentes.
+- **Delta-09**: el "Log técnico (para operador C4)" usa lenguaje técnico crudo, en conflicto con el lenguaje de dominio que piden HU-05 y HU-06.
+
+Se decide abordarlos **en bloque**, en un único refactor, en lugar de secuencialmente. Abrir y reescribir los mismos componentes tres veces sería retrabajo. El refactor en bloque produce: (1) la vista pasiva de solo lectura sobre estado vigente, (2) con actualización automática vía el canal realtime nuevo, (3) con lenguaje de dominio en lugar de log técnico.
+
+Componentes reutilizables sin reescritura semántica: `TrafficLightCycle.tsx`, `TimingBar.tsx`, `ModeSelector.tsx` (visualizan modo y tiempos, agnósticos al origen del dato).
+
+#### Subsección E — Reconocimiento explícito del cambio estructural de backend.
+
+Construir "estado vigente persistido por intersección con timestamp de activación" es un cambio estructural que probablemente implica modificación del modelo de persistencia. `CLAUDE.md` instruye parar y preguntar ante cambios estructurales o de modelo de BD. **Esta DHU es ese punto de decisión deliberada.** Queda registrado que la creación de la persistencia de estrategia vigente se autoriza conscientemente como parte del cierre de Delta-08, y no como un efecto colateral no examinado de un refactor de frontend.
+
+El diseño concreto de esa persistencia (entidad, esquema, política de retención frente a HU-08 que ya cubre el registro histórico) se cierra en el SDD, no aquí. Esta DHU autoriza su existencia y fija su propósito; el SDD define su forma.
+
+### Criterios de aceptación afectados
+
+| CA | Estado tras DHU-020 |
+|---|---|
+| CA-05.1 (nombre + tiempos por acceso) | Se mantiene. La fuente pasa a ser el estado vigente real, no el formulario. Etiqueta de estrategia en lenguaje de dominio (DHU-006), no nombre técnico del algoritmo. |
+| CA-05.2 (timestamp de activación) | Se mantiene. Requiere la persistencia de estado vigente autorizada en Subsección E. |
+| CA-05.3 (auto-update ≤5 s) | Se mantiene. Requiere la infraestructura realtime del bloque Delta-07 (Subsección D). |
+| CA-05.4 (última estrategia conocida "no confirmada", DHU-005 Caso B) | Se mantiene. El manejo de errores actual (semántica de fallo de cálculo de un request) se sustituye por semántica de fuente vigente no confirmada. |
+| CA-05.5 (redirección a login) | Se mantiene. Hoy no implementada; entra en el alcance del refactor. |
+
+### Relación con decisiones previas
+
+- **DHU-005 (Caso B):** CA-05.4 aplica la política conservadora de fuente no confirmada. Sin cambios.
+- **DHU-006 (vocabulario agnóstico a implementación):** refuerza el cambio de etiquetas técnicas (`webster`/`max_pressure`) a lenguaje de dominio en la vista del Operador.
+- **DHU-013/014/015 (clasificación HU/TTH):** patrón seguido por esta DHU. El pendiente de Subsección C se clasificará con el mismo criterio.
+
+### Preguntas que se cierran al implementar (no se renegocian, se resuelven en SDD)
+
+- Diseño de la persistencia de estado vigente (entidad, esquema, relación con el registro histórico de HU-08).
+- Mecanismo realtime concreto (polling vs. SSE vs. WebSocket) para CA-05.3.
+- Ubicación exacta del playground reubicado (tab de AdminView vs. ruta separada gateada por rol).
+- Clasificación HU/TTH del pendiente de Subsección C.
+
+### Lo que NO cambia con DHU-020
+
+- **HU-05 a HU-08 conservan su redacción.** DHU-020 no reescribe ninguna HU; ratifica la semántica pasiva ya redactada y alinea el código a ella.
+- **Las TTH** no se modifican. El refactor consume sustrato técnico existente (TTH-10, motor adaptativo) sin reabrir su definición.
+- **Las decisiones técnicas D-001 a D-009** se mantienen. El diseño concreto de la persistencia de estado vigente se cierra en el SDD citándolas, sin reabrirlas.
+- **El alcance del Sprint 4** no cambia: el refactor de HU-05 ya estaba comprometido (item #4, 3 SP). DHU-020 fija su semántica, no agrega trabajo no planificado salvo el reconocimiento del backend nuevo que ya estaba implícito en CA-05.2/05.3.
+
+### Documentos relacionados
+- `AUDITORIA_HU_CODIGO.md` — Delta-08 (origen); se marca cerrado apuntando a DHU-020.
+- `REPORTE_PLANIFICACION_SPRINT_4.md` — Riesgo R1 (origen); se resuelve apuntando a DHU-020.
+- `HU_BLOQUE_B.md` — HU-05, HU-06, HU-07, HU-08 (semántica pasiva ratificada cruzadamente).
+- `DECISIONS_HU.md` — DHU-005 (Caso B de robustez), DHU-006 (vocabulario agnóstico), DHU-013/014/015 (patrón de clasificación).
+- `DECISIONS.md` — D-001 a D-009 (insumo del diseño de persistencia en SDD).
+- `CLAUDE.md` — guardia de cambios estructurales / modelo de BD, invocada en la Subsección E.
+
+---
+
+## DHU-021 — Decisiones metodológicas de redacción del SDD
+
+**Fecha:** 2026-05-20.
+**Tipo:** Decisión metodológica consolidada sobre la redacción de un documento del proyecto (análoga a DHU-016, DHU-017 y DHU-019, que consolidaron las decisiones de redacción de los Bloques F, MVP2 y del documento RF/RNF respectivamente).
+**Estado:** Cerrada.
+**Origen:** La redacción del SDD (`documentation/sdd/SDD_CEREBROVIAL.md`) en el marco híbrido 4+1 / ISO 25010 / ADR generó decisiones de método —postura del documento, proceso, estructura, tratamiento de conflictos del corpus— que no son decisiones de producto (serie `D-`) ni del backlog (serie `DHU-` previas), sino del propio acto de documentar la arquitectura. Se acordó acumularlas durante la redacción y consolidarlas en una sola DHU al cerrar el SDD. Una segunda tanda de ajustes surgió de la sesión de verificación del SDD contra el repositorio vivo `CerebroVial/` (Claude Code, 2026-05-20).
+**Hogar canónico:** Esta entrada es la fuente única de DHU-021. El SDD ya no reproduce el texto completo; conserva un puntero a este registro.
+
+### Contexto
+
+El SDD se redactó conversacionalmente y se cerró en dos movimientos: primero la redacción del cuerpo (§0–§12 + vista de desarrollo), que produjo decisiones de método; después una verificación punto por punto contra el código real, que corrigió afirmaciones inferidas y disparó ajustes de diseño. Ambos movimientos generan meta-decisiones sobre *cómo se documenta la arquitectura*, que esta DHU consolida sin reabrir el contenido sustantivo de HUs, TTH ni decisiones técnicas `D-`.
+
+### Decisión — Grupo 1: Decisiones de redacción del SDD (1–17)
+
+1. **Conciliación As-designed / matriz rica confinada a §10.** El cuerpo (§1–§9) es As-designed puro; el estado y los deltas se confinan a §10 (matriz bidireccional HU/TTH ↔ componente ↔ estado ↔ delta) y §11 (brecha). Honra simultáneamente la postura As-designed, la matriz con estado/delta y la separación de avance, y es la forma de menor confusión para los agentes de código.
+2. **Formato Markdown, construcción incremental y convenciones de cita.** Único archivo Markdown construido sección por sección con verificación de coherencia antes de avanzar; convenciones de cita uniformes con el corpus (`D-00N`, `DHU-0NN`, `HU-NN`, `TTH-NN`, `RF-0NN`, `RNF-XXX-NN`, `CA/CT-NN.N`, `Delta-NN`; rutas en estilo de código).
+3. **Proceso Spec Kit + estructura híbrida 4+1 / ISO 25010 / ADR.** Spec Kit gobierna el proceso (Spec→Plan→Tasks→Implement); el híbrido 4+1 (vistas) + ISO 25010 (calidad) + ADR ligero (decisiones) gobierna la estructura interna. El SDD corresponde a `plan.md` + `data-model.md`.
+4. **Adopción brownfield de Spec Kit (mapear, no regenerar).** El corpus curado se mapea a las plantillas; no se ejecutan comandos generativos. Preserva la trazabilidad fina y las 20 DHU.
+5. **`ARCHITECTURE_TARGET.md` archivado en legacy, no citado.** Versión pre-Inception (Azure/microservicios/YOLOv8/motor de reglas/MongoDB) que contradice D-001, D-003, TTH-10 y la auditoría. Se archiva en `legacy/` y no se menciona en el SDD; la narrativa de evolución vive en `EVOLUCION_TESIS.md`.
+6. **Colisión de IDs `D-` entre el audit viejo y `DECISIONS.md` canónico.** El SDD usa la numeración canónica de `DECISIONS.md`; las decisiones del `DATA_MODEL_AUDIT.md` (2026-05-03) se citan por contenido y fecha, no por su ID-D, para evitar ambigüedad.
+7. **Notación C4 reservada al informe; el SDD no la usa.** El SDD usa el formato del híbrido 4+1 (prosa + tablas + diagramas propios), sin C4; C4 se reserva para el informe/sustentación.
+8. **SDD como fuente canónica de componentes; el C4 del informe deriva de él.** El SDD es la fuente de verdad de la descomposición; si el informe usa C4, deriva del SDD (mismos nombres, misma descomposición), evitando divergencia.
+9. **Profundidad de §3 a dos niveles; detalle DDD a la vista de desarrollo.** §3 se descompone en contenedores + interior del núcleo; la estructura DDD interna se documenta en la vista de desarrollo, no en §3.
+10. **Estado vigente e historial del motor como dos entidades, con `jsonb` para las fases (§4).** `motor_decisions` (historial append-only) y `engine_active_state` (puntero mutable, FK a la decisión activada); las fases se persisten como `jsonb` —no como tabla normalizada— por fidelidad al sistema real (el motor recibe las fases por payload, no las lee de BD).
+11. **`motor_decisions` relacional pese a su naturaleza temporal (§4).** El volumen de una intersección piloto no justifica hypertable; la conversión se difiere a productivización. Defendible frente al contraste con `waze_jams` por volumen y origen (sistema propio vs. feed externo).
+12. **Frontera grafo↔intersección diferida (§4.3).** El adaptador cámara→approach→fase y la conversión nivel→flujo no se esquematizan; las decisiones del motor se anclan a `graph_nodes` y el interior de la intersección queda como extensión futura, coherente con el alcance.
+13. **Estado vigente como entidad propia con puntero, no como vista derivada (§4).** Separa el evento de cálculo (`decided_at`) del de activación (`activated_at`), semánticas que una vista no captura.
+14. **SSE como mecanismo del canal de tiempo real (§5.2).** Elegido sobre WebSocket (excedente para flujo unidireccional) y polling (desperdicia peticiones); coherente con HTTP/SSE de D-004. Validado por Delta-07, que sugiere SSE como default razonable.
+15. **Estado vigente leído vía API desde BD, sin cache en memoria (§5.2).** Suficiente para la intersección piloto; el cache se difiere a productivización.
+16. **Dos loops de primera clase, operativo y de validación SUMO (§5).** Comparten núcleo y difieren solo en la fuente de estado; materializan la frontera de §3.3 en la vista de proceso.
+17. **Topología vigente de una máquina con Docker Compose; mapeo edge/servidor documentado, no entregado (§6).** El plan de productivización no exige cambios estructurales, solo de configuración de despliegue.
+
+### Decisión — Grupo 2: Ajustes derivados de la verificación SDD↔repo (V1–V4)
+
+Estos cuatro ajustes nacieron de confrontar el SDD contra el código real (no de la redacción), y se registran separados para que su procedencia sea visible. Tocan el diseño de §4, §5 y §7/§11, y se aplicaron al cuerpo del SDD en la misma sesión.
+
+- **V1 — `node_id` como FK a `graph_nodes` resuelto en el write-path (§4.2.1).** La verificación halló que el motor real emite un `intersection_id` opaco, sin FK ni consulta a la base de datos (es una calculadora sin estado). Se decide conservar `node_id` como FK a `graph_nodes` en `motor_decisions`/`engine_active_state` —por auditabilidad y anclaje al grafo— y hacer que la capa de persistencia resuelva y valide el `intersection_id` del motor contra `node_id` al escribir. El anclaje al grafo es responsabilidad del write-path, no del contrato del endpoint.
+- **V2 — Conservar `flow_total`, `y_load_factor` e `inputs_snapshot` capturándolos del cálculo interno (§4.2.1).** La verificación halló que el endpoint `POST /control/recommend` no serializa esos tres campos (los calcula internamente pero no los devuelve). Se decide mantenerlos como columnas de `motor_decisions` —por la reproducibilidad/auditabilidad de RNF-SEC-01 (§8.3)— capturándolos del cálculo interno del motor y del snapshot del payload al persistir, no del cuerpo de la respuesta. Cerrar esa brecha es trabajo del componente de control (Delta-10).
+- **V3 — Ratificación de que el sistema no opera en lazo cerrado autónomo (§5.1).** La verificación confirmó que el motor es una calculadora invocada a demanda. Se ratifica como **postura deliberada de la arquitectura objetivo** (no estado interino): el motor calcula a demanda y el operador activa; el lazo cerrado proactivo queda como trabajo futuro fuera del alcance del MVP (frontera de §4.3).
+- **V4 — Integración Gemini fuera de la arquitectura objetivo; remoción diferida como saneamiento (§11; Delta-13).** La verificación confirmó una integración del frontend con la API de Gemini (`gemini-2.5-flash`) para reportes de incidentes, sin HU que la respalde y con envío de datos a un tercero (implicación de privacidad real). Se decide que la arquitectura objetivo del SDD **no la contempla**. La remoción del código del frontend es una **tarea de saneamiento diferida**, no ejecutada por esta decisión: basta con que el diseño declare que no es parte de la arquitectura objetivo. Se descarta "preservar y decidir luego" (deja viva una integración con riesgo de privacidad sin dueño) y "elevar a HU formal" (formalizar una dependencia de un tercero con datos de incidentes es una decisión de producto que no se toma de pasada en una verificación de SDD).
+
+### Lo que NO cambia con DHU-021
+
+- **No reescribe ninguna HU, TTH ni decisión técnica `D-`.** Es metodológica y de diseño de la documentación; el contenido sustantivo del backlog permanece.
+- **La nomenclatura de roles (Delta-02) NO entra aquí.** Es una decisión de producto, no de redacción del SDD; se resuelve en DHU-022 para no mezclar naturalezas.
+
+### Documentos relacionados
+- `documentation/sdd/SDD_CEREBROVIAL.md` — documento cuya redacción y verificación consolida esta DHU; conserva un puntero a este registro.
+- `documentation/sdd/SPECKIT_MAPPING.md` — mapeo brownfield del corpus a las plantillas de Spec Kit.
+- `DECISIONS.md` — D-001 a D-009 (insumo del cuerpo del SDD).
+- `AUDITORIA_HU_CODIGO.md` — origen de Delta-07 (realtime), Delta-10 (persistencia del motor) y Delta-13 (features huérfanas, Gemini).
+
+---
+
+## DHU-022 — Nomenclatura de roles del sistema
+
+**Fecha:** 2026-05-20.
+**Tipo:** Decisión de producto sobre nomenclatura del sistema (cierre de discrepancia de auditoría). Se registra en este documento por convención de trazabilidad de decisiones, pero no es metodológica de redacción de backlog.
+**Estado:** Cerrada.
+**Origen:** Delta-02 de `AUDITORIA_HU_CODIGO.md`.
+
+### Contexto
+
+La auditoría detectó una inconsistencia de nomenclatura de roles entre tres fuentes: la especificación de TTH-01 (CT-01.3) usa claims `role` con valores `operator/manager/admin` (inglés); la migración `99319147948b_add_users_table` define `role` como `sa.String()` sin restricción de enumerado; y el frontend (`AdminView`) muestra etiquetas en español con un tercer vocabulario ("Analista" en lugar de "Manager"/"Gerente"). Las tres Personas del producto definidas en `LEAN_INCEPTION_CEREBROVIAL.md`/`BACKLOG_OVERVIEW.md` son Operador, Gerente y Administrador.
+
+### Decisión
+
+Se fija un único conjunto canónico de identificadores de rol y una política de presentación:
+
+1. **Claims técnicos canónicos en inglés:** `operator`, `manager`, `admin`. Son los valores que viajan en el token/claim y se validan en el backend.
+2. **Mapeo a labels en español en el frontend:** la capa de presentación traduce `operator`→"Operador", `manager`→"Gerente", `admin`→"Administrador". Se elimina el vocabulario divergente ("Analista").
+3. **Alcance de aplicación:** la nomenclatura se fija **antes** de implementar TTH-01 (autenticación), para que el modelo de usuarios, los claims y las vistas por rol nazcan alineados. La columna `role` debería restringirse al conjunto `{operator, manager, admin}` cuando se construya la autenticación.
+
+### Lo que NO cambia con DHU-022
+
+- No reescribe HUs ni TTH; fija la nomenclatura que TTH-01 y las HUs con acceso por rol consumirán.
+- No ejecuta el cambio de código: es la decisión normativa; la implementación corresponde al sprint que aborde TTH-01 (hoy no iniciado, Delta-02).
+
+### Documentos relacionados
+- `AUDITORIA_HU_CODIGO.md` — Delta-02 (origen); se marca cerrado apuntando a DHU-022.
+- `TAREAS_TECNICAS_HABILITADORAS.md` — TTH-01 (autenticación JWT/bcrypt), consumidor de esta nomenclatura.
+- `LEAN_INCEPTION_CEREBROVIAL.md` — Personas (Operador, Gerente, Administrador).
+- `DHU-002` — reformulación del valor en HU de acceso diferenciado por rol (decisión relacionada de redacción).
+
+---
+
 ---
 
 ## Resumen de impacto en los bloques redactados hasta la fecha
@@ -2188,7 +2379,7 @@ Resumen ejecutivo de las nueve subsecciones:
 | Bloque E | (ninguna HU operativa) | TTH-07, TTH-08, TTH-09, TTH-10, TTH-11 | DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH durante la redacción) |
 | Bloque F | HU-16, HU-17 (F12+F13 fusionadas con F30 inglobada; F14) | (ninguna nueva) | DHU-016 (decisiones consolidadas de redacción del Bloque F en diez subsecciones) |
 | MVP2 | HU-18, HU-19, HU-20, HU-21 (HU-09 cerrada previamente en `HU_BLOQUE_B.md`) | (ninguna nueva) | DHU-017 (decisiones consolidadas de redacción del MVP2 en diez subsecciones) |
-| Transversal | — | — | DHU-012 (auditoría de coherencia documental, aplica a todos los bloques y documentos relacionados); DHU-018 (patrón "Resumen ejecutivo" aplicado retroactivamente a las 21 HUs, aditivo y sin modificar contenido sustantivo); DHU-019 (decisiones metodológicas para la redacción del documento RF/RNF, ejecuta la sesión dedicada que DHU-007 declaró pendiente; aditiva sobre las HUs en su pasada de referencias `→ RNF-XXX-NN` sobre los Candidatos a RNF) |
+| Transversal | — | — | DHU-012 (auditoría de coherencia documental, aplica a todos los bloques y documentos relacionados); DHU-018 (patrón "Resumen ejecutivo" aplicado retroactivamente a las 21 HUs, aditivo y sin modificar contenido sustantivo); DHU-019 (decisiones metodológicas para la redacción del documento RF/RNF, ejecuta la sesión dedicada que DHU-007 declaró pendiente; aditiva sobre las HUs en su pasada de referencias `→ RNF-XXX-NN` sobre los Candidatos a RNF); DHU-020 (semántica de ControlView, cierre de Delta-08; decisión de alineación especificación↔código que ratifica la semántica pasiva de HU-05 y alinea el código a ella, sin modificar la redacción de ninguna HU; afecta principalmente al Bloque B vía la cadena HU-05→HU-08); DHU-021 (decisiones metodológicas de redacción del SDD, 17 de redacción + 4 ajustes derivados de la verificación SDD↔repo; consolida el cierre del SDD sin reabrir HUs/TTH/`D-`); DHU-022 (nomenclatura de roles `operator/manager/admin` con labels en español, cierre de Delta-02; decisión de producto que TTH-01 y las HUs con acceso por rol consumirán) |
 
 ---
 
@@ -2209,3 +2400,5 @@ Resumen ejecutivo de las nueve subsecciones:
 - `motor_adaptativo_teoria.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
 - `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` — Documento normativo denso con catálogo de 22 RF y 53 RNF clasificados según ISO/IEC 25010:2023, redactado el 2026-05-18 ejecutando DHU-007 según las decisiones metodológicas consolidadas en DHU-019.
 - `RF_RNF_LITE.md` — Versión lite de lectura humana del documento RF/RNF, derivado conforme al modelo de dos documentos cerrado en DHU-019 subsección H.
+- `AUDITORIA_HU_CODIGO.md` — Auditoría del estado del código por HU/TTH (Fase 4.1); origen de los deltas, incluido Delta-08 cerrado por DHU-020.
+- `REPORTE_PLANIFICACION_SPRINT_4.md` — Síntesis de planificación del Sprint 4; origen del riesgo R1, resuelto por DHU-020.
