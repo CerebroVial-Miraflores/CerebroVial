@@ -152,9 +152,11 @@ Migraciones:
 
 ### Deuda técnica a respetar
 - **No instalar `torch` ni `ultralytics` en `core_management_api`**. El endpoint
-  vivo de predicción usa RandomForest baseline; `torch` aún aparece como deuda
-  C7.5 (código STGCN muerto). Ver SAN-01 en
-  [documentation/lean-inception/4-decisiones/DECISIONS.md](documentation/lean-inception/4-decisiones/DECISIONS.md).
+  vivo de predicción usa RandomForest baseline; el GRU vive en
+  `ia_prediction_service/` (entrenamiento off-line), no en el backend. La
+  visión YOLO vive en `edge_device/`. Esta regla aplica anti-regresión —
+  cualquier HU futura que necesite torch en el core debe revisarse primero.
+  *(Deuda C7.5 / SAN-01 cerrada 2026-05-26 en rama `san-06`.)*
 - No migrar el pipeline de visión a `vision_tracks` / `vision_flows`
   (ver D-006/D-007 en "Decisiones tomadas" arriba).
 

@@ -156,9 +156,9 @@ El ciclo SDD está **operacionalmente sellado**. Cuando se decida avanzar:
 - **Tier 2 — Operacionalización:** `/speckit-taskstoissues` para los 5
   elementos del Sprint 4; `/speckit-checklist` por HU/TTH; convención de
   branching por elemento.
-- **Tier 3 — Saneamiento:** cerrar SAN-01 (torch en core), decidir SAN-02
-  (Gemini: HU formal o remover), cerrar SAN-03 (migration `vision_aggregates`
-  + cableado del aggregator).
+- **Tier 3 — Saneamiento:** ~~cerrar SAN-01 (torch en core)~~ ✓ resuelto
+  (2026-05-26, rama `san-06`); decidir SAN-02 (Gemini: HU formal o remover),
+  cerrar SAN-03 (migration `vision_aggregates` + cableado del aggregator).
 - **Tier 4 — Ejecución:** `/speckit-implement` sobre TTH-01 (Auth JWT +
   bcrypt) y seguir el orden semanal del Sprint 4.
 

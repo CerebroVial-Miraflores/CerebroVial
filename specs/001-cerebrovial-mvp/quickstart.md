@@ -98,7 +98,7 @@ Ejecutar en orden tras `invoke up && invoke seed`:
       estrategia (`webster` o `max_pressure`) y un `reasoning` no vacío.
 - [ ] `http://localhost:5173` carga el SPA y permite seleccionar una intersección.
 - [ ] `invoke test` corre la suite de tests sin fallos. *(El job CI completo
-      tiene gaps documentados en Delta-03 / SAN-01.)*
+      tiene gaps documentados en Delta-03. SAN-01 cerrada el 2026-05-26 en `san-06`.)*
 
 ## Solución de problemas
 
@@ -108,7 +108,7 @@ Ejecutar en orden tras `invoke up && invoke seed`:
 | `alembic` no aplica migraciones en dev | `invoke up-dev` salta el entrypoint | `invoke migrate` a mano |
 | Schema rompe tras `git pull` | Migraciones incompatibles | `invoke db-reset` (destructivo) → `invoke up` → `invoke seed` |
 | Frontend muestra "Asistente CerebroVial" / Reporte IA | Componentes huérfanos Delta-13 (SAN-02) | Saneamiento diferido; ver Art. 21 de constitution |
-| `core` no levanta por dependencia `torch` | `torch` está mal declarado en `core_management_api/requirements.txt` (SAN-01, viola CLAUDE.md) | Saneamiento pendiente; remover de `requirements.txt` y rebuild |
+| `core` no levanta por dependencia `torch` | Si aparece tras un `git pull` de una rama antigua: torch fue removido de `core_management_api/requirements.txt` en `san-06` (2026-05-26, cierre SAN-01). | Rebuild con `invoke up-build --service=core_management_api` |
 
 ## Referencias canónicas
 
