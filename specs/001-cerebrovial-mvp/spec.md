@@ -62,8 +62,9 @@ Fuente de CAs: [HU_BLOQUE_B.md](../../documentation/lean-inception/2-backlog/HU_
   Ve estado presente y predicción en una sola vista integrada.
   RF: RF-005. · RNF: RNF-REL-01 (Casos A+B independientes), RNF-INT-01.
 - **HU-05 — Visualización de la estrategia de control activa** · *Operador* · Must/P1.
-  Ve qué estrategia del motor está vigente (Webster, MaxPressure o respaldo MTC). *Vista pasiva*
-  (DHU-020, cierre de Delta-08). RF: RF-006. · RNF: RNF-REL-01 Caso B, RNF-INT-05.
+  Ve qué estrategia del motor está vigente, incluyendo la indicación de cuándo la decisión
+  proviene del respaldo normativo. *Vista pasiva* (DHU-020, cierre de Delta-08). RF: RF-006.
+  · RNF: RNF-REL-01 Caso B, RNF-INT-05.
 - **HU-06 — Explicación de la razón de selección de estrategia** · *Operador* · Must/P1.
   Entiende, en lenguaje legible, por qué el motor eligió la estrategia activa.
   RF: RF-007. · RNF: RNF-FUN-04 (catálogo de plantillas), RNF-MNT-01, RNF-INT-05.
@@ -191,6 +192,15 @@ umbrales viven en `RF_RNF_LITE.md`):
   extensión del producto, con vistas que abren en ≤3 s (RNF-PERF-04).
 - **SC-005 (transversal):** cumplimiento normativo MTC en cada decisión aplicada al semáforo
   (RNF-SAF-02) y despliegue reproducible con un comando (RNF-FLX-01).
+
+> **Alcance de validación dentro del Sprint 4.** El Sprint 4 vigente (ver `tasks.md` §"Sprint 4
+> vigente") cierra 5 elementos (TTH-01, HU-01, TTH-10, HU-05, TTH-03) que sustentan parcialmente
+> SC-002 (motor + auditabilidad) y SC-005 (capa MTC, deploy reproducible vía TTH-02 ya completo).
+> **SC-001 y SC-003 se validan post-Sprint-4**: SC-001 requiere TTH-07 (Integración SUMO) y
+> TTH-09 (GRU servido), ambos en Trabajos Futuros (`REPORTE_PLANIFICACION_SPRINT_4.md` §7); SC-003
+> requiere TTH-04 (Fallback en cascada), TTH-05 (Tiempos degradado nivel 3) y HU-10 (Alerta
+> transversal), también en Trabajos Futuros. **SC-004** depende de HU-16/17 (Gerente), también
+> postergadas. Esta brecha está documentada y argumentada como R4 del reporte de Sprint 4.
 
 ## Assumptions
 
