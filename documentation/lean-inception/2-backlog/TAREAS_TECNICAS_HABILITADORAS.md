@@ -619,7 +619,7 @@ El motor no implementa lógica de fallback ante caída propia. Cuando el motor n
 
 ### Criterios técnicos de terminado
 
-- **CT-10.1:** Existe un componente AdaptiveEngine que opera como pipeline de dos etapas (selección de estrategia adaptativa + capa MTC de reglas duras) sobre el estado predicho y observado de la intersección. La arquitectura está implementada en `core_management_api/src/control/` y documentada en `motor_adaptativo_teoria.md`. La frontera entre Etapa 1 (Webster/Max Pressure) y Etapa 2 (MTC) está separada en código de forma que la capa MTC sea reemplazable sin tocar las estrategias adaptativas y viceversa.
+- **CT-10.1:** Existe un componente AdaptiveEngine que opera como pipeline de dos etapas (selección de estrategia adaptativa + capa MTC de reglas duras) sobre el estado predicho y observado de la intersección. La arquitectura está implementada en `core_management_api/src/control/` y documentada en `CONTROL.md`. La frontera entre Etapa 1 (Webster/Max Pressure) y Etapa 2 (MTC) está separada en código de forma que la capa MTC sea reemplazable sin tocar las estrategias adaptativas y viceversa.
 
 - **CT-10.2 (Etapa 1 — Estrategia Webster):** Existe implementación de la estrategia Webster (1958) que: (a) calcula el factor de carga `Y = Σ q_i/s_i` sobre las fases, (b) verifica feasibility (`Y < 0.95`), (c) calcula el ciclo óptimo según la fórmula `C = (1.5 · L + 5) / (1 - Y)`, (d) reparte verde efectivo proporcionalmente al peso de cada fase en Y. Cuando `Y ≥ 0.95`, Webster levanta excepción `WebsterInfeasible` que el AdaptiveEngine maneja según la combinación con `flow_total` (ver CT-10.5).
 
@@ -627,7 +627,7 @@ El motor no implementa lógica de fallback ante caída propia. Cuando el motor n
 
 - **CT-10.4 (Etapa 1 — Selección entre Webster y Max Pressure):** El AdaptiveEngine selecciona la estrategia activa según el umbral `flow_total > 1500 veh/h`. Por debajo del umbral activa Webster (modo off-peak); por encima activa Max Pressure (modo peak). El umbral es **parametrizable** en archivo de configuración del backend, calibrable contra simulaciones SUMO en validación cuantitativa, no expuesto al Administrador en MVP1 conforme a DHU-014 subsección C.
 
-- **CT-10.5 (Etapa 1 — Casos de la matriz de selección):** El motor maneja los cuatro casos posibles de combinación `flow_total` × `Y` según el cuadro de la sección 5.2 de `motor_adaptativo_teoria.md`:
+- **CT-10.5 (Etapa 1 — Casos de la matriz de selección):** El motor maneja los cuatro casos posibles de combinación `flow_total` × `Y` según el cuadro de la sección 5.2 de `CONTROL.md`:
 
   | `flow_total` | `Y` | Comportamiento |
   |---|---|---|
@@ -645,7 +645,7 @@ El motor no implementa lógica de fallback ante caída propia. Cuando el motor n
   2. **Recortar.** Si el verde calculado está por encima de `MAX_GREEN`, MTC lo recorta al máximo y registra el ajuste.
   3. **Componer.** MTC compone la secuencia final aplicada al semáforo agregando amarillo físico (`MIN_YELLOW`) y all-red (`ALL_RED`) tras cada verde corregido.
 
-- **CT-10.8 (Output del motor):** El motor devuelve, para cada solicitud de recomendación, un objeto estructurado que incluye al menos: identificador de la intersección, modo activo (`webster` u `max_pressure`), ciclo final en segundos, lista de fases con sus tiempos finales (verde, amarillo, all-red), próxima fase a entrar si aplica (solo en modo Max Pressure), razonamiento legible que explica la decisión, y lista de ajustes aplicados por MTC. El formato JSON canónico está documentado en el Anexo de `motor_adaptativo_teoria.md`.
+- **CT-10.8 (Output del motor):** El motor devuelve, para cada solicitud de recomendación, un objeto estructurado que incluye al menos: identificador de la intersección, modo activo (`webster` u `max_pressure`), ciclo final en segundos, lista de fases con sus tiempos finales (verde, amarillo, all-red), próxima fase a entrar si aplica (solo en modo Max Pressure), razonamiento legible que explica la decisión, y lista de ajustes aplicados por MTC. El formato JSON canónico está documentado en el Anexo de `CONTROL.md`.
 
 - **CT-10.9 (Persistencia de decisiones):** Cada decisión del motor se persiste de forma durable en el momento de generarse, con al menos: timestamp, intersección, modo activo, estrategia previa si cambió, tiempos calculados antes de MTC (verdes "ideales" producidos por Webster o Max Pressure en Etapa 1), tiempos finales después de MTC (verdes corregidos + secuencia compuesta), lista de ajustes aplicados por MTC con su descripción legible, razonamiento. Esta persistencia es la fuente de datos que HU-08 consume para mostrar el historial al Operador (CA-08.1 ingloba F31 según el cierre del Bloque B) y que el capítulo de validación de la tesis consume para análisis cuantitativo. La persistencia es independiente del registro de transiciones de estado operativo de TTH-04 (CT-04.3) y del registro de predicciones de TTH-09 (CT-09.5).
 
@@ -661,7 +661,7 @@ El motor no implementa lógica de fallback ante caída propia. Cuando el motor n
 
 ### Estado actual
 
-✓✓ **Construido, integración pendiente con otras TTH del Bloque E.** El motor está implementado en `core_management_api/src/control/` (las dos estrategias adaptativas + capa MTC + AdaptiveEngine), con tests unitarios y de integración pasando, frontend de visualización conectado (`views/control/`), y documentación teórica de 552 líneas en `motor_adaptativo_teoria.md`.
+✓✓ **Construido, integración pendiente con otras TTH del Bloque E.** El motor está implementado en `core_management_api/src/control/` (las dos estrategias adaptativas + capa MTC + AdaptiveEngine), con tests unitarios y de integración pasando, frontend de visualización conectado (`views/control/`), y documentación teórica de 552 líneas en `CONTROL.md`.
 
 Lo que falta para considerar TTH-10 Done:
 
@@ -673,17 +673,17 @@ Lo que falta para considerar TTH-10 Done:
 
 ### Notas técnicas
 
-- **El motor es el aporte de ingeniería principal de la tesis.** El detalle teórico de cada decisión arquitectónica está desarrollado en `motor_adaptativo_teoria.md` con citas bibliográficas (Webster 1958, Varaiya 2013, FHWA 2008, Manual MTC peruano 2024). La defensa académica del componente se apoya en ese documento, no en TTH-10 sola.
+- **El motor es el aporte de ingeniería principal de la tesis.** El detalle teórico de cada decisión arquitectónica está desarrollado en `CONTROL.md` con citas bibliográficas (Webster 1958, Varaiya 2013, FHWA 2008, Manual MTC peruano 2024). La defensa académica del componente se apoya en ese documento, no en TTH-10 sola.
 
-- **Validación funcional vs validación cuantitativa.** TTH-10 se considera Done por integración funcional. La validación cuantitativa (mejora del motor adaptativo frente a control fijo Webster, medida en KPIs de tráfico) **no es CT de TTH-10**; pertenece al capítulo de validación de la tesis y se reporta conforme a D-005. El criterio de éxito sugerido en `motor_adaptativo_teoria.md` (RD% ≥ 15% de mejora en demora promedio frente a tiempos fijos) es objetivo de la validación, no criterio de Done del componente.
+- **Validación funcional vs validación cuantitativa.** TTH-10 se considera Done por integración funcional. La validación cuantitativa (mejora del motor adaptativo frente a control fijo Webster, medida en KPIs de tráfico) **no es CT de TTH-10**; pertenece al capítulo de validación de la tesis y se reporta conforme a D-005. El criterio de éxito sugerido en `CONTROL.md` (RD% ≥ 15% de mejora en demora promedio frente a tiempos fijos) es objetivo de la validación, no criterio de Done del componente.
 
 - **Umbral peak (1500 veh/h) como decisión heurística parametrizable.** El valor es heurístico, no físico. Representa aproximadamente 40-50% de la capacidad teórica agregada de una intersección urbana de 2 fases. El valor es parametrizable en archivo de configuración del backend y se calibrará contra simulaciones SUMO durante validación cuantitativa.
 
-- **Versión simplificada de Max Pressure.** El componente implementa la **versión simplificada** documentada en sección 4.3 de `motor_adaptativo_teoria.md`, no la versión rigurosa de Varaiya 2013 con flujos upstream/downstream y matrices de doblar. La versión rigurosa se declara como trabajo futuro asociado a la extensión a red urbana (F37).
+- **Versión simplificada de Max Pressure.** El componente implementa la **versión simplificada** documentada en sección 4.3 de `CONTROL.md`, no la versión rigurosa de Varaiya 2013 con flujos upstream/downstream y matrices de doblar. La versión rigurosa se declara como trabajo futuro asociado a la extensión a red urbana (F37).
 
 - **Predicción de congestión opcional como input del motor.** El motor declara `predicted_demand` como input **opcional**. Los inputs obligatorios son `flow`, `saturation_flow` y `queue` por fase. Cuando TTH-09 cierra y CT-10.10 se implementa, el motor consume las predicciones del GRU como contexto adicional para razonamiento anticipativo. Esto convierte al motor de **reactivo** a **proactivo**.
 
-- **Trazabilidad regulatoria.** Las cinco constantes de MTC (CT-10.6) están justificadas individualmente en sección 6 de `motor_adaptativo_teoria.md` con citas al Manual MTC peruano y al FHWA Traffic Signal Timing Manual (2008). El motor no inventa límites operativos; replica restricciones documentadas en normativa vigente y manuales operativos internacionales.
+- **Trazabilidad regulatoria.** Las cinco constantes de MTC (CT-10.6) están justificadas individualmente en sección 6 de `CONTROL.md` con citas al Manual MTC peruano y al FHWA Traffic Signal Timing Manual (2008). El motor no inventa límites operativos; replica restricciones documentadas en normativa vigente y manuales operativos internacionales.
 
 - **Visibilidad de los ajustes de MTC al Operador.** Las correcciones aplicadas por MTC se registran en la persistencia de decisiones (CT-10.9) y están disponibles en el output del motor (CT-10.8) como lista `adjustments`. El Operador, en MVP1, **no recibe notificación específica de cada corrección de MTC**; ve la decisión final aplicada al semáforo a través de las HUs del Bloque B.
 

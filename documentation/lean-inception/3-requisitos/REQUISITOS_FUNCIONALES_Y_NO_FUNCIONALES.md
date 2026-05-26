@@ -92,7 +92,7 @@ Este documento opera dentro de un sistema documental cuya arquitectura completa 
 - **`FEATURE_BACKLOG_DETALLADO.md`** — Origen de las features que se mapean a HUs y TTH. Consumido tangencialmente para entender el origen de cada HU.
 - **`LEAN_INCEPTION_CEREBROVIAL.md`** — Personas, Journeys y MVP Canvas del proyecto. Insumo para identificar Personas beneficiarias y Objetivos del Producto referenciados en cada RF.
 - **`EVOLUCION_TESIS.md`** — Narrativa de las 4 fases del proyecto académico. Contextualiza algunas decisiones técnicas referenciadas en RNFs (por ejemplo, el rol del modelo de respaldo preservado en TTH-09 declarado en Fase 2).
-- **`motor_adaptativo_teoria.md`** — Sustentación teórica del motor adaptativo (consumido por TTH-10). Referenciado tangencialmente en RNFs derivados de TTH-10.
+- **`CONTROL.md`** — Sustentación teórica del motor adaptativo (consumido por TTH-10). Referenciado tangencialmente en RNFs derivados de TTH-10.
 
 **ISO/IEC 25010:2023** — Norma internacional adoptada como taxonomía única de clasificación de RNF, conforme a DHU-019 subsección A.
 
@@ -1000,7 +1000,7 @@ La característica de Safety, agregada como 9ª característica de calidad por I
 | DHUs relacionadas | DHU-014 subsección C (parámetros internos de las estrategias internos al sistema en MVP1). |
 | Prioridad MoSCoW sugerida | Must (cumplimiento normativo es regla inegociable de un sistema que opera sobre tránsito vehicular). |
 | Aplicabilidad | TTH-10 (motor adaptativo), con propagación a la persistencia de decisiones consumida por HU-08. |
-| Notas | El motor adaptativo no inventa límites operativos; replica restricciones documentadas en normativa vigente y en manuales operativos internacionales, conforme a la trazabilidad regulatoria declarada en CT-10.6 y desarrollada en la sección 6 de `motor_adaptativo_teoria.md`. Esta trazabilidad sustenta la defensa académica del componente como aporte de ingeniería respetuoso del marco regulatorio. |
+| Notas | El motor adaptativo no inventa límites operativos; replica restricciones documentadas en normativa vigente y en manuales operativos internacionales, conforme a la trazabilidad regulatoria declarada en CT-10.6 y desarrollada en la sección 6 de `CONTROL.md`. Esta trazabilidad sustenta la defensa académica del componente como aporte de ingeniería respetuoso del marco regulatorio. |
 
 #### RNF-SAF-03 — Valores por defecto seguros desde el primer arranque
 
@@ -1590,7 +1590,7 @@ Esta sección consolida la terminología específica del producto referenciada e
 
 **Componente del sistema.** Pieza arquitectónica con responsabilidad operativa diferenciada, monitoreada por la lógica de detección de salud de TTH-04. Los componentes con impacto operativo perceptible incluyen al menos: módulo de detección de tráfico, módulo predictivo, motor adaptativo, componente de explicación, registro de eventos.
 
-**Estrategia de control.** Política de decisión que el motor adaptativo aplica al semáforo para determinar los tiempos de las fases. El sistema selecciona automáticamente entre estrategias según el estado predicho y observado del tráfico; las estrategias concretas están documentadas en TTH-10 y `motor_adaptativo_teoria.md`, no en el documento RF/RNF conforme a DHU-006.
+**Estrategia de control.** Política de decisión que el motor adaptativo aplica al semáforo para determinar los tiempos de las fases. El sistema selecciona automáticamente entre estrategias según el estado predicho y observado del tráfico; las estrategias concretas están documentadas en TTH-10 y `CONTROL.md`, no en el documento RF/RNF conforme a DHU-006.
 
 **Estado operativo del sistema.** Una de las cinco condiciones agregadas en las que el sistema puede operar según la lógica de fallback de TTH-04: operación normal, degradado nivel 1, degradado nivel 2, degradado nivel 3, falla total. La transición entre estados es atómica conforme a RNF-REL-08.
 
@@ -1610,7 +1610,7 @@ Esta sección consolida la terminología específica del producto referenciada e
 
 **Modelo predictivo de respaldo.** Componente preservado en el sistema que produce predicciones cuando el modelo principal no responde, invocado por la lógica de fallback de TTH-04 en degradado nivel 2 (RNF-FLX-02). El registro paralelo de sus predicciones habilita la vista comparativa de RF-013 (HU-20 MVP2).
 
-**Motor adaptativo.** Componente central del sistema que selecciona automáticamente la estrategia de control semafórico aplicable según el estado predicho y observado del tráfico. Su arquitectura está documentada en TTH-10 y `motor_adaptativo_teoria.md`. La capa de aplicación normativa del motor (capa MTC) garantiza el cumplimiento de RNF-SAF-02.
+**Motor adaptativo.** Componente central del sistema que selecciona automáticamente la estrategia de control semafórico aplicable según el estado predicho y observado del tráfico. Su arquitectura está documentada en TTH-10 y `CONTROL.md`. La capa de aplicación normativa del motor (capa MTC) garantiza el cumplimiento de RNF-SAF-02.
 
 **Nivel de congestión.** Variable de estado del tráfico expresada como escala ordinal 0-5, donde 0 representa flujo libre y 5 representa vía cerrada. Equivalente a jam level.
 

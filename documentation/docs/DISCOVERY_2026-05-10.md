@@ -126,7 +126,7 @@ documentation/
 ├── tesis/
 │   ├── TB1-...(1).docx                      (6.2 MB, 2026-05-09)   — versión pre-refinamiento de backlog [legacy]
 │   └── TB1-...(2).docx                      (29.6 MB, 2026-05-10)  — **OFICIAL** (HU000-HU019 originales + HU-01..HU-18 refinadas)
-└── motor_adaptativo_teoria.md              (552 líneas, 32.3 KB)  — NUEVO, teoría Webster+MaxPressure
+└── CONTROL.md              (552 líneas, 32.3 KB)  — NUEVO, teoría Webster+MaxPressure
 ```
 
 ### 2.2 Existencia de archivos esperados (del prompt original)
@@ -139,7 +139,7 @@ documentation/
 | `documentation/docs/DATA_MODEL.md` | ✓ existe | 8 tablas (graph_nodes, graph_edges, cameras, waze_jams, waze_alerts, vision_tracks, vision_flows, vision_aggregates), ER, hypertables, índices PostGIS |
 | `documentation/docs/ARCHITECTURE_TARGET.md` | ✓ existe | Spec target detallada (origen: CLAUDE.md.old reubicado). Incluye backlog **HUs ORIGINALES sin adaptar** (HU001-HU019, ver §7) |
 | `documentation/docs/MODEL.md` | **NO existe** | Entregable de Fase 3a (F1 del TODO), pendiente |
-| `documentation/docs/CONTROL.md` | **NO existe** | Entregable de Fase 3b (H1 del TODO). El motor adaptativo ya está implementado, pero la doc formal del CONTROL.md no se escribió todavía. La teoría vive en `motor_adaptativo_teoria.md` raíz `documentation/` (ver §9.4) |
+| `documentation/docs/CONTROL.md` | **NO existe** | Entregable de Fase 3b (H1 del TODO). El motor adaptativo ya está implementado, pero la doc formal del CONTROL.md no se escribió todavía. La teoría vive en `CONTROL.md` raíz `documentation/` (ver §9.4) |
 
 ### 2.3 ADRs (registro decisional formal)
 
@@ -368,7 +368,7 @@ services/
 El motor adaptativo (Bloque H del TODO, declarado como Fase 3b en `PLAN.md`) **ya está implementado en código** mientras la Fase 2 sigue abierta:
 - Backend: `src/control/application/` completo (webster, max_pressure, mtc_constraints, adaptive_engine), `routes.py` con `POST /control/recommend`, **tests pytest** completos (`test_engine.py`, `test_webster.py`, `test_mtc.py`, `test_max_pressure.py`), `pytest-cov` agregado al `requirements-dev.txt`.
 - Frontend: `views/control/` con 9 componentes (1034 líneas) — wiring completo en `App.tsx + Sidebar + Header`.
-- Documentación: `motor_adaptativo_teoria.md` (552 líneas, Webster + Max Pressure + escenarios de fallo + conexión futura a predicción).
+- Documentación: `CONTROL.md` (552 líneas, Webster + Max Pressure + escenarios de fallo + conexión futura a predicción).
 - Commits del 2026-05-07 al 2026-05-09 en branches `controladaptativo` y `upgrade-motor` (rasec1106), mergeados.
 
 **Implicación:** el orden de ejecución no respeta `PLAN.md` (Fase 3b > Fase 2 incompleta). Esto no es bloqueante pero rompe el criterio "no avanzar a Fase 3 sin cerrar Fase 2" declarado en `PLAN.md` §"Reglas de avance" L122-128. `[REVISAR JUNTOS]`
@@ -500,7 +500,7 @@ La tesis declara **20 HUs originales** (HU000–HU019) y las refina a **18 HUs v
 
 | Tipo de mención | Numeración usada | Ubicación | Implicación |
 |---|---|---|---|
-| `HU-12` (refinada con guión) | **predicción de congestión** | `documentation/motor_adaptativo_teoria.md` L3, 274, 276, 278, 294, 300, 304, 322, 330, 340, 346, 348, 388, 390 (14 menciones) | **NO calza con la tesis (2)**: HU-12 refinada = "Integración frontend-backend con datos productivos", NO "predicción". El documento usa una numeración propia/intermedia |
+| `HU-12` (refinada con guión) | **predicción de congestión** | `documentation/docs/CONTROL.md` L3, 274, 276, 278, 294, 300, 304, 322, 330, 340, 346, 348, 388, 390 (14 menciones) | **NO calza con la tesis (2)**: HU-12 refinada = "Integración frontend-backend con datos productivos", NO "predicción". El documento usa una numeración propia/intermedia |
 | `HU-12` (texto literal) | Reportes | `documentation/docs/TODO.md` L126 ("I4. HU12 — Reportes...") | **Calza con HU-12 = HU012 original = "Reportes Automáticos"** según `ARCHITECTURE_TARGET.md` L273. Numeración ORIGINAL sin guión |
 | `HU010`, `HU012`, `HU015`, `HU016` (sin guión) | Identificadores en commits | `[HU015]` (motor), `HU010` (integración E2E), `[HU016-fix]` (tests) | **Mezcla**: `HU015` aquí se usa para motor adaptativo, lo que **calza con la refinada HU-15** (motor) y NO con la original HU015 (containerización). `HU010` parece ser original (integración E2E ≈ original HU010 "Visualización tiempo real") |
 | `HU0XX` (con tres dígitos) | Backlog | `documentation/docs/ARCHITECTURE_TARGET.md` L247-277 (lista completa) | Numeración **ORIGINAL sin adaptar** (HU004 = "Gestión Semafórica", HU015 = "Infra Nube") |
@@ -517,7 +517,7 @@ La tesis declara **20 HUs originales** (HU000–HU019) y las refina a **18 HUs v
 3. **Documentos internos**: mezcla arbitraria de variantes:
    - `ARCHITECTURE_TARGET.md`: original sin adaptar.
    - `BACKLOG_V2.md`: original adaptada (HU015 reinterpretada como containerización).
-   - `motor_adaptativo_teoria.md`: numeración intermedia inventada (`HU-12` = predicción, no calza con ninguna).
+   - `CONTROL.md`: numeración intermedia inventada (`HU-12` = predicción, no calza con ninguna).
    - `TODO.md`: mezcla original (`HU17`, `HU03`...) con refinada (en commits referidos: `[HU015]` = motor).
    - Commits: `[HU015]` = motor adaptativo (refinada); `HU010` = integración E2E (original).
 
@@ -541,7 +541,7 @@ La tesis declara **20 HUs originales** (HU000–HU019) y las refina a **18 HUs v
 | HU-12 | HU010 cierre | **Integración frontend-backend con datos productivos** | 🟡 | `frontend_ui/src/services/predictionService.ts` + `views/DashboardView` (commit `f72d3ce0`) | **Parcial** (integración E2E hecha, falta consumir GRU productivo) |
 | HU-13 | HU015 | Despliegue containerizado | ✓ | `docker-compose.yml`, todos los Dockerfile, `frontend_ui/Dockerfile` multi-stage | **Implementado** |
 | HU-14 | HU014 | Auth con roles | 🟡 | `users` table existe (E7), JWT NO implementado (E8-E12) | **Parcial** (tabla creada, código auth NO) |
-| HU-15 | HU004 | **Motor adaptativo** | ✓ | `core_management_api/src/control/{webster,max_pressure,mtc_constraints,adaptive_engine}.py` + tests + `frontend_ui/src/components/views/control/` + `services/controlService.ts` + `motor_adaptativo_teoria.md` | **Implementado completo** (backend + frontend + teoría + tests) |
+| HU-15 | HU004 | **Motor adaptativo** | ✓ | `core_management_api/src/control/{webster,max_pressure,mtc_constraints,adaptive_engine}.py` + tests + `frontend_ui/src/components/views/control/` + `services/controlService.ts` + `CONTROL.md` | **Implementado completo** (backend + frontend + teoría + tests) |
 | HU-16 | HU018 | Validación SUMO | ❌ | — | **NO implementado**. Cero SUMO en el repo. Solo 1 commit fix de PYTHONPATH `[HU016-fix]` |
 | HU-17 | HU006 | Comparación cuantitativa KPIs | ❌ | — | **NO implementado**. Depende de HU-16 |
 | HU-18 | HU012 | Reporte ejecutivo | ❌ | — | **NO implementado** |
@@ -579,7 +579,7 @@ La tesis declara **20 HUs originales** (HU000–HU019) y las refina a **18 HUs v
 [muchos commits 2026-05-09] Fase 10c.2-bis: refinamientos UI motor adaptativo (sliders, animaciones, presets)
 753182d4..a1875efa 2026-05-09  Fase 10c motor adaptativo frontend (PhaseEditor, RecommendationPanel, etc.)
 1416b8ae 2026-05-09 [Hotfix][Infra] alembic env.py @db→localhost fuera del container
-dd056cbc 2026-05-09 [Docs] motor_adaptativo_teoria.md (teoría completa)
+dd056cbc 2026-05-09 [Docs] CONTROL.md (teoría completa)
 958a81c6 2026-05-09 [Docs] invoke up-build --service docs
 0381b7ec 2026-05-09 [Tooling] invoke up-build --service
 fb500e90 2026-05-09 Merge PR #7 (controladaptativo)
@@ -614,15 +614,15 @@ Branches `origin/fase-1-estabilizacion`, `origin/fase-2-{alembic, cimientos, cim
 
 ### 9.1 ★ HALLAZGO SEVERIDAD ALTA — Inconsistencia de numeración HU entre código y tesis oficial
 
-**Descripción:** Tres numeraciones HU operando simultáneamente en el repo, ninguna documentada como convención maestra. Lo más grave: `motor_adaptativo_teoria.md` introduce una cuarta numeración intermedia (`HU-12` = predicción) que no calza con la tesis (2) refinada ni con la original.
+**Descripción:** Tres numeraciones HU operando simultáneamente en el repo, ninguna documentada como convención maestra. Lo más grave: `CONTROL.md` introduce una cuarta numeración intermedia (`HU-12` = predicción) que no calza con la tesis (2) refinada ni con la original.
 
 **Citas exactas:**
-- `documentation/motor_adaptativo_teoria.md:3`: *"se conectará con el modelo predictivo de congestión (HU-12) en SP4"*.
-- `documentation/motor_adaptativo_teoria.md:274`: *"## 7. Conexión con HU-12 (predicción de congestión)"*.
+- `documentation/docs/CONTROL.md:3`: *"se conectará con el modelo predictivo de congestión (HU-12) en SP4"*.
+- `documentation/docs/CONTROL.md:274`: *"## 7. Conexión con HU-12 (predicción de congestión)"*.
 - Tesis (2) Tabla 18 L1519: *"HU-12 | HU010 (cierre) | Cierre técnico | Integración frontend-backend con datos productivos"*.
 - `documentation/docs/TODO.md:126`: *"I4. HU12 — Reportes: endpoint GET /api/reports/daily..."* → calza con original HU012 = "Reportes" → en refinada eso sería HU-18.
 
-**Mapeo del `HU-12` de `motor_adaptativo_teoria.md`**: probablemente se refiere a lo que **debería** ser HU-11 refinada ("Modelo predictivo productivo con datos del piloto" = GRU) — pero NO está implementada y se sigue usando el RF de HU-04. El término "predicción de congestión" tampoco calza con HU-04 (baseline sintético) exactamente.
+**Mapeo del `HU-12` de `CONTROL.md`**: probablemente se refiere a lo que **debería** ser HU-11 refinada ("Modelo predictivo productivo con datos del piloto" = GRU) — pero NO está implementada y se sigue usando el RF de HU-04. El término "predicción de congestión" tampoco calza con HU-04 (baseline sintético) exactamente.
 
 **Propuesta concreta de reconciliación:**
 1. Decidir como equipo **una única numeración de referencia**. Recomendado: la **refinada de la tesis (2)** (`HU-01..HU-18`).
@@ -630,7 +630,7 @@ Branches `origin/fase-1-estabilizacion`, `origin/fase-2-{alembic, cimientos, cim
    - Tabla refinada↔original (copia de Tabla 18 con título completo).
    - Para cada HU, el módulo y archivos del repo que la implementan.
    - Notas sobre numeración legacy en commits (cómo interpretar `HU010` en `f72d3ce0`).
-3. Reescribir `documentation/motor_adaptativo_teoria.md` reemplazando todas las menciones a `HU-12` por la correcta (probablemente HU-11 si "predicción productiva" o HU-04 si "baseline").
+3. Reescribir `documentation/docs/CONTROL.md` reemplazando todas las menciones a `HU-12` por la correcta (probablemente HU-11 si "predicción productiva" o HU-04 si "baseline").
 4. Actualizar `TODO.md` y `BACKLOG_V2.md` para usar nomenclatura refinada (`HU-XX` con guión y zero-pad).
 5. Convención de commits a futuro: `[HU-XX]` (refinada) en mensajes.
 
@@ -656,11 +656,15 @@ Branches `origin/fase-1-estabilizacion`, `origin/fase-2-{alembic, cimientos, cim
 
 Esto **no necesariamente es un error** — el motor adaptativo es lo más visible de la tesis y trabajarlo temprano es defendible. Pero el PLAN no refleja la realidad del orden de ejecución. `[REVISAR JUNTOS]`
 
-### 9.4 `motor_adaptativo_teoria.md` no es `CONTROL.md`
+### 9.4 `motor_adaptativo_teoria.md` no es `CONTROL.md` — RESUELTO
 
-`PLAN.md` Fase 3 declara el entregable `documentation/docs/CONTROL.md` (con las reglas del motor justificadas). Existe en su lugar `documentation/motor_adaptativo_teoria.md` en la **raíz de `documentation/`** (no en `documentation/docs/`). 552 líneas, cubre Webster + Max Pressure + escenarios de fallo + conexión con predicción.
+> ✅ Resuelto en `chore/orden-repo` (2026-05-25): `documentation/motor_adaptativo_teoria.md`
+> fue movido y renombrado a `documentation/docs/CONTROL.md`, alineando el archivo con la
+> declaración de `PLAN.md` Fase 3.
 
-Posibles acciones: renombrar/mover a `documentation/docs/CONTROL.md` por consistencia con el PLAN, o dejar como está y actualizar el PLAN. `[REVISAR JUNTOS]`
+`PLAN.md` Fase 3 declara el entregable `documentation/docs/CONTROL.md` (con las reglas del motor justificadas). Existía en su lugar `documentation/motor_adaptativo_teoria.md` en la **raíz de `documentation/`** (no en `documentation/docs/`). 552 líneas, cubre Webster + Max Pressure + escenarios de fallo + conexión con predicción.
+
+Acción tomada: renombrar/mover a `documentation/docs/CONTROL.md` por consistencia con el PLAN.
 
 ### 9.5 HUs diferidas por la tesis pero presentes en TODO.md
 
@@ -764,7 +768,7 @@ Verificado contra `PHASE1_CLOSURE.md`:
 
 ### 10.4 Tareas hechas que NO aparecen en el PLAN
 
-- **`motor_adaptativo_teoria.md`** (552 líneas, defensa). Es entregable de Fase 3b según PLAN (H1 → `CONTROL.md`), pero en otra ubicación y con otro nombre.
+- **`CONTROL.md`** (552 líneas, defensa). Es entregable de Fase 3b según PLAN (H1 → `CONTROL.md`), pero en otra ubicación y con otro nombre.
 - **`RNF02_LATENCY_REPORT.md`** — auditoría de latencia SSE. No estaba planificada explícitamente; corresponde al cumplimiento de RNF-02 declarado en la tesis.
 - **`DATA_MODEL_AUDIT.md`** — auditoría empírica preparatoria de E2.
 - **`COLLABORATION_NOTES.md`** — método de trabajo documentado.
@@ -815,7 +819,7 @@ Todo esto enriquece el repo. Pero no estaba previsto en el PLAN, lo cual sugiere
 - STGNN residual en core (C7.5) — molestia, no bloqueante.
 - Build TS roto en frontend (C10.2.1) — no afecta dev ni CI; afecta solo build prod fuera de Docker.
 - `legacy_api.py` en edge — limpio cuando se ataque módulo `edge_device`.
-- Renombrar `motor_adaptativo_teoria.md` → `docs/CONTROL.md` (§9.4) — cosmético.
+- Renombrar `CONTROL.md` → `docs/CONTROL.md` (§9.4) — cosmético.
 - `scratch/extract_thesis.py` — borrarlo en limpieza ocasional.
 
 ### 11.5 Candidatos a retroactividad selectiva (nivel 2 — escenarios BDD ejecutables)
@@ -830,7 +834,7 @@ Todo esto enriquece el repo. Pero no estaba previsto en el PLAN, lo cual sugiere
 
 #### Candidato #1 — HU-15 (Motor adaptativo) ★★★★★
 
-Motivos: (a) ✓ tests pytest pasando, (b) ✓ corazón de la tesis (OE03), (c) ✓ endpoint `POST /control/recommend` observable, (d) ✓ CAs ya documentados implícitamente en `motor_adaptativo_teoria.md`.
+Motivos: (a) ✓ tests pytest pasando, (b) ✓ corazón de la tesis (OE03), (c) ✓ endpoint `POST /control/recommend` observable, (d) ✓ CAs ya documentados implícitamente en `CONTROL.md`.
 
 **Escenarios Gherkin de muestra:**
 
@@ -967,7 +971,7 @@ Ordenados por severidad:
 | R1 | **HU-11 (GRU productivo) sin empezar.** El predictor declarado en la tesis es RNN/GRU, no RF. Hoy se sirve solo RF. | `models/*.joblib`, no hay `gru_model.py`, D-PENDING-001 abierta | Decidir D-PENDING-001 cuanto antes. Bloque F del TODO 6-8 días estimados |
 | R2 | **HU-16 (SUMO) inexistente.** Sin validación cuantitativa simulada, no hay KPIs comparativos. | Cero SUMO en repo. Solo 1 commit fix de PYTHONPATH | Definir alcance acotado: simulación sintética sin SUMO si no llega al plazo |
 | R3 | **HU-17 (comparación con/sin sistema) imposible sin HU-16.** Esto era parte de la integridad académica (D-005). | Sin datos baseline ni de comparación | Aclarar con asesor (A2) si "comparación contra Webster fijo" basta sin SUMO |
-| R4 | **Numeración HU rota** (§9.1) → riesgo presentacional. Si jurado pregunta "muéstreme HU-X", la respuesta es ambigua. | `motor_adaptativo_teoria.md` HU-12 = predicción ≠ tesis (2) | Reconciliar antes del primer ensayo de defensa |
+| R4 | **Numeración HU rota** (§9.1) → riesgo presentacional. Si jurado pregunta "muéstreme HU-X", la respuesta es ambigua. | `CONTROL.md` HU-12 = predicción ≠ tesis (2) | Reconciliar antes del primer ensayo de defensa |
 | R5 | **HU-14 (auth) ausente** pero la tesis declara roles. | E8-E12 pendientes, sin LoginView | Implementar JWT mínimo (E8-E12) — 1-2 días si se prioriza |
 | R6 | **RNF02 latencia: bloqueo backend documentado.** SSE no fluye real-time hoy. | `RNF02_LATENCY_REPORT.md` declara backend reprobado | Resolver concurrencia en edge_device (threading) antes de medir |
 | R7 | **D-005 (números reales tras validación) compromiso académico.** Tesis declara 88.2%/81.3%/<2s; hoy no se pueden medir esos números. | C1.7, C1.8 deudas en visión bloquean medición de detección. Sin GRU no hay accuracy predictivo | Documentar limitaciones honestamente — el commit en D-005 ya prepara el camino |
@@ -1020,7 +1024,7 @@ Los siguientes ítems requieren conversación con el usuario antes de cerrar el 
 10. **§7.6** — Confirmar mapeo HU-03, HU-05, HU-06 abriendo .docx en secciones específicas.
 11. **§9.2** — BACKLOG_V2.md desactualizado. ¿Actualizar o deprecar?
 12. **§9.3** — Fase 3b antes que Fase 2. ¿Actualizar PLAN.md?
-13. **§9.4** — `motor_adaptativo_teoria.md` no es `CONTROL.md`. ¿Renombrar/mover?
+13. **§9.4** — `motor_adaptativo_teoria.md` no era `CONTROL.md`. ✅ Resuelto: renombrado en chore/orden-repo (2026-05-25).
 14. **§9.5** — HUs diferidas por tesis (HU017, HU003) en TODO. ¿Alinear scope?
 15. **§9.6** — Python 3.11 vs 3.12 mismatch CI/runtime.
 16. **§9.10** — D-006/007/008 fragmentadas.

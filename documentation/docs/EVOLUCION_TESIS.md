@@ -79,7 +79,7 @@ El proyecto pasó por **tres fases conceptuales** antes de llegar a su forma act
   - **MTC (Multi-Threshold Control):** control por umbrales sobre el estado actual.
 - **AdaptiveEngine:** selector que escoge la estrategia según el estado del sistema.
 - Frontend completo de visualización del motor (`views/control/`, 9 archivos, 1034 líneas).
-- Documentación teórica en `motor_adaptativo_teoria.md` (552 líneas).
+- Documentación teórica en `CONTROL.md` (552 líneas).
 - Tests unitarios y de integración pasando.
 
 **Reflexión sobre el orden de ejecución:** El motor adaptativo se construyó antes de cerrar Fase 2 del PLAN.md (autenticación, persistencia de visión). Esto rompe el orden formal del plan pero es defendible: el motor es el componente más visible y académicamente diferenciador del sistema; trabajarlo temprano permite estabilizarlo y testearlo con tiempo.

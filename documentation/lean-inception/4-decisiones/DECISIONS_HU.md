@@ -1129,7 +1129,7 @@ Las cuatro features están clasificadas como MVP1 y declaradas explícitamente c
 
 **Diagnóstico:** F35 cumple 4 de 4 criterios. Es **TTH (TTH-10)**.
 
-**Nota sobre la arquitectura real del motor:** Durante la redacción de TTH-10 se clarificó la arquitectura real del motor según `motor_adaptativo_teoria.md`: el motor es una **pipeline de dos etapas** (selección entre Webster y Max Pressure como estrategias adaptativas; aplicación de MTC como capa de reglas duras post-procesamiento), no un selector tripartita entre tres estrategias. Esta clarificación implica ajustes de coherencia documental en `EVOLUCION_TESIS.md` Fase 3 y, residualmente, en la descripción de F35 en `FEATURE_BACKLOG_DETALLADO.md`. No reabre decisiones técnicas previas; refina la descripción para coherencia con el código y el documento teórico.
+**Nota sobre la arquitectura real del motor:** Durante la redacción de TTH-10 se clarificó la arquitectura real del motor según `CONTROL.md`: el motor es una **pipeline de dos etapas** (selección entre Webster y Max Pressure como estrategias adaptativas; aplicación de MTC como capa de reglas duras post-procesamiento), no un selector tripartita entre tres estrategias. Esta clarificación implica ajustes de coherencia documental en `EVOLUCION_TESIS.md` Fase 3 y, residualmente, en la descripción de F35 en `FEATURE_BACKLOG_DETALLADO.md`. No reabre decisiones técnicas previas; refina la descripción para coherencia con el código y el documento teórico.
 
 **Nota sobre el aporte central:** Que F35 sea el aporte de ingeniería principal del trabajo no implica que deba modelarse como HU. La importancia académica de una pieza no determina su clasificación HU/TTH; la determina la presencia o ausencia de Persona del producto beneficiaria directa (DHU-004). El aporte central se documenta en el capítulo de validación de la tesis y en el video de demo, no en una HU operativa.
 
@@ -1224,7 +1224,7 @@ Por dependencias técnicas, con TTH-11 incorporada:
 - `DECISIONS_HU.md` (este documento) — sección DHU-015.
 - `DECISIONS.md` — D-006, D-007, D-008, D-009 fundamentan las decisiones técnicas internas de cada TTH del Bloque E.
 - `EVOLUCION_TESIS.md` — Fase 4 (cierre arquitectónico) describe los cuatro componentes con roles separados.
-- `motor_adaptativo_teoria.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
+- `CONTROL.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
 
 ---
 
@@ -2397,7 +2397,7 @@ Se fija un único conjunto canónico de identificadores de rol y una política d
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Personas, journeys, MVP Canvas (insumos para identificar sujetos válidos).
 - `FEATURE_BACKLOG_DETALLADO.md` — Origen de las features que se mapean a HUs y TTH.
 - `EVOLUCION_TESIS.md` — Narrativa de las 4 fases del proyecto; sección 8 contiene tabla de Trabajos Futuros.
-- `motor_adaptativo_teoria.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
+- `CONTROL.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
 - `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` — Documento normativo denso con catálogo de 22 RF y 53 RNF clasificados según ISO/IEC 25010:2023, redactado el 2026-05-18 ejecutando DHU-007 según las decisiones metodológicas consolidadas en DHU-019.
 - `RF_RNF_LITE.md` — Versión lite de lectura humana del documento RF/RNF, derivado conforme al modelo de dos documentos cerrado en DHU-019 subsección H.
 - `AUDITORIA_HU_CODIGO.md` — Auditoría del estado del código por HU/TTH (Fase 4.1); origen de los deltas, incluido Delta-08 cerrado por DHU-020.

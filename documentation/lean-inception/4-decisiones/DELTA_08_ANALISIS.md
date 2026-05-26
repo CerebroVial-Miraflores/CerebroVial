@@ -32,8 +32,9 @@ carpetas hermanas `Frontend/`, `Backend/`, `Predictor/`, `CerebroVial-old/` que
 | `documentation/lean-inception/DECISIONS_HU.md` | `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` |
 | `frontend/src/views/ControlView` | `frontend_ui/src/components/views/control/ControlView.tsx` |
 
-Este archivo se deposita en `CerebroVial/DELTA_08_ANALISIS.md` (raíz del repo del
-proyecto vivo). No se modificó código ni documento existente alguno.
+Este archivo está depositado en `documentation/lean-inception/4-decisiones/DELTA_08_ANALISIS.md`
+(movido desde la raíz del repo en chore/orden-repo, 2026-05-25). No se modificó código ni
+documento existente alguno.
 
 ---
 
