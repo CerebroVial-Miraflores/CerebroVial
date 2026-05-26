@@ -22,6 +22,16 @@ obsoleta, actualización quirúrgica de CLAUDE.md, mecanismo multi-agente (.gemi
   módulo) o la regla (relajar el CLAUDE.md). Decisión de arquitectura para cuando se aborde TTH-09.
 - SAN-02: decidir destino de componentes Gemini huérfanos (Art. 21 los declara fuera de arquitectura).
 - SAN-03: crear tabla vision_aggregates + cableado (Delta-05). Es Trabajo Futuro, no Sprint 4.
+- SAN-04: dos DECISIONS.md (uno canónico, una copia vieja) con punteros rotos. Dos mitades:
+  (a) `documentation/docs/DECISIONS.md` es la copia vieja (D-001…D-008, sin D-009; última edición
+      2026-05-13). El canónico vive en `documentation/lean-inception/4-decisiones/DECISIONS.md`
+      (D-001…D-009, jam level; 2026-05-18). La copia vieja debe archivarse o eliminarse.
+  (b) `.specify/memory/constitution.md` cita la ruta vieja en su preámbulo (línea 7) y cierre
+      (línea 146); su Art. 8 (línea 59) referencia D-009, que **sólo** existe en la canónica → puntero
+      roto. `documentation/sdd/SPECKIT_MAPPING.md` (línea 19) también menciona la ruta vieja.
+  **Orden obligatorio para la sesión futura:** (1) reapuntar `constitution.md` y `SPECKIT_MAPPING.md`
+  a `documentation/lean-inception/4-decisiones/DECISIONS.md`; (2) recién entonces eliminar la copia
+  vieja. Invertir el orden deja la constitución apuntando al vacío.
 
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
