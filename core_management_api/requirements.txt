@@ -12,5 +12,4 @@ python-multipart
 scikit-learn
 sqlalchemy
 sse-starlette
-torch
 uvicorn
