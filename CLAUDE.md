@@ -102,6 +102,22 @@ Migraciones:
   en `.specify/memory/constitution.md`; artefactos vivos en `specs/001-cerebrovial-mvp/`
   (spec.md, plan.md, tasks.md, data-model.md, quickstart.md). Mapeo de adopción en
   `documentation/sdd/SPECKIT_MAPPING.md`.
+- **HU-01 (RBAC) — alcance entregado y deuda declarada**. La HU instaura la
+  **maquinaria** RBAC. Backend: dependency `require_role(*allowed: Role)` en
+  `core_management_api/src/auth/presentation/api/dependencies.py`, con cuerpo 403
+  genérico `"Acceso denegado"` byte-idéntico para no filtrar el recurso ni el rol
+  esperado (RNF-SEC-04). Frontend: `RoleGate` + `roles.ts` (mapas TABS_BY_ROLE,
+  DEFAULT_TAB_BY_ROLE, ROLE_LABEL_ES) en `frontend_ui/src/auth/`. El enforcement
+  se demuestra sobre un único endpoint de muestra (`GET /api/health` con
+  `require_role(Role.ADMIN)`). Esto es consistente con la fila *Aplicabilidad*
+  de RNF-SEC-03 (REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md): *"la matriz endpoint
+  × rol se materializa al implementar y se valida con prueba automatizada
+  exhaustiva"*. La cobertura endpoint × rol sobre las rutas restantes
+  (`/api/intersections`, `/predictions/*`, `/control/*`) es **responsabilidad
+  acumulativa** de HU-15..HU-21 (cada HU futura aplica `require_role(...)` a sus
+  endpoints). Primer Gherkin del proyecto: `features/hu-01-rbac/` con
+  `rbac_api.feature` ejecutable vía `pytest-bdd` (declarado en `requirements-dev.txt`;
+  CI actualizado en `.github/workflows/ci.yml` para instalar `requirements-dev.txt`).
 
 ## Reglas para Claude Code
 

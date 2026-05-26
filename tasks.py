@@ -196,8 +196,14 @@ def ps(c):
 
 @task
 def health(c):
-    """Validar que core_management_api responde."""
-    c.run("curl -i http://localhost:8001/api/health", pty=False, warn=True)
+    """Validar que core_management_api responde.
+
+    Desde HU-01 (RBAC), GET /api/health está protegido con require_role(admin).
+    El smoke de proceso vivo usa GET / (root, abierto, retorna name+version).
+    Para chequear /api/health con credenciales, exportá ADMIN_TOKEN y corré
+    `curl -i -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8001/api/health`.
+    """
+    c.run("curl -i http://localhost:8001/", pty=False, warn=True)
 
 
 # === Migraciones y datos ===
