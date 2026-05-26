@@ -16,7 +16,7 @@ Fecha de instalación: 2026-05-20 · Branch: `feature/SDD` · Spec Kit: v0.8.11
 
 | Artefacto Spec Kit | Documento(s) fuente reales en el repo | Notas |
 |---|---|---|
-| `.specify/memory/constitution.md` | `documentation/lean-inception/1-contexto/LEAN_INCEPTION_CEREBROVIAL.md`; `documentation/lean-inception/4-decisiones/DECISIONS.md` (D-001…D-009); `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` (DHU-001…DHU-022); `documentation/docs/DECISIONS.md` | Principios rectores + decisiones técnicas y de HU. |
+| `.specify/memory/constitution.md` | `documentation/lean-inception/1-contexto/LEAN_INCEPTION_CEREBROVIAL.md`; `documentation/lean-inception/4-decisiones/DECISIONS.md` (D-001…D-009); `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` (DHU-001…DHU-022) | Principios rectores + decisiones técnicas y de HU. |
 | `specs/NNN-*/spec.md` | `documentation/lean-inception/2-backlog/HU_BLOQUE_A.md` … `HU_BLOQUE_F.md`, `HU_LITE.md`, `HU_MVP2.md`; `documentation/lean-inception/3-requisitos/REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md`, `RF_RNF_LITE.md`; `documentation/lean-inception/BACKLOG_OVERVIEW.md` | El "qué" y el "por qué": 21 HU + 22 RF + 53 RNF. |
 | `specs/NNN-*/plan.md` | **`documentation/sdd/SDD_CEREBROVIAL.md`** (SDD verificado contra el repo, 2026-05-20) | Fuente única del plan técnico (estructura híbrida 4+1). `ARCHITECTURE_TARGET.md` quedó archivado en `legacy/` (DHU-021 §5) y NO se usa. |
 | `specs/NNN-*/data-model.md` | §4 de `documentation/sdd/SDD_CEREBROVIAL.md` + `documentation/docs/DATA_MODEL.md`; `documentation/docs/DATA_MODEL_AUDIT.md` | Modelo heredado + las dos entidades nuevas (`motor_decisions`, `engine_active_state`) verificadas; estado vigente (DHU-020). |

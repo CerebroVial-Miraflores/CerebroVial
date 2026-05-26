@@ -4,7 +4,7 @@
 > proyecto al formato de Spec Kit; no se genera con `/speckit-constitution`. Cada artículo destila
 > un principio en lenguaje normativo y **enlaza su fuente por ID y archivo**; NO reproduce la
 > justificación, el impacto ni el texto sugerido para la tesis, que viven en el documento fuente.
-> Las fuentes canónicas son `documentation/docs/DECISIONS.md` (decisiones técnicas, `D-xxx`) y
+> Las fuentes canónicas son `documentation/lean-inception/4-decisiones/DECISIONS.md` (decisiones técnicas, `D-xxx`) y
 > `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` (decisiones metodológicas, `DHU-xxx`).
 > El `SDD_CEREBROVIAL.md` sigue siendo la fuente canónica de arquitectura.
 
@@ -143,7 +143,7 @@ en español mapeadas a esos claims (cierre de Delta-02). → Fuente: DHU-022 (DE
 Esta constitución consolida y enlaza las decisiones rectoras del proyecto; **no las reemplaza**. La
 autoridad sustantiva reside en los documentos fuente:
 
-- Las decisiones técnicas (`D-xxx`) viven en `documentation/docs/DECISIONS.md`; las metodológicas
+- Las decisiones técnicas (`D-xxx`) viven en `documentation/lean-inception/4-decisiones/DECISIONS.md`; las metodológicas
   (`DHU-xxx`) en `documentation/lean-inception/4-decisiones/DECISIONS_HU.md`. La arquitectura es
   canónica en `documentation/sdd/SDD_CEREBROVIAL.md`.
 - **Enmiendas:** toda modificación de un principio se hace primero como nueva entrada o refinamiento
@@ -161,4 +161,4 @@ autoridad sustantiva reside en los documentos fuente:
 > agrupa DHU-011/013/014/015/016/017; el Art. 19, DHU-012 + DHU-018. Las restantes son 1:1. El Título
 > I tiene 8 artículos (D-002 y D-006 fusionados en el Art. 2).
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-20 | **Last Amended**: 2026-05-20
+**Version**: 1.0.1 | **Ratified**: 2026-05-20 | **Last Amended**: 2026-05-25

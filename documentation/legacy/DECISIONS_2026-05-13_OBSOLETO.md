@@ -1,3 +1,10 @@
+> ⚠️ DOCUMENTO HISTÓRICO — NO VIGENTE (archivado 2026-05-25)
+> Copia parcial de DECISIONS.md (D-001…D-008, **sin D-009**; última edición 2026-05-13).
+> El canónico vigente vive en `documentation/lean-inception/4-decisiones/DECISIONS.md`
+> (D-001…D-009). Conservado por trazabilidad histórica.
+
+---
+
 # DECISIONS — CerebroVial
 
 > Registro de decisiones técnicas y de proyecto. Formato ADR ligero. Las decisiones cerradas afectan el código y la documentación; las pendientes (`D-PENDING-*`) son cuestiones abiertas que requieren resolución antes de avanzar a las fases que dependen de ellas.
