@@ -63,6 +63,26 @@ Migraciones:
 - `invoke up-dev` cancela ese entrypoint (override de docker-compose.dev.yml),
   por eso ahí hay que migrar a mano con `invoke migrate`.
 
+## Tests y calidad
+
+- **Backend**: pytest en `core_management_api/tests/` y `edge_device/tests/`.
+  Correr con `invoke test` (requiere venv activo de `invoke setup-dev`).
+- **Lint Python**: `ruff check .` desde la raíz. Config en `pyproject.toml`.
+- **Frontend**: `cd frontend_ui && npm run lint && npm run test -- --run`
+  (ESLint + Vitest).
+- **CI**: [.github/workflows/ci.yml](.github/workflows/ci.yml) corre en push a
+  `master` y `fase-*`, y en PRs a `master`. Tres jobs: backend (ruff + pytest),
+  frontend (lint + test), y `docker compose build`. Lo que rompa CI rompe el merge.
+- No hay pre-commit hooks configurados.
+
+## Frontend (rápido)
+
+- Stack: React 19 + TS + Vite + Tailwind 4 + Leaflet.
+- Dev con HMR: `cd frontend_ui && npm run dev` (puerto 5173).
+- En docker se sirve como build estático con nginx — por eso requiere
+  `invoke up-build --service=frontend` cuando cambia el código.
+- Tests: Vitest (`npm run test`). Lint: ESLint (`npm run lint`).
+
 ## Decisiones tomadas
 - **Arquitectura**: monolito modular, NO microservicios. Las carpetas separadas 
   son herencia de cuando había 3 repos.
@@ -84,54 +104,48 @@ Migraciones:
   `documentation/sdd/SPECKIT_MAPPING.md`.
 
 ## Reglas para Claude Code
-- NO refactorizar `edge_device/src/vision/`. Es el subsistema mejor armado y 
-  con tests reales. Tocar sólo cuando se pida explícitamente.
-- NO modificar `ia_prediction_service/src/models/time_then_space.py`. El STGNN
-  se descarta pero el código queda como referencia hasta que el GRU esté 
-  funcional. En `notebooks/logs/` solo queda `epoch=79-step=30800.ckpt` 
-  (en LFS); los 4 checkpoints intermedios se borraron en C9.
-- `torch` aparece en `core_management_api/requirements.txt` y en
-  `src/prediction/*.py` como deuda C7.5 (código STGCN muerto). El endpoint
-  vivo de predicción usa RandomForest baseline y no necesita torch en runtime.
-  La decisión A (purgar torch del core) o B (relajar esta regla) queda
-  pendiente hasta TTH-09 / SAN-01. **No instalar torch nuevo en el core hasta
-  que SAN-01 se resuelva.** NO instalar `ultralytics` en `core_management_api`.
-- NO migrar el pipeline de visión a las tablas `vision_tracks` /
-  `vision_flows`. Esas tablas quedan modeladas para futuro pero sin
-  refactor del pipeline. La persistencia a BD **se hará** vía
-  `vision_aggregates` (pendiente, tareas E18-E21 del TODO / SAN-03);
-  **hoy** persiste a CSV.
-- Cuando agregues un endpoint, ubicarlo en el módulo correspondiente y 
-  registrarlo en el router unificado de `core_management_api`.
-- Antes de cualquier cambio estructural (mover carpetas, renombrar paquetes, 
-  cambiar el modelo de la BD), parar y preguntar al usuario.
-- Para cambios al modelo predictivo, leer primero el documento de tesis en 
+
+### Zonas que NO se tocan sin pedirlo
+- `edge_device/src/vision/` — subsistema mejor armado, con tests reales.
+- `ia_prediction_service/src/models/time_then_space.py` — STGNN descartado, queda
+  como referencia hasta que el GRU esté funcional. En `notebooks/logs/` solo queda
+  `epoch=79-step=30800.ckpt` (LFS); los 4 intermedios se borraron en C9.
+  <!-- TODO: verificar con `git lfs ls-files | grep epoch=79` si el ckpt sigue presente -->
+- **ThesisModal + su botón en `Sidebar.tsx`** — documentación viva de la tesis
+  (autores, objetivo, stack, KPIs). NO es parte de la arquitectura de control;
+  NO marcar como componente huérfano ni proponer su remoción.
+- **`CerebroVial/.gemini/settings.json`** — configuración intencional del flujo
+  Gemini CLI del equipo. NO marcar como huérfano ni proponer remoción/`.gitignore`.
+
+### Deuda técnica a respetar
+- **No instalar `torch` ni `ultralytics` en `core_management_api`**. El endpoint
+  vivo de predicción usa RandomForest baseline; `torch` aún aparece como deuda
+  C7.5 (código STGCN muerto). Ver SAN-01 en
+  [documentation/lean-inception/4-decisiones/DECISIONS.md](documentation/lean-inception/4-decisiones/DECISIONS.md).
+- No migrar el pipeline de visión a `vision_tracks` / `vision_flows`
+  (ver D-006/D-007 en "Decisiones tomadas" arriba).
+
+### Convenciones
+- Endpoints nuevos: ubicarlos en el módulo correspondiente y registrarlos en el
+  router unificado de `core_management_api`.
+- Cambios estructurales (mover carpetas, renombrar paquetes, cambiar el modelo
+  de la BD): parar y preguntar al usuario.
+- Cambios al modelo predictivo: leer primero el documento de tesis en
   `documentation/tesis/`.
-- **Migraciones de BD**: siempre con Alembic. Nunca usar `Base.metadata.create_all()`. 
-  Para entender el schema actual, leer `documentation/docs/DATA_MODEL.md`.
-- **ThesisModal y su botón en `Sidebar.tsx` son documentación viva intencional del
-  sistema** (ficha de tesis: autores, objetivo, stack, KPIs), pensada para visibilidad
-  del trabajo y sustentación. NO es parte de la arquitectura de control ni requiere
-  HU/TTH; NO marcar como componente huérfano ni proponer su remoción.
-- **`CerebroVial/.gemini/settings.json` es configuración intencional del flujo Gemini
-  CLI** del equipo (un compañero del proyecto usa `gemini` desde la terminal sobre este
-  repo). El archivo le indica al CLI cargar `CLAUDE.md` como contexto. NO marcarlo como
-  huérfano ni proponer su remoción/`.gitignore`. Misma lógica que `ThesisModal`.
+- **Migraciones de BD**: siempre con Alembic. Nunca usar
+  `Base.metadata.create_all()`. Schema actual en `documentation/docs/DATA_MODEL.md`.
 
 ## Estado del proyecto
 
-Estado vivo en `documentation/ESTADO_Y_PROXIMOS_PASOS.md`. **Sprint 4 en construcción**:
-TTH-01 (Auth JWT+bcrypt) → HU-01 → TTH-10 → HU-05 → TTH-03 (19 SP comprometidos).
+Estado vivo y sprint en curso: `documentation/ESTADO_Y_PROXIMOS_PASOS.md`.
+Plan técnico canónico: `documentation/sdd/SDD_CEREBROVIAL.md` (Spec Kit v0.8.11 brownfield).
+Decisiones vigentes (D-001 a D-009): `documentation/lean-inception/4-decisiones/DECISIONS.md`.
 
-Plan técnico canónico: `documentation/sdd/SDD_CEREBROVIAL.md` (Spec Kit v0.8.11 brownfield,
-6/6 artefactos sellados).
-
-Decisiones técnicas vigentes (D-001 a D-009): `documentation/lean-inception/4-decisiones/DECISIONS.md`.
-**D-009** (variable de estado predicha: jam level ordinal 0-5, constructo Waze) es lectura
+**D-009** (variable predicha: jam level ordinal 0-5, constructo Waze) es lectura
 obligatoria antes de tocar predicción o métricas de estado.
 
-Fase 1 ✓ Cerrada el 2026-05-03 (`documentation/docs/20260503_PHASE1_CLOSURE.md`).
-`documentation/docs/PLAN.md` queda como histórico, no como fuente operativa.
+Fase 1 cerrada (`documentation/docs/20260503_PHASE1_CLOSURE.md`).
+`documentation/docs/PLAN.md` es histórico, no operativo.
 
 ## Git LFS (requerido)
 Este repo usa Git LFS para binarios (.joblib, .pt, .ckpt, .h5, .npy, .docx).
