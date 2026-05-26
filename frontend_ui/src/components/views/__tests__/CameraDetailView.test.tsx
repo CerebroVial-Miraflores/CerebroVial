@@ -39,7 +39,7 @@ class MockEventSource {
     close = vi.fn();
 }
 
-Object.defineProperty(global, 'EventSource', {
+Object.defineProperty(globalThis, 'EventSource', {
     writable: true,
     value: MockEventSource,
 });
