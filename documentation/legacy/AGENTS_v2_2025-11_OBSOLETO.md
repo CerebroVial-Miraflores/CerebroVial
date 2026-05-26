@@ -1,3 +1,11 @@
+> ⚠️ DOCUMENTO HISTÓRICO — NO VIGENTE (archivado 2026-05-25)
+> Describe la arquitectura previa a la modularización (estructura `src/` unificada, Python 3.10,
+> GNN+LSTM). El proyecto actual usa monolito modular por carpetas (core_management_api, edge_device,
+> ia_prediction_service, frontend_ui, shared), Python 3.11 y GRU univariado. La guía vigente para
+> agentes es el CLAUDE.md de la raíz. Conservado por su valor pedagógico (patrones de diseño, testing).
+
+---
+
 # CerebroVial - Contexto para Agentes de IA
 
 > **Versión:** 2.0  

@@ -21,9 +21,12 @@ Este proyecto utiliza una arquitectura de **Monolito Modular** para gestionar tr
 │   ├── control/        # Módulo de Control
 │   └── main.py         # Punto de entrada
 ├── models/             # Modelos entrenados
-├── conf/               # Configuración
-└── AGENTS.md           # Contexto para asistentes de IA
+└── conf/               # Configuración
 ```
+
+> Para asistentes de IA: la guía vigente es `CLAUDE.md` en la raíz del repo. La versión histórica
+> de AGENTS.md (2025-11) que describía la arquitectura previa se archivó en
+> `documentation/legacy/AGENTS_v2_2025-11_OBSOLETO.md`.
 
 ## Cómo Ejecutar
 
