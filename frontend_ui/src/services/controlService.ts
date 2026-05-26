@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosError } from 'axios';
+import { httpClient } from './httpClient';
 
 export interface PhaseFlow {
     phase_id: string;
@@ -50,13 +51,10 @@ export interface ErrorDetail {
     message: string;
 }
 
-const API_BASE_URL =
-    (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8001';
-
 export const controlService = {
     async recommend(state: IntersectionState): Promise<RecommendResponse> {
-        const res = await axios.post<RecommendResponse>(
-            `${API_BASE_URL}/control/recommend`,
+        const res = await httpClient.post<RecommendResponse>(
+            '/control/recommend',
             state,
         );
         return res.data;
