@@ -51,8 +51,10 @@ Valores verificados contra los manifiestos del repo (SDD §7).
 ## Constitution Check
 
 > Las decisiones rectoras viven en `DECISIONS.md` (D-001…D-009) y `DECISIONS_HU.md`
-> (DHU-001…DHU-022). El `constitution.md` de Spec Kit queda pendiente de poblado
-> (SPECKIT_MAPPING §1). Gates derivados de las restricciones fundacionales (SDD §2):
+> (DHU-001…DHU-022). El `constitution.md` de Spec Kit está **poblado** (2026-05-20,
+> 22 artículos vinculantes: Título I D-001…D-009, Título II DHU-001…DHU-022) y
+> ratificado; ver `.specify/memory/constitution.md`. Gates derivados de las
+> restricciones fundacionales (SDD §2):
 
 - **D-001 monolito modular** — sin API HTTP entre módulos internos; `ia_prediction_service` fuera del runtime. ✔ verificado en `docker-compose.yml` (4 servicios, sin el de entrenamiento).
 - **Restricción de no-refactor de `edge_device/src/vision/`** (CLAUDE.md) — vigente; no se toca sin sprint dedicado. ✔
@@ -66,9 +68,9 @@ Valores verificados contra los manifiestos del repo (SDD §7).
 ```text
 specs/001-cerebrovial-mvp/
 ├── plan.md          # Este archivo (mapeado del SDD)
-├── data-model.md    # Modelo de datos (mapeado de SDD §4 + DATA_MODEL.md)
-├── spec.md          # PENDIENTE (← backlog HU/RF/RNF)
-└── tasks.md         # PENDIENTE (← REPORTE_PLANIFICACION_SPRINT_4.md)
+├── data-model.md    # ✓ poblado (mapeado de SDD §4 + DATA_MODEL.md)
+├── spec.md          # ✓ poblado 2026-05-20 (← backlog HU/RF/RNF: 21 HU + 22 RF + 53 RNF)
+└── tasks.md         # ✓ poblado 2026-05-20 (← REPORTE_PLANIFICACION_SPRINT_4.md, inventario de 32 elementos)
 ```
 
 ### Source Code (repository root)

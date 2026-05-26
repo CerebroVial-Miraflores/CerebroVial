@@ -126,7 +126,7 @@ Tras la auditoría HU↔código (Fase 4.1, 32 elementos auditados):
 
 | Riesgo | Severidad | Mitigación propuesta |
 |---|---|---|
-| **R1 — Decisión semántica de HU-05 (Delta-08):** ¿el refactor de ControlView lo deja como vista pasiva del estado vigente o como herramienta administrativa de admin? Sin esta decisión el "cierre" de HU-05 es ambiguo. | Alta | Resolver en sesión metodológica antes de la semana 3. Recomendación: vista pasiva + tab admin oculto con el playground actual. |
+| **R1 — Decisión semántica de HU-05 (Delta-08)** ✓ **Resuelto por DHU-020 (2026-05-20)** | Alta | **Resuelto** por DHU-020 (`DECISIONS_HU.md`): vista pasiva de HU-05 prevalece, playground se preserva como herramienta de Administrador, Delta-07/08/09 se refactorizan en bloque, persistencia de "estado vigente del motor" autorizada como cambio estructural deliberado. Sin trabajo no planificado adicional para el Sprint 4 (item #4 ya contempla 3 SP para HU-05). |
 | **R2 — Integraciones de TTH-10:** la auto-clasificación del spec (5 pendientes) referenciaba TTH-09 GRU + TTH-07 SUMO + TTH-04 fallback + HU-15 parámetros + persistencia. Cuatro de cinco están postergados; el sprint 4 solo cierra "persistencia decisiones + consumo RandomForest + health endpoint mínimo". El cierre será **parcial respecto a la spec original**. | Alta | Documentar explícitamente en commit message y en el TODO del proyecto qué fracción de TTH-10 spec queda como Trabajo Futuro. |
 | **R3 — Trabajo metodológico paralelo no contabilizado:** el sprint 4 también puede producir el SDD (Software Design Document) y la defensa de tesis, que consumen tiempo del estudiante no contabilizado en SP de implementación. | Media | Reservar al menos 30% del tiempo del sprint para trabajo metodológico paralelo. Si el SDD compite por tiempo, aceptar reducir TTH-03 cierre. |
 | **R4 — Brecha academia vs implementación:** el backlog formal documenta 25 HUs Must del MVP1, pero el sprint 4 solo cierra 2. La defensa de tesis debe argumentar por qué esta brecha es razonable (proyecto académico individual + sprints sin estimación previa + descubrimiento progresivo del scope). | Alta | Usar este reporte + DISTRIBUCION_SPRINTS §9 como evidencia argumentativa de la brecha. La auditoría rigurosa de los 32 elementos + 13 deltas documentados refuerza la honestidad del análisis. |
@@ -186,7 +186,7 @@ Más los 3 protocolos normativos preexistentes (`CEREMONIA_MOSCOW.md`, `CEREMONI
 
 ## 9. Próximos pasos inmediatos
 
-1. **Decisión metodológica sobre R1** (semántica de HU-05 / Delta-08) antes de iniciar la semana 3 del sprint. Sesión corta con el estudiante.
+1. ~~**Decisión metodológica sobre R1** (semántica de HU-05 / Delta-08) antes de iniciar la semana 3 del sprint. Sesión corta con el estudiante.~~ **Resuelto por DHU-020 (2026-05-20):** ver §6 (R1) y `DECISIONS_HU.md`. Pendiente solo la ejecución del refactor de HU-05 en la semana 3 (item #4 del sprint, 3 SP).
 2. **Arrancar sprint 4 con TTH-01** (semana 1): patrón JWT+bcrypt+get_current_user estándar. Ver TTH-01 spec en `TAREAS_TECNICAS_HABILITADORAS.md`.
 3. **Monitorear progreso semanal** contra el plan §5.1. Si la velocity real diverge en >30%, replanificar intra-sprint.
 4. **Mantener este reporte vivo:** cuando la realidad del sprint 4 diverja del plan, agregar sub-apartado "Ejecución real del sprint 4" documentando la divergencia (per protocolo §11 de `PROTOCOLO_DISTRIBUCION_SPRINTS.md`).

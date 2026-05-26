@@ -1,5 +1,16 @@
 # Análisis de Delta-08 — Semántica de ControlView (insumo para DHU-020)
 
+> **✓ Decisión cerrada por DHU-020 (2026-05-20).** Este documento se conserva
+> como **evidencia histórica** del análisis que sustentó la decisión. La
+> resolución vigente está en `documentation/lean-inception/4-decisiones/DECISIONS_HU.md`
+> (DHU-020) y codificada como Artículo 20 de `.specify/memory/constitution.md`:
+> prevalece la semántica pasiva de HU-05; el playground se preserva como
+> herramienta de Administrador (no se elimina); Delta-07/08/09 se abordan en
+> un único refactor en bloque; la persistencia de "estado vigente del motor"
+> queda autorizada deliberadamente como cambio estructural. Las tres opciones
+> A/B/C enunciadas en §5 quedan como contexto del razonamiento; **no se
+> reabren**.
+
 > **Naturaleza del documento:** reporte de evidencia, no decisión. Presenta el
 > detalle concreto del delta entre HU-05 y el código actual de ControlView para
 > que la decisión metodológica DHU-020 se cierre en sesión aparte. No se propone
