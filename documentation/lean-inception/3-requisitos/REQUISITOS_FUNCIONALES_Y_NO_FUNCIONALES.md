@@ -83,7 +83,7 @@ Conforme a DHU-006 (HUs agnósticas a implementación), este documento no mencio
 Este documento opera dentro de un sistema documental cuya arquitectura completa se describe en `BACKLOG_OVERVIEW.md`. Las relaciones más relevantes son:
 
 - **`BACKLOG_OVERVIEW.md`** — Vista de conjunto del Product Backlog. Punto de entrada para entender las 4 Personas, los 4 Objetivos del Producto y el mapa de las 21 HUs + 11 TTH.
-- **`DECISIONS_HU.md`** — Decisiones metodológicas del backlog (DHU-001 a DHU-019). **DHU-007** declara el origen de este documento; **DHU-019** consolida las decisiones de redacción que lo orientan; **DHU-005** declara el principio de robustez ante interrupción consolidado en este documento como RNF transversal.
+- **`DECISIONS_HU.md`** — Decisiones metodológicas del backlog (DHU-001 a DHU-022). **DHU-007** declara el origen de este documento; **DHU-019** consolida las decisiones de redacción que lo orientan; **DHU-005** declara el principio de robustez ante interrupción consolidado en este documento como RNF transversal.
 - **`DECISIONS.md`** — Decisiones técnicas del producto (D-001 a D-009). Consumidas por este documento sin reabrirse.
 - **`HU_BLOQUE_A.md`, `HU_BLOQUE_B.md`, `HU_BLOQUE_C.md`, `HU_BLOQUE_D.md`, `HU_BLOQUE_F.md`, `HU_MVP2.md`** — Cuerpo de las 21 HUs operativas con sus CAs y secciones "Candidatos a RNF". Origen principal de los RF y RNF de este documento.
 - **`HU_BLOQUE_E.md`** — Bloque E del backlog (0 HUs operativas, mapeo a TTH-07 a TTH-11). Las TTH se redactaron en `TAREAS_TECNICAS_HABILITADORAS.md`.

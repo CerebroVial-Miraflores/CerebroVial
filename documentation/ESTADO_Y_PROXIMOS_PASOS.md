@@ -11,9 +11,16 @@ TTH-10 (cierre Motor) → HU-05 (ControlView pasiva) → TTH-03 (cierre CI).
 Comando de arranque: /speckit-implement sobre TTH-01.
 Autoridad del alcance del sprint: tasks.md (NO los 32 elementos del inventario; solo estos 5).
 
-## Pendiente de orden (esta rama chore/orden-repo)
-Limpieza ligera del repo: basura .DS_Store, reubicación de 2 docs sueltos, archivado de guía
-obsoleta, actualización quirúrgica de CLAUDE.md, mecanismo multi-agente (.gemini/settings.json).
+## Configuración intencional preservada
+`CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue
+`CLAUDE.md` como contexto del proyecto. Es flujo multi-agente intencional del equipo
+(consumidor humano: un compañero del proyecto usa `gemini` CLI sobre este repo). NO es
+deuda ni candidato a remover; queda versionado tal cual. Misma lógica que la guardia
+de ThesisModal en `CLAUDE.md`.
+
+La pasada original de "limpieza ligera del repo" (basura .DS_Store, reubicación de docs
+sueltos, archivado de guía obsoleta, actualización quirúrgica de CLAUDE.md) ya fue
+ejecutada en `chore/orden-repo` (merge a master en commit `d3994e22`).
 
 ## Tareas de saneamiento diferidas (NO bloquean Sprint 4)
 - SAN-01: contradicción regla-vs-código. CLAUDE.md (línea 84) prohíbe `torch` en

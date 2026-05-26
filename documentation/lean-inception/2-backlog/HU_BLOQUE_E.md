@@ -196,7 +196,7 @@ Esta sesión cerró el Bloque E. A la fecha actual, el Bloque F del MVP1 tambié
 - `HU_BLOQUE_D.md` — Bloque D del Product Backlog (3 HUs operativas: HU-13, HU-14, HU-15).
 - `HU_BLOQUE_F.md` — Bloque F del Product Backlog (2 HUs operativas: HU-16, HU-17; F30 inglobada como CAs).
 - `HU_MVP2.md` — MVP2 del Product Backlog (HU-18, HU-19, HU-20, HU-21; HU-09 reside en `HU_BLOQUE_B.md`). HU-20 extiende CT-09.5 de TTH-09 inglobando persistencia paralela del modelo de respaldo, sin TTH nueva.
-- `DECISIONS_HU.md` — Decisiones metodológicas sobre HUs (DHU-001 a DHU-019).
+- `DECISIONS_HU.md` — Decisiones metodológicas sobre HUs (DHU-001 a DHU-022).
 - `DECISIONS.md` — Decisiones técnicas del producto (D-001 a D-009). Particularmente D-006, D-007, D-008, D-009 fundamentan el Bloque E.
 - `TAREAS_TECNICAS_HABILITADORAS.md` — TTH-01 a TTH-11 (incluye las 5 TTH del Bloque E).
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Inception completo aplicado al proyecto.

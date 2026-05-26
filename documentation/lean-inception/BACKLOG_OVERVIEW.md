@@ -132,7 +132,7 @@ Según para qué lo necesites, abre uno u otro documento:
 - **Para entender el producto sin detalle implementable** → este documento.
 - **Para lectura humana de las HUs en formato corto** → `HU_LITE.md`.
 - **Para implementación o auditoría rigurosa** → los documentos `HU_BLOQUE_A.md` a `HU_BLOQUE_F.md` (MVP1) y `HU_MVP2.md` (MVP2). Cada HU tiene criterios de aceptación numerados, notas técnicas y candidatos a RNF.
-- **Para razonamiento metodológico** → `DECISIONS_HU.md` (DHU-001 a DHU-019).
+- **Para razonamiento metodológico** → `DECISIONS_HU.md` (DHU-001 a DHU-022).
 - **Para decisiones técnicas del producto** → `DECISIONS.md` (D-001 a D-009).
 - **Para el origen de cada feature y su clasificación MVP** → `FEATURE_BACKLOG_DETALLADO.md`.
 - **Para las Tareas Técnicas Habilitadoras** → `TAREAS_TECNICAS_HABILITADORAS.md`.

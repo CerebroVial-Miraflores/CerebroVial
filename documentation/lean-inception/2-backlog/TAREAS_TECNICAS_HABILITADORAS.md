@@ -804,7 +804,7 @@ Por tanto, las TTH se ejecutan en la primera fase del proyecto, antes o en paral
 
 ## Documentos relacionados
 
-- `DECISIONS_HU.md` — Decisiones metodológicas (DHU-001 a DHU-019) que fundamentan la creación y clasificación de cada TTH.
+- `DECISIONS_HU.md` — Decisiones metodológicas (DHU-001 a DHU-022) que fundamentan la creación y clasificación de cada TTH.
 - `HU_BLOQUE_A.md` — Bloque A del Product Backlog tras la reestructuración.
 - `HU_BLOQUE_B.md` — Bloque B del Product Backlog (HU-02 a HU-09).
 - `HU_BLOQUE_C.md` — Bloque C del Product Backlog (HU-10 a HU-12).

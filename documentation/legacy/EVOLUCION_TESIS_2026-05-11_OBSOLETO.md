@@ -1,3 +1,14 @@
+> ⚠️ DOCUMENTO HISTÓRICO — NO VIGENTE (archivado 2026-05-26)
+> Copia parcial de EVOLUCION_TESIS.md fechada 2026-05-11. Esta versión
+> tiene la sección 8 "Trabajos futuros" en formato de lista numerada
+> (4 ítems sin IDs F) y referencia decisiones técnicas hasta D-008.
+> La versión vigente vive en
+> `documentation/lean-inception/1-contexto/EVOLUCION_TESIS.md`
+> con tabla de IDs F21, F36-F42 y referencia a D-009. Conservado por
+> trazabilidad histórica.
+>
+> ---
+>
 # Evolución del Proyecto de Tesis — CerebroVial
 
 > Documento de contexto y narrativa de evolución del proyecto. Captura las decisiones de alcance, los giros arquitectónicos y la consolidación final del trabajo. **Pensado como insumo para el capítulo de introducción/contexto de la tesis y para la sustentación oral.**

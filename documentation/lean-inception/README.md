@@ -28,7 +28,7 @@ Esta carpeta contiene el cuerpo documental del producto CerebroVial: contexto me
 | 1 | `1-contexto/` | Entender el origen, la fundamentación metodológica y la narrativa del proyecto en sus 4 fases. |
 | 2 | `2-backlog/` | Detalle implementable: 21 HUs operativas organizadas en bloques A-F + 5 MVP2 + 11 TTH + 41 features. |
 | 3 | `3-requisitos/` | Catálogo formal de 22 RF + 53 RNF según ISO 25010, derivado del backlog. |
-| 4 | `4-decisiones/` | Trazabilidad de decisiones técnicas (D-001 a D-009) y metodológicas (DHU-001 a DHU-019). |
+| 4 | `4-decisiones/` | Trazabilidad de decisiones técnicas (D-001 a D-009) y metodológicas (DHU-001 a DHU-022). |
 | 5 | `planificacion/` | Ceremonias SCRUM ejecutadas (MoSCoW, Planning Poker, Distribución de sprints) y planificación del sprint 4. |
 
 ## Navegación por necesidad
