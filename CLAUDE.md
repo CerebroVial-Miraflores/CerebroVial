@@ -1,5 +1,7 @@
 # CerebroVial — Sistema de gestión de tráfico Miraflores
 
+> 📍 **Estado actual y próximos pasos:** ver `documentation/ESTADO_Y_PROXIMOS_PASOS.md`.
+
 ## Contexto
 Proyecto de tesis. Sistema predictivo de tráfico para el distrito de Miraflores 
 (Lima, Perú). Detección por visión computacional + predicción GRU + control 
@@ -11,11 +13,12 @@ NO lo son. Todas las carpetas se entienden como módulos del mismo sistema,
 desplegado como un único proceso FastAPI.
 
 ```
-core_management_api/   # módulo: API + predicción + control + common
+core_management_api/   # módulo: API + predicción + control
 edge_device/           # módulo: visión computacional (YOLO + tracking + SSE)
 ia_prediction_service/ # módulo: entrenamiento del modelo GRU (offline)
 frontend_ui/           # SPA React (proceso separado)
-shared/                # paquete pip-instalable cerebrovial_shared
+shared/                # paquete pip-instalable cerebrovial_shared (código transversal,
+                       # instalado como dependencia en cada módulo; reemplaza al ex-`common/`)
 infra/                 # SQL, configs de infra
 ```
 
@@ -70,9 +73,14 @@ Migraciones:
 - **Datos del GRU**: dataset sintético calibrado contra distribuciones de Waze 
   + METR-LA (`metr_la.h5` ya en LFS). Sin acceso a API real de Waze. 
   Ver `DATA_MODEL_AUDIT.md` decisión D-008.
-- **Visión y BD**: el pipeline de visión persiste agregados a una tabla 
-  nueva `vision_aggregates` (no a las tablas `vision_tracks`/`vision_flows` 
-  modeladas que requieren refactor del pipeline). Ver D-006, D-007.
+- **Visión y BD**: el pipeline de visión **persistirá** agregados a una tabla
+  `vision_aggregates` (pendiente, tareas E18-E21 / SAN-03). **Hoy** la persistencia
+  es a CSV. No se migra a las tablas `vision_tracks`/`vision_flows` (modeladas para
+  futuro, requieren refactor del pipeline). Ver D-006, D-007.
+- **Spec Kit (DHU-021)**: el proyecto adoptó Spec Kit v0.8.11 brownfield. Constitución
+  en `.specify/memory/constitution.md`; artefactos vivos en `specs/001-cerebrovial-mvp/`
+  (spec.md, plan.md, tasks.md, data-model.md, quickstart.md). Mapeo de adopción en
+  `documentation/sdd/SPECKIT_MAPPING.md`.
 
 ## Reglas para Claude Code
 - NO refactorizar `edge_device/src/vision/`. Es el subsistema mejor armado y 
@@ -83,10 +91,11 @@ Migraciones:
   (en LFS); los 4 checkpoints intermedios se borraron en C9.
 - NO instalar `torch` ni `ultralytics` en `core_management_api`. Los 
   `requirements.txt` están limpios desde C7.
-- NO migrar el pipeline de visión a las tablas `vision_tracks` / 
-  `vision_flows`. Esas tablas quedan modeladas para futuro pero sin 
-  refactor del pipeline. La persistencia a BD se hace vía 
-  `vision_aggregates` (tareas E18-E21 del TODO).
+- NO migrar el pipeline de visión a las tablas `vision_tracks` /
+  `vision_flows`. Esas tablas quedan modeladas para futuro pero sin
+  refactor del pipeline. La persistencia a BD **se hará** vía
+  `vision_aggregates` (pendiente, tareas E18-E21 del TODO / SAN-03);
+  **hoy** persiste a CSV.
 - Cuando agregues un endpoint, ubicarlo en el módulo correspondiente y 
   registrarlo en el router unificado de `core_management_api`.
 - Antes de cualquier cambio estructural (mover carpetas, renombrar paquetes, 
@@ -124,6 +133,9 @@ Sin LFS, los archivos binarios van a venir como pointers de texto y
 `docker compose up` va a fallar al cargar modelos.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+For additional context about technologies to be used, project structure, shell commands, and other
+important information, read the current plan at `specs/001-cerebrovial-mvp/plan.md`. Related artifacts:
+- `specs/001-cerebrovial-mvp/spec.md` (feature specification)
+- `specs/001-cerebrovial-mvp/tasks.md` (dependency-ordered tasks)
+- `.specify/memory/constitution.md` (project constitution)
 <!-- SPECKIT END -->
