@@ -20,5 +20,4 @@ shapely
 sse-starlette
 alembic
 python-jose[cryptography]
-passlib[bcrypt]
 httpx
