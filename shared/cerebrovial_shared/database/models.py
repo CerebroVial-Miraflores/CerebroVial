@@ -103,7 +103,7 @@ class UserDB(Base):
     )
     email = Column(String, nullable=False, unique=True, index=True)
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # "operador" | "analista" | "admin"
+    role = Column(String, nullable=False)  # operator | manager | admin (canónicos DHU-022)
     created_at = Column(
         DateTime,
         nullable=False,
