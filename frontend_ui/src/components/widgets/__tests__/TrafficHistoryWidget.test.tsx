@@ -27,11 +27,11 @@ describe('TrafficHistoryWidget', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // Mock fetch
-        global.fetch = vi.fn();
+        globalThis.fetch = vi.fn();
     });
 
     it('renders loading state initially', async () => {
-        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ history: [] }),
         });
@@ -60,7 +60,7 @@ describe('TrafficHistoryWidget', () => {
             }
         };
 
-        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             ok: true,
             json: async () => mockData,
         });
@@ -68,7 +68,7 @@ describe('TrafficHistoryWidget', () => {
         render(<TrafficHistoryWidget cameraId={mockCameraId} />);
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(`http://localhost:8001/predictions/history/${mockCameraId}?interval=5`);
+            expect(globalThis.fetch).toHaveBeenCalledWith(`http://localhost:8001/predictions/history/${mockCameraId}?interval=5`);
         });
 
         // Check if chart renders
@@ -79,7 +79,7 @@ describe('TrafficHistoryWidget', () => {
 
     it('handles fetch error gracefully', async () => {
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('API Error'));
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('API Error'));
 
         render(<TrafficHistoryWidget cameraId={mockCameraId} />);
 
