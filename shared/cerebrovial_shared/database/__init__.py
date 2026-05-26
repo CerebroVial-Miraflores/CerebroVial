@@ -4,6 +4,7 @@ from .models import (
     WazeJamDB, WazeAlertDB,
     VisionTrackDB, VisionFlowDB,
     UserDB,
+    MotorDecisionDB, EngineActiveStateDB,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "WazeJamDB", "WazeAlertDB",
     "VisionTrackDB", "VisionFlowDB",
     "UserDB",
+    "MotorDecisionDB", "EngineActiveStateDB",
 ]

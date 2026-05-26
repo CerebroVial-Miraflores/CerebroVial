@@ -22,6 +22,29 @@ La pasada original de "limpieza ligera del repo" (basura .DS_Store, reubicación
 sueltos, archivado de guía obsoleta, actualización quirúrgica de CLAUDE.md) ya fue
 ejecutada en `chore/orden-repo` (merge a master en commit `d3994e22`).
 
+## TTH-10 — cierre parcial (2026-05-26)
+Entregado en esta sesión:
+- `motor_decisions` (append-only) + `engine_active_state` (mutable) modelados y migrados
+  (`b1f7c4d2a890_motor_decisions_engine_state`). FK a `graph_nodes.node_id`.
+- Write-path en `POST /control/recommend`: resolver `intersection_id → node_id` antes
+  del cálculo (DHU-021 V1, fail-fast con HTTP 422 `unknown_intersection`), persistencia
+  dentro de la transacción del request con `inputs_snapshot`, `flow_total` y
+  `y_load_factor` reales (no recalculados). `ControlRecommendation` Pydantic intacto:
+  contrato HTTP sin cambios.
+- `EngineActiveStateRepo.activate(...)` construido + testeado (insert + update);
+  NO cableado a ningún endpoint (HU-05/HU-07).
+- `ControlSettings` (pydantic-settings) en `src/control/config.py`: extracción
+  de constantes de CT-10.4 / CT-10.6 sin recalibrar (env vars `CONTROL_*`).
+- `GET /control/health` sin auth (probes de orquestador). `/api/health` ADMIN no se tocó.
+- 16 tests CT-10.X.Y verdes (CT-10.4.1, CT-10.6.1, CT-10.9.1..10.9.10, CT-10.13.1/.2).
+
+Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabajo futuro):
+- CT-10.10 (integración GRU/TTH-09).
+- CT-10.11 (integración SUMO/TTH-07 vía TraCI).
+- CT-10.12 (parámetros configurables vía HU-15).
+- CT-10.13 cascada (consumo del health check por TTH-04 Nivel 3).
+- Activación de `engine_active_state` (responsabilidad HU-05/HU-07).
+
 ## Tareas de saneamiento diferidas (NO bloquean Sprint 4)
 - SAN-01 ✓ resuelta (2026-05-26, rama `san-06`): se eligió el camino "purgar torch del módulo"
   (no se relajó la regla CLAUDE.md). Se eliminaron 6 archivos STGCN muertos de

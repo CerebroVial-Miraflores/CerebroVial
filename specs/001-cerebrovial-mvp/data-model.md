@@ -113,3 +113,34 @@ motor consume las fases por payload, no las persiste. Las decisiones se anclan a
 - `node_id` de ambas entidades debe existir en `graph_nodes` (FK); el `intersection_id` del motor se resuelve a `node_id` en el write-path antes de insertar.
 - `mode ∈ {webster, max_pressure}`; `y_load_factor` nulo ⇔ caso `webster_infeasible`.
 - Migraciones **solo** con Alembic (nunca `Base.metadata.create_all()`); las dos tablas nuevas entran como una migración relacional con FK de una sola columna.
+
+---
+
+## Trabajo futuro (Fase R2, fuera de alcance MVP1)
+
+El cierre **parcial** de TTH-10 (2026-05-26) entrega: write-path de
+`motor_decisions` cableado en `POST /control/recommend`, `engine_active_state`
+con schema + repositorio (`EngineActiveStateRepo.activate(...)`, dos ramas
+upsert), extracción a `ControlSettings` (pydantic-settings) de las constantes
+normativas de CT-10.4 y CT-10.6 sin recalibrar, y nuevo health check
+`GET /control/health` sin auth para probes de orquestador.
+
+Los siguientes elementos quedan **diferidos a R2** (fuera del alcance MVP1):
+
+- **CT-10.10 (integración con TTH-09 / GRU)**: el motor consume hoy el
+  predictor RandomForest baseline en `prediction/`. La migración al endpoint
+  del GRU requiere primero cerrar TTH-09 (modelo servido offline) y respeta
+  el lineamiento D-009 (jam level ordinal 0-5).
+- **CT-10.11 (integración con TTH-07 / SUMO)**: el adaptador TraCI ↔ motor
+  para validación cuantitativa se construye junto con TTH-07. Hoy el motor
+  se valida con payload sintético.
+- **CT-10.12 (parámetros configurables de HU-15)**: el motor consume
+  `ControlSettings` desde env vars; la UI de configuración del Administrador
+  se materializa cuando HU-15 cierre.
+- **CT-10.13 (cascada de fallback TTH-04)**: el health check se entrega; el
+  consumo por TTH-04 para activar Nivel 3 (tiempos preconfigurados de TTH-05)
+  se cierra al implementar TTH-04 + TTH-05.
+- **Activación de `engine_active_state`**: el repositorio queda construido y
+  testeado (CT-10.9.9 + CT-10.9.10), pero ningún endpoint dispara
+  `activate(...)`. Es responsabilidad de HU-05 (vista pasiva del estado
+  vigente) o HU-07 (notificación de cambios), lo que llegue primero.

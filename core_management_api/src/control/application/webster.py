@@ -25,6 +25,7 @@ class WebsterInfeasible(Exception):
 class WebsterResult:
     cycle_seconds: float
     green_by_phase: dict[str, float]
+    y_total: float  # Σ q_i / s_i — exposed so the write-path can persist it.
 
 
 class WebsterCalculator:
@@ -75,4 +76,8 @@ class WebsterCalculator:
         else:
             green_by_phase = {p: usable_green * (y / y_total) for p, y in ratios.items()}
 
-        return WebsterResult(cycle_seconds=cycle, green_by_phase=green_by_phase)
+        return WebsterResult(
+            cycle_seconds=cycle,
+            green_by_phase=green_by_phase,
+            y_total=y_total,
+        )

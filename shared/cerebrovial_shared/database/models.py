@@ -1,9 +1,25 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    JSON,
+    Text,
+    Index,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from geoalchemy2 import Geometry
 from .database import Base
+
+# JSONB in PostgreSQL, JSON in SQLite (used by the test suite).
+JsonType = JSONB().with_variant(JSON(), "sqlite")
 
 # --- Graph Topology ---
 
@@ -109,3 +125,72 @@ class UserDB(Base):
         nullable=False,
         default=datetime.utcnow,
     )
+
+
+# --- Adaptive engine persistence (TTH-10, SDD §4.2, data-model.md §2) ---
+
+class MotorDecisionDB(Base):
+    """Append-only history of every decision produced by the adaptive engine.
+
+    The write-path resolves the opaque ``intersection_id`` from the request
+    payload to a ``graph_nodes.node_id`` (DHU-021 V1) before insertion;
+    ``inputs_snapshot`` captures the request payload at the moment of decision.
+    ``flow_total`` and ``y_load_factor`` reflect the values actually computed
+    by the engine (not recomputed downstream).
+    """
+    __tablename__ = "motor_decisions"
+
+    decision_id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
+    node_id = Column(
+        String,
+        ForeignKey("graph_nodes.node_id"),
+        nullable=False,
+        index=True,
+    )
+    decided_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    mode = Column(String, nullable=False)  # "webster" | "max_pressure"
+    cycle_seconds = Column(Float, nullable=False)
+    flow_total = Column(Float, nullable=False)
+    y_load_factor = Column(Float, nullable=True)  # NULL when peak hits default_cycle (WebsterInfeasible)
+    next_phase = Column(String, nullable=True)
+    reasoning = Column(Text, nullable=False)
+    phase_timings = Column(JsonType, nullable=False)
+    adjustments = Column(JsonType, nullable=False, default=list)
+    inputs_snapshot = Column(JsonType, nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_motor_decisions_node_id_decided_at",
+            "node_id",
+            text("decided_at DESC"),
+        ),
+    )
+
+
+class EngineActiveStateDB(Base):
+    """Currently active strategy per intersection (one row per node).
+
+    Mutable. The activation event is distinct from the decision event:
+    ``motor_decisions.decided_at`` records when the engine computed a
+    recommendation; ``engine_active_state.activated_at`` records when an
+    operator (or future automation) promoted that recommendation to active.
+    """
+    __tablename__ = "engine_active_state"
+
+    node_id = Column(
+        String,
+        ForeignKey("graph_nodes.node_id"),
+        primary_key=True,
+    )
+    active_decision_id = Column(
+        String(36),
+        ForeignKey("motor_decisions.decision_id"),
+        nullable=False,
+    )
+    activated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    activated_by = Column(String, nullable=True)

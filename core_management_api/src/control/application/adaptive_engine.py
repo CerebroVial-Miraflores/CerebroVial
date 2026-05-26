@@ -47,20 +47,26 @@ class RecommendationDC:
     reasoning: str
     next_phase: Optional[str] = None
     adjustments: list[str] = field(default_factory=list)
+    # Internal-only fields persisted to motor_decisions; NOT exposed in the
+    # HTTP response (data-model.md §2.1, SDD §4.2). flow_total is always set;
+    # y_load_factor is None only when the peak branch falls back to default_cycle
+    # because Webster raised WebsterInfeasible.
+    flow_total: float = 0.0
+    y_load_factor: Optional[float] = None
 
 
 class AdaptiveEngine:
-    PEAK_THRESHOLD: float = 1500.0  # veh/h, sum across phases.
-
     def __init__(
         self,
         webster: WebsterCalculator,
         max_pressure: MaxPressureController,
         mtc: MTCRestrictionApplier,
+        peak_threshold: float = 1500.0,
     ) -> None:
         self.webster = webster
         self.max_pressure = max_pressure
         self.mtc = mtc
+        self.PEAK_THRESHOLD = peak_threshold  # veh/h, sum across phases.
 
     def recommend(self, state: IntersectionStateDC) -> RecommendationDC:
         if not state.phases:
@@ -123,6 +129,8 @@ class AdaptiveEngine:
             reasoning=reasoning,
             next_phase=None,
             adjustments=constrained.adjustments,
+            flow_total=flow_total,
+            y_load_factor=webster_result.y_total,
         )
 
     def _max_pressure_branch(
@@ -134,12 +142,15 @@ class AdaptiveEngine:
         pedestrians: dict[str, bool],
         flow_total: float,
     ) -> RecommendationDC:
+        y_load_factor: Optional[float] = None
         try:
-            base_cycle = self.webster.compute(
+            webster_base = self.webster.compute(
                 flows=flows,
                 saturations=saturations,
                 lost_time=state.lost_time,
-            ).cycle_seconds
+            )
+            base_cycle = webster_base.cycle_seconds
+            y_load_factor = webster_base.y_total
             cycle_source = "Webster base cycle"
         except WebsterInfeasible:
             base_cycle = self.max_pressure.default_cycle
@@ -170,4 +181,6 @@ class AdaptiveEngine:
             reasoning=reasoning,
             next_phase=decision.next_phase,
             adjustments=constrained.adjustments,
+            flow_total=flow_total,
+            y_load_factor=y_load_factor,
         )

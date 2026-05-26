@@ -58,8 +58,10 @@ def test_recommend_off_peak_oversaturated_propagates_webster_infeasible(engine, 
         engine.recommend(state)
 
 
-def test_endpoint_off_peak_returns_webster_recommendation(client, http_payload):
-    response = client.post("/control/recommend", json=http_payload(flow_total=1000.0))
+def test_endpoint_off_peak_returns_webster_recommendation(client_with_db, http_payload):
+    response = client_with_db.post(
+        "/control/recommend", json=http_payload(flow_total=1000.0)
+    )
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -68,8 +70,8 @@ def test_endpoint_off_peak_returns_webster_recommendation(client, http_payload):
     assert {p["phase_id"] for p in body["data"]["phase_timings"]} == {"NS", "EW"}
 
 
-def test_endpoint_peak_returns_max_pressure_recommendation(client, http_payload):
-    response = client.post(
+def test_endpoint_peak_returns_max_pressure_recommendation(client_with_db, http_payload):
+    response = client_with_db.post(
         "/control/recommend",
         json=http_payload(flow_total=2000.0, queues=(15, 4)),
     )
@@ -80,9 +82,9 @@ def test_endpoint_peak_returns_max_pressure_recommendation(client, http_payload)
     assert body["data"]["next_phase"] == "NS"
 
 
-def test_endpoint_rejects_non_positive_saturation_flow(client):
+def test_endpoint_rejects_non_positive_saturation_flow(client_with_db):
     payload = {
-        "intersection_id": "I-001",
+        "intersection_id": "larco_schell",
         "timestamp": "2026-05-09T10:00:00Z",
         "lost_time": 8.0,
         "phases": [
@@ -90,13 +92,13 @@ def test_endpoint_rejects_non_positive_saturation_flow(client):
         ],
     }
 
-    response = client.post("/control/recommend", json=payload)
+    response = client_with_db.post("/control/recommend", json=payload)
 
     assert response.status_code == 422
 
 
-def test_endpoint_returns_422_on_oversaturated_off_peak(client, http_payload):
-    response = client.post(
+def test_endpoint_returns_422_on_oversaturated_off_peak(client_with_db, http_payload, motor_db_session):
+    response = client_with_db.post(
         "/control/recommend",
         json=http_payload(flow_total=1400.0, saturation=750.0),
     )
@@ -104,11 +106,19 @@ def test_endpoint_returns_422_on_oversaturated_off_peak(client, http_payload):
     assert response.status_code == 422
     body = response.json()
     assert body["detail"]["code"] == "webster_infeasible"
+    # No row persisted on the 422 path (write-path runs only when the engine
+    # produces a valid recommendation). Verifying the invariant explicitly.
+    from cerebrovial_shared.database.models import MotorDecisionDB
+    assert motor_db_session.query(MotorDecisionDB).count() == 0
 
 
 def test_endpoint_returns_503_when_engine_not_initialized():
     """If init_engine is not called, get_engine raises 503. We replicate the
-    state by mounting the router on a fresh app without calling init_engine."""
+    state by mounting the router on a fresh app without calling init_engine.
+
+    Depends ordering matters: get_engine is declared before get_db in the
+    handler, so the 503 fires before FastAPI tries to resolve the DB session.
+    """
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -123,7 +133,7 @@ def test_endpoint_returns_503_when_engine_not_initialized():
             response = ephemeral.post(
                 "/control/recommend",
                 json={
-                    "intersection_id": "I-001",
+                    "intersection_id": "larco_schell",
                     "timestamp": "2026-05-09T10:00:00Z",
                     "phases": [
                         {"phase_id": "NS", "flow": 100, "saturation_flow": 1800},

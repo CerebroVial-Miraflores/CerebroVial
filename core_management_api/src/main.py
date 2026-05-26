@@ -11,7 +11,8 @@ from src.control.presentation.api.routes import router as control_router, init_e
 from src.control.application.adaptive_engine import AdaptiveEngine
 from src.control.application.webster import WebsterCalculator
 from src.control.application.max_pressure import MaxPressureController
-from src.control.application.mtc_constraints import MTCRestrictionApplier
+from src.control.application.mtc_constraints import MTCConstants, MTCRestrictionApplier
+from src.control.config import ControlSettings
 from src.auth.domain import Role
 from src.auth.presentation.api.dependencies import require_role
 from src.auth.presentation.api.routes import auth_router
@@ -31,10 +32,26 @@ os.makedirs("data/traffic_logs", exist_ok=True)
 _predictor = CongestionPredictor(model_dir="models", data_dir="data/traffic_logs")
 init_predictor(_predictor)
 
+_control_settings = ControlSettings()
 _control_engine = AdaptiveEngine(
-    webster=WebsterCalculator(),
-    max_pressure=MaxPressureController(),
-    mtc=MTCRestrictionApplier(),
+    webster=WebsterCalculator(
+        min_cycle=_control_settings.webster.min_cycle,
+        max_cycle=_control_settings.webster.max_cycle,
+    ),
+    max_pressure=MaxPressureController(
+        default_cycle=_control_settings.max_pressure.default_cycle
+    ),
+    mtc=MTCRestrictionApplier(
+        constants=MTCConstants(
+            min_green=_control_settings.mtc.min_green,
+            max_green=_control_settings.mtc.max_green,
+            min_yellow=_control_settings.mtc.min_yellow,
+            all_red=_control_settings.mtc.all_red,
+            min_pedestrian=_control_settings.mtc.min_pedestrian,
+        ),
+        max_cycle=_control_settings.mtc.max_cycle,
+    ),
+    peak_threshold=_control_settings.adaptive.peak_threshold,
 )
 init_engine(_control_engine)
 
