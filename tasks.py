@@ -248,6 +248,24 @@ def seed(c):
     print("\n✓ Seed aplicado.")
 
 
+@task(pre=[check_env])
+def seed_rbac_smoke(c):
+    """Sembrar 3 usuarios de smoke (operator, manager, admin) para HU-01.
+
+    Credenciales de desarrollo (no usar fuera de smoke local):
+      operator@cv.pe / Smoke1234  → rol operator
+      manager@cv.pe  / Smoke1234  → rol manager
+      admin@cv.pe    / Smoke1234  → rol admin
+
+    Idempotente: salta usuarios cuyo email ya existe.
+    Hashing vía hash_password() de TTH-01 (bcrypt cost=12).
+    Útil para el smoke manual de CA-01.6 (auto-logout por token expirado) y
+    para probar visibilidad de pestañas por rol en el frontend.
+    """
+    py = _venv_python()
+    c.run(f"{py} scripts/seed_rbac_smoke.py", pty=False)
+
+
 @task
 def db_reset(c):
     """⚠ Borra la DB, la levanta de cero, aplica migraciones y siembra.
