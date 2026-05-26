@@ -756,7 +756,7 @@ Cada feature está descrita con la siguiente estructura:
 
 ## F35 — Motor adaptativo (Webster + MaxPressure + MTC) ★
 
-**Descripción:** Motor que implementa la pipeline de control adaptativo de dos etapas: Etapa 1 selecciona entre **dos estrategias adaptativas** (Webster, Max Pressure) según el estado predicho y observado de la intersección; Etapa 2 aplica la **capa de reglas duras MTC** que corrige los tiempos calculados para cumplir el marco normativo peruano (R.D. N.° 26-2024-MTC/18) antes de aplicarlos al semáforo. La arquitectura "2 estrategias adaptativas + 1 capa de reglas duras" se cerró durante la redacción de TTH-10 (DHU-015) y está documentada en `motor_adaptativo_teoria.md`. El título preserva la mención a MTC por trazabilidad histórica; la descripción ajusta el rol real de cada componente.
+**Descripción:** Motor que implementa la pipeline de control adaptativo de dos etapas: Etapa 1 selecciona entre **dos estrategias adaptativas** (Webster, Max Pressure) según el estado predicho y observado de la intersección; Etapa 2 aplica la **capa de reglas duras MTC** que corrige los tiempos calculados para cumplir el marco normativo peruano (R.D. N.° 26-2024-MTC/18) antes de aplicarlos al semáforo. La arquitectura "2 estrategias adaptativas + 1 capa de reglas duras" se cerró durante la redacción de TTH-10 (DHU-015) y está documentada en `CONTROL.md`. El título preserva la mención a MTC por trazabilidad histórica; la descripción ajusta el rol real de cada componente.
 
 **Persona:** SYS (componente central)
 **Journey:** Habilitador del Objetivo 3.

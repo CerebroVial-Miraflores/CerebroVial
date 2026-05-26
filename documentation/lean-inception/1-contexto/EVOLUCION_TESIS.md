@@ -79,10 +79,10 @@ El proyecto pasó por **tres fases conceptuales** antes de llegar a su forma act
   - **Capa MTC (Manual de Tránsito MTC peruano, reglas duras):** corrige los tiempos calculados por la estrategia activa para cumplir el marco normativo (R.D. N.° 26-2024-MTC/18). No decide tiempos adaptativos; corrige los decididos por Etapa 1 y compone la secuencia final aplicada al semáforo.
 - **AdaptiveEngine:** pipeline de dos etapas. Etapa 1 selecciona la estrategia adaptativa según `flow_total` (umbral parametrizable, default 1500 veh/h); Etapa 2 aplica las correcciones de la capa MTC.
 - Frontend completo de visualización del motor (`views/control/`, 9 archivos, 1034 líneas).
-- Documentación teórica en `motor_adaptativo_teoria.md` (552 líneas).
+- Documentación teórica en `CONTROL.md` (552 líneas).
 - Tests unitarios y de integración pasando.
 
-> *Nota agregada el 2026-05-15 al cerrar TTH-10 (DHU-015): la descripción original de Fase 3 hablaba de "tres estrategias de control" (Webster, MaxPressure, MTC). La revisión arquitectónica de TTH-10 clarificó que MTC no es una estrategia adaptativa intercambiable con las otras dos, sino una **capa de reglas duras post-procesamiento**. La arquitectura real es de dos etapas (estrategia adaptativa + capa MTC), no un selector tripartita. El componente construido es el mismo; cambia solo la descripción para coherencia con `motor_adaptativo_teoria.md` y TTH-10. Ver DHU-015 en `DECISIONS_HU.md`.*
+> *Nota agregada el 2026-05-15 al cerrar TTH-10 (DHU-015): la descripción original de Fase 3 hablaba de "tres estrategias de control" (Webster, MaxPressure, MTC). La revisión arquitectónica de TTH-10 clarificó que MTC no es una estrategia adaptativa intercambiable con las otras dos, sino una **capa de reglas duras post-procesamiento**. La arquitectura real es de dos etapas (estrategia adaptativa + capa MTC), no un selector tripartita. El componente construido es el mismo; cambia solo la descripción para coherencia con `CONTROL.md` y TTH-10. Ver DHU-015 en `DECISIONS_HU.md`.*
 
 **Reflexión sobre el orden de ejecución:** El motor adaptativo se construyó antes de cerrar el trabajo de autenticación y persistencia de visión. Esto rompe el orden formal originalmente planeado pero es defendible: el motor es el componente más visible y académicamente diferenciador del sistema; trabajarlo temprano permite estabilizarlo y testearlo con tiempo.
 

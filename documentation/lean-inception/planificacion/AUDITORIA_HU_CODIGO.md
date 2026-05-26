@@ -135,7 +135,7 @@
   - [`core_management_api/src/control/application/mtc_constraints.py`](Tesis/CerebroVial/core_management_api/src/control/application/mtc_constraints.py)
   - [`core_management_api/src/control/application/adaptive_engine.py`](Tesis/CerebroVial/core_management_api/src/control/application/adaptive_engine.py)
   - [`core_management_api/src/control/presentation/api/`](Tesis/CerebroVial/core_management_api/src/control/presentation/api/) endpoint `POST /control/recommend`.
-  - [`documentation/motor_adaptativo_teoria.md`](Tesis/CerebroVial/documentation/motor_adaptativo_teoria.md) (552 líneas, referencia normativa según TTH-10 spec).
+  - [`documentation/docs/CONTROL.md`](Tesis/CerebroVial/documentation/docs/CONTROL.md) (552 líneas, referencia normativa según TTH-10 spec).
   - [`core_management_api/tests/control/`](Tesis/CerebroVial/core_management_api/tests/control/) suite de tests.
 - **Concordancia con auto-clasificación del spec:** el spec mismo se auto-clasifica "✓✓ Construido, integración pendiente con otras TTH del Bloque E" y enumera 5 pendientes idénticos a los detectados aquí.
 

@@ -94,7 +94,7 @@ Por dependencias técnicas declaradas en DHU-015:
 
 Las siguientes decisiones se cerraron durante el diálogo de redacción y están consolidadas en DHU-015 o son notas operativas internas:
 
-1. **Arquitectura del motor adaptativo (TTH-10).** Conforme a `motor_adaptativo_teoria.md` y a la clarificación arquitectónica registrada durante la redacción: el motor es una **pipeline de dos etapas** (selección entre Webster y Max Pressure como estrategias adaptativas; aplicación de MTC como capa de reglas duras post-procesamiento), no un selector tripartita entre tres estrategias. Esta clarificación afecta nominalmente la descripción de F35 en `FEATURE_BACKLOG_DETALLADO.md` (título "Motor adaptativo (Webster + MaxPressure + MTC)" se preserva por trazabilidad histórica pero la descripción se ajusta) y la Fase 3 de `EVOLUCION_TESIS.md`.
+1. **Arquitectura del motor adaptativo (TTH-10).** Conforme a `CONTROL.md` y a la clarificación arquitectónica registrada durante la redacción: el motor es una **pipeline de dos etapas** (selección entre Webster y Max Pressure como estrategias adaptativas; aplicación de MTC como capa de reglas duras post-procesamiento), no un selector tripartita entre tres estrategias. Esta clarificación afecta nominalmente la descripción de F35 en `FEATURE_BACKLOG_DETALLADO.md` (título "Motor adaptativo (Webster + MaxPressure + MTC)" se preserva por trazabilidad histórica pero la descripción se ajusta) y la Fase 3 de `EVOLUCION_TESIS.md`.
 
 2. **Arquitectura del modelo predictivo (TTH-09).** Multi-output (un GRU univariado por dirección, cada uno produce un vector de predicciones a múltiples horizontes en una sola inferencia). Esto materializa el UX del slider de HU-03 sin reabrir esa HU: una sola llamada al backend devuelve todas las predicciones que el slider del Operador recorre. El detalle vive en TTH-09 CT-09.2.
 
@@ -202,5 +202,5 @@ Esta sesión cerró el Bloque E. A la fecha actual, el Bloque F del MVP1 tambié
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Inception completo aplicado al proyecto.
 - `FEATURE_BACKLOG_DETALLADO.md` — Detalle completo de las 41 features identificadas (29 MVP1 + 5 MVP2 + 7 Trabajos Futuros).
 - `EVOLUCION_TESIS.md` — Narrativa de las 4 fases del proyecto.
-- `motor_adaptativo_teoria.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
+- `CONTROL.md` — Sustentación teórica del motor adaptativo (consumido por TTH-10).
 - `documentation/docs/INVESTIGACION_HIPERPARAMETROS_TEMPORALES.md` — Documento pendiente entregable de TTH-11.

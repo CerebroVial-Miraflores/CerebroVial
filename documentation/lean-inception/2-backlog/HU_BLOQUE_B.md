@@ -236,7 +236,7 @@ La HU define el qué (las dos fuentes de información integradas y comparables) 
 
 **Dependencias:** consume las decisiones expuestas por el motor adaptativo (TTH-10) de forma agnóstica. El nombre interno de la estrategia se mapea a etiqueta legible para el Operador (DHU-006). HU-06 cubre el "por qué" de la decisión; HU-07 cubre el aviso activo de cambio. Aplica DHU-005 Caso B; la alerta activa transversal ante caída del motor es responsabilidad de HU-10 (Bloque C, DHU-009).
 
-**Notas clave:** la HU es agnóstica a la implementación del motor (Webster, Max Pressure, MTC se mencionan en TTH-10 y `motor_adaptativo_teoria.md`, no aquí). El Operador ve etiquetas autoexplicativas, no códigos técnicos. Es vista pasiva: "qué está activo ahora"; la consulta de historial vive en HU-08, el aviso activo vive en HU-07.
+**Notas clave:** la HU es agnóstica a la implementación del motor (Webster, Max Pressure, MTC se mencionan en TTH-10 y `CONTROL.md`, no aquí). El Operador ve etiquetas autoexplicativas, no códigos técnicos. Es vista pasiva: "qué está activo ahora"; la consulta de historial vive en HU-08, el aviso activo vive en HU-07.
 
 ### Descripción
 
