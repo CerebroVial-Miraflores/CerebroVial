@@ -186,7 +186,7 @@ export const RecommendationPanel = ({ status, data, error, metrics, onRetry, onR
                 </div>
 
                 <div className="mb-4">
-                    <p className="text-[10px] text-slate-600 mb-1">─── Log técnico (para operador C4) ───────────────</p>
+                    <p className="text-[10px] text-slate-600 mb-1">─── Log técnico ──────────────────────────────────</p>
                     <p className="text-xs text-slate-400 font-mono leading-snug">{data.reasoning}</p>
                     <p className="text-[10px] text-slate-600 mt-1">──────────────────────────────────────────────────</p>
                 </div>
