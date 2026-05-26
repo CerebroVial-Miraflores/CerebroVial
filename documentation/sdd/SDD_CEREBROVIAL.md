@@ -30,7 +30,7 @@ El SDD no reabre lo ya cerrado en el corpus documental; lo cita y construye sobr
 | `TAREAS_TECNICAS_HABILITADORAS.md` | Origen de las 11 TTH; sustrato técnico de los componentes. |
 | `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` y `RF_RNF_LITE.md` | Catálogo de 22 RF y 53 RNF clasificados por ISO/IEC 25010:2023; fuente de §8 (atributos de calidad). |
 | `DECISIONS.md` (D-001 a D-009) | Decisiones técnicas del producto; fuente de §2 y del catálogo ADR de §9. |
-| `DECISIONS_HU.md` (DHU-001 a DHU-020) | Decisiones metodológicas del backlog; DHU-020 delega al SDD el diseño de la persistencia de estado vigente (§4). |
+| `DECISIONS_HU.md` (DHU-001 a DHU-022) | Decisiones metodológicas del backlog; DHU-020 delega al SDD el diseño de la persistencia de estado vigente (§4). |
 | `AUDITORIA_HU_CODIGO.md` | Estado real del código por HU/TTH y los 13 deltas; fuente de §10 y §11. |
 | `REPORTE_PLANIFICACION_SPRINT_4.md` | Marco de ejecución; el SDD se anticipó allí como entregable metodológico paralelo (riesgo R3). |
 

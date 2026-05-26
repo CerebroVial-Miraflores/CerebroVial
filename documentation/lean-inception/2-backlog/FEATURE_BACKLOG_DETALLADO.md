@@ -1170,7 +1170,7 @@ Cada feature está descrita con la siguiente estructura:
 
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Documento principal del Inception (este es complementario).
 - `DECISIONS.md` — Decisiones técnicas referenciadas (D-001 a D-009).
-- `DECISIONS_HU.md` — Decisiones metodológicas sobre la redacción del backlog (DHU-001 a DHU-016).
+- `DECISIONS_HU.md` — Decisiones metodológicas sobre la redacción del backlog (DHU-001 a DHU-022).
 - `HU_BLOQUE_A.md`, `HU_BLOQUE_B.md`, `HU_BLOQUE_C.md`, `HU_BLOQUE_D.md` — Product Backlog redactado por bloques.
 - `TAREAS_TECNICAS_HABILITADORAS.md` — Tareas Técnicas Habilitadoras transversales.
 - `EVOLUCION_TESIS.md` — Narrativa de evolución del proyecto; sección 8 contiene tabla referencial de Trabajos Futuros.

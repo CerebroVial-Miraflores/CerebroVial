@@ -159,15 +159,18 @@ Las direcciones naturales de extensión del trabajo están explícitamente fuera
 | F39 | Despliegue real en infraestructura distribuida (Raspberry Pi como dispositivo de borde + servidor central) | D-004 |
 | F40 | Notificaciones push y monitoreo proactivo de cámaras | — |
 | F41 | Integración cerrada del módulo de visión al loop de validación cuantitativa (cuando se disponga de cámaras propias o fuentes de video controlables de Miraflores) | D-007 |
+| F42 | Análisis del estado del tráfico asistido por LLM (modo explicativo del motor adaptativo + chat opcional, apoyado en la capa de explicación de HU-06) | D-007 / Art. 21 |
 
-Ver fichas detalladas en `FEATURE_BACKLOG_DETALLADO.md`. La asimetría entre F21 (ficha completa, originada en el Brainstorming del Inception) y F36-F41 (fichas livianas, formalizadas en DHU-012) es histórica y deliberada.
+**Sobre F42 (análisis del tráfico asistido por LLM).** Dirección futura explorada y descartada del MVP. Durante el desarrollo se prototiparon dos componentes contra un LLM externo (Gemini): un análisis automático que narraba el estado de la intersección en lenguaje natural, y un asistente conversacional que respondía consultas del operador sobre el tráfico. Ambos se removieron del MVP (SAN-02) por quedar fuera de la arquitectura objetivo (Art. 21 de la constitución) y depender de una API externa. Se conserva como extensión natural: un componente que explique el estado y las decisiones del motor adaptativo en lenguaje natural —apoyándose en la capa de explicación ya prevista en HU-06—, con un modo conversacional opcional. Fuera de alcance del MVP por costo de integración, dependencia de proveedor externo y falta de aporte a la validación cuantitativa de la tesis.
+
+Ver fichas detalladas en `FEATURE_BACKLOG_DETALLADO.md`. La asimetría entre F21 (ficha completa, originada en el Brainstorming del Inception) y F36-F41 (fichas livianas, formalizadas en DHU-012) es histórica y deliberada. F42 se incorpora retroactivamente en saneamiento (SAN-02, 2026-05-26) sin ficha en `FEATURE_BACKLOG_DETALLADO.md`: queda referenciada únicamente en este documento por ser dirección de tesis, no feature del Product Backlog.
 
 ---
 
 ## 9. Documentos relacionados
 
 - `DECISIONS.md` — Registro formal de decisiones técnicas (D-001 a D-009).
-- `DECISIONS_HU.md` — Decisiones metodológicas sobre la redacción del Product Backlog (DHU-001 a DHU-018).
+- `DECISIONS_HU.md` — Decisiones metodológicas sobre la redacción del Product Backlog (DHU-001 a DHU-022).
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Inception consolidado del proyecto.
 - `FEATURE_BACKLOG_DETALLADO.md` — Detalle completo de las 41 features del backlog (MVP1 + MVP2 + Trabajos Futuros).
 - `documentation/docs/DISCOVERY_2026-05-10.md` — Auditoría completa del estado del repositorio.

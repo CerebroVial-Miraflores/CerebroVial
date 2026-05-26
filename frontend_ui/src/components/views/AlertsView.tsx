@@ -1,7 +1,6 @@
 import React from 'react';
-import type { Alert } from '../../types';
 
-import { AlertTriangle, Sparkles } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Card } from '../ui/Card';
 
 // --- DATOS MOCK ---
@@ -11,11 +10,7 @@ const alerts = [
     { id: 3, type: 'Hardware', msg: 'Latencia alta en Nodo Edge #4', time: 'Hace 12 min', details: 'Ping > 500ms en dispositivo Raspberry Pi intersección 4.' },
 ];
 
-interface AlertsViewProps {
-    setSelectedAlertForReport: (alert: Alert) => void;
-}
-
-export const AlertsView = ({ setSelectedAlertForReport }: AlertsViewProps) => {
+export const AlertsView = () => {
     return (
         <div className="grid grid-cols-1 gap-4">
             {alerts.map((alert, idx) => (
@@ -30,12 +25,6 @@ export const AlertsView = ({ setSelectedAlertForReport }: AlertsViewProps) => {
                         </div>
                     </div>
                     <div className="flex gap-2 justify-end">
-                        <button
-                            onClick={() => setSelectedAlertForReport(alert)}
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm transition-colors"
-                        >
-                            <Sparkles size={16} /> Generar Reporte IA
-                        </button>
                         <button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded text-sm transition-colors">
                             Ver Cámara
                         </button>

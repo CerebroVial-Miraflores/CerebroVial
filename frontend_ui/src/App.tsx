@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import type { Alert } from './types';
 
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -10,13 +9,10 @@ import { AlertsView } from './components/views/AlertsView';
 import { AdminView } from './components/views/AdminView';
 import { ControlView } from './components/views/control/ControlView';
 import { ThesisModal } from './components/modals/ThesisModal';
-import { ReportModal } from './components/modals/ReportModal';
-import { AIChatWidget } from './components/widgets/AIChatWidget';
 
 const CerebroVialApp = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showThesis, setShowThesis] = useState(false);
-  const [selectedAlertForReport, setSelectedAlertForReport] = useState<Alert | null>(null);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -47,14 +43,12 @@ const CerebroVialApp = () => {
           )
         )}
         {activeTab === 'analytics' && <AnalyticsView />}
-        {activeTab === 'alerts' && <AlertsView setSelectedAlertForReport={setSelectedAlertForReport} />}
+        {activeTab === 'alerts' && <AlertsView />}
         {activeTab === 'admin' && <AdminView />}
         {activeTab === 'control' && <ControlView />}
       </main>
 
       {showThesis && <ThesisModal onClose={() => setShowThesis(false)} />}
-      {selectedAlertForReport && <ReportModal alert={selectedAlertForReport} onClose={() => setSelectedAlertForReport(null)} />}
-      <AIChatWidget />
     </div>
   );
 };

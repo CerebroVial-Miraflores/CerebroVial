@@ -450,7 +450,7 @@ Esta sección documenta los refinamientos al Inception desde la versión 1.0 (wo
 ## Documentos relacionados
 
 - `DECISIONS.md` — Registro formal de decisiones técnicas (D-001 a D-009).
-- `DECISIONS_HU.md` — Decisiones metodológicas sobre la redacción del Product Backlog (DHU-001 a DHU-019).
+- `DECISIONS_HU.md` — Decisiones metodológicas sobre la redacción del Product Backlog (DHU-001 a DHU-022).
 - `EVOLUCION_TESIS.md` — Narrativa de las 4 fases del proyecto; sección 8 contiene la tabla de Trabajos Futuros.
 - `LEAN_INCEPTION_INVESTIGACION.md` — Fundamentación del marco metodológico.
 - `documentation/docs/DISCOVERY_2026-05-10.md` — Auditoría inicial del repositorio.

@@ -413,7 +413,7 @@ Tras cerrar el MVP2 (ya hecho), los próximos pasos del proyecto, fuera del alca
 - `HU_BLOQUE_E.md` — Bloque E del Product Backlog (0 HUs operativas; mapeo a TTH-07 a TTH-11 y decisiones tomadas durante la redacción).
 - `HU_BLOQUE_F.md` — Bloque F del Product Backlog (2 HUs operativas: HU-16, HU-17; F30 inglobada como CAs).
 - `HU_MVP2.md` — MVP2 del Product Backlog (HU-18, HU-19, HU-20, HU-21; HU-09 reside en `HU_BLOQUE_B.md`). HU-20 extiende CA-14.1 inglobando persistencia paralela del modelo de respaldo.
-- `DECISIONS_HU.md` — Decisiones metodológicas sobre HUs (DHU-001 a DHU-019).
+- `DECISIONS_HU.md` — Decisiones metodológicas sobre HUs (DHU-001 a DHU-022).
 - `DECISIONS.md` — Decisiones técnicas del producto (D-001 a D-009).
 - `TAREAS_TECNICAS_HABILITADORAS.md` — TTH-01 a TTH-11.
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Inception completo aplicado al proyecto.

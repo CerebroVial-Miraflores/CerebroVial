@@ -70,9 +70,10 @@ Migraciones:
   explorado se descarta. El RandomForest actual es temporal hasta que el 
   GRU esté servido.
 - **Deploy**: docker local únicamente. No Azure por ahora.
-- **Datos del GRU**: dataset sintético calibrado contra distribuciones de Waze 
-  + METR-LA (`metr_la.h5` ya en LFS). Sin acceso a API real de Waze. 
-  Ver `DATA_MODEL_AUDIT.md` decisión D-008.
+- **Datos del GRU**: dataset generado por SUMO (D-008, 2026-05-11). Calibración
+  contra Waze es trabajo futuro. `metr_la.h5` (LFS) se conserva sólo como
+  referencia histórica pre-D-008. Ver `documentation/lean-inception/4-decisiones/DECISIONS.md`
+  (decisiones D-001 a D-009).
 - **Visión y BD**: el pipeline de visión **persistirá** agregados a una tabla
   `vision_aggregates` (pendiente, tareas E18-E21 / SAN-03). **Hoy** la persistencia
   es a CSV. No se migra a las tablas `vision_tracks`/`vision_flows` (modeladas para
@@ -89,8 +90,12 @@ Migraciones:
   se descarta pero el código queda como referencia hasta que el GRU esté 
   funcional. En `notebooks/logs/` solo queda `epoch=79-step=30800.ckpt` 
   (en LFS); los 4 checkpoints intermedios se borraron en C9.
-- NO instalar `torch` ni `ultralytics` en `core_management_api`. Los 
-  `requirements.txt` están limpios desde C7.
+- `torch` aparece en `core_management_api/requirements.txt` y en
+  `src/prediction/*.py` como deuda C7.5 (código STGCN muerto). El endpoint
+  vivo de predicción usa RandomForest baseline y no necesita torch en runtime.
+  La decisión A (purgar torch del core) o B (relajar esta regla) queda
+  pendiente hasta TTH-09 / SAN-01. **No instalar torch nuevo en el core hasta
+  que SAN-01 se resuelva.** NO instalar `ultralytics` en `core_management_api`.
 - NO migrar el pipeline de visión a las tablas `vision_tracks` /
   `vision_flows`. Esas tablas quedan modeladas para futuro pero sin
   refactor del pipeline. La persistencia a BD **se hará** vía
@@ -104,22 +109,29 @@ Migraciones:
   `documentation/tesis/`.
 - **Migraciones de BD**: siempre con Alembic. Nunca usar `Base.metadata.create_all()`. 
   Para entender el schema actual, leer `documentation/docs/DATA_MODEL.md`.
+- **ThesisModal y su botón en `Sidebar.tsx` son documentación viva intencional del
+  sistema** (ficha de tesis: autores, objetivo, stack, KPIs), pensada para visibilidad
+  del trabajo y sustentación. NO es parte de la arquitectura de control ni requiere
+  HU/TTH; NO marcar como componente huérfano ni proponer su remoción.
+- **`CerebroVial/.gemini/settings.json` es configuración intencional del flujo Gemini
+  CLI** del equipo (un compañero del proyecto usa `gemini` desde la terminal sobre este
+  repo). El archivo le indica al CLI cargar `CLAUDE.md` como contexto. NO marcarlo como
+  huérfano ni proponer su remoción/`.gitignore`. Misma lógica que `ThesisModal`.
 
 ## Estado del proyecto
 
-**Fase 1 (Estabilización del repo):** ✓ Cerrada el 2026-05-03.
-Ver `documentation/docs/20260503_PHASE1_CLOSURE.md` para detalle.
+Estado vivo en `documentation/ESTADO_Y_PROXIMOS_PASOS.md`. **Sprint 4 en construcción**:
+TTH-01 (Auth JWT+bcrypt) → HU-01 → TTH-10 → HU-05 → TTH-03 (19 SP comprometidos).
 
-**Auditoría de modelo de datos:** ✓ Completada el 2026-05-03.
-Ver `documentation/docs/DATA_MODEL_AUDIT.md` y `DATA_MODEL.md`.
+Plan técnico canónico: `documentation/sdd/SDD_CEREBROVIAL.md` (Spec Kit v0.8.11 brownfield,
+6/6 artefactos sellados).
 
-**Fase 2 (Cimientos: Alembic, JWT, frontend conectado, persistencia visión→BD):**
-en curso.
+Decisiones técnicas vigentes (D-001 a D-009): `documentation/lean-inception/4-decisiones/DECISIONS.md`.
+**D-009** (variable de estado predicha: jam level ordinal 0-5, constructo Waze) es lectura
+obligatoria antes de tocar predicción o métricas de estado.
 
-**Fase 3 (Predictor GRU + control adaptativo + métricas comparativas):**
-después de Fase 2.
-
-Detalle en `documentation/docs/PLAN.md`.
+Fase 1 ✓ Cerrada el 2026-05-03 (`documentation/docs/20260503_PHASE1_CLOSURE.md`).
+`documentation/docs/PLAN.md` queda como histórico, no como fuente operativa.
 
 ## Git LFS (requerido)
 Este repo usa Git LFS para binarios (.joblib, .pt, .ckpt, .h5, .npy, .docx).
