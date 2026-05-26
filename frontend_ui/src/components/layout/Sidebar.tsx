@@ -6,8 +6,11 @@ import {
     Settings,
     SlidersHorizontal,
     Cpu,
-    FileText
+    FileText,
+    LogOut
 } from 'lucide-react';
+
+import { useSession } from '../../auth/SessionContext';
 
 interface SidebarProps {
     activeTab: string;
@@ -16,6 +19,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ activeTab, setActiveTab, setShowThesis }: SidebarProps) => {
+    const { logout } = useSession();
     return (
         <aside className="fixed left-0 top-0 h-full w-20 md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 transition-all duration-300">
             <div className="p-6 flex items-center gap-3 border-b border-slate-800">
@@ -80,6 +84,13 @@ export const Sidebar = ({ activeTab, setActiveTab, setShowThesis }: SidebarProps
                         <p className="text-xs text-slate-500">En línea</p>
                     </div>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => logout()}
+                    className="mt-4 w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded-lg text-sm transition-colors"
+                >
+                    <LogOut size={16} /> <span className="hidden md:block">Cerrar sesión</span>
+                </button>
             </div>
         </aside>
     );

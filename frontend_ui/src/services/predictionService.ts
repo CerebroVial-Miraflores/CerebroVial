@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { httpClient } from './httpClient';
 
 // Interfaces matching the backend
 export interface PredictionInput {
@@ -24,9 +24,6 @@ export interface PredictionResult {
     message: string;
 }
 
-const API_BASE_URL = (import.meta.env?.VITE_CORE_API_URL) || 'http://localhost:8001';
-const API_URL = `${API_BASE_URL}/predictions`;
-
 export const predictionService = {
     /**
      * Sends current traffic metrics to the prediction engine to get future congestion estimates.
@@ -41,7 +38,7 @@ export const predictionService = {
                 day_of_week: input.day_of_week ?? now.getDay(), // 0=Sunday, 1=Monday...
             };
 
-            const response = await axios.post<PredictionResult>(`${API_URL}/predict`, payload);
+            const response = await httpClient.post<PredictionResult>('/predictions/predict', payload);
             return response.data;
         } catch (error) {
             console.error('Error calling prediction API:', error);
