@@ -196,8 +196,14 @@ def ps(c):
 
 @task
 def health(c):
-    """Validar que core_management_api responde."""
-    c.run("curl -i http://localhost:8001/api/health", pty=False, warn=True)
+    """Validar que core_management_api responde.
+
+    Desde HU-01 (RBAC), GET /api/health está protegido con require_role(admin).
+    El smoke de proceso vivo usa GET / (root, abierto, retorna name+version).
+    Para chequear /api/health con credenciales, exportá ADMIN_TOKEN y corré
+    `curl -i -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8001/api/health`.
+    """
+    c.run("curl -i http://localhost:8001/", pty=False, warn=True)
 
 
 # === Migraciones y datos ===
@@ -240,6 +246,24 @@ def seed(c):
     py = _venv_python()
     c.run(f"{py} scripts/seed.py", pty=False)
     print("\n✓ Seed aplicado.")
+
+
+@task(pre=[check_env])
+def seed_rbac_smoke(c):
+    """Sembrar 3 usuarios de smoke (operator, manager, admin) para HU-01.
+
+    Credenciales de desarrollo (no usar fuera de smoke local):
+      operator@cv.pe / Smoke1234  → rol operator
+      manager@cv.pe  / Smoke1234  → rol manager
+      admin@cv.pe    / Smoke1234  → rol admin
+
+    Idempotente: salta usuarios cuyo email ya existe.
+    Hashing vía hash_password() de TTH-01 (bcrypt cost=12).
+    Útil para el smoke manual de CA-01.6 (auto-logout por token expirado) y
+    para probar visibilidad de pestañas por rol en el frontend.
+    """
+    py = _venv_python()
+    c.run(f"{py} scripts/seed_rbac_smoke.py", pty=False)
 
 
 @task

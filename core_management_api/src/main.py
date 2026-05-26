@@ -12,6 +12,8 @@ from src.control.application.adaptive_engine import AdaptiveEngine
 from src.control.application.webster import WebsterCalculator
 from src.control.application.max_pressure import MaxPressureController
 from src.control.application.mtc_constraints import MTCRestrictionApplier
+from src.auth.domain import Role
+from src.auth.presentation.api.dependencies import require_role
 from src.auth.presentation.api.routes import auth_router
 
 app = FastAPI(title="CerebroVial Core API", version="0.1.0")
@@ -60,7 +62,7 @@ def get_intersections(db: Session = Depends(get_db)):
     return results
 
 
-@app.get("/api/health")
+@app.get("/api/health", dependencies=[Depends(require_role(Role.ADMIN))])
 def health():
     return {"status": "ok"}
 

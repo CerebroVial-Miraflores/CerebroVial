@@ -102,6 +102,39 @@ Migraciones:
   en `.specify/memory/constitution.md`; artefactos vivos en `specs/001-cerebrovial-mvp/`
   (spec.md, plan.md, tasks.md, data-model.md, quickstart.md). Mapeo de adopción en
   `documentation/sdd/SPECKIT_MAPPING.md`.
+- **HU-01 (RBAC) — alcance entregado y deuda declarada**. La HU instaura la
+  **maquinaria** RBAC. Backend: dependency `require_role(*allowed: Role)` en
+  `core_management_api/src/auth/presentation/api/dependencies.py`, con cuerpo 403
+  genérico `"Acceso denegado"` byte-idéntico para no filtrar el recurso ni el rol
+  esperado (RNF-SEC-04). Frontend: `RoleGate` + `roles.ts` (mapas TABS_BY_ROLE,
+  DEFAULT_TAB_BY_ROLE, ROLE_LABEL_ES) en `frontend_ui/src/auth/`. El enforcement
+  se demuestra sobre un único endpoint de muestra (`GET /api/health` con
+  `require_role(Role.ADMIN)`). Esto es consistente con la fila *Aplicabilidad*
+  de RNF-SEC-03 (REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md): *"la matriz endpoint
+  × rol se materializa al implementar y se valida con prueba automatizada
+  exhaustiva"*. La cobertura endpoint × rol sobre las rutas restantes
+  (`/api/intersections`, `/predictions/*`, `/control/*`) es **responsabilidad
+  acumulativa** de HU-15..HU-21 (cada HU futura aplica `require_role(...)` a sus
+  endpoints). **CA-01.6 (auto-logout por token expirado) — smoke e2e en vivo
+  diferido**: la cobertura ejecutable está completa por dos vías independientes —
+  el interceptor + flash de sesión expirada se verifican en `httpClient.test.ts`,
+  `SessionContext.test.tsx` y `LoginView.test.tsx` (CT-01.11); el rechazo 401
+  por token inválido/expirado se verifica sobre `GET /api/health` en los 4
+  escenarios pytest-bdd de CA-01.4. Lo que **no** es ejecutable en HU-01 es
+  unir las dos mitades en un smoke e2e en vivo: el único endpoint protegido
+  por `require_role` es `/api/health`, que la UI no consume en su flujo
+  natural, así que dejar expirar el token y "seguir usando la app" no dispara
+  el auto-logout porque las demás rutas siguen abiertas (la misma frontera
+  de RNF-SEC-03 ya declarada arriba). El smoke e2e en vivo queda diferido a
+  la primera HU que aplique `require_role` a una ruta consumida por la UI
+  (HU-03 o HU-05, lo que llegue primero). Cuando llegue, el protocolo correcto
+  **no** es `JWT_EXPIRATION_HOURS` fraccionario (el servicio JWT lee horas
+  enteras vía `int(...)` y revienta con decimales); el camino válido es
+  invocar `create_access_token(..., expires_delta=timedelta(seconds=N))` desde
+  una shell del backend. Primer Gherkin del proyecto: `features/hu-01-rbac/`
+  con `rbac_api.feature` ejecutable vía `pytest-bdd` (declarado en
+  `requirements-dev.txt`; CI actualizado en `.github/workflows/ci.yml` para
+  instalar `requirements-dev.txt`).
 
 ## Reglas para Claude Code
 
