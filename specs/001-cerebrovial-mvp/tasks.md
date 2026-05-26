@@ -104,8 +104,10 @@ CA-05.5); por último reducir **TTH-10** a RandomForest + persistencia sin integ
 
 Tres deudas heredadas, fuera del alcance comprometido del Sprint 4, registradas para no perderlas:
 
-- **SAN-01 — `torch` en `core_management_api/requirements.txt`** contradice la regla de `CLAUDE.md`
-  (no instalar `torch`/`ultralytics` en el núcleo). Tarea de limpieza de bajo riesgo.
+- **SAN-01 ✓ resuelta** (2026-05-26, rama `san-06`): `torch` removido de
+  `core_management_api/requirements.txt` + 6 archivos STGCN muertos eliminados de
+  `core_management_api/src/prediction/`. La regla CLAUDE.md "no `torch`/`ultralytics` en el
+  núcleo" permanece como guardia anti-regresión. Cierra simultáneamente C7.5 (TODO.md).
 - **SAN-02 — Gemini huérfano (Delta-13):** `ReportModal.tsx` (API Gemini), `AIChatWidget.tsx` y
   `ThesisModal.tsx` existen sin HU/TTH que los respalde. **Decisión metodológica pendiente** (elevar
   a HU formal / deshabilitar / remover). El Artículo 21 (DHU-021) declara Gemini fuera de la

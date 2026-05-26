@@ -23,10 +23,12 @@ sueltos, archivado de guía obsoleta, actualización quirúrgica de CLAUDE.md) y
 ejecutada en `chore/orden-repo` (merge a master en commit `d3994e22`).
 
 ## Tareas de saneamiento diferidas (NO bloquean Sprint 4)
-- SAN-01: contradicción regla-vs-código. CLAUDE.md (línea 84) prohíbe `torch` en
-  `core_management_api`, pero `requirements.txt` y `prediction/*.py` lo usan (justificación D-006/GRU).
-  **NO ejecutar como "quitar torch" sin resolver antes** si se corrige el código (purgar torch del
-  módulo) o la regla (relajar el CLAUDE.md). Decisión de arquitectura para cuando se aborde TTH-09.
+- SAN-01 ✓ resuelta (2026-05-26, rama `san-06`): se eligió el camino "purgar torch del módulo"
+  (no se relajó la regla CLAUDE.md). Se eliminaron 6 archivos STGCN muertos de
+  `core_management_api/src/prediction/` y la línea `torch` de `core_management_api/requirements.txt`.
+  El runtime vivo (`predictor.py → engine.py`) usa RandomForest + joblib, sin torch. La regla
+  CLAUDE.md "No instalar torch en core_management_api" permanece como guardia anti-regresión.
+  Cierra simultáneamente C7.5 (TODO.md).
 - SAN-02: decidir destino de componentes Gemini huérfanos (Art. 21 los declara fuera de arquitectura).
 - SAN-03: crear tabla vision_aggregates + cableado (Delta-05). Es Trabajo Futuro, no Sprint 4.
 - SAN-04 ✓ resuelto (2026-05-25, rama `fix/consolidar-decisiones`): el canónico
