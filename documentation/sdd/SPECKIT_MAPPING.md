@@ -86,3 +86,80 @@ generativos.** La regla sigue vigente: mapear, no regenerar.
 Regla de fuente común a los cinco: cada artefacto referencia su fuente por ID y archivo; no
 duplica texto Gherkin, justificaciones ni catálogos. El SDD sigue siendo canónico de arquitectura
 y `DECISIONS.md`/`DECISIONS_HU.md` de las decisiones.
+
+---
+
+## 5. Estado de adopción al 2026-05-25 (snapshot)
+
+Cierre del ciclo Spec Kit tras una sesión de `/speckit-analyze` + remediación
+documental ejecutada el 2026-05-25. **Working tree limpio** en rama `feature/SDD`.
+
+### 5.1 Artefactos del ciclo Spec Kit (6 de 6 poblados)
+
+| Artefacto | Commit | Fecha | Notas |
+|---|---|---|---|
+| `.specify/memory/constitution.md` | `57e9c016` | 2026-05-20 | 22 artículos vinculantes |
+| `specs/001-cerebrovial-mvp/spec.md` | `9ab94d4c` (+ remediación) | 2026-05-20 / 2026-05-25 | 21 HU + 22 RF + 53 RNF; HU-05 agnóstica (Art. 14); nota de alcance SC-001/SC-003 |
+| `specs/001-cerebrovial-mvp/plan.md` | `90453dc3` (+ refresco) | 2026-05-20 / 2026-05-25 | Constitution Check y bloque Documentation actualizados |
+| `specs/001-cerebrovial-mvp/data-model.md` | `90453dc3` | 2026-05-20 | SDD §4 + DATA_MODEL.md |
+| `specs/001-cerebrovial-mvp/tasks.md` | `93a49ed0` | 2026-05-20 | Inventario 32 elementos + nota de protección + SAN-01/02/03 |
+| `specs/001-cerebrovial-mvp/quickstart.md` | `8bf95677` | 2026-05-25 | Mapeo brownfield del flujo `invoke up` |
+
+`research.md` no se requiere — las decisiones técnicas viven en `DECISIONS.md` y `DECISIONS_HU.md` (regla §3).
+
+### 5.2 Tooling Spec Kit (destrabado para brownfield)
+
+`commit d2dab5b6` (2026-05-25) cierra la fricción entre la rama brownfield
+`feature/SDD` y el patrón Spec Kit `NNN-feature-name`:
+
+- **`.specify/feature.json`** declara explícitamente `feature_directory:
+  specs/001-cerebrovial-mvp`. Permite a los scripts resolver FEATURE_DIR sin
+  depender del nombre de la rama (mecanismo previsto en `common.sh:188-207`).
+- **`.specify/scripts/bash/check-prerequisites.sh`** alineado con
+  `setup-plan.sh`/`setup-tasks.sh`: si `feature.json` resuelve al FEATURE_DIR
+  activo, se omite el chequeo estricto de nombre de rama. Cambio mínimo y
+  consistente con el patrón ya usado por los otros scripts.
+
+Con esto, `/speckit-analyze`, `/speckit-implement` y `/speckit-checklist`
+operan sobre la rama actual sin renombrarla.
+
+### 5.3 Tareas de saneamiento (SAN-01/02/03)
+
+Creadas en `tasks.md` (commit `93a49ed0`) como encapsulación de la regla de
+CLAUDE.md ("no `torch` en core") + Delta-13 (Gemini huérfano) + Delta-05
+(`vision_aggregates` no migrada). **Ninguna bloquea la construcción del
+Sprint 4** (TTH-01 → HU-01 → TTH-10 → HU-05 → TTH-03).
+
+### 5.4 Decisiones cerradas que cierran deltas
+
+- **DHU-020** (Cerrada 2026-05-20): resuelve Delta-08 / R1 (semántica de
+  ControlView). Vista pasiva de HU-05 prevalece; playground se preserva como
+  herramienta de Administrador; Delta-07/08/09 se abordan en bloque; persistencia
+  de "estado vigente del motor" autorizada como cambio estructural. Codificada
+  como Artículo 20 de constitution. `AUDITORIA_HU_CODIGO.md`,
+  `REPORTE_PLANIFICACION_SPRINT_4.md` y `DELTA_08_ANALISIS.md` ya apuntan al
+  cierre (commit `d0ac9238`, 2026-05-25).
+- **DHU-022** (Cerrada 2026-05-20): cierra Delta-02 fijando
+  `operator/manager/admin` como claims técnicos canónicos con labels en
+  español en frontend.
+
+### 5.5 Resultado de `/speckit-analyze` (run #2, 2026-05-25)
+
+- **0 errores CRITICAL** · **0 errores HIGH** · **0 errores LOW abiertos**
+- 1 MEDIUM (auto-cubierto por este snapshot) y 2 LOW intencionales
+  (B1 confirmaciones con asesor, A1 duplicación controlada de HU-09 por DHU-017).
+
+### 5.6 Próximo paso recomendado
+
+El ciclo SDD está **operacionalmente sellado**. Cuando se decida avanzar:
+
+- **Tier 2 — Operacionalización:** `/speckit-taskstoissues` para los 5
+  elementos del Sprint 4; `/speckit-checklist` por HU/TTH; convención de
+  branching por elemento.
+- **Tier 3 — Saneamiento:** cerrar SAN-01 (torch en core), decidir SAN-02
+  (Gemini: HU formal o remover), cerrar SAN-03 (migration `vision_aggregates`
+  + cableado del aggregator).
+- **Tier 4 — Ejecución:** `/speckit-implement` sobre TTH-01 (Auth JWT +
+  bcrypt) y seguir el orden semanal del Sprint 4.
+
+Estos Tiers **no son parte de este sellado**; quedan como hoja de ruta.
