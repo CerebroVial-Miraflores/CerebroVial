@@ -19,7 +19,7 @@ import { Card } from '../../ui/Card';
 import { PhaseEditor } from './PhaseEditor';
 import { Slider } from './Slider';
 import { PresetButtons } from './PresetButtons';
-import { PRESETS, type PresetConfig } from './controlTypes';
+import { KNOWN_NODE_IDS, PRESETS, type PresetConfig } from './controlTypes';
 import {
     RecommendationPanel,
     type RecommendationError,
@@ -112,7 +112,13 @@ const formIsValid = (intersectionId: string, phases: PhaseFlow[]): boolean => {
 };
 
 export const ControlPlayground = () => {
-    const [intersectionId, setIntersectionId] = useState('INT_001');
+    // Default = primer nodo válido del seed (ver KNOWN_NODE_IDS). Antes
+    // arrancaba con 'INT_001' como texto libre — un default heredado del
+    // ControlView original (commit 52a33cb7, [Fase 10c][HU015]) que NO
+    // existe en graph_nodes y hacía que el primer "Recomendar" del Admin
+    // siempre devolviera 422 unknown_intersection. El selector reemplaza
+    // el input de texto libre por una elección entre node_ids reales.
+    const [intersectionId, setIntersectionId] = useState<string>(KNOWN_NODE_IDS[0]);
     const [lostTime, setLostTime] = useState(8);
     const [phases, setPhases] = useState<PhaseFlow[]>(initialPhases);
     const { status, data, error, mutate, reset } = useRecommendControl();
@@ -182,15 +188,19 @@ export const ControlPlayground = () => {
                 <div className="space-y-3 mb-4">
                     <div>
                         <label className="text-[11px] uppercase tracking-wide text-slate-500">
-                            Identificador de la intersección
+                            Intersección
                         </label>
-                        <input
-                            type="text"
+                        <select
                             value={intersectionId}
                             onChange={e => setIntersectionId(e.target.value)}
                             className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-indigo-500 mt-1"
-                            placeholder="INT_001"
-                        />
+                        >
+                            {KNOWN_NODE_IDS.map(nodeId => (
+                                <option key={nodeId} value={nodeId}>
+                                    {nodeId}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     <Slider
                         label="Tiempo perdido por ciclo"
