@@ -1,11 +1,26 @@
 # scripts/
 
-Utilidades operativas. Para correr cualquiera de estos scripts contra la BD
-del compose, usar `docker compose exec core_management_api python scripts/<x>.py`
-(equivalente a `invoke shell-api -- python scripts/<x>.py`). Desde fuera del
-contenedor también funcionan si el `.env` tiene `DATABASE_URL` apuntando a
-`@db:` — los scripts conmutan a `@localhost:` cuando detectan que no están
-dentro del contenedor (vía la ausencia de `/.dockerenv`).
+Utilidades operativas. Hay dos formas de correrlas contra la BD del compose:
+
+**Desde host** (recomendado para scripts nuevos en branches sin rebuild de
+imagen): con el venv del repo activo y `PYTHONPATH=core_management_api` cuando
+el script importe módulos de `src/`:
+
+```bash
+PYTHONPATH=core_management_api .venv/bin/python scripts/<x>.py
+```
+
+Los scripts leen `DATABASE_URL` del `.env` y conmutan `@db:` a `@localhost:`
+cuando detectan que NO están dentro del contenedor (vía la ausencia de
+`/.dockerenv`).
+
+**Desde el contenedor** (`docker compose exec` o `invoke shell-api`): el
+binding-mount del compose monta solo `/app` con el contenido de
+`core_management_api/`; el directorio `scripts/` del repo raíz **no está
+montado**. Para que un script de esta carpeta esté visible dentro del
+contenedor hay que rebuildear la imagen (`invoke up-build --service=core_management_api`)
+o copiarlo a mano. Mientras no se haga, la opción "host" de arriba es la que
+funciona.
 
 ## seed.py — datos iniciales de Miraflores
 

@@ -71,6 +71,11 @@ const CerebroVialApp = () => {
             )
           )}
           {activeTab === ('alerts' as Tab) && <AlertsView />}
+        </RoleGate>
+
+        {/* HU-05 / DHU-020: 'control' lo ven operator (vista pasiva) y admin
+            (playground). El switch interno de ControlView decide qué render. */}
+        <RoleGate allowed={['operator', 'admin']}>
           {activeTab === ('control' as Tab) && <ControlView />}
         </RoleGate>
 
