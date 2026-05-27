@@ -131,3 +131,97 @@ describe('openControlActiveStateStream — backoff aplicado al onerror', () => {
     expect(b.onerror!(new Error('b1'))).toBe(1_000);
   });
 });
+
+describe('openControlActiveStateStream — filtrado de eventos no-dominio (CA-05.4)', () => {
+  // Detección post-Fase 8 (demo manual): sse-starlette envía un PING cada
+  // 15 s como keep-alive (DEFAULT_PING_INTERVAL=15); @microsoft/fetch-event-source
+  // dispatcha ``onmessage`` por la empty-line terminadora del ping comment
+  // con ``{event:'', data:''}``. Si lo propagáramos al caller, el banner
+  // "no confirmada" curaría cada 15 s sin que el motor haya emitido nada
+  // — exactamente la regresión de CA-05.4 que estos tests bloquean.
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('ping de transporte (event="" data="") NO dispara onMessage del caller', () => {
+    const captured = captureFetchEventSourceCallbacks();
+    const onMessage = vi.fn();
+    openControlActiveStateStream('larco_schell', { onMessage });
+
+    // Forma exacta del dispatch ante un ping comment de sse-starlette:
+    // ``: ping - <fecha>\n\n`` → primera línea no setea fields (fieldLength=0),
+    // empty-line dispatcha con todo vacío.
+    captured.onmessage!({
+      event: '',
+      data: '',
+      id: '',
+      retry: undefined,
+    } as EventSourceMessage);
+
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
+  it('ping NO resetea el contador de backoff', () => {
+    const captured = captureFetchEventSourceCallbacks();
+    openControlActiveStateStream('larco_schell', { onMessage: vi.fn() });
+
+    // Empujamos el contador a 4 s (3 errores) — sin reset previo.
+    captured.onerror!(new Error('1'));
+    captured.onerror!(new Error('2'));
+    expect(captured.onerror!(new Error('3'))).toBe(4_000);
+
+    // Llega un ping (no-dominio) — NO debe resetear retryAttempt.
+    captured.onmessage!({
+      event: '',
+      data: '',
+      id: '',
+      retry: undefined,
+    } as EventSourceMessage);
+
+    // El próximo error continúa la secuencia desde 8 s, NO desde 1 s.
+    expect(captured.onerror!(new Error('4'))).toBe(8_000);
+  });
+
+  it('eventos con type distinto de active-state-changed se ignoran (blindaje a futuros keep-alive)', () => {
+    const captured = captureFetchEventSourceCallbacks();
+    const onMessage = vi.fn();
+    openControlActiveStateStream('larco_schell', { onMessage });
+
+    // Si el server algún día agrega un evento "heartbeat" o "keepalive"
+    // distinto del dominio, este cliente NO lo procesa hasta que se
+    // soporte explícitamente.
+    captured.onmessage!({
+      event: 'heartbeat',
+      data: JSON.stringify({ alive: true }),
+      id: '',
+      retry: undefined,
+    } as EventSourceMessage);
+    captured.onmessage!({
+      event: 'keepalive',
+      data: '',
+      id: '',
+      retry: undefined,
+    } as EventSourceMessage);
+
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
+  it('active-state-changed con data válido SÍ se propaga (no regresión)', () => {
+    const captured = captureFetchEventSourceCallbacks();
+    const onMessage = vi.fn();
+    openControlActiveStateStream('larco_schell', { onMessage });
+
+    captured.onmessage!({
+      event: 'active-state-changed',
+      data: '{"node_id":"larco_schell","decision_id":"d-1"}',
+      id: '',
+      retry: undefined,
+    } as EventSourceMessage);
+
+    expect(onMessage).toHaveBeenCalledOnce();
+    expect(onMessage).toHaveBeenCalledWith({
+      type: 'active-state-changed',
+      data: { node_id: 'larco_schell', decision_id: 'd-1' },
+    });
+  });
+});

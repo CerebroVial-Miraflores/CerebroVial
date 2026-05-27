@@ -104,7 +104,26 @@ export function openControlActiveStateStream(
       );
     },
     onmessage(ev) {
-      // CA-05.4: reset del backoff al recibir cualquier evento útil.
+      // Filtro CA-05.4: solo eventos del dominio cuentan como "señal del
+      // motor". Cualquier otra cosa que el parser de SSE despache se ignora.
+      //
+      // En particular:
+      // - sse-starlette envía un PING cada DEFAULT_PING_INTERVAL=15s como
+      //   keep-alive de proxies: ``: ping - <fecha>\n\n``. Es una línea de
+      //   COMENTARIO SSE; @microsoft/fetch-event-source la procesa
+      //   correctamente (no setea ningún campo) pero DISPATCHA onmessage
+      //   por la empty-line terminadora con ``{event:'', data:''}``.
+      // - Si propagáramos ese ping como evento de negocio, el caller haría
+      //   re-fetch + reset del staleTimer cada 15s — el banner "no
+      //   confirmada" curaría a los 5s sin que el motor haya emitido nada.
+      //   Es la regresión exacta de CA-05.4 que este filtro corrige.
+      // - Cualquier futuro tipo de evento que el server agregue (heartbeat,
+      //   keepalive, etc.) queda igualmente bloqueado hasta que este cliente
+      //   lo soporte explícitamente — blindaje contra cambios silenciosos
+      //   del contrato.
+      if (ev.event !== 'active-state-changed') return;
+
+      // CA-05.4: reset del backoff SOLO al recibir un evento de negocio.
       retryAttempt = 0;
       let parsed: unknown = ev.data;
       try {
@@ -112,7 +131,7 @@ export function openControlActiveStateStream(
       } catch {
         // Si el payload no es JSON válido, propagamos el string crudo.
       }
-      opts.onMessage({ type: ev.event || 'message', data: parsed });
+      opts.onMessage({ type: ev.event, data: parsed });
     },
     onerror(err) {
       // FatalSSEError → re-lanzar detiene los reintentos automáticos.
