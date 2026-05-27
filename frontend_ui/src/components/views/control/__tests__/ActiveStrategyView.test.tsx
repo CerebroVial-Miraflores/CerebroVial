@@ -207,52 +207,65 @@ describe('ActiveStrategyView — DHU-006 guard rail (4 estados + fallback)', () 
   });
 
   it('CA-05.4 (3/3): INDICA el tiempo transcurrido desde la última confirmación, y AVANZA con el reloj', async () => {
+    // Trigger usado: el staleTimer interno (advanceTimersByTime 10 s sin
+    // recibir eventos). Antes este test usaba onError sin avanzar el reloj
+    // → ``elapsed = 0`` era técnicamente correcto para ese escenario, pero
+    // no ejercitaba el camino donde el bug visual del contador se
+    // manifiesta. El bug aparecía cuando el TIEMPO real había avanzado
+    // entre el fetch exitoso y la transición a stale (caso staleTimer): el
+    // contador arrancaba en "0 s" y saltaba a ~11 s un segundo después,
+    // por no sincronizar ``now`` al entrar en stale. El fix
+    // (useLayoutEffect + setNow inmediato) hace que el contador arranque
+    // en el valor real (≈ STALE_TIMEOUT_MS = 10 s) y avance continuo.
     vi.useFakeTimers();
     try {
-      const t0 = new Date(2026, 4, 26, 12, 0, 0);
+      const t0 = new Date(2026, 4, 27, 12, 0, 0);
       vi.setSystemTime(t0);
 
-      const captured = captureSseCallbacks();
+      captureSseCallbacks();
       vi.mocked(controlActiveStateService.getActiveState).mockResolvedValue(
         successResponse,
       );
 
       render(<ActiveStrategyView />);
 
-      // Flush microtasks para que el fetch mockeado resuelva y se setee
-      // lastConfirmedAt = t0.
+      // Fetch inicial resuelve a t0 → lastConfirmedAt = t0; staleTimer
+      // armado a STALE_TIMEOUT_MS = 10 s.
       await act(async () => {
         await Promise.resolve();
       });
-
       expect(
         screen.getByText('Optimización por demanda'),
       ).toBeInTheDocument();
 
-      // Caída del stream a t0 → entra a stale.
-      act(() => captured.onError?.(new Error('stream caído')));
+      // Avanzo 10 s — el staleTimer interno dispara, kind → 'stale'.
+      // En el render de transición, el contador debería mostrar
+      // ~10 s (el tiempo REAL desde lastConfirmedAt), no 0 s.
+      await act(async () => {
+        vi.advanceTimersByTime(10_000);
+      });
 
-      // El contador debe existir y mostrar tiempo "hace 0 s" recién
-      // entrado en stale.
       let elapsedEl = screen.getByTestId('active-strategy-stale-elapsed');
       expect(elapsedEl).toBeInTheDocument();
       expect(elapsedEl).toHaveTextContent(/Última confirmación hace/i);
-      expect(elapsedEl).toHaveTextContent(/0\s?s/);
+      expect(elapsedEl).toHaveTextContent(/10\s?s/);
+      // Anti-regresión explícita del bug: NO debe arrancar en "0 s".
+      expect(elapsedEl).not.toHaveTextContent(/hace 0\s?s/);
 
-      // Avanzo 5 segundos: el setInterval del componente tickea y el
-      // contador refleja el avance.
+      // Avanzo 5 s más (total 15 s desde lastConfirmedAt) — el setInterval
+      // del componente tickea y el contador refleja el avance continuo.
       await act(async () => {
         vi.advanceTimersByTime(5_000);
       });
       elapsedEl = screen.getByTestId('active-strategy-stale-elapsed');
-      expect(elapsedEl).toHaveTextContent(/5\s?s/);
+      expect(elapsedEl).toHaveTextContent(/15\s?s/);
 
-      // Avanzo otros 60 s para entrar en formato "min".
+      // Avanzo 50 s más (total 65 s = 1 min 5 s) — formato "min".
       await act(async () => {
-        vi.advanceTimersByTime(60_000);
+        vi.advanceTimersByTime(50_000);
       });
       elapsedEl = screen.getByTestId('active-strategy-stale-elapsed');
-      expect(elapsedEl).toHaveTextContent(/1\s?min/);
+      expect(elapsedEl).toHaveTextContent(/1\s?min\s?5\s?s/);
     } finally {
       vi.useRealTimers();
     }

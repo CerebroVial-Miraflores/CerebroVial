@@ -75,6 +75,11 @@ export const ActiveStrategyView = ({
 }: ActiveStrategyViewProps) => {
   const [state, setState] = useState<ViewState>({ kind: 'loading' });
   const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
+  // ``now`` en state — react-hooks/purity prohíbe leer ``Date.now()`` en el
+  // body del render. Para evitar el lag del bug visual ("arranca en 0 s y
+  // salta a ~11 s"), sincronizamos ``now`` desde los callbacks de transición
+  // a stale (staleTimer, onError del SSE, catch del fetch que cae a stale)
+  // ADEMÁS del setInterval que tickea mientras estamos en stale.
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -87,6 +92,10 @@ export const ActiveStrategyView = ({
       }
       staleTimer = window.setTimeout(() => {
         if (cancelled) return;
+        // Sync ``now`` AL MOMENTO de la transición a stale para que el
+        // primer render del contador refleje el tiempo real desde
+        // lastConfirmedAt (no el ``now`` viejo del montaje del componente).
+        setNow(new Date());
         setState(prev =>
           prev.kind === 'success' || prev.kind === 'stale'
             ? { kind: 'stale', data: prev.data }
@@ -104,6 +113,9 @@ export const ActiveStrategyView = ({
         armStaleTimer();
       } catch {
         if (cancelled) return;
+        // Si tenemos data previa, transicionamos a stale → sync ``now``
+        // para que el contador arranque en el valor real, no en cero.
+        setNow(new Date());
         setState(prev => {
           if (prev.kind === 'success' || prev.kind === 'stale') {
             // Mantenemos la última estrategia conocida (CA-05.4) — no
@@ -128,6 +140,8 @@ export const ActiveStrategyView = ({
       },
       onError: () => {
         if (cancelled) return;
+        // Sync ``now`` al transicionar a stale por caída del stream.
+        setNow(new Date());
         setState(prev =>
           prev.kind === 'success' || prev.kind === 'stale'
             ? { kind: 'stale', data: prev.data }
@@ -144,7 +158,8 @@ export const ActiveStrategyView = ({
   }, [nodeId]);
 
   // Tick por segundo SOLO mientras estamos en stale — evita re-renders
-  // innecesarios en el flujo normal.
+  // innecesarios en el flujo normal. setNow desde el callback (no desde
+  // el body del effect) es compatible con react-hooks/no-set-state-in-effects.
   useEffect(() => {
     if (state.kind !== 'stale') return;
     const id = window.setInterval(
@@ -179,8 +194,12 @@ export const ActiveStrategyView = ({
   const { data } = state;
   const { label, subtitle } = labelForStrategy(data.strategy_mode);
   const activatedAt = new Date(data.activated_at);
+  // ``now`` se actualiza desde callbacks (no en render) — al entrar en
+  // stale ya está sincronizado por los setNow de staleTimer / onError /
+  // catch del fetch. Cumple CA-05.4: el primer paint del contador
+  // refleja el tiempo real desde lastConfirmedAt, sin arrancar en 0.
   const elapsedSinceConfirmation =
-    lastConfirmedAt !== null
+    state.kind === 'stale' && lastConfirmedAt !== null
       ? now.getTime() - lastConfirmedAt.getTime()
       : null;
 
