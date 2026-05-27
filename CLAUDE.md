@@ -97,7 +97,9 @@ Migraciones:
 - **Visión y BD**: el pipeline de visión **persistirá** agregados a una tabla
   `vision_aggregates` (pendiente, tareas E18-E21 / SAN-03). **Hoy** la persistencia
   es a CSV. No se migra a las tablas `vision_tracks`/`vision_flows` (modeladas para
-  futuro, requieren refactor del pipeline). Ver D-006, D-007.
+  futuro, requieren refactor del pipeline). Ver D-006, D-007; el shape definitivo de
+  `vision_aggregates` y el borrado de `vision_tracks`/`vision_flows` vía Alembic
+  quedan fijados en DHU-024 (2026-05-27), ejecutables dentro del sprint de TTH-08.
 - **Spec Kit (DHU-021)**: el proyecto adoptó Spec Kit v0.8.11 brownfield. Constitución
   en `.specify/memory/constitution.md`; artefactos vivos en `specs/001-cerebrovial-mvp/`
   (spec.md, plan.md, tasks.md, data-model.md, quickstart.md). Mapeo de adopción en
@@ -146,6 +148,10 @@ Migraciones:
 
 ### Zonas que NO se tocan sin pedirlo
 - `edge_device/src/vision/` — subsistema mejor armado, con tests reales.
+  - **Nota (2026-05-27):** el levantamiento formal de esta regla está planificado
+    dentro de TTH-08 conforme a DHU-024. La regla se mantiene activa hasta que el
+    primer commit del sprint de TTH-08 la actualice formalmente (ver
+    `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` § DHU-024 decisión 8).
 - `ia_prediction_service/src/models/time_then_space.py` — STGNN descartado, queda
   como referencia hasta que el GRU esté funcional. En `notebooks/logs/` solo queda
   `epoch=79-step=30800.ckpt` (LFS); los 4 intermedios se borraron en C9.
