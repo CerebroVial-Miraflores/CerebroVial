@@ -53,7 +53,7 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   CLAUDE.md "No instalar torch en core_management_api" permanece como guardia anti-regresión.
   Cierra simultáneamente C7.5 (TODO.md).
 - SAN-02: decidir destino de componentes Gemini huérfanos (Art. 21 los declara fuera de arquitectura).
-- SAN-03: crear tabla vision_aggregates + cableado (Delta-05). Es Trabajo Futuro, no Sprint 4.
+- SAN-03: crear tabla vision_aggregates + cableado (Delta-05). Es Trabajo Futuro, no Sprint 4. (Absorbido por TTH-08 / DHU-024.)
 - SAN-04 ✓ resuelto (2026-05-25, rama `fix/consolidar-decisiones`): el canónico
   `documentation/lean-inception/4-decisiones/DECISIONS.md` (D-001…D-009) quedó como única fuente
   viva. La copia vieja se archivó como `documentation/legacy/DECISIONS_2026-05-13_OBSOLETO.md` con

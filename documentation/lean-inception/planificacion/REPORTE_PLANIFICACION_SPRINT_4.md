@@ -90,7 +90,7 @@ Tras la auditoría HU↔código (Fase 4.1, 32 elementos auditados):
 ### 4.4 De la Auditoría (Fase 4.1)
 
 - **Sin pendientes de consulta humana al cierre** de la auditoría: 32 elementos clasificados con confianza.
-- **Decisión humana sobre Delta-04 (TTH-08 visión):** refactor diferido — el código actual preserva funcionalidad operativa básica; la restricción de CLAUDE.md de no refactorizar `edge_device/src/vision/` se levantará en iteración futura.
+- **Decisión humana sobre Delta-04 (TTH-08 visión):** refactor diferido — el código actual preserva funcionalidad operativa básica; la restricción de CLAUDE.md de no refactorizar `edge_device/src/vision/` se levantará en iteración futura. **Encuadre operativo cerrado en DHU-024 (2026-05-27)** (`DECISIONS_HU.md`): alcance 11 CTs operativos (no solo demostrables), arquitectura DDD completa, sizing real ~11-13 SP, borrado vía Alembic de `vision_tracks`/`vision_flows`, levantamiento de la regla CLAUDE.md ejecutado por el primer commit del sprint, C7.6 (deuda CUDA→CPU) resuelta dentro del refactor.
 
 ---
 

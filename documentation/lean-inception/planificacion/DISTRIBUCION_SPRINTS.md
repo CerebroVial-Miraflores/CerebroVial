@@ -121,7 +121,7 @@ Aplico criterio: priorizar lo que entrega valor demostrativo al jurado con SP re
 
 | Elemento | Iter 1 | Iter 2 | SP evitado | Razón |
 |---|---|---|---|---|
-| TTH-08 (Visión refactor) | Must | Should | 8 | Per decisión usuario 2026-05-18 (Delta-04): refactor diferido. El código actual mantiene funcionalidad básica. |
+| TTH-08 (Visión refactor) | Must | Should | 8 | Per decisión usuario 2026-05-18 (Delta-04): refactor diferido. El código actual mantiene funcionalidad básica. Sizing operativo real al ejecutarse: ~11-13 SP, no 8 (alcance completo 11 CTs); ver DHU-024 (2026-05-27) en `DECISIONS_HU.md`. |
 | HU-02 (Monitoreo) | Must | Should | 7 | Requiere SSE infra nueva (delta-07). Postergable si demo se hace sobre intersección única simulada estática. |
 | HU-06 (Explicación cierre) | Must | Should | 4 | Reasoning técnico actual cumple para demo; catálogo plantillas en lenguaje dominio puede esperar. |
 | RNF-INT-04 (Coherencia visual) | Must | Should | 3 | Trabajo de auditoría visual post-implementación; no bloquea demo. |

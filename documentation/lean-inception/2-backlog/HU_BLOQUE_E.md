@@ -102,7 +102,7 @@ Las siguientes decisiones se cerraron durante el diálogo de redacción y están
 
 4. **Anclaje de Δt en TTH-07.** La nota técnica de TTH-07 sobre granularidad del dataset (originalmente "30-60s referenciales") se ancla a 60 segundos provisionales, con la cláusula de que el valor definitivo lo cierra TTH-11.
 
-5. **Refactor del módulo de visión (TTH-08).** El módulo se reconstruye desde cero como parte del refactor del Bloque E. El código predecesor en `edge_device/src/vision/` queda como exploración descartada arquitectónicamente; sirve como referencia histórica pero no se preserva. Patrón análogo a `time_then_space.py` movido a `legacy/` por D-006.
+5. **Refactor del módulo de visión (TTH-08).** El módulo se reconstruye desde cero como parte del refactor del Bloque E. El código predecesor en `edge_device/src/vision/` queda como exploración descartada arquitectónicamente; sirve como referencia histórica pero no se preserva. Patrón análogo a `time_then_space.py` movido a `legacy/` por D-006. Encuadre operativo cerrado en DHU-024 (2026-05-27): alcance 11 CTs operativos, arquitectura DDD completa con capas espejo de `core_management_api`, borrado vía Alembic de `vision_tracks`/`vision_flows`, levantamiento de la regla CLAUDE.md planificado al primer commit del sprint, C7.6 (deuda CUDA→CPU) resuelta dentro del refactor; ver `DECISIONS_HU.md` § DHU-024.
 
 6. **Asignación direccional en visión.** Resuelta mediante polígonos ROI configurables por intersección al desplegar (Opción A de la literatura estándar de la industria). Sin UI dedicada en MVP1; configuración vía archivo del backend.
 
