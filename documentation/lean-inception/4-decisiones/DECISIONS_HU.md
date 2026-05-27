@@ -7,7 +7,7 @@
 > **Relación con `DECISIONS.md`:** El documento `DECISIONS.md` registra decisiones técnicas del producto (arquitectura, modelo, datos). Este documento registra decisiones metodológicas sobre cómo se redacta el backlog. Los códigos no se solapan: `D-xxx` para técnicas, `DHU-xxx` para HUs.
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-05-27 (**DHU-023 agregada: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
+> **Última actualización:** 2026-05-27 (**DHU-023 y DHU-024 agregadas (misma fecha, sesiones de encuadre distintas).** **DHU-023: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. **DHU-024: encuadre cerrado de TTH-08 (refactor del módulo de visión computacional).** Congela el alcance del refactor (11 CTs operativos, no solo demostrables — el sprint se dimensiona realistamente en 11-13 SP), arquitectura objetivo (DDD completo con capas espejo de `core_management_api`), limpieza vía migración Alembic de las tablas legacy `vision_tracks`/`vision_flows`, preservación del modelo YOLO + ROI calibrada (`conf/vision/javier_prado.yaml`) + assets de demo, contrato técnico de `vision_aggregates` LISTO sin cableado real a `ia_prediction_service/` (esa integración queda como F41 explícitamente fuera de scope), resolución embebida de C7.6 (deuda CUDA→CPU) al reescribir `requirements.txt` desde cero, y planificación del levantamiento formal de la regla CLAUDE.md sobre `edge_device/src/vision/` en el primer commit del sprint (la regla sigue activa hasta entonces). Decisión cerrada al momento de colocarse; consume y preserva D-007 sin reversarlo. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
 
 ---
 
@@ -38,6 +38,7 @@
 | DHU-021 | Decisiones metodológicas de redacción del SDD (17 de redacción + 4 ajustes derivados de la verificación SDD↔repo: node_id FK con resolución al persistir, campos del motor conservados, ratificación sin-lazo-cerrado, Gemini fuera de la arquitectura objetivo) | 2026-05-20 | Cerrada |
 | DHU-022 | Nomenclatura de roles del sistema: `operator/manager/admin` como claims técnicos canónicos + labels en español en el frontend (cierre de Delta-02) | 2026-05-20 | Cerrada |
 | DHU-023 | Semántica temporal del estado vigente: activación, ratificación y cambio-dentro-de-estrategia (candidata, a resolver en encuadre de HU-07) | 2026-05-27 | Abierta/Candidata |
+| DHU-024 | Encuadre de TTH-08: refactor del módulo de visión computacional (alcance operativo completo 11 CTs, DDD completo, borrado Alembic de vision_tracks/vision_flows, C7.6 resuelta dentro del refactor, levantamiento planificado de la regla CLAUDE.md, F41 fuera de scope) | 2026-05-27 | Cerrada |
 
 ---
 
@@ -2434,6 +2435,134 @@ decisión (ciclo/tiempos) dentro de la misma estrategia?
 
 ---
 
+## DHU-024 — Encuadre de TTH-08: refactor del módulo de visión computacional (CERRADA)
+
+**Fecha:** 2026-05-27.
+**Estado:** Cerrada.
+**TTH afectada:** TTH-08.
+
+### Contexto
+
+TTH-08 (refactor del módulo de visión computacional) está dimensionada como 8 SP
+restantes en el backlog y clasificada Should↓ en TF (Trabajos Futuros). La spec
+declara "refactor desde cero" pero existe contradicción documentada con la regla
+de CLAUDE.md que prohíbe tocar `edge_device/src/vision/` (resuelta provisionalmente
+en Delta-04 de AUDITORIA_HU_CODIGO.md el 2026-05-18: el refactor se ejecutará pero
+la regla solo se levantará cuando el sprint correspondiente lo aborde).
+
+Este DHU congela las decisiones de encuadre que destraban la implementación, antes
+de que el sprint arranque. Se tomaron en sesión de claude.ai del 2026-05-27 con el
+reporte de auditoría de specs como base.
+
+### Decisiones tomadas
+
+**1. Alcance: operativo completo, no solo demostrable.**
+TTH-08 entrega los 11 CTs del CT-08.1 al CT-08.11, no solo los demostrables (CT-08.8
++ CT-08.9). Incluye persistencia BD (CT-08.5), endpoint canónico `GET /vision/state`
+(CT-08.6), health check (CT-08.10) y tests automatizados (CT-08.11). Consecuencia
+operativa: el sprint de TTH-08 se dimensiona realistamente en 11-13 SP, no 8. El
+backlog se actualiza al ejecutarse el sprint.
+
+**2. Limpieza de `vision_tracks`/`vision_flows`: borrado vía migración Alembic.**
+Las tablas `vision_tracks` y `vision_flows` (declaradas en migración
+`775d2d1db8b4_initial_schema` + modelos SQLAlchemy en `shared/cerebrovial_shared/`
++ hypertables TimescaleDB en `daec5fdcfcdd_timescaledb_hypertables`) se borran
+mediante nueva migración Alembic durante TTH-08. CLAUDE.md prohíbe migrar el pipeline
+a esas tablas; el borrado preserva esa prohibición y limpia schema productivo.
+`vision_aggregates` es la única tabla de persistencia del módulo nuevo.
+
+**3. "Desde cero" significa desde cero ARQUITECTÓNICAMENTE.**
+Reemplazo total de `domain/`, `application/`, `presentation/`. Se preservan:
+(a) el modelo YOLO (`yolo11n.pt` binario), (b) configuraciones de cámara y ROI ya
+calibradas (`conf/vision/javier_prado.yaml`), (c) video/assets de demo. Infraestructura
+técnica genérica reutilizable (lectores de YouTube, OpenCV bindings) puede
+reaprovecharse si el diseño nuevo la requiere — pero la decisión de qué reutilizar
+sale de la auditoría crítica de Fase 0, no de la inercia del código actual.
+
+**4. Arquitectura objetivo: DDD completo con capas espejo de `core_management_api`.**
+Estructura: `domain/`, `application/`, `infrastructure/`, `presentation/`. Casos de
+uso reales con responsabilidades claras, no ceremonia GoF vacía. La revisión crítica
+de Fase 0 identifica qué patrones del código actual repetir (los que están bien) y
+cuáles descartar (lógica muerta como `SmartDetectionProcessor.get_analysis_for_frame()`
+que retorna `None` siempre, prints de debug en código productivo, etc.).
+
+**5. Contrato técnico LISTO, cableado real diferido.**
+TTH-08 entrega:
+- Endpoint `GET /vision/state` con shape:
+  `{intersection_id, timestamp, directions: [{direction, count, queue, flow, density}]}`
+- Tabla `vision_aggregates` con schema compatible con `CameraTrafficData` de `shared/`.
+- OpenAPI generado automáticamente desde FastAPI.
+- Documento `documentation/vision_contract.md` con shape, ejemplos, semántica.
+
+CERO acoplamiento real con `ia_prediction_service/` en este TTH. Ningún import, ningún
+endpoint compartido, ninguna dependencia transitiva. La integración con el módulo
+predictivo se documenta como **F41 (Trabajos Futuros)** y queda explícitamente fuera
+del scope de TTH-08. Esta decisión preserva D-007 — el módulo de visión sigue siendo
+componente demostrable, no participa del loop cuantitativo de MVP1.
+
+**6. Validación 88.2% como última fase, aspiracional.**
+Conforme a CT-08.9 + D-005: dataset etiquetado propio ≥200 frames, métricas precisión/
+recall/mAP medidas honestamente. Objetivo aspiracional ≥80%, no bloqueante. Si el
+módulo no alcanza el objetivo, se reporta la realidad medida. El rastreo del valor
+88.2% del documento de tesis se hace al final, con métricas reales del módulo nuevo.
+
+**7. Resolución de C7.6 (deuda CUDA) dentro de TTH-08.**
+Al reescribir `requirements.txt` desde cero, se definen las dependencias con
+`--index-url https://download.pytorch.org/whl/cpu` (~200MB) en lugar del wheel
+CUDA por default (~2GB). C7.6 deja de ser ticket separado y se cierra como parte
+de la fase de infraestructura. Si el demo requiere GPU local, se agrega como
+configuración opcional, no como default.
+
+**8. Resolución del conflicto CLAUDE.md ↔ spec.**
+La regla "NO refactorizar `edge_device/src/vision/`" se mantiene activa hasta el
+PRIMER COMMIT del sprint de TTH-08. Ese primer commit:
+(a) edita CLAUDE.md eliminando o reescribiendo la regla;
+(b) referencia este DHU-024 como autoridad del cambio;
+(c) deja la regla como histórica con nota "levantada en TTH-08, ver DHU-024".
+NO se levanta la regla en esta rama documental — solo se prepara el levantamiento.
+
+### Plan de fases de TTH-08 (alto nivel; el sprint detalla)
+
+| Fase | Qué | SP aprox |
+|---|---|---|
+| F0 | Auditoría crítica del código actual de vision | 0.5 |
+| F1 | Diseño DDD + contratos (OpenAPI draft + vision_contract.md) | 1 |
+| F2 | Levantar regla CLAUDE.md + migración Alembic borrando vision_tracks/vision_flows | 0.5 |
+| F3 | Domain layer (entities, protocols, value objects) | 1 |
+| F4 | Infrastructure (YOLO, tracker, sources, persistence con vision_aggregates) | 3 |
+| F5 | Application (pipelines, aggregators, casos de uso) | 2 |
+| F6 | Presentation (endpoints canónicos + paths preservados para frontend) | 2 |
+| F7 | Tests (unitarios + integración) | 1.5 |
+| F8 | Validación: dataset ≥200 frames + mAP medido + rastreo 88.2% | 1.5 |
+| F9 | Documentación contractual y cross-refs (cierre C7.6, F41, retiro de C1.x) | 0.5 |
+| | **Total estimado** | **~13.5 SP** |
+
+### Implicancias sobre otros DHU / TTH / HU
+
+- **C1.5, C1.6, C1.7, C1.8** (TODO.md): se resuelven o se vuelven obsoletos al
+  ejecutarse TTH-08. C1.6 (tests desactualizados post-refactor de microservicios)
+  podría adelantarse como deuda separada si el sprint de TTH-08 se demora.
+- **C7.6** (deuda CUDA): se cierra dentro de TTH-08 (decisión 7).
+- **TTH-03** (cierre CI): los jobs de `edge_device/tests` e `ia_prediction_service/tests`
+  que TTH-03 declaraba siguen postergados hasta que TTH-08 entregue módulo y tests
+  estables. TTH-03 se reduce a `shared/tests` + mypy permisivo (alcance ya discutido
+  en sesión previa, no acción de este DHU).
+- **F41** (Trabajos Futuros): se reafirma como el ticket de integración
+  vision→predictivo, fuera de TTH-08.
+- **D-007**: se preserva sin modificación; este DHU-024 implementa operativamente
+  D-007 sin reversarlo.
+
+### Documentos relacionados
+- `TAREAS_TECNICAS_HABILITADORAS.md` §TTH-08 — spec original.
+- `HU_BLOQUE_E.md` — bloque arquitectónico y decisiones #5, #6, #7, #10.
+- `DECISIONS.md` — D-006, D-007.
+- `AUDITORIA_HU_CODIGO.md` — Delta-04, Delta-05.
+- `CLAUDE.md` — regla "Zonas que NO se tocan" + decisiones sobre vision_aggregates.
+- `TODO.md` — C1.5-C1.8, C7.6.
+- `BACKLOG_LITE_PRIORIZADO.md` — sizing y clasificación.
+
+---
+
 ---
 
 ## Resumen de impacto en los bloques redactados hasta la fecha
@@ -2444,7 +2573,7 @@ decisión (ciclo/tiempos) dentro de la misma estrategia?
 | Bloque B | HU-02 a HU-09 | (ninguna nueva) | DHU-003, DHU-005 (refinada con A y B), DHU-006, DHU-007 |
 | Bloque C | HU-10, HU-11, HU-12 (HU-13 eliminada por DHU-011) | TTH-04, TTH-05 | DHU-005, DHU-006, DHU-007, DHU-008, DHU-009, DHU-010, DHU-011 |
 | Bloque D | HU-13, HU-14, HU-15 | (ninguna nueva del MVP1); TTH-06 agregada como Trabajos Futuros; CT-04.5 de TTH-04 ampliada | DHU-013 (clasificación), DHU-014 (decisiones de redacción) |
-| Bloque E | (ninguna HU operativa) | TTH-07, TTH-08, TTH-09, TTH-10, TTH-11 | DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH durante la redacción) |
+| Bloque E | (ninguna HU operativa) | TTH-07, TTH-08, TTH-09, TTH-10, TTH-11 | DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH durante la redacción); DHU-024 (encuadre cerrado del refactor de TTH-08: alcance 11 CTs operativos, arquitectura DDD completa, borrado Alembic de vision_tracks/vision_flows, C7.6 resuelta dentro del refactor, F41 fuera de scope, levantamiento de la regla CLAUDE.md planificado al primer commit del sprint) |
 | Bloque F | HU-16, HU-17 (F12+F13 fusionadas con F30 inglobada; F14) | (ninguna nueva) | DHU-016 (decisiones consolidadas de redacción del Bloque F en diez subsecciones) |
 | MVP2 | HU-18, HU-19, HU-20, HU-21 (HU-09 cerrada previamente en `HU_BLOQUE_B.md`) | (ninguna nueva) | DHU-017 (decisiones consolidadas de redacción del MVP2 en diez subsecciones) |
 | Transversal | — | — | DHU-012 (auditoría de coherencia documental, aplica a todos los bloques y documentos relacionados); DHU-018 (patrón "Resumen ejecutivo" aplicado retroactivamente a las 21 HUs, aditivo y sin modificar contenido sustantivo); DHU-019 (decisiones metodológicas para la redacción del documento RF/RNF, ejecuta la sesión dedicada que DHU-007 declaró pendiente; aditiva sobre las HUs en su pasada de referencias `→ RNF-XXX-NN` sobre los Candidatos a RNF); DHU-020 (semántica de ControlView, cierre de Delta-08; decisión de alineación especificación↔código que ratifica la semántica pasiva de HU-05 y alinea el código a ella, sin modificar la redacción de ninguna HU; afecta principalmente al Bloque B vía la cadena HU-05→HU-08); DHU-021 (decisiones metodológicas de redacción del SDD, 17 de redacción + 4 ajustes derivados de la verificación SDD↔repo; consolida el cierre del SDD sin reabrir HUs/TTH/`D-`); DHU-022 (nomenclatura de roles `operator/manager/admin` con labels en español, cierre de Delta-02; decisión de producto que TTH-01 y las HUs con acceso por rol consumirán) |
