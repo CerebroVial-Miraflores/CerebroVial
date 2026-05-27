@@ -13,8 +13,9 @@
 //
 // El contenido se preserva BYTE-A-BYTE respecto al ControlView previo a la
 // división — DHU-020 fue explícito en no degradar el playground.
+import axios from 'axios';
 import { useCallback, useMemo, useState } from 'react';
-import { Play } from 'lucide-react';
+import { Play, Zap } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { PhaseEditor } from './PhaseEditor';
 import { Slider } from './Slider';
@@ -32,6 +33,17 @@ import {
     type IntersectionState,
     type PhaseFlow,
 } from '../../../services/controlService';
+
+// Estado UI del botón "Activar". El backend del activator es dev-only
+// (gated por ENABLE_TEST_ACTIVATOR); si la env var está cerrada, la ruta
+// no existe y la API devuelve 404 — lo distinguimos para mostrar mensaje
+// neutral en vez de error feo.
+type ActivateStatus =
+    | { kind: 'idle' }
+    | { kind: 'activating' }
+    | { kind: 'activated'; at: Date }
+    | { kind: 'unavailable' }  // 404 — env var off en este entorno
+    | { kind: 'error'; message: string };
 
 const initialPhases: PhaseFlow[] = [
     { phase_id: 'NS', flow: 600, saturation_flow: 1800, queue: 5, has_pedestrian: true },
@@ -122,6 +134,35 @@ export const ControlPlayground = () => {
     const [lostTime, setLostTime] = useState(8);
     const [phases, setPhases] = useState<PhaseFlow[]>(initialPhases);
     const { status, data, error, mutate, reset } = useRecommendControl();
+    const [activate, setActivate] = useState<ActivateStatus>({ kind: 'idle' });
+
+    // Cada nueva recomendación resetea el estado del botón "Activar":
+    // la decisión recién calculada todavía no está vigente.
+    const lastDecisionId = data?.decision_id ?? null;
+    const handleActivate = useCallback(async () => {
+        if (!lastDecisionId) return;
+        setActivate({ kind: 'activating' });
+        try {
+            await controlService.activateDecision({
+                node_id: intersectionId,
+                decision_id: lastDecisionId,
+                activated_by: 'admin-playground',
+            });
+            setActivate({ kind: 'activated', at: new Date() });
+        } catch (err) {
+            // 404 = ruta no registrada (ENABLE_TEST_ACTIVATOR cerrado);
+            // mostramos mensaje neutral, no error feo.
+            if (axios.isAxiosError(err) && err.response?.status === 404) {
+                setActivate({ kind: 'unavailable' });
+                return;
+            }
+            setActivate({
+                kind: 'error',
+                message:
+                    'No se pudo activar la decisión. Revisá los logs del backend.',
+            });
+        }
+    }, [intersectionId, lastDecisionId]);
 
     const metrics = useMemo(() => {
         const flowTotal = phases.reduce((acc, p) => acc + (p.flow || 0), 0);
@@ -132,8 +173,16 @@ export const ControlPlayground = () => {
         return { flowTotal, Y, isPeak: flowTotal > 1500 };
     }, [phases]);
 
+    const resetAll = useCallback(() => {
+        reset();
+        setActivate({ kind: 'idle' });
+    }, [reset]);
+
     const submit = () => {
         if (!formIsValid(intersectionId, phases)) return;
+        // Cada nueva recomendación es una decisión distinta — limpiamos el
+        // badge "Activada" de la anterior para no inducir a confusión.
+        setActivate({ kind: 'idle' });
         const state: IntersectionState = {
             intersection_id: intersectionId.trim(),
             timestamp: new Date().toISOString(),
@@ -233,8 +282,74 @@ export const ControlPlayground = () => {
                 error={error}
                 metrics={metrics}
                 onRetry={retry}
-                onReset={reset}
+                onReset={resetAll}
             />
+
+            {/*
+              Botón "Activar como vigente" — disparador de demo del Admin
+              (DHU-020). Sólo aparece tras una recomendación exitosa con
+              decision_id (= después de un Recomendar 200).
+
+              TODO(HU-07): este disparador es TEMPORAL para que la demo de
+              DHU-020 pueda observar el SSE en vivo desde el playground.
+              HU-07 lo reemplaza por el activador productivo (operador o
+              automatización) sin gate de env var. Visión:
+                demo (HU-05) → producto manual (HU-07) → automático (futuro)
+              Recomendar y Activar permanecen como DOS eventos: Recomendar
+              calcula + persiste decided_at (motor_decisions); Activar pone
+              vigente activated_at (engine_active_state). DHU-021 #13 prohíbe
+              colapsarlos.
+            */}
+            {status === 'success' && lastDecisionId && (
+                <Card className="lg:col-span-2 border-amber-500/40 bg-amber-950/10">
+                    <div className="flex items-start gap-3">
+                        <Zap className="text-amber-300 shrink-0 mt-0.5" size={22} />
+                        <div className="flex-1">
+                            <h3 className="text-amber-200 font-semibold mb-1">
+                                Activar como vigente
+                            </h3>
+                            <p className="text-xs text-slate-400 mb-3">
+                                Marca esta decisión como la estrategia vigente para{' '}
+                                <span className="text-slate-200 font-mono">
+                                    {intersectionId}
+                                </span>{' '}
+                                y notifica al Operador vía SSE. <em>Demo dev-only</em> —
+                                requiere <code className="text-amber-300">ENABLE_TEST_ACTIVATOR=true</code> en el backend.
+                            </p>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <button
+                                    type="button"
+                                    onClick={handleActivate}
+                                    disabled={activate.kind === 'activating'}
+                                    className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                                >
+                                    <Zap size={14} />
+                                    {activate.kind === 'activating'
+                                        ? 'Activando…'
+                                        : 'Activar como vigente'}
+                                </button>
+                                {activate.kind === 'activated' && (
+                                    <span className="text-emerald-300 text-xs">
+                                        ✓ Activada {activate.at.toLocaleTimeString('es-PE')}.
+                                        El Operador debería ver el cambio en ≤ 5 s.
+                                    </span>
+                                )}
+                                {activate.kind === 'unavailable' && (
+                                    <span className="text-slate-400 text-xs">
+                                        Activador no disponible en este entorno
+                                        (env var <code>ENABLE_TEST_ACTIVATOR</code> cerrada).
+                                    </span>
+                                )}
+                                {activate.kind === 'error' && (
+                                    <span className="text-rose-300 text-xs">
+                                        {activate.message}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

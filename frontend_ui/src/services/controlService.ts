@@ -40,6 +40,11 @@ export interface ControlRecommendation {
     next_phase?: string | null;
     reasoning: string;
     adjustments: string[];
+    // Expuesto por el backend para que el playground de Admin pueda
+    // disparar __internal/activate sobre esta decisión sin consulta
+    // adicional. Optional para compat con respuestas previas a la
+    // ampliación del schema (HU-05 fase de cierre).
+    decision_id?: string | null;
 }
 
 export interface RecommendResponse {
@@ -51,11 +56,38 @@ export interface ErrorDetail {
     message: string;
 }
 
+export interface InternalActivatePayload {
+    node_id: string;
+    decision_id: string;
+    activated_by?: string | null;
+}
+
 export const controlService = {
     async recommend(state: IntersectionState): Promise<RecommendResponse> {
         const res = await httpClient.post<RecommendResponse>(
             '/control/recommend',
             state,
+        );
+        return res.data;
+    },
+
+    // Disparador de demo del Admin (DHU-020). El endpoint del backend
+    // está gated por ENABLE_TEST_ACTIVATOR=true y requiere rol Admin.
+    // Si la env var no está abierta, el backend devuelve 404 (la ruta
+    // no se registra) — el caller lo trata como "no disponible en este
+    // entorno" en vez de error feo.
+    //
+    // TODO(HU-07): este disparador es TEMPORAL para que la demo de DHU-020
+    // pueda observar el SSE en vivo. HU-07 lo reemplaza por el activador
+    // productivo (operador o automatización) sin gate de env var y con
+    // la UI dedicada del operador. Visión: demo (HU-05) → producto manual
+    // (HU-07) → automático (motor+predicción, futuro).
+    async activateDecision(
+        payload: InternalActivatePayload,
+    ): Promise<{ ok: boolean }> {
+        const res = await httpClient.post<{ ok: boolean }>(
+            '/control/__internal/activate',
+            payload,
         );
         return res.data;
     },

@@ -46,6 +46,10 @@ class ControlRecommendation(BaseModel):
     next_phase: Optional[str] = None
     reasoning: str
     adjustments: list[str] = Field(default_factory=list)
+    # Expuesto para que el playground de Admin (DHU-020) pueda
+    # disparar __internal/activate sobre esta decisión sin consulta
+    # adicional. Optional para no romper clientes/tests pre-existentes.
+    decision_id: Optional[str] = None
 
 
 class RecommendResponse(BaseModel):

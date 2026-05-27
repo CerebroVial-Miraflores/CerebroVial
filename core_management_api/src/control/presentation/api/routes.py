@@ -86,7 +86,9 @@ def _to_dataclass(state: IntersectionState) -> IntersectionStateDC:
     )
 
 
-def _to_pydantic(rec: RecommendationDC) -> ControlRecommendation:
+def _to_pydantic(
+    rec: RecommendationDC, decision_id: Optional[str] = None
+) -> ControlRecommendation:
     return ControlRecommendation(
         intersection_id=rec.intersection_id,
         mode=rec.mode,
@@ -103,6 +105,7 @@ def _to_pydantic(rec: RecommendationDC) -> ControlRecommendation:
         next_phase=rec.next_phase,
         reasoning=rec.reasoning,
         adjustments=rec.adjustments,
+        decision_id=decision_id,
     )
 
 
@@ -156,7 +159,7 @@ def recommend(
     # rolls back and propagates a 500; the calculated recommendation is NOT
     # returned partially.
     try:
-        MotorDecisionsRepo(db).insert(
+        decision_id = MotorDecisionsRepo(db).insert(
             node_id=node_id,
             mode=recommendation.mode,
             cycle_seconds=recommendation.cycle_seconds,
@@ -181,7 +184,7 @@ def recommend(
         db.rollback()
         raise
 
-    return RecommendResponse(data=_to_pydantic(recommendation))
+    return RecommendResponse(data=_to_pydantic(recommendation, decision_id))
 
 
 @router.get(
