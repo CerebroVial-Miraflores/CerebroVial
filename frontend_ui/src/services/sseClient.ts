@@ -1,4 +1,5 @@
-// HU-05 / CA-05.3 — Cliente SSE para el stream de estrategia vigente.
+// HU-05 / CA-05.3 + CA-05.4 — Cliente SSE para el stream de estrategia
+// vigente.
 //
 // EventSource nativo NO acepta headers custom, así que no podemos pasarle el
 // Bearer del SessionContext. Usamos @microsoft/fetch-event-source, que está
@@ -11,9 +12,10 @@
 // reconexión con 401 cada vez, golpeando el backend y disparando logouts en
 // cascada.
 //
-// Backoff exponencial + lógica stateful "no confirmada" → Fase 6 (CA-05.4).
-// Acá entregamos lo mínimo de Fase 5: conectar, parsear, propagar al caller,
-// y romper el loop en 401.
+// CA-05.4 (Fase 6): backoff exponencial 1s → 2s → 4s → 8s → 16s (cap), con
+// reset al primer evento de cada nueva conexión. La intención: bajo
+// indisponibilidad del backend, no martillar reconexiones; al volver el
+// servicio, una recuperación rápida reanuda el flujo normal.
 import {
   fetchEventSource,
   EventStreamContentType,
@@ -21,6 +23,18 @@ import {
 import { authBridge } from '../auth/authBridge';
 
 const baseURL = import.meta.env.VITE_CORE_API_URL ?? 'http://localhost:8001';
+
+const BACKOFF_MS: readonly number[] = [1000, 2000, 4000, 8000, 16000] as const;
+
+/**
+ * Devuelve el delay (ms) antes del próximo intento de reconexión SSE. Cap a
+ * los 16 s del último step; cualquier ``attempt`` ≥ 4 retorna 16 s. Exportado
+ * para test unitario directo del backoff.
+ */
+export function backoffMsForAttempt(attempt: number): number {
+  if (attempt < 0) return BACKOFF_MS[0];
+  return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
+}
 
 export interface SSEMessage {
   type: string;
@@ -58,6 +72,12 @@ export function openControlActiveStateStream(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  // Contador de reintentos por conexión. Se RESETEA a 0 cada vez que se
+  // recibe un mensaje (CA-05.4: "reset al primer evento de la nueva
+  // conexión"). Vive en el closure del openControlActiveStateStream, así
+  // que es per-call: cada AbortController tiene su propia secuencia.
+  let retryAttempt = 0;
+
   // fetchEventSource devuelve una Promise que se resuelve cuando el stream
   // se cierra. No la awaitamos: el control de vida del stream va por el
   // AbortController que devolvemos al caller.
@@ -73,7 +93,7 @@ export function openControlActiveStateStream(
         return;
       }
       if (response.status === 401) {
-        // Tokens expirado/inválido: dispara el flujo de auto-logout del
+        // Token expirado/inválido: dispara el flujo de auto-logout del
         // SessionContext (HU-01) y CORTA la reconexión — sin esto el cliente
         // entraría en un loop 401.
         authBridge.onUnauthorized();
@@ -84,6 +104,8 @@ export function openControlActiveStateStream(
       );
     },
     onmessage(ev) {
+      // CA-05.4: reset del backoff al recibir cualquier evento útil.
+      retryAttempt = 0;
       let parsed: unknown = ev.data;
       try {
         parsed = JSON.parse(ev.data);
@@ -98,8 +120,12 @@ export function openControlActiveStateStream(
         throw err;
       }
       opts.onError?.(err);
-      // No retornamos un número de ms: dejamos el default de la librería
-      // (~1s). Backoff exponencial es alcance de Fase 6.
+      // CA-05.4: backoff exponencial. Retornar un número en ms le indica a
+      // la librería el delay antes del próximo intento. Sin esto la
+      // librería usa su default (~1 s constante).
+      const delay = backoffMsForAttempt(retryAttempt);
+      retryAttempt += 1;
+      return delay;
     },
     onclose() {
       opts.onClose?.();

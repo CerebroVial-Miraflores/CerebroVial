@@ -138,6 +138,126 @@ describe('ActiveStrategyView — DHU-006 guard rail (4 estados + fallback)', () 
     expect(container.textContent).not.toMatch(RAW_CODES);
   });
 
+  // === CA-05.4 (DHU-005 Caso B) — las TRES aserciones textuales =========
+  // El CA dice: "el sistema MANTIENE la última estrategia conocida, la
+  // MARCA como NO CONFIRMADA, e INDICA el TIEMPO transcurrido desde la
+  // última confirmación". Las 3 partes se verifican por separado abajo —
+  // si una se diluye, el test correspondiente falla.
+
+  it('CA-05.4 (1/3): MANTIENE en pantalla la última estrategia conocida tras caída del stream', async () => {
+    const captured = captureSseCallbacks();
+    vi.mocked(controlActiveStateService.getActiveState).mockResolvedValue(
+      successResponse,
+    );
+
+    render(<ActiveStrategyView />);
+    await waitFor(() =>
+      expect(
+        screen.getByText('Optimización por demanda'),
+      ).toBeInTheDocument(),
+    );
+
+    // Snapshot del contenido visible pre-error: subtítulo, ciclo, fases.
+    expect(
+      screen.getByText(/Reparte el verde según la demanda/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ciclo 78\.5 s/i)).toBeInTheDocument();
+    expect(screen.getByText('NS')).toBeInTheDocument();
+    expect(screen.getByText('EW')).toBeInTheDocument();
+
+    // Cae el stream.
+    act(() => captured.onError?.(new Error('stream caído')));
+
+    // Todo lo anterior sigue visible: la última estrategia conocida NO se
+    // borra ni se reemplaza por vacío.
+    expect(
+      screen.getByText('Optimización por demanda'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Reparte el verde según la demanda/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ciclo 78\.5 s/i)).toBeInTheDocument();
+    expect(screen.getByText('NS')).toBeInTheDocument();
+    expect(screen.getByText('EW')).toBeInTheDocument();
+  });
+
+  it('CA-05.4 (2/3): MARCA visualmente como NO CONFIRMADA', async () => {
+    const captured = captureSseCallbacks();
+    vi.mocked(controlActiveStateService.getActiveState).mockResolvedValue(
+      successResponse,
+    );
+
+    render(<ActiveStrategyView />);
+    await waitFor(() =>
+      expect(
+        screen.getByText('Optimización por demanda'),
+      ).toBeInTheDocument(),
+    );
+
+    // Antes del error la marca no está.
+    expect(
+      screen.queryByTestId('active-strategy-stale-marker'),
+    ).not.toBeInTheDocument();
+
+    act(() => captured.onError?.(new Error('stream caído')));
+
+    const marker = screen.getByTestId('active-strategy-stale-marker');
+    expect(marker).toBeInTheDocument();
+    expect(marker).toHaveTextContent(/No confirmada/i);
+  });
+
+  it('CA-05.4 (3/3): INDICA el tiempo transcurrido desde la última confirmación, y AVANZA con el reloj', async () => {
+    vi.useFakeTimers();
+    try {
+      const t0 = new Date(2026, 4, 26, 12, 0, 0);
+      vi.setSystemTime(t0);
+
+      const captured = captureSseCallbacks();
+      vi.mocked(controlActiveStateService.getActiveState).mockResolvedValue(
+        successResponse,
+      );
+
+      render(<ActiveStrategyView />);
+
+      // Flush microtasks para que el fetch mockeado resuelva y se setee
+      // lastConfirmedAt = t0.
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(
+        screen.getByText('Optimización por demanda'),
+      ).toBeInTheDocument();
+
+      // Caída del stream a t0 → entra a stale.
+      act(() => captured.onError?.(new Error('stream caído')));
+
+      // El contador debe existir y mostrar tiempo "hace 0 s" recién
+      // entrado en stale.
+      let elapsedEl = screen.getByTestId('active-strategy-stale-elapsed');
+      expect(elapsedEl).toBeInTheDocument();
+      expect(elapsedEl).toHaveTextContent(/Última confirmación hace/i);
+      expect(elapsedEl).toHaveTextContent(/0\s?s/);
+
+      // Avanzo 5 segundos: el setInterval del componente tickea y el
+      // contador refleja el avance.
+      await act(async () => {
+        vi.advanceTimersByTime(5_000);
+      });
+      elapsedEl = screen.getByTestId('active-strategy-stale-elapsed');
+      expect(elapsedEl).toHaveTextContent(/5\s?s/);
+
+      // Avanzo otros 60 s para entrar en formato "min".
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+      });
+      elapsedEl = screen.getByTestId('active-strategy-stale-elapsed');
+      expect(elapsedEl).toHaveTextContent(/1\s?min/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ERROR — fetch falla sin datos previos: mensaje neutral, nunca códigos crudos', async () => {
     captureSseCallbacks();
     vi.mocked(controlActiveStateService.getActiveState).mockRejectedValue(

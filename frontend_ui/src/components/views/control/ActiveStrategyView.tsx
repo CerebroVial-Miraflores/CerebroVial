@@ -13,9 +13,16 @@
 // 3. Render según estado:
 //    - loading: spinner textual mientras se carga el primer estado.
 //    - success: tarjeta con etiqueta, subtítulo, ciclo, fases y timestamp.
-//    - stale: misma tarjeta + banner "no confirmada" (Fase 6 ampliará la
-//      lógica con timer + tiempo desde última confirmación).
-//    - error: mensaje neutral; ningún botón de retry hasta Fase 6.
+//    - stale (CA-05.4 / DHU-005 Caso B): mantiene la última estrategia
+//      conocida en pantalla, la marca como "No confirmada", y muestra un
+//      contador "Última confirmación hace Xs / X min" que avanza en vivo.
+//    - error: mensaje neutral cuando no hubo NINGÚN fetch exitoso previo.
+//
+// Triggers de stale:
+// - onError del stream SSE (inmediato, Fase 5).
+// - staleTimer de 10 s sin eventos (Fase 6 — el motor está vivo pero dejó
+//   de empujar; mismo comportamiento que onError desde la vista del
+//   Operador). Cada evento reinicia el timer.
 //
 // Mapping DHU-006: strategy_mode crudo se traduce a etiqueta legible vía
 // labelForStrategy(). El crudo "webster"/"max_pressure" NUNCA debe aparecer
@@ -43,36 +50,71 @@ interface ActiveStrategyViewProps {
 }
 
 const DEFAULT_NODE_ID = 'larco_schell';
+const STALE_TIMEOUT_MS = 10_000;
+const COUNTER_TICK_MS = 1_000;
+
+function formatElapsed(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+  if (totalSeconds < 60) return `${totalSeconds} s`;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const remSeconds = totalSeconds % 60;
+  if (totalMinutes < 60) {
+    return remSeconds === 0
+      ? `${totalMinutes} min`
+      : `${totalMinutes} min ${remSeconds} s`;
+  }
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remMinutes = totalMinutes % 60;
+  return remMinutes === 0
+    ? `${totalHours} h`
+    : `${totalHours} h ${remMinutes} min`;
+}
 
 export const ActiveStrategyView = ({
   nodeId = DEFAULT_NODE_ID,
 }: ActiveStrategyViewProps) => {
   const [state, setState] = useState<ViewState>({ kind: 'loading' });
+  const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
+  const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
     let cancelled = false;
+    let staleTimer: number | null = null;
+
+    const armStaleTimer = () => {
+      if (staleTimer !== null) {
+        window.clearTimeout(staleTimer);
+      }
+      staleTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        setState(prev =>
+          prev.kind === 'success' || prev.kind === 'stale'
+            ? { kind: 'stale', data: prev.data }
+            : prev,
+        );
+      }, STALE_TIMEOUT_MS);
+    };
 
     const fetchAndSet = async () => {
       try {
         const data = await controlActiveStateService.getActiveState(nodeId);
-        if (!cancelled) {
-          setState({ kind: 'success', data });
-        }
+        if (cancelled) return;
+        setState({ kind: 'success', data });
+        setLastConfirmedAt(new Date());
+        armStaleTimer();
       } catch {
-        if (!cancelled) {
-          // Si ya teníamos datos antes, no perderlos — pasamos a stale.
-          // (En Fase 5 mantenemos versión simple; Fase 6 añade timers y
-          // banner "tiempo desde última confirmación".)
-          setState(prev => {
-            if (prev.kind === 'success' || prev.kind === 'stale') {
-              return { kind: 'stale', data: prev.data };
-            }
-            return {
-              kind: 'error',
-              message: 'No se pudo cargar la estrategia vigente.',
-            };
-          });
-        }
+        if (cancelled) return;
+        setState(prev => {
+          if (prev.kind === 'success' || prev.kind === 'stale') {
+            // Mantenemos la última estrategia conocida (CA-05.4) — no
+            // sobrescribimos a 'error' ni vaciamos la pantalla.
+            return { kind: 'stale', data: prev.data };
+          }
+          return {
+            kind: 'error',
+            message: 'No se pudo cargar la estrategia vigente.',
+          };
+        });
       }
     };
 
@@ -81,26 +123,36 @@ export const ActiveStrategyView = ({
     const controller = openControlActiveStateStream(nodeId, {
       onMessage: () => {
         // Evento es solo señal de cambio; re-leemos REST como fuente
-        // autoritativa (DHU-021 #15).
+        // autoritativa (DHU-021 #15) y reseteamos el staleTimer.
         void fetchAndSet();
       },
       onError: () => {
-        // Mantiene el último valor conocido como stale si lo teníamos.
         if (cancelled) return;
-        setState(prev => {
-          if (prev.kind === 'success' || prev.kind === 'stale') {
-            return { kind: 'stale', data: prev.data };
-          }
-          return prev;
-        });
+        setState(prev =>
+          prev.kind === 'success' || prev.kind === 'stale'
+            ? { kind: 'stale', data: prev.data }
+            : prev,
+        );
       },
     });
 
     return () => {
       cancelled = true;
+      if (staleTimer !== null) window.clearTimeout(staleTimer);
       controller.abort();
     };
   }, [nodeId]);
+
+  // Tick por segundo SOLO mientras estamos en stale — evita re-renders
+  // innecesarios en el flujo normal.
+  useEffect(() => {
+    if (state.kind !== 'stale') return;
+    const id = window.setInterval(
+      () => setNow(new Date()),
+      COUNTER_TICK_MS,
+    );
+    return () => window.clearInterval(id);
+  }, [state.kind]);
 
   if (state.kind === 'loading') {
     return (
@@ -127,6 +179,10 @@ export const ActiveStrategyView = ({
   const { data } = state;
   const { label, subtitle } = labelForStrategy(data.strategy_mode);
   const activatedAt = new Date(data.activated_at);
+  const elapsedSinceConfirmation =
+    lastConfirmedAt !== null
+      ? now.getTime() - lastConfirmedAt.getTime()
+      : null;
 
   return (
     <Card>
@@ -142,10 +198,18 @@ export const ActiveStrategyView = ({
         )}
       </div>
       <p className="text-xs text-slate-400 mb-3">{subtitle}</p>
-      <div className="text-xs text-slate-500 mb-4">
+      <div className="text-xs text-slate-500 mb-2">
         Activa desde {activatedAt.toLocaleString('es-PE')} · ciclo{' '}
         {data.cycle_seconds.toFixed(1)} s
       </div>
+      {state.kind === 'stale' && elapsedSinceConfirmation !== null && (
+        <p
+          className="text-xs text-amber-300/80 mb-3"
+          data-testid="active-strategy-stale-elapsed"
+        >
+          Última confirmación hace {formatElapsed(elapsedSinceConfirmation)}
+        </p>
+      )}
       <div>
         {data.phase_timings.map(timing => (
           <TimingBar
