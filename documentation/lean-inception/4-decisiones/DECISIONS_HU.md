@@ -7,7 +7,7 @@
 > **Relación con `DECISIONS.md`:** El documento `DECISIONS.md` registra decisiones técnicas del producto (arquitectura, modelo, datos). Este documento registra decisiones metodológicas sobre cómo se redacta el backlog. Los códigos no se solapan: `D-xxx` para técnicas, `DHU-xxx` para HUs.
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-05-20 (**DHU-021 y DHU-022 agregadas.** DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
+> **Última actualización:** 2026-05-27 (**DHU-023 agregada: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
 
 ---
 
@@ -37,6 +37,7 @@
 | DHU-020 | Semántica de ControlView: cierre de Delta-08 (vista pasiva de HU-05 prevalece, playground preservado como herramienta de Administrador, Delta-07/08/09 en bloque, persistencia de estado vigente autorizada como cambio estructural) | 2026-05-20 | Cerrada |
 | DHU-021 | Decisiones metodológicas de redacción del SDD (17 de redacción + 4 ajustes derivados de la verificación SDD↔repo: node_id FK con resolución al persistir, campos del motor conservados, ratificación sin-lazo-cerrado, Gemini fuera de la arquitectura objetivo) | 2026-05-20 | Cerrada |
 | DHU-022 | Nomenclatura de roles del sistema: `operator/manager/admin` como claims técnicos canónicos + labels en español en el frontend (cierre de Delta-02) | 2026-05-20 | Cerrada |
+| DHU-023 | Semántica temporal del estado vigente: activación, ratificación y cambio-dentro-de-estrategia (candidata, a resolver en encuadre de HU-07) | 2026-05-27 | Abierta/Candidata |
 
 ---
 
@@ -2363,6 +2364,73 @@ Se fija un único conjunto canónico de identificadores de rol y una política d
 - `TAREAS_TECNICAS_HABILITADORAS.md` — TTH-01 (autenticación JWT/bcrypt), consumidor de esta nomenclatura.
 - `LEAN_INCEPTION_CEREBROVIAL.md` — Personas (Operador, Gerente, Administrador).
 - `DHU-002` — reformulación del valor en HU de acceso diferenciado por rol (decisión relacionada de redacción).
+
+---
+
+## DHU-023 — Semántica temporal del estado vigente: activación, ratificación y cambio-dentro-de-estrategia (CANDIDATA — a resolver en encuadre de HU-07)
+
+**Fecha:** 2026-05-27.
+**Estado:** Abierta. Decisión de modelo de dominio detectada durante la verificación
+manual de HU-05; su resolución es trabajo de encuadre de HU-07 (notificación de cambio
+de estrategia), NO de HU-05.
+
+### Contexto
+
+HU-05 entregó la vista pasiva del estado vigente, anclada a `engine_active_state`
+(`activated_at`) y a la decisión apuntada en `motor_decisions` (`decided_at`). El SDD
+(DHU-021 #13) separó esos dos eventos —cálculo vs. activación—. Durante la verificación
+manual de HU-05 se detectó que esa separación de DOS tiempos es insuficiente para el
+lazo del motor que HU-07/futuro construirá, porque existe un TERCER evento sin modelar
+y un caso de cambio que el `strategy_mode` por sí solo no captura.
+
+### Los dos huecos detectados
+
+**Hueco 1 — ratificación sin cambio (el "heartbeat" del motor).**
+Si el motor corre en lazo (ej. recalcula cada minuto) y vuelve a recomendar la MISMA
+estrategia, el estado vigente no cambia (`activated_at` sigue viejo), pero el motor SÍ
+confirmó hace 1 minuto que la estrategia sigue vigente. Hoy el panel solo conoce
+`activated_at`; no tiene forma de distinguir "el motor confirmó hace 1 min" de "el motor
+está caído hace 2 min". Para CA-05.4 (detección de pérdida de contacto, DHU-005 Caso B)
+esta distinción es central: lo que el operador necesita saber es hace cuánto el motor NO
+confirma, no hace cuánto se activó la estrategia. Conecta con DHU-021 #V (ratificación
+sin-lazo-cerrado), que anticipó el caso pero no lo modeló como dato.
+
+**Hueco 2 — misma estrategia, decisión distinta.**
+El motor puede recomendar la misma estrategia (Webster) con `cycle_seconds` y
+`phase_timings` DISTINTOS (la demanda cambió, los tiempos se reajustaron). Para el
+operador el semáforo funciona distinto, aunque el nombre de la estrategia no cambió. Un
+panel que solo observa `strategy_mode` se pierde este cambio. Pregunta abierta: ¿qué
+cuenta como "cambio" para el operador — solo cambio de estrategia, o también cambio de
+decisión (ciclo/tiempos) dentro de la misma estrategia?
+
+### Qué se decidió en HU-05 (ahora) y qué se difiere (HU-07)
+
+- **HU-05 (cerrado):** el contador de "tiempo desde última confirmación" se ancla al
+  dato real disponible (`activated_at`), que sobrevive remontajes del componente. No se
+  modela el heartbeat ni la ratificación —no existen los datos todavía—. El panel ya
+  muestra fielmente los `phase_timings` y `cycle_seconds` que el backend reporta en cada
+  re-lectura (Hueco 2 a nivel de DATOS está cubierto: cada `active-state-changed` re-lee
+  el GET completo); lo que falta es la SEMÁNTICA de qué llamar "cambio".
+
+- **HU-07 (a resolver en su encuadre):**
+  1. ¿El backend debe persistir/exponer un `last_evaluated_at` (o equivalente) además de
+     `activated_at`, para que el panel mida "tiempo desde última ratificación del motor",
+     no solo "tiempo desde activación"?
+  2. ¿Qué evento(s) notifica el canal SSE: solo cambio de estrategia, también cambio de
+     decisión dentro de la misma estrategia, también ratificación sin cambio (heartbeat)?
+  3. ¿Cómo distingue el panel del Operador los tres casos visualmente —activación nueva,
+     reajuste de tiempos, ratificación— para que "confirmación" signifique lo correcto?
+  4. Definir el contrato de datos del estado vigente ANTES de implementar el lazo
+     motor↔estado de HU-07.
+
+### Documentos relacionados
+- `data-model.md` — `engine_active_state`, `motor_decisions` (entidades afectadas si se
+  añade `last_evaluated_at`).
+- `DHU-020` — semántica de vista pasiva de HU-05 (origen de la cadena).
+- `DHU-021 #13, #V` — separación decided_at/activated_at; ratificación sin-lazo-cerrado
+  (el antecedente que este DHU extiende).
+- `DHU-005` — robustez Caso B (lo que el Hueco 1 afecta directamente).
+- `HU-07` — historia que consume y resuelve esta decisión.
 
 ---
 
