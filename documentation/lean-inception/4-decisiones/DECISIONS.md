@@ -136,6 +136,12 @@ El rol del módulo en la arquitectura del sistema es de **sensor de estado en ti
 
 **Pendiente:** Confirmar con asesor.
 
+**Encuadre operativo de la implementación:** ver DHU-024 en `DECISIONS_HU.md`
+(2026-05-27). D-007 fija el rol de la visión (componente demostrable, no en loop
+cuantitativo); DHU-024 fija el cómo de la implementación (alcance 11 CTs, arquitectura
+DDD, contrato `vision_aggregates`, levantamiento de la regla CLAUDE.md) sin reversar
+esta decisión.
+
 ---
 
 ## D-008 — SUMO end-to-end: datos sintéticos para entrenamiento y validación
