@@ -55,6 +55,23 @@ export const PHASE_SUBTITLES: Record<string, string> = {
     EW: 'Este-Oeste',
 };
 
+// Lista estática de nodos válidos en graph_nodes (seed de Miraflores). Usada
+// por el selector del ControlPlayground para garantizar que el
+// ``intersection_id`` que se envía a POST /control/recommend resuelve a un
+// node_id real (sino el endpoint devuelve 422 unknown_intersection).
+//
+// TODO(HU-05+): reemplazar por GET a un endpoint dedicado al listado de
+// graph_nodes cuando exista (hoy ``/api/intersections`` devuelve cámaras,
+// no nodos, y la UI necesita el node_id puro). No se introduce el endpoint
+// nuevo acá para no expandir el alcance de HU-05.
+export const KNOWN_NODE_IDS: readonly string[] = [
+    'larco_schell',
+    'larco_benavides',
+    'benavides_miraflores',
+    'arequipa_angamos',
+    'ejercito_sucre',
+] as const;
+
 export const MODE_LABEL: Record<ControlMode, string> = {
     webster: 'Webster (off-peak)',
     max_pressure: 'Max Pressure (peak)',

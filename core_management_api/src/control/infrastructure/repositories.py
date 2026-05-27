@@ -14,6 +14,7 @@ update the pointer and the ``activated_at`` timestamp.
 ``intersection_id`` from the request payload is mapped to a real
 ``graph_nodes.node_id`` here, before the engine runs.
 """
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -25,6 +26,22 @@ from cerebrovial_shared.database.models import (
     GraphNodeDB,
     MotorDecisionDB,
 )
+
+
+@dataclass(frozen=True)
+class ActiveStateRow:
+    """Read-projection of engine_active_state ⨝ motor_decisions for HU-05.
+
+    Crosses the repo boundary as a plain dataclass so the presentation layer
+    builds the Pydantic DTO without leaking SQLAlchemy ORM objects upward.
+    """
+    node_id: str
+    strategy_mode: str
+    cycle_seconds: float
+    phase_timings: list[dict]
+    decided_at: datetime
+    activated_at: datetime
+    activated_by: Optional[str]
 
 
 def resolve_node_id(session: Session, intersection_id: str) -> Optional[str]:
@@ -85,8 +102,9 @@ class MotorDecisionsRepo:
 class EngineActiveStateRepo:
     """Mutable repository for engine_active_state (one row per node_id).
 
-    Not wired to any endpoint in TTH-10. The activation event belongs to
-    HU-05/HU-07 (operator promotes a decision to active).
+    ``activate`` writes the activation event (TTH-10 / HU-05 / HU-07).
+    ``get_active_state_for_node`` reads the active strategy for HU-05's
+    pasive view.
     """
 
     def __init__(self, session: Session) -> None:
@@ -114,3 +132,35 @@ class EngineActiveStateRepo:
             existing.activated_at = now
             existing.activated_by = activated_by
         self.session.flush()
+
+    def get_active_state_for_node(
+        self, node_id: str
+    ) -> Optional[ActiveStateRow]:
+        """Returns the active strategy projection for ``node_id`` or None.
+
+        Joins ``engine_active_state`` with ``motor_decisions`` on the active
+        pointer. The PK lookup on ``engine_active_state.node_id`` is O(1) and
+        the join hits ``motor_decisions.decision_id`` (its PK), so two index
+        seeks total. No filter on ``decided_at`` is needed: the active row
+        already points to the canonical decision."""
+        result = self.session.execute(
+            select(EngineActiveStateDB, MotorDecisionDB)
+            .join(
+                MotorDecisionDB,
+                EngineActiveStateDB.active_decision_id
+                == MotorDecisionDB.decision_id,
+            )
+            .where(EngineActiveStateDB.node_id == node_id)
+        ).first()
+        if result is None:
+            return None
+        active, decision = result
+        return ActiveStateRow(
+            node_id=active.node_id,
+            strategy_mode=decision.mode,
+            cycle_seconds=float(decision.cycle_seconds),
+            phase_timings=list(decision.phase_timings or []),
+            decided_at=decision.decided_at,
+            activated_at=active.activated_at,
+            activated_by=active.activated_by,
+        )

@@ -6,7 +6,10 @@ export type Tab = 'dashboard' | 'analytics' | 'alerts' | 'admin' | 'control';
 export const TABS_BY_ROLE: Record<Role, readonly Tab[]> = {
   operator: ['dashboard', 'control', 'alerts'],
   manager: ['analytics'],
-  admin: ['admin'],
+  // HU-05 / DHU-020: admin recupera el tab 'control' para acceder al
+  // playground interactivo (ControlPlayground). El render condicional por
+  // rol dentro de ControlView decide qué vista mostrar.
+  admin: ['admin', 'control'],
 };
 
 export const DEFAULT_TAB_BY_ROLE: Record<Role, Tab> = {

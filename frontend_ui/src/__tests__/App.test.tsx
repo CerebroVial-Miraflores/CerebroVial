@@ -120,12 +120,15 @@ describe('App — vista por defecto por rol y guard de setActiveTab (HU-01)', ()
       expect(screen.queryByTestId('view-control')).toBeNull();
     });
 
-    it('forzar la vista "control" redirige al default del Administrador', () => {
+    // HU-05 / DHU-020: admin recupera el tab "control" para acceder al
+    // playground interactivo (ControlPlayground). Cambiar a "control" no
+    // redirige más al default; muestra el ControlView.
+    it('puede cambiar a la vista "control" (HU-05 / DHU-020 — playground del Administrador)', () => {
       render(<App />);
       fireEvent.click(screen.getByTestId('goto-control'));
-      expect(screen.getByTestId('active-tab').textContent).toBe('admin');
-      expect(screen.queryByTestId('view-control')).toBeNull();
-      expect(screen.getByTestId('view-admin')).toBeInTheDocument();
+      expect(screen.getByTestId('active-tab').textContent).toBe('control');
+      expect(screen.getByTestId('view-control')).toBeInTheDocument();
+      expect(screen.queryByTestId('view-admin')).toBeNull();
     });
   });
 });

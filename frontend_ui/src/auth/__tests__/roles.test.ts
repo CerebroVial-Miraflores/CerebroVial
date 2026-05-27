@@ -17,8 +17,9 @@ describe('TABS_BY_ROLE', () => {
   it('manager tiene solo analytics', () => {
     expect([...TABS_BY_ROLE.manager]).toEqual(['analytics']);
   });
-  it('admin tiene solo admin', () => {
-    expect([...TABS_BY_ROLE.admin]).toEqual(['admin']);
+  // HU-05: admin gana 'control' para acceder al playground (DHU-020).
+  it('admin tiene admin y control', () => {
+    expect([...TABS_BY_ROLE.admin]).toEqual(['admin', 'control']);
   });
 });
 
@@ -49,13 +50,14 @@ describe('roleAllowsTab', () => {
     expect(roleAllowsTab('operator', 'alerts')).toBe(true);
     expect(roleAllowsTab('manager', 'analytics')).toBe(true);
     expect(roleAllowsTab('admin', 'admin')).toBe(true);
+    // HU-05 / DHU-020: admin recupera 'control' para llegar al playground.
+    expect(roleAllowsTab('admin', 'control')).toBe(true);
   });
   it('retorna false cuando la pestaña no pertenece al rol', () => {
     expect(roleAllowsTab('operator', 'analytics')).toBe(false);
     expect(roleAllowsTab('operator', 'admin')).toBe(false);
     expect(roleAllowsTab('manager', 'dashboard')).toBe(false);
     expect(roleAllowsTab('manager', 'control')).toBe(false);
-    expect(roleAllowsTab('admin', 'control')).toBe(false);
     expect(roleAllowsTab('admin', 'analytics')).toBe(false);
   });
   it('retorna false cuando el rol es null', () => {

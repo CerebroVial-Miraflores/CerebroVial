@@ -58,11 +58,14 @@ describe('Sidebar — segregación de tabs por rol (CA-01.1/.2/.3, RNF-INT-07)',
   });
 
   describe('rol admin', () => {
-    it('muestra solo Administración y oculta Monitoreo, Motor Adaptativo, Alertas y Analítica', () => {
+    // HU-05 / DHU-020: admin gana "Motor Adaptativo" para acceder al
+    // playground interactivo (ControlPlayground). Sigue oculto Monitoreo,
+    // Alertas y Analítica.
+    it('muestra Administración y Motor Adaptativo; oculta Monitoreo, Alertas y Analítica', () => {
       renderSidebar('admin');
       expect(screen.getByRole('button', { name: /administraci[oó]n/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /motor adaptativo/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /monitoreo/i })).toBeNull();
-      expect(screen.queryByRole('button', { name: /motor adaptativo/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /alertas/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /anal[ií]tica/i })).toBeNull();
     });

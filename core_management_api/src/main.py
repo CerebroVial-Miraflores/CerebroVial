@@ -13,6 +13,7 @@ from src.control.application.webster import WebsterCalculator
 from src.control.application.max_pressure import MaxPressureController
 from src.control.application.mtc_constraints import MTCConstants, MTCRestrictionApplier
 from src.control.config import ControlSettings
+from src.control.infrastructure import init_broadcaster
 from src.auth.domain import Role
 from src.auth.presentation.api.dependencies import require_role
 from src.auth.presentation.api.routes import auth_router
@@ -54,6 +55,12 @@ _control_engine = AdaptiveEngine(
     peak_threshold=_control_settings.adaptive.peak_threshold,
 )
 init_engine(_control_engine)
+# HU-05: inicializa el singleton del broadcaster SSE. Sin esto,
+# Depends(get_broadcaster) en GET /control/active-state/{node_id}/stream y
+# en POST /control/__internal/activate lanza RuntimeError → 500. Es un
+# singleton in-memory per-proceso (DHU-021); single-worker uvicorn cubre el
+# alcance del MVP.
+init_broadcaster()
 
 app.include_router(prediction_router)
 app.include_router(control_router)

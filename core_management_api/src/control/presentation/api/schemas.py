@@ -4,6 +4,7 @@ Pydantic DTOs for the adaptive control engine HTTP boundary.
 Internal computation uses dataclasses (see application/*.py); these schemas
 exist only to validate and serialize requests/responses.
 """
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -45,10 +46,36 @@ class ControlRecommendation(BaseModel):
     next_phase: Optional[str] = None
     reasoning: str
     adjustments: list[str] = Field(default_factory=list)
+    # Expuesto para que el playground de Admin (DHU-020) pueda
+    # disparar __internal/activate sobre esta decisión sin consulta
+    # adicional. Optional para no romper clientes/tests pre-existentes.
+    decision_id: Optional[str] = None
 
 
 class RecommendResponse(BaseModel):
     data: ControlRecommendation
+
+
+class ActiveStateResponse(BaseModel):
+    """Read-only view of the currently active strategy for a node (HU-05).
+
+    Exposes ``strategy_mode`` (the raw mode key — ``webster`` /
+    ``max_pressure``) and the parameters of the active decision (cycle and
+    green times per phase). Excludes ``flow_total`` and ``y_load_factor``
+    deliberately: they belong to the engine's internal calculation and are
+    not part of the Operator's pasive view (DHU-021 #21).
+
+    The human-readable label is mapped in the frontend (DHU-006) from
+    ``strategy_mode``; this DTO does NOT include the label so the backend
+    stays agnostic to operator-facing naming.
+    """
+    node_id: str
+    strategy_mode: Literal["webster", "max_pressure"]
+    cycle_seconds: float
+    phase_timings: list[PhaseTimings]
+    decided_at: datetime
+    activated_at: datetime
+    activated_by: Optional[str] = None
 
 
 class ErrorDetail(BaseModel):

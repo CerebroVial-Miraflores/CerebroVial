@@ -116,22 +116,28 @@ Migraciones:
   (`/api/intersections`, `/predictions/*`, `/control/*`) es **responsabilidad
   acumulativa** de HU-15..HU-21 (cada HU futura aplica `require_role(...)` a sus
   endpoints). **CA-01.6 (auto-logout por token expirado) — smoke e2e en vivo
-  diferido**: la cobertura ejecutable está completa por dos vías independientes —
-  el interceptor + flash de sesión expirada se verifican en `httpClient.test.ts`,
-  `SessionContext.test.tsx` y `LoginView.test.tsx` (CT-01.11); el rechazo 401
-  por token inválido/expirado se verifica sobre `GET /api/health` en los 4
-  escenarios pytest-bdd de CA-01.4. Lo que **no** es ejecutable en HU-01 es
-  unir las dos mitades en un smoke e2e en vivo: el único endpoint protegido
-  por `require_role` es `/api/health`, que la UI no consume en su flujo
-  natural, así que dejar expirar el token y "seguir usando la app" no dispara
-  el auto-logout porque las demás rutas siguen abiertas (la misma frontera
-  de RNF-SEC-03 ya declarada arriba). El smoke e2e en vivo queda diferido a
-  la primera HU que aplique `require_role` a una ruta consumida por la UI
-  (HU-03 o HU-05, lo que llegue primero). Cuando llegue, el protocolo correcto
-  **no** es `JWT_EXPIRATION_HOURS` fraccionario (el servicio JWT lee horas
-  enteras vía `int(...)` y revienta con decimales); el camino válido es
-  invocar `create_access_token(..., expires_delta=timedelta(seconds=N))` desde
-  una shell del backend. Primer Gherkin del proyecto: `features/hu-01-rbac/`
+  CERRADO por HU-05 (Sprint 4, fase 7)**: la cobertura ejecutable estaba
+  completa por dos vías independientes — el interceptor + flash de sesión
+  expirada en `httpClient.test.ts`, `SessionContext.test.tsx` y
+  `LoginView.test.tsx` (CT-01.11); el rechazo 401 por token
+  inválido/expirado sobre `GET /api/health` en los 4 escenarios pytest-bdd
+  de CA-01.4. Lo que no era ejecutable en HU-01 era unir las dos mitades
+  en un smoke e2e en vivo: el único endpoint con `require_role` era
+  `/api/health`, que la UI no consume en su flujo natural. **HU-05 trajo
+  `GET /control/active-state/{node_id}` con `require_role(OPERATOR, ADMIN)`
+  y `ActiveStrategyView` la consume en su flujo natural** — esa es la ruta
+  sobre la que se ejerce el smoke. Cobertura ejecutable del cierre:
+  `features/hu-01-rbac/ca_01_6_token_expirado_endpoint_vivo.feature` +
+  `core_management_api/tests/bdd/hu_05/test_ca_01_6_smoke.py` (backend:
+  token con `exp` ya pasado devuelve 401 sobre `/control/active-state/larco_schell`),
+  y `frontend_ui/src/services/__tests__/controlActiveStateService.test.ts`
+  (frontend: 401 sobre la misma ruta dispara `authBridge.onUnauthorized`
+  → `SessionProvider.performLogout({reason:'session-expired'})` →
+  `navigate('/login')` con flash). Protocolo correcto: **no** usar
+  `JWT_EXPIRATION_HOURS` fraccionario (el servicio JWT lee horas enteras
+  vía `int(...)` y revienta con decimales); el camino válido es invocar
+  `create_access_token(..., expires_delta=timedelta(seconds=N))` con `N`
+  negativo para forjar un token ya expirado sin depender del wall-clock. Primer Gherkin del proyecto: `features/hu-01-rbac/`
   con `rbac_api.feature` ejecutable vía `pytest-bdd` (declarado en
   `requirements-dev.txt`; CI actualizado en `.github/workflows/ci.yml` para
   instalar `requirements-dev.txt`).
