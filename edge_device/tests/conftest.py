@@ -24,5 +24,6 @@ def mock_analysis():
                 timestamp=1234567890.0
             )
         ],
-        total_count=1
+        unique_vehicles=1,
+        zones={}
     )
