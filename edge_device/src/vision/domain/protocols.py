@@ -48,8 +48,9 @@ class ZoneCounter(Protocol):
 class AsyncAggregator(Protocol):
     """Protocol for asynchronous aggregation using a worker thread + queue.
 
-    Same compute contract as `SyncAggregator` (`add` + `flush`) plus
-    `force_flush` (synchronous drain) and `stop` (worker lifecycle).
+    Compute contract: `add` accumulates, `flush` returns computed
+    `TrafficData`; plus `force_flush` (synchronous drain) and `stop`
+    (worker lifecycle).
 
     Semantics of the four methods:
 
