@@ -1,16 +1,24 @@
 # TTH-08 Fase 1 — Diseño DDD del módulo `vision` reescrito
 
-> **Documento parcial.** Esta versión cubre los cimientos del dominio (Bloques 0
-> y 1 del grafo de dependencias de §6 del documento de lecciones de Fase 0).
-> Las decisiones que aún no se han tomado en Fase 1 están marcadas como
-> **pendiente** y se cerrarán en sesiones posteriores antes de que Fase 3 (Domain
-> layer) arranque. Este documento NO debe leerse como el diseño completo de
-> Fase 1.
+> **Documento parcial.** Esta versión cubre los cimientos del dominio
+> (Bloque 1 del grafo de dependencias de §6 del documento de lecciones de
+> Fase 0) y los contratos por capa (Bloque 2). Las decisiones que aún no
+> se han tomado en Fase 1 están marcadas como **pendiente** y se cerrarán
+> en Sesión 3 antes de que Fase 3 (Domain layer) arranque. Este documento
+> NO debe leerse como el diseño completo de Fase 1.
 >
-> **Alcance de esta versión** (Sesión 1 de Fase 1):
+> **Alcance cubierto:**
+>
+> Sesión 1 (Bloque 1):
 > §6.1 (test de aceptación temprano del `ZoneCounter`),
 > §6.7 (Value Objects),
-> §6.2 (set completo de Protocols del dominio, parcialmente — con adelanto parcial de §6.6).
+> §6.2 (set completo de Protocols del dominio, parcialmente — con
+> adelanto parcial de §6.6).
+>
+> Sesión 2 (Bloque 2):
+> §6.9 (definiciones canónicas de métricas),
+> §6.10 (cierre detallado del Broadcaster),
+> §6.8 (lugar del visualizer y de `interaction.py`).
 
 ## 1. Contexto y marco
 
@@ -524,36 +532,532 @@ tests que validan suscriptores se reescriben en Fases 4, 6 y 7.
 | §4 Caso B: `multi_camera` importa `OpenCVVisualizer` de presentación. | Protocol #9 `FrameRenderer`. `OpenCVVisualizer` se reescribe como adaptador de infraestructura. |
 | §6.10: API pública del Broadcaster (no más `broadcaster._subscribers`). | Métodos `subscriber_count()` e `is_subscribed()` en Protocol #8. |
 
-### 4.6 Lo que esto NO resuelve todavía
+### 4.6 Lo que esto NO resuelve todavía (al cierre de Sesión 1)
 
 Tres decisiones de Fase 1 que afectan a los Protocols pero NO se cierran
-en esta sesión:
+en Sesión 1:
 
 - **§6.11** (separación transporte/presentación en `Broadcaster`): el
   Protocol #8 tipa `publish(data: TrafficData)` que ya es una entidad
   del dominio. Pero la decisión formal de qué shape se serializa hacia
-  suscriptores (¿`TrafficData` directo? ¿un DTO de presentación?) y
-  dónde se traduce a strings localizadas vive en §6.11. **Pendiente.**
+  suscriptores y dónde se traduce a strings localizadas vive en §6.11.
+  **Pendiente para Sesión 3** (parcialmente cubierto por §6.2 de este
+  documento, ver §6).
 - **§6.9** (definiciones canónicas de métricas): los métodos del
-  `Aggregator` retornan `TrafficData`, cuyos campos (`density`,
-  `congestion_level`, `flow_rate_per_min`, etc.) se definen
-  canónicamente en §6.9. **Pendiente.**
-- **§6.6** (sync vs async pipeline, decisión final): esta Sesión 1
-  adelantó la decisión de "dos Protocols separados" pero NO la decisión
-  de "qué modo se conserva en Fase 5". §6.6 sigue pendiente para
-  Sesión 3.
+  `Aggregator` retornan `TrafficData`, cuyos campos se definen
+  canónicamente en §6.9. **Cerrado en Sesión 2** (ver §5).
+- **§6.6** (sync vs async pipeline, decisión final): Sesión 1 adelantó la
+  decisión de "dos Protocols separados" pero NO la decisión de "qué modo
+  se conserva en Fase 5". §6.6 sigue pendiente para Sesión 3.
 
-## 5. Estructura objetivo del `domain/` para Fase 3
+## 5. §6.9 — Definiciones canónicas de métricas del módulo `vision`
+
+### 5.1 Hallazgo origen
+
+La auditoría de Fase 0 identificó cuatro definiciones distintas de
+"congestión/densidad" conviviendo en el repo (Fase 0 §3.5), el placeholder
+`"incidents": 0` hardcoded (Fase 0 §3.6), el nombre engañoso
+`flow_rate_per_min` que computa cardinalidad de IDs únicos en ventana
+configurable (no veh/min), y la convivencia de tres escalas de congestión
+(`Normal/High/Heavy`, `Bajo/Moderado/Alto`, escala 0-5 de D-009). §6.9
+cierra las definiciones que vision emite para que estas inconsistencias
+dejen de propagarse a los consumidores.
+
+### 5.2 Decisión metodológica de fondo
+
+**Vision reporta métricas nativas del sensor (conteos, IDs únicos, tipos,
+velocidades) más derivables localmente con metadata disponible (ocupación
+siempre; densidad real solo si la zona tiene calibración de longitud).**
+Vision NO emite `congestion_level` discreto. La discretización a la escala
+0-5 declarada en D-009 ocurre en la capa de presentación según el SDD
+(SDD §2.3 y §3.2: "la discretización al nivel 0-5 ocurre solo en la capa
+de presentación"). De ahí se sigue que vision no debe usurpar esa
+responsabilidad emitiendo la escala discreta — el dato que vision podría
+aportar es el ratio velocidad/free-flow continuo, no su discretización,
+y eso queda como evaluación para F41 si llega a integrarse el módulo en
+el loop predictivo.
+
+Justificación:
+
+1. Respeta la decisión arquitectural del SDD sobre dónde vive la
+   discretización a 0-5 (ver párrafo anterior).
+2. DHU-024 §5 declara que `vision_aggregates` incluye `count`, `queue`,
+   `flow`, `density` por dirección — no incluye `congestion_level`.
+3. Eliminar la lógica de discretización del módulo cierra el placeholder
+   `"incidents": 0` y los umbrales 30/70 hardcoded del broadcaster
+   (Fase 0 §3.6).
+
+### 5.3 Schema canónico de `TrafficData`
+
+```python
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
+
+from .value_objects import CameraId, ZoneId
+
+
+@dataclass(frozen=True)
+class TrafficData:
+    """Aggregated traffic metrics for a single zone over a closed time window.
+
+    This is the canonical output shape of the vision module's aggregation
+    layer. It is the value object that the application use case persists
+    via `TrafficRepository` and publishes via `Broadcaster`.
+
+    All fields are required unless explicitly typed Optional.
+    """
+
+    # Identifiers
+    camera_id: CameraId
+    zone_id: ZoneId
+
+    # Temporal window (closed interval)
+    window_start: datetime           # tz-aware UTC
+    window_end: datetime             # tz-aware UTC; window_end > window_start
+    window_duration_seconds: float   # equal to (window_end - window_start).total_seconds(); > 0
+
+    # Counts
+    unique_vehicles: int                   # cardinality of distinct VehicleIds in window; >= 0
+    vehicles_by_type: dict[str, int]       # keys subset of {"car", "bus", "truck", "motorcycle"};
+                                           # sum of values equals unique_vehicles
+
+    # Temporal aggregates
+    mean_speed_kmh: Optional[float]        # count-weighted average; None if no frames have count > 0
+                                           # or if camera has no pixel-to-meter calibration
+    flow_vehicles_per_hour: float          # unique_vehicles / window_duration_seconds * 3600; >= 0
+
+    # Local derived
+    mean_occupancy: float                  # mean over frames of (bbox_area ∩ polygon_area) / polygon_area;
+                                           # in [0.0, 1.0]
+    density_vehicles_per_km: Optional[float]  # unique_vehicles / zone.segment_length_meters * 1000;
+                                              # None if zone has no segment_length_meters configured;
+                                              # >= 0 when not None
+```
+
+### 5.4 Definiciones campo por campo
+
+**Identificadores:**
+
+| Campo | Tipo | Definición |
+|---|---|---|
+| `camera_id` | `CameraId` (VO) | Identificador único de cámara. Obligatorio. Sin sentinel `"unknown"`. |
+| `zone_id` | `ZoneId` (VO) | Identificador único de zona dentro de la cámara. Obligatorio. |
+
+**Ventana temporal:**
+
+| Campo | Tipo | Definición |
+|---|---|---|
+| `window_start` | `datetime` UTC tz-aware | Inicio del intervalo de agregación. |
+| `window_end` | `datetime` UTC tz-aware | Fin del intervalo. Validación: `window_end > window_start`. |
+| `window_duration_seconds` | `float` | `(window_end - window_start).total_seconds()`. Validación: `> 0`. Redundante pero útil para consumidores que no quieran calcular. |
+
+**Cambio respecto al actual**: `timestamp: float` (Unix epoch) → `datetime`
+tz-aware UTC + intervalo explícito (`window_start`, `window_end`). El módulo
+actual usa un único punto temporal y deja la duración implícita por
+configuración. Hacer el intervalo explícito elimina la ambigüedad que
+causaba que `flow_rate_per_min` no fuera realmente veh/min.
+
+**Conteos:**
+
+| Campo | Tipo | Definición | Validación |
+|---|---|---|---|
+| `unique_vehicles` | `int` | Cardinalidad del set de `VehicleId` distintos observados en la ventana, tras resolución de tipo por voto mayoritario. | `>= 0` |
+| `vehicles_by_type` | `dict[str, int]` | Para cada tipo, cantidad de `VehicleId` únicos cuyo tipo (voto mayoritario) es ese. | Keys ⊆ `{"car", "bus", "truck", "motorcycle"}` en MVP1; suma de valores = `unique_vehicles`. |
+
+**Cambios respecto al actual:**
+
+- `total_vehicles` → `unique_vehicles`. El nombre original sugería suma de
+  detecciones; el cómputo real es cardinalidad de IDs únicos.
+- `car_count` / `bus_count` / `truck_count` / `motorcycle_count` (cuatro
+  campos) → `vehicles_by_type: dict[str, int]` (un dict). Si en F41 se
+  agregan tipos (p.ej. "bicycle"), el schema no rompe. El `__post_init__`
+  valida que las keys estén en el set permitido.
+
+**Agregados temporales:**
+
+| Campo | Tipo | Definición | Validación |
+|---|---|---|---|
+| `mean_speed_kmh` | `Optional[float]` | Promedio ponderado por count: `Σ(frame_avg_speed × frame_vehicle_count) / Σ(frame_vehicle_count)` sobre frames con `vehicle_count > 0` y `avg_speed > 0`. | `None` si no hay frames válidos o si la cámara carece de calibración pixel→metro. `>= 0` cuando no es `None`. |
+| `flow_vehicles_per_hour` | `float` | `unique_vehicles / window_duration_seconds * 3600`. | `>= 0` |
+
+**Cambios respecto al actual:**
+
+- `avg_speed` → `mean_speed_kmh` con unidad en el nombre.
+- `flow_rate_per_min: int` → `flow_vehicles_per_hour: float`. La unidad
+  cambia a veh/h por convención de ingeniería de tráfico (HCM,
+  Webster 1958), por alineación con el motor adaptativo
+  (`PhaseFlowDC.flow` y `PEAK_THRESHOLD = 1500.0 veh/h` en
+  `core_management_api/src/control/`), y porque el cómputo deja de mentir
+  sobre la ventana temporal.
+
+**Derivados locales:**
+
+| Campo | Tipo | Definición | Validación |
+|---|---|---|---|
+| `mean_occupancy` | `float` | Promedio sobre frames de la ventana de `Σ(bbox_area ∩ polygon_area) / polygon_area`. Métrica primaria de "qué tan lleno está el carril visible". | `[0.0, 1.0]` |
+| `density_vehicles_per_km` | `Optional[float]` | `unique_vehicles / zone.segment_length_meters * 1000`. Requiere que la zona configurada tenga el atributo `segment_length_meters` (calibración de campo). | `None` si la zona carece de `segment_length_meters`. `>= 0` cuando no es `None`. |
+
+**Cambios respecto al actual:**
+
+- `avg_density` (count promedio por frame, mal nombrado como densidad) →
+  eliminado. Si un consumidor necesita count promedio por frame, lo deriva
+  de `unique_vehicles` y la duración. No es métrica canónica.
+- `avg_occupancy` → `mean_occupancy` y movido al rango fraccional [0.0, 1.0]
+  (no `× 100` ni serializado como string). El broadcaster actual hacía la
+  multiplicación a la salida (Fase 0 §3.5); esa traducción es trabajo de
+  presentación, no del dominio.
+- `density_vehicles_per_km` es campo nuevo. Implementa la decisión de
+  Sesión 2 (ocupación primaria + densidad real opcional). Permite que
+  vision reporte una métrica de ingeniería estándar cuando la zona está
+  calibrada, sin obligar a que todas lo estén.
+
+### 5.5 Configuración de zona requerida para densidad real
+
+Para que `density_vehicles_per_km` se calcule, cada zona (polígono) debe
+tener `segment_length_meters` en su configuración YAML:
+
+```yaml
+# edge_device/conf/vision/javier_prado.yaml (ejemplo)
+zones:
+  - id: "north_approach"
+    polygon: [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+    segment_length_meters: 50.0   # opcional; sin esto, density_vehicles_per_km = None
+```
+
+Sin `segment_length_meters`, vision reporta `density_vehicles_per_km = None`.
+Con él, reporta el valor calculado. La calibración es trabajo de campo
+fuera del scope de TTH-08; las zonas existentes en MVP1 pueden quedar sin
+calibración inicial.
+
+### 5.6 Campos eliminados respecto al `TrafficData` actual
+
+| Campo eliminado | Razón |
+|---|---|
+| `street_monitored` | Metadata de la cámara, no del agregado temporal. Repetirlo por agregado rompe normalización. Consumidores que necesiten el nombre de la calle lo resuelven por `camera_id` contra metadata de cámara (entidad aparte). Implica que la capa de presentación enriquece el payload del broadcaster con metadata de cámara cuando la HU lo requiere (ver §6.4 de este documento). |
+| `total_vehicles` redundante con `unique_vehicles` | Mismo cómputo, mejor nombre. |
+| `vehicle_types: dict` redundante con `vehicles_by_type` | Mismo contenido, eliminado del schema canónico. |
+| `duration_seconds` como único campo temporal | Reemplazado por `window_start` + `window_end` + `window_duration_seconds` derivado. |
+| Campos de debug (`raw_detection_count`, `display_queue`, `interpolate`) | No son del dominio (Fase 0 §3.8 atributos muertos). |
+
+### 5.7 Métricas que vision NO emite
+
+| Métrica | Razón |
+|---|---|
+| `congestion_level` (escala discreta) | D-009 declara escala 0-5 como variable de estado canónica del sistema; la discretización vive en presentación o en consumidor (predictor de TTH-09), no en vision. |
+| `"incidents"` | El placeholder hardcoded del broadcaster actual desaparece. La detección de incidentes no es responsabilidad de vision en MVP1. |
+| `pedestrians` | El detector YOLO está configurado solo para `car/bus/truck/motorcycle` (Fase 0 §3.8); contar peatones siempre dio 0. Si en F41 se quiere contar peatones, se agrega al detector y a `vehicles_by_type` (con key `"pedestrian"`). |
+| `queue` (longitud de cola) | DHU-024 §5 lo declara como campo de `vision_aggregates`, pero el módulo actual no lo calcula y MVP1 no lo requiere (el motor adaptativo recibe `queue` desde SUMO en validación cuantitativa, no de vision; D-007). Postergado a F41. El schema de `vision_aggregates` mantiene la columna `queue` como `NULL` en MVP1. |
+
+### 5.8 Compatibilidad con `CameraTrafficData` y `vision_aggregates`
+
+El `TrafficData` canónico **no es idéntico** a `CameraTrafficData` (schema
+actual en `shared/cerebrovial_shared/schemas/camera.py`). DHU-024 §5 declara
+compatibilidad, lo que significa que existe un adapter que traduce — no
+que los schemas son iguales campo por campo.
+
+Mapeo del adapter (a implementar en Fase 6 — presentación):
+
+| Campo `TrafficData` canónico | Campo `CameraTrafficData` actual | Traducción |
+|---|---|---|
+| `camera_id: CameraId` | `camera_id: str` | `td.camera_id.value` |
+| `window_end: datetime` | `timestamp: float` | `td.window_end.timestamp()` |
+| `unique_vehicles: int` | `total_vehicles: int` | directo |
+| `vehicles_by_type["car"]` | `car_count: int` | desempaquetado del dict (`vehicles_by_type.get("car", 0)`) |
+| `vehicles_by_type["bus"]` | `bus_count: int` | idem |
+| `vehicles_by_type["truck"]` | `truck_count: int` | idem |
+| `vehicles_by_type["motorcycle"]` | `motorcycle_count: int` | idem |
+| `mean_occupancy: float` | `occupancy_rate: float` | directo (mismo rango [0.0, 1.0]) |
+| `flow_vehicles_per_hour: float` | `flow_rate_per_min: int` | `int(td.flow_vehicles_per_hour / 60)` |
+| — | `street_monitored: str` | Enriquecimiento desde metadata de cámara |
+
+**Alcance del adapter**: este mapping cubre **el camino de persistencia**
+(`TrafficData` → `CameraTrafficData` → BD). NO cubre otros consumidores
+que también reciben campos por nombre y que cambian con esta sesión:
+
+- **Payload SSE del broadcaster** (§6.2 de este documento): el frontend
+  consume el JSON enriquecido directamente. Consumidores conocidos:
+  `frontend_ui/src/components/views/CameraDetailView.tsx`,
+  `DashboardView.tsx`, `TrafficHistoryWidget.tsx`,
+  `frontend_ui/src/services/predictionService.ts`.
+- **Endpoint del predictor** (`core_management_api/src/prediction/`):
+  `PredictionInput` referencia `total_vehicles`, `flow_rate_per_min`,
+  `avg_speed`, `occupancy_rate` por nombre exacto.
+- **`csv_loader.py` del predictor**: feature columns con nombres
+  antiguos.
+
+Estos consumidores se ajustan en Fase 6 (presentación) — no se cubren
+con el adapter de persistencia de §5.8. La trazabilidad del cambio
+queda en este párrafo para que Fase 6 enumere y actualice los archivos
+afectados sin tener que redescubrirlos.
+
+## 6. §6.10 — Cierre detallado del Broadcaster
+
+### 6.1 Lo que Sesión 1 ya cerró
+
+Sesión 1 (este documento, §4.4 Cambio 3) votó:
+
+1. Firma del Protocol: `async def publish(data: TrafficData)`,
+   `subscriber_count() -> int`, `is_subscribed(subscriber_id) -> bool`.
+2. Cero acceso externo a `_subscribers` (atributo privado).
+3. `TrafficData.camera_id` no-opcional (consecuencia de §3 VOs).
+
+Esta sección extiende esas decisiones con el shape exacto del payload SSE,
+política de eventos, política de suscriptores nuevos, y schema concreto de
+`vision_aggregates`.
+
+### 6.2 Shape del payload SSE
+
+El broadcaster publica un payload **enriquecido** (TrafficData + metadata
+de cámara), no el `TrafficData` puro. Razón: el frontend que consume el
+SSE necesita `street_monitored` para HU-02 (panel de la intersección).
+Mandar solo `TrafficData` obligaría a una segunda llamada para metadata.
+El enriquecimiento ocurre dentro del broadcaster concreto (o en un adapter
+justo antes de publicar) — NO cambia el Protocol del dominio.
+
+```json
+{
+  "schema_version": "1.0",
+  "event_type": "traffic_update",
+  "server_timestamp": "2026-05-27T22:48:30Z",
+  "camera": {
+    "id": "cam_javier_prado_01",
+    "street_monitored": "Av. Javier Prado Este"
+  },
+  "zone": {
+    "id": "north_approach"
+  },
+  "window": {
+    "start": "2026-05-27T22:48:00Z",
+    "end": "2026-05-27T22:48:30Z",
+    "duration_seconds": 30.0
+  },
+  "metrics": {
+    "unique_vehicles": 24,
+    "vehicles_by_type": {"car": 18, "bus": 2, "truck": 1, "motorcycle": 3},
+    "mean_speed_kmh": 32.5,
+    "flow_vehicles_per_hour": 2880.0,
+    "mean_occupancy": 0.47,
+    "density_vehicles_per_km": 48.0
+  }
+}
+```
+
+Decisiones de shape implícitas:
+
+- **`schema_version`** explícito desde el principio. Cuando F41 agregue
+  `queue` o nuevos campos, los consumidores pueden chequear versión.
+- **Agrupación por concepto** (`camera`, `zone`, `window`, `metrics`) en
+  vez de flat. Más legible, más estructurado.
+- **Valores Optional como ausencia explícita**: `mean_speed_kmh: null`
+  cuando no hay calibración, `density_vehicles_per_km: null` cuando no hay
+  `segment_length_meters`. JSON nativo, sin convención propietaria.
+- **`server_timestamp`** además del `window.end`: el primero es cuándo el
+  broadcaster emite; el segundo es el fin de la ventana de datos. Útil
+  para medir latencia broadcaster→cliente (RNF-PERF-01).
+
+### 6.3 Política de tipos de evento
+
+**Único tipo de evento en MVP1: `traffic_update`.**
+
+Razones:
+- Mínimo viable. No agregar tipos de eventos sin caso de uso concreto.
+- Los frameworks SSE (EventSource del browser, sse-starlette en el backend)
+  ya manejan reconexión nativamente; no se necesitan eventos de control
+  (`connected`, `heartbeat`).
+- `heartbeat` se evalúa si en operación aparece evidencia de conexiones
+  muertas no detectadas — no se anticipa.
+
+### 6.4 Política de suscriptores nuevos
+
+**Cache de último estado por zona preservada.** Cuando un suscriptor se
+conecta, el broadcaster le envía inmediatamente el último `TrafficData`
+conocido para cada zona suscrita. El suscriptor no espera al próximo
+broadcast natural.
+
+Razones:
+- Es lo que el broadcaster actual ya implementa y Fase 0 §2 lo identificó
+  como "patrón bien hecho".
+- Buena UX: el operador que abre HU-02 ve datos inmediatamente, no espera
+  hasta el próximo agregado (que puede ser hasta 30s después).
+
+**Implicación para la implementación concreta**: el broadcaster mantiene
+internamente un dict `{ZoneId: TrafficData}` con el último valor. Este es
+atributo privado de la implementación, NO parte del Protocol del dominio.
+El Protocol del dominio sigue siendo el de Sesión 1.
+
+### 6.5 Schema de `vision_aggregates`
+
+DHU-024 §5 fija el shape conceptual: `{intersection_id, timestamp,
+directions: [{direction, count, queue, flow, density}]}`. Este documento
+materializa ese shape como tabla TimescaleDB con un row por zona (no array).
+
+```sql
+CREATE TABLE vision_aggregates (
+    -- Identificadores
+    camera_id TEXT NOT NULL,
+    zone_id TEXT NOT NULL,
+
+    -- Ventana temporal
+    window_start TIMESTAMPTZ NOT NULL,
+    window_end TIMESTAMPTZ NOT NULL,
+    window_duration_seconds DOUBLE PRECISION NOT NULL,
+
+    -- Conteos
+    unique_vehicles INTEGER NOT NULL CHECK (unique_vehicles >= 0),
+    car_count INTEGER NOT NULL DEFAULT 0 CHECK (car_count >= 0),
+    bus_count INTEGER NOT NULL DEFAULT 0 CHECK (bus_count >= 0),
+    truck_count INTEGER NOT NULL DEFAULT 0 CHECK (truck_count >= 0),
+    motorcycle_count INTEGER NOT NULL DEFAULT 0 CHECK (motorcycle_count >= 0),
+
+    -- Agregados temporales
+    mean_speed_kmh DOUBLE PRECISION,                            -- NULL si sin calibración
+    flow_vehicles_per_hour DOUBLE PRECISION NOT NULL CHECK (flow_vehicles_per_hour >= 0),
+
+    -- Derivados locales
+    mean_occupancy DOUBLE PRECISION NOT NULL CHECK (mean_occupancy BETWEEN 0 AND 1),
+    density_vehicles_per_km DOUBLE PRECISION,                   -- NULL si zona sin segment_length
+
+    -- Cola (F41, NULL en MVP1)
+    queue INTEGER,                                              -- NULL en MVP1; F41 lo poblará
+
+    PRIMARY KEY (camera_id, zone_id, window_start)
+);
+
+-- TimescaleDB: hypertable por window_start
+SELECT create_hypertable('vision_aggregates', 'window_start');
+```
+
+Decisiones del schema:
+
+- **Un row por zona** (no array de `directions[]` por cámara). TimescaleDB
+  optimiza queries sobre rows planos por `(camera_id, zone_id, timestamp)`.
+  El shape `{intersection_id, directions: [...]}` de DHU-024 §5 es
+  representación de respuesta API (el endpoint `GET /vision/state` agrupa
+  zonas de una cámara al servir); la BD las almacena planas.
+- **Desempaquetado de `vehicles_by_type`** a cuatro columnas en la tabla.
+  En el dominio (`TrafficData`) es dict porque facilita evolución; en la
+  tabla son columnas porque facilita queries (`WHERE bus_count > 5` es
+  directo). El adapter desempaqueta al persistir.
+- **PK compuesta `(camera_id, zone_id, window_start)`** garantiza
+  idempotencia. Si el aggregator reenvía la misma ventana por reintento,
+  `INSERT ... ON CONFLICT DO NOTHING` lo absorbe sin duplicar.
+- **`mean_occupancy` y `density_vehicles_per_km` como columnas separadas**,
+  no un único campo `density`. Reinterpretación honesta de DHU-024 §5
+  (cuando se redactó, no se distinguían las dos métricas; §6.9 las separó).
+- **`queue INTEGER` nullable** en MVP1. F41 lo poblará cuando se calcule
+  cola; por ahora `NULL` explícito.
+- **`camera_id` en la tabla equivale a `intersection_id` del shape de
+  DHU-024 §5**. La nomenclatura difiere por contexto: DHU-024 usa
+  `intersection_id` desde la perspectiva del consumidor (motor y
+  presentación piensan en intersecciones); el módulo `vision` usa
+  `camera_id` porque cada cámara monitorea una intersección y el VO
+  ya está nombrado `CameraId` (§3). En el endpoint `GET /vision/state`,
+  el campo se serializa como `intersection_id` para alinear con la
+  nomenclatura del consumidor; en BD y dominio se mantiene `camera_id`.
+- **`TIMESTAMPTZ` desviación deliberada respecto a la convención del
+  repo**. Las migraciones actuales (`775d2d1db8b4_initial_schema.py`
+  y similares) usan `sa.DateTime()` que traduce a `TIMESTAMP WITHOUT
+  TIME ZONE`. Esta sesión elige `TIMESTAMPTZ` para `vision_aggregates`
+  porque (a) los `datetime` del dominio (`window_start`/`window_end`)
+  son tz-aware UTC por decisión de §5.4, y mapearlos a `TIMESTAMP`
+  sin tz pierde la garantía; (b) `TIMESTAMPTZ` es la forma idiomática
+  para series temporales en TimescaleDB. Si Fase 2 (migración Alembic
+  real) detecta inconsistencia con otras tablas del schema, se
+  reconsidera entonces.
+
+La migración Alembic que crea `vision_aggregates` es trabajo de Fase 2
+(DHU-024 §2 junto con el borrado de `vision_tracks`/`vision_flows`).
+El SQL listado arriba es **ilustrativo del contrato**; la migración
+Alembic real lo materializa con SQLAlchemy + `op.execute("SELECT
+create_hypertable(...)")` siguiendo el patrón del repo
+(`daec5fdcfcdd_timescaledb_hypertables.py` como referencia), con
+`chunk_time_interval => INTERVAL '1 day'` e `if_not_exists => TRUE`.
+
+### 6.6 Cobertura de hallazgos de Fase 0
+
+| Hallazgo de Fase 0 | Cubierto por |
+|---|---|
+| §3.5 (dos definiciones de "density") | §5.4 (`mean_occupancy` canónica como fracción [0,1]; `avg_density` count-por-frame eliminada). El broadcaster en §6.2 ya emite la versión canónica sin `× 100`. |
+| §3.6 (placeholder `"incidents": 0` hardcoded) | §5.7 (vision no emite `incidents`). |
+| §4 Caso D (broadcaster mezcla transporte y presentación) | Parcialmente cubierto: el shape del payload de §6.2 es estructurado y tipado; queda pendiente §6.11 (Sesión 3) para la decisión formal de qué se considera presentación pura vs transporte del broadcaster. |
+| §6.10 (API pública del Broadcaster) | Cerrado: §6.1 (Sesión 1) define los métodos públicos; §6.2-§6.4 (esta sesión) extienden con shape, eventos y política de suscriptores. |
+
+## 7. §6.8 — Lugar del visualizer y de `interaction.py`
+
+### 7.1 Hallazgos origen (Fase 0)
+
+- **Caso B (§4 de Fase 0)**: `application/services/multi_camera.py:11`
+  importa `OpenCVVisualizer` de `presentation/visualization/opencv_visualizer.py`.
+  La aplicación NO debe conocer la presentación.
+- **Caso C (§4 de Fase 0)**: `infrastructure/interaction.py` usa
+  `cv2.namedWindow`, `cv2.imshow`, `cv2.setMouseCallback`, `cv2.waitKey`.
+  Es UI, no infraestructura.
+
+### 7.2 Decisión 1 — Visualizer (Caso B)
+
+**`OpenCVVisualizer` se queda en `presentation/`, pero se inyecta vía
+Protocol `FrameRenderer` del dominio (definido en Sesión 1, §4.2 Protocol #9).**
+
+Estructura final:
+
+- `domain/protocols.py` declara `FrameRenderer` Protocol (ya hecho en Sesión 1).
+- `presentation/visualization/opencv_visualizer.py` implementa
+  `FrameRenderer` con OpenCV.
+- `application/services/multi_camera.py` recibe un `FrameRenderer` por
+  constructor (inyección de dependencia). NO importa la clase concreta.
+
+Razón: invierte la dirección de la dependencia. `application` depende del
+Protocol del dominio (correcto); la implementación concreta vive en
+`presentation` (correcto); la composición ocurre en el `pipeline_builder.py`
+o en el entry point que ya hace wiring.
+
+**Detalle de implementación**: el `FrameRenderer.render()` devuelve
+`np.ndarray` (no `Frame`). Eso significa que el visualizer NO muta entidades
+del dominio — produce un array nuevo. Esto previene el bug que la auditoría
+destapó en otro lugar (Fase 0 §3.8: `speed_estimator.py:53` mutaba
+`vehicle.speed = ...` in-place).
+
+### 7.3 Decisión 2 — `interaction.py` (Caso C)
+
+**`interaction.py` se mueve a `edge_device/scripts/calibrate_zones.py`
+(rename + ubicación fuera del módulo `vision`).**
+
+Razones:
+
+- `interaction.py` es un **script offline** para calibrar polígonos a mano.
+  No es parte del runtime de vision.
+- `presentation/` en el módulo `vision` es la capa de exposición runtime
+  (FastAPI routes, visualizer durante operación). Mezclar `interaction.py`
+  con presentation runtime ensucia ambos conceptos.
+- La herramienta es útil: §5.5 establece que la densidad real requiere
+  `segment_length_meters` por zona, lo que va a requerir trabajo de
+  calibración. Eliminar la herramienta obligaría a reescribirla.
+- El rename de `interaction.py` a `calibrate_zones.py` no es cosmético —
+  el nombre actual no dice qué hace. Fase 0 §3.8 identificó nombres
+  engañosos como patrón a no replicar.
+
+### 7.4 Trazabilidad con DHU-024
+
+DHU-024 §3 dice que infraestructura técnica reutilizable puede preservarse.
+`calibrate_zones.py` es exactamente eso: infraestructura técnica genérica
+que se reaprovecha **fuera del módulo `vision`**, no en él. La decisión es
+coherente.
+
+## 8. Estructura objetivo del módulo para Fase 3
+
+### 8.1 Árbol del `domain/` (Fase 3)
 
 ```
 edge_device/src/vision/domain/
 ├── __init__.py              # Barrel export
 ├── entities.py              # DetectedVehicle, ZoneVehicleCount, FrameAnalysis,
-│                            # Frame, TrafficData
+│                            # Frame, TrafficData (schema de §5.3)
 │                            # — sin sentinel "unknown"
 │                            # — sin frame: object (Frame.image: np.ndarray)
 │                            # — sin campos de debug (raw_detection_count, etc.)
 │                            # — TrafficData.camera_id: CameraId (no opcional)
+│                            # — sin street_monitored (movido a metadata de cámara)
 │                            # — con __post_init__ donde aplique validación
 ├── value_objects.py         # VehicleId, ZoneId, CameraId
 │                            # — @dataclass(frozen=True) con __post_init__
@@ -570,49 +1074,75 @@ Cinco archivos. Cuatro ya existen en el módulo actual (`__init__.py`,
 `entities.py`, `protocols.py`, `repositories.py`). Uno se agrega
 (`value_objects.py`). El contenido de los cuatro existentes se reescribe.
 
-## 6. Lo pendiente para Sesiones 2 y 3 de Fase 1
+### 8.2 Árbol del módulo completo (consecuencia de §6.8)
+
+```
+edge_device/src/vision/
+├── domain/               # 9 Service Protocols + 1 Repository (§4 y §8.1)
+├── application/          # Use cases, aggregators, pipelines
+│                         # — sin imports a presentation (Caso B resuelto en §7.2)
+│                         # — sin interaction.py (Caso C resuelto en §7.3)
+├── infrastructure/       # YOLO, tracker, sources, persistence, broadcast, zones
+│                         # — interaction.py YA NO está acá
+└── presentation/         # FastAPI routes, visualizer (implementa FrameRenderer)
+
+edge_device/scripts/
+└── calibrate_zones.py    # — antiguo interaction.py, movido y renombrado (§7.3)
+```
+
+## 9. Lo pendiente para Sesión 3 de Fase 1
 
 | Decisión | Bloque | Sesión |
 |---|---|---|
-| §6.9 — Definiciones canónicas de métricas | Bloque 2 | Sesión 2 |
-| §6.10 — API pública del Broadcaster (cierre detallado más allá de los métodos votados acá) | Bloque 2 | Sesión 2 |
-| §6.8 — Lugar del visualizer y de `interaction` | Bloque 2 | Sesión 2 |
 | §6.11 — Separación transporte/presentación en Broadcaster | Bloque 3 | Sesión 3 |
 | §6.6 — Modos de pipeline sync vs async (decisión final: cuál conservar) | Bloque 3 | Sesión 3 |
 | §6.5 — Manejo de errores en workers async | Bloque 3 | Sesión 3 |
 | §6.3 — Política de logging unificada | Bloque 4 | Sesión 3 |
 | §6.4 — Configs YAML: fuente de verdad o ejemplo | Bloque 4 | Sesión 3 |
 
-Sesión 2 cierra contratos por capa (entrega primera versión de OpenAPI
-de `GET /vision/state` y de `vision_contract.md`). Sesión 3 cierra
-decisiones derivadas y transversales.
+Sesión 3 cierra decisiones derivadas y transversales. Al cierre de
+Sesión 3, Fase 1 está completa y Fase 2 (migración Alembic + levantamiento
+formal de la regla CLAUDE.md) puede arrancar.
 
-## 7. Trazabilidad con Fase 0
+## 10. Trazabilidad con Fase 0
 
-Esta sesión cierra (parcialmente, los puntos listados en el aviso del
-inicio del documento) las decisiones que Fase 0 dejó abiertas en
-`tth-08-fase0-lecciones.md` §6:
+### 10.1 Decisiones de §6 de Fase 0 cerradas en este documento
 
-- §6.1 → cerrada en §2 de este documento.
-- §6.7 → cerrada en §3 de este documento.
-- §6.2 → cerrada en §4 de este documento (con adelanto parcial de §6.6:
-  decisión de "dos Protocols separados" para Aggregator).
+| Decisión Fase 0 | Cerrada en | Sesión |
+|---|---|---|
+| §6.1 — Test de aceptación zone_counter | §2 de este documento | Sesión 1 |
+| §6.7 — Value Objects | §3 | Sesión 1 |
+| §6.2 — Set de Protocols | §4 (con adelanto parcial de §6.6) | Sesión 1 |
+| §6.9 — Definiciones canónicas de métricas | §5 | Sesión 2 |
+| §6.10 — API pública del Broadcaster | §4.4 Cambio 3 (parcial) + §6 (detalle) | Sesiones 1 y 2 |
+| §6.8 — Lugar del visualizer y de `interaction` | §7 | Sesión 2 |
 
-Hallazgos de Fase 0 consumidos directamente:
+### 10.2 Hallazgos de Fase 0 consumidos directamente
 
 - §3.2 (duplicación DRY entre sync y async aggregator) → resuelto por
-  la decisión §4.4 Cambio 2 (separar cómputo de persistencia).
+  §4.4 Cambio 2 (separar cómputo de persistencia).
+- §3.5 (dos definiciones de "density") → resuelto por §5.4
+  (`mean_occupancy` canónica) y §6.2 (broadcaster emite la versión
+  canónica sin `× 100` ni string).
+- §3.6 (placeholder `"incidents": 0` hardcoded, umbrales 30/70) →
+  resuelto por §5.7 (vision no emite `incidents` ni `congestion_level`).
 - §3.8 (encapsulación violada, sentinels `"unknown"`, `frame: object`,
-  ids como `str` plano) → resueltos por §3 (VOs) y §4 (Protocols con
-  VOs y tipado explícito de `frame: np.ndarray`).
+  ids como `str` plano, nombres engañosos) → resueltos por §3 (VOs),
+  §4 (Protocols con VOs y tipado explícito), §5 (renombres
+  `total_vehicles → unique_vehicles`, `flow_rate_per_min → flow_vehicles_per_hour`,
+  `avg_speed → mean_speed_kmh`).
 - §4 Casos A, B (Protocols faltantes; `application` importa de
   `infrastructure` y `presentation`) → resueltos por §4.1 con los cinco
-  nuevos Protocols.
+  nuevos Protocols y por §7.2 (visualizer inyectado vía `FrameRenderer`).
+- §4 Caso C (`interaction.py` como UI en infraestructura) → resuelto por
+  §7.3 (movido a `edge_device/scripts/calibrate_zones.py`).
+- §4 Caso D (broadcaster mezcla transporte y presentación) → parcialmente
+  cubierto por §6.2 (shape estructurado); cierre formal en §6.11
+  (Sesión 3).
 - §6.1 (test de aceptación zone_counter) → cerrado con contrato preciso
   en §2.
-- §6.10 (API pública del Broadcaster) → cerrado parcialmente con los
-  métodos votados en §4.2 Protocol #8; el cierre detallado del shape
-  serializado queda para Sesión 2.
+- §6.10 (API pública del Broadcaster) → cerrado en §4.4 Cambio 3 (métodos
+  públicos) + §6 (detalle del payload, eventos y política de suscriptores).
 
-Sin candidatos a DHU-025 emergentes de esta sesión. Las ocho decisiones
+Sin candidatos a DHU-025 emergentes de Sesiones 1 ni 2. Las ocho decisiones
 de DHU-024 siguen sin contradicción.
