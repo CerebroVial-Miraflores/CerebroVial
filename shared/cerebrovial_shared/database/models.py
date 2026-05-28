@@ -12,6 +12,7 @@ from sqlalchemy import (
     JSON,
     Text,
     Index,
+    CheckConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -80,31 +81,38 @@ class WazeAlertDB(Base):
     confidence = Column(Integer, nullable=False)
     geom = Column(Geometry('POINT', srid=4326))
 
-# --- Vision Data (Hypertables) ---
+# --- Vision Data (Hypertable) ---
 
-class VisionTrackDB(Base):
-    __tablename__ = "vision_tracks"
+class VisionAggregateDB(Base):
+    __tablename__ = "vision_aggregates"
 
-    track_uuid = Column(String, primary_key=True, index=True)
-    camera_id = Column(String, ForeignKey("cameras.camera_id"), nullable=False)
-    entry_timestamp = Column(DateTime, primary_key=True, index=True) # Part of PK for hypertable
-    exit_timestamp = Column(DateTime, nullable=False)
-    class_id = Column(Integer, nullable=False)
-    avg_speed_px = Column(Float, nullable=False)
-    geom = Column(Geometry('LINESTRING', srid=4326)) # Trajectory
+    camera_id = Column(String, primary_key=True)
+    zone_id = Column(String, primary_key=True)
+    # TIMESTAMPTZ: el dominio define la ventana como tz-aware UTC (tth-08-fase1-diseno §5.4).
+    # index=True suple el indice por tiempo y evita el indice por defecto de create_hypertable.
+    window_start = Column(DateTime(timezone=True), primary_key=True, index=True) # Part of PK for hypertable
+    window_end = Column(DateTime(timezone=True), nullable=False)
+    window_duration_seconds = Column(Float, nullable=False)
+    unique_vehicles = Column(Integer, nullable=False)
+    car_count = Column(Integer, nullable=False, server_default="0")
+    bus_count = Column(Integer, nullable=False, server_default="0")
+    truck_count = Column(Integer, nullable=False, server_default="0")
+    motorcycle_count = Column(Integer, nullable=False, server_default="0")
+    mean_speed_kmh = Column(Float, nullable=True)
+    flow_vehicles_per_hour = Column(Float, nullable=False)
+    mean_occupancy = Column(Float, nullable=False)
+    density_vehicles_per_km = Column(Float, nullable=True)
+    queue = Column(Integer, nullable=True)  # NULL en MVP1; F41 lo poblara
 
-class VisionFlowDB(Base):
-    __tablename__ = "vision_flows"
-
-    flow_id = Column(String, primary_key=True, index=True)
-    camera_id = Column(String, ForeignKey("cameras.camera_id"), nullable=False)
-    timestamp_bin = Column(DateTime, primary_key=True, index=True) # Part of PK for hypertable
-    period_seconds = Column(Integer, nullable=False)
-    from_edge_id = Column(String, ForeignKey("graph_edges.edge_id"), nullable=True)
-    to_edge_id = Column(String, ForeignKey("graph_edges.edge_id"), nullable=True)
-    turn_direction = Column(String, nullable=True)
-    vehicle_count = Column(Integer, nullable=False)
-    avg_speed_mps = Column(Float, nullable=True)
+    __table_args__ = (
+        CheckConstraint("unique_vehicles >= 0", name="ck_vision_aggregates_unique_vehicles_nonneg"),
+        CheckConstraint("car_count >= 0", name="ck_vision_aggregates_car_count_nonneg"),
+        CheckConstraint("bus_count >= 0", name="ck_vision_aggregates_bus_count_nonneg"),
+        CheckConstraint("truck_count >= 0", name="ck_vision_aggregates_truck_count_nonneg"),
+        CheckConstraint("motorcycle_count >= 0", name="ck_vision_aggregates_motorcycle_count_nonneg"),
+        CheckConstraint("flow_vehicles_per_hour >= 0", name="ck_vision_aggregates_flow_nonneg"),
+        CheckConstraint("mean_occupancy BETWEEN 0 AND 1", name="ck_vision_aggregates_occupancy_range"),
+    )
 
 
 # --- Auth ---
