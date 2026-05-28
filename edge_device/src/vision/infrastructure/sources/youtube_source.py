@@ -1,56 +1,49 @@
 """
 YouTube source implementation.
 """
-import yt_dlp
+import logging
+
 from cerebrovial_shared.exceptions import SourceError
-from .video_source import OpenCVSource
 from .base import SourceConfig
+from .video_source import OpenCVSource
+
+logger = logging.getLogger(__name__)
+
+
+def _default_youtube_resolver(url: str, config: SourceConfig) -> str:
+    """Resolve a YouTube URL to a direct stream URL via yt_dlp (imported lazily)."""
+    import yt_dlp
+
+    ydl_opts = {
+        "format": getattr(config, "format", "best"),
+        "noplaylist": True,
+        "quiet": True,
+        "extractor_args": {"youtube": {"player_client": ["default"]}},
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        return info["url"]
+
 
 class YouTubeSource(OpenCVSource):
-    """
-    Reads from a YouTube URL.
-    """
-    def __init__(self, url: str, config: SourceConfig):
-        # Note: Factory passes (config, url) but OpenCVSource expects (source, config)
-        # We need to align with how the factory calls it.
-        # Checking YouTubeFactory in src/vision/infrastructure/sources/__init__.py:
-        # return YouTubeSource(config, source_config) -> wait, factory passes (config, source_config)
-        # Let's check the factory again.
-        
-        # Actually, let's look at the file content of __init__.py from previous turns.
-        # YouTubeFactory.create: return YouTubeSource(config, source_config)
-        # config is the URL string, source_config is the SourceConfig object.
-        # So arguments are (url, config).
-        
-        # But OpenCVSource expects (source, config).
-        
-        try:
-            # Attempt to use base class initialization (Streamlink)
-            super().__init__(source=url, config=config)
-        except SourceError as e:
-            print(f"[WARNING] Streamlink failed for YouTube ({e}), trying yt_dlp fallback...")
-            self.config = config
-            self.original_url = url
-            self._initialize_youtube_fallback()
+    """Reads from a YouTube URL.
 
-    def _initialize_youtube_fallback(self):
-        print(f"Attempting to load YouTube video with yt_dlp: {self.original_url}")
-        
-        ydl_opts = {
-            'format': self.config.format if hasattr(self.config, 'format') else 'best',
-            'noplaylist': True,
-            'quiet': True,
-            'extractor_args': {'youtube': {'player_client': ['default']}}
-        }
+    Resolution path: Streamlink first (via OpenCVSource), then a yt_dlp
+    fallback. `yt_dlp` is imported lazily inside the resolver, and both the
+    capture and the resolver are injectable so tests run without yt_dlp/cv2.
+    """
+
+    def __init__(self, url: str, config: SourceConfig, capture=None, resolver=None):
+        self.original_url = url
+        self._resolver = resolver or _default_youtube_resolver
+
+        if capture is not None:
+            super().__init__(url, config, capture=capture)
+            return
+
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(self.original_url, download=False)
-                stream_url = info['url']
-                print("Stream URL extracted via yt_dlp.")
-                
-                # Now initialize the OpenCV source with the stream URL
-                self.source = stream_url
-                self._initialize()
-        except Exception as e:
-            print(f"Error loading YouTube video: {e}")
-            raise SourceError(f"Failed to load YouTube video: {e}") from e
+            super().__init__(url, config)
+        except SourceError as e:
+            logger.warning(f"Streamlink failed for YouTube ({e}); trying yt_dlp fallback.")
+            self.source = self._resolver(url, config)
+            self._initialize()
