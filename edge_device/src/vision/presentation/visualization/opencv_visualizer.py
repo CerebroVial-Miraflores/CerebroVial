@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 from ...domain.entities import FrameAnalysis
 
@@ -13,6 +12,8 @@ class OpenCVVisualizer:
         """
         Draws bounding boxes, labels, and zones on the frame.
         """
+        import cv2
+
         # Draw zones if present in analysis
         # Draw zones (Always draw configured zones)
         if self.zones_config:

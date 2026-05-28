@@ -1,67 +1,97 @@
-from src.vision.infrastructure.tracking.supervision_tracker import SupervisionTracker
-from src.vision.domain.entities import DetectedVehicle
+"""Unit tests for SupervisionTracker (CT-08.2 — identidad).
 
-def test_class_stabilization():
-    # Setup tracker with classes
-    classes = {'car': 1, 'truck': 2}
-    tracker = SupervisionTracker(classes)
-    
-    # Mock ByteTrack to return consistent tracker_id=1 for all updates
-    # We need to mock update_with_detections to return a Detections object
-    # with tracker_id=[1] and the class_id we passed in.
-    
-    # Since SupervisionTracker wraps sv.ByteTrack, and sv.ByteTrack logic is complex (IoU matching),
-    # it's hard to mock purely without running the real tracker logic.
-    # However, if we provide consistent bounding boxes, ByteTrack should assign the same ID.
-    
-    # Sequence of detections: 3 cars, 1 truck (noise), 2 cars.
-    # Expected: Always 'car' after stabilization, or at least 'car' at the end.
-    
+A fake ByteTrack and a fake Detections factory are injected so the suite
+runs without `supervision` installed. The fake tracker echoes detections
+back with a deterministic tracker_id, isolating the wrapper's own logic
+(majority-vote class stabilization + history window) from ByteTrack's
+IoU matching.
+"""
+import numpy as np
+
+from src.vision.domain.entities import DetectedVehicle
+from src.vision.infrastructure.tracking.supervision_tracker import SupervisionTracker
+
+
+class FakeDetections:
+    def __init__(self, xyxy, confidence, class_id):
+        self.xyxy = xyxy
+        self.confidence = confidence
+        self.class_id = class_id
+
+    def __len__(self):
+        return len(self.xyxy)
+
+
+class FakeByteTrack:
+    """Echoes detections back, assigning tracker_id 1..n per call.
+
+    A single detection always gets tracker_id=1, so it is stable across
+    frames — the deterministic stand-in for ByteTrack's IoU matching.
+    """
+
+    def update_with_detections(self, dets):
+        n = len(dets)
+        return _Tracked(dets, np.arange(1, n + 1))
+
+
+class _Tracked:
+    def __init__(self, dets, tracker_id):
+        self.xyxy = dets.xyxy
+        self.confidence = dets.confidence
+        self.class_id = dets.class_id
+        self.tracker_id = tracker_id
+
+    def __len__(self):
+        return len(self.tracker_id)
+
+
+def _tracker(classes):
+    return SupervisionTracker(classes, tracker=FakeByteTrack(), detections_factory=FakeDetections)
+
+
+def test_class_stabilization_majority_vote():
+    tracker = _tracker({"car": 1, "truck": 2})
     bbox = (100, 100, 200, 200)
-    
-    # Frame 1: Car
-    d1 = [DetectedVehicle("0", "car", 0.9, bbox, 1.0)]
-    res1 = tracker.track(d1)
-    assert res1[0].type == 'car'
-    assert tracker.class_history[1] == [1] # ID 1 is car
-    
-    # Frame 2: Car
-    d2 = [DetectedVehicle("0", "car", 0.9, bbox, 1.1)]
-    res2 = tracker.track(d2)
-    assert res2[0].type == 'car'
+
+    res1 = tracker.update([DetectedVehicle("0", "car", 0.9, bbox, 1.0)])
+    assert res1[0].type == "car"
+    assert tracker.class_history[1] == [1]
+
+    tracker.update([DetectedVehicle("0", "car", 0.9, bbox, 1.1)])
     assert tracker.class_history[1] == [1, 1]
-    
-    # Frame 3: Truck (Noise)
-    d3 = [DetectedVehicle("0", "truck", 0.8, bbox, 1.2)]
-    res3 = tracker.track(d3)
-    # Should still be car because history is [1, 1, 2] -> Majority is 1 (car)
-    assert res3[0].type == 'car' 
+
+    # Truck noise: history [1,1,2] -> majority still car.
+    res3 = tracker.update([DetectedVehicle("0", "truck", 0.8, bbox, 1.2)])
+    assert res3[0].type == "car"
     assert tracker.class_history[1] == [1, 1, 2]
-    
-    # Frame 4: Truck (Noise continues?)
-    d4 = [DetectedVehicle("0", "truck", 0.8, bbox, 1.3)]
-    tracker.track(d4)
-    # History: [1, 1, 2, 2]. Tie? max() behavior depends on implementation, usually first one encountered or lowest value.
-    # If tie, it might flip. Let's see.
-    
-    # Frame 5: Car
-    d5 = [DetectedVehicle("0", "car", 0.9, bbox, 1.4)]
-    res5 = tracker.track(d5)
-    # History: [1, 1, 2, 2, 1]. Majority: 1 (car).
-    assert res5[0].type == 'car'
-    
-def test_history_limit():
-    classes = {'car': 1}
-    tracker = SupervisionTracker(classes)
+
+    tracker.update([DetectedVehicle("0", "truck", 0.8, bbox, 1.3)])  # [1,1,2,2]
+    res5 = tracker.update([DetectedVehicle("0", "car", 0.9, bbox, 1.4)])  # [1,1,2,2,1]
+    assert res5[0].type == "car"
+
+
+def test_output_is_domain_entity_with_stable_id():
+    tracker = _tracker({"car": 1})
+    out = tracker.update([DetectedVehicle("temp", "car", 0.9, (10, 10, 50, 50), 5.0)])
+
+    assert len(out) == 1
+    v = out[0]
+    assert isinstance(v, DetectedVehicle)
+    assert v.id == "1"  # tracker-assigned, replaces the temporary id
+    assert v.bbox == (10, 10, 50, 50)
+    assert v.timestamp == 5.0
+
+
+def test_history_window_is_capped():
+    tracker = _tracker({"car": 1})
     bbox = (100, 100, 200, 200)
-    
-    # Add 35 detections
     for i in range(35):
-        d = [DetectedVehicle("0", "car", 0.9, bbox, float(i))]
-        tracker.track(d)
-        
-    # Check history size limit (30)
-    # Note: tracker_id might not be 1 if ByteTrack assigns differently, but usually it starts at 1.
-    # We get the tracker_id from the internal dict keys.
-    tracker_id = list(tracker.class_history.keys())[0]
+        tracker.update([DetectedVehicle("0", "car", 0.9, bbox, float(i))])
+
+    tracker_id = next(iter(tracker.class_history))
     assert len(tracker.class_history[tracker_id]) == 30
+
+
+def test_empty_detections_returns_empty():
+    tracker = _tracker({"car": 1})
+    assert tracker.update([]) == []
