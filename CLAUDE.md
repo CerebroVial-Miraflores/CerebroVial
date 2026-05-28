@@ -147,11 +147,6 @@ Migraciones:
 ## Reglas para Claude Code
 
 ### Zonas que NO se tocan sin pedirlo
-- `edge_device/src/vision/` — subsistema mejor armado, con tests reales.
-  - **Nota (2026-05-27):** el levantamiento formal de esta regla está planificado
-    dentro de TTH-08 conforme a DHU-024. La regla se mantiene activa hasta que el
-    primer commit del sprint de TTH-08 la actualice formalmente (ver
-    `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` § DHU-024 decisión 8).
 - `ia_prediction_service/src/models/time_then_space.py` — STGNN descartado, queda
   como referencia hasta que el GRU esté funcional. En `notebooks/logs/` solo queda
   `epoch=79-step=30800.ckpt` (LFS); los 4 intermedios se borraron en C9.
@@ -161,6 +156,14 @@ Migraciones:
   NO marcar como componente huérfano ni proponer su remoción.
 - **`CerebroVial/.gemini/settings.json`** — configuración intencional del flujo
   Gemini CLI del equipo. NO marcar como huérfano ni proponer remoción/`.gitignore`.
+
+### Reglas levantadas (histórico)
+- ~~`edge_device/src/vision/` — subsistema mejor armado, con tests reales.~~
+  **LEVANTADA (TTH-08 Fase 2, 2026-05-27).** Fue zona protegida hasta este punto;
+  TTH-08 reescribe el módulo de visión desde cero (DDD), por lo que la guarda
+  queda sin efecto a partir de este commit —el primero del sprint TTH-08, que es
+  exactamente donde DHU-024 §8 dispuso su levantamiento formal. Contexto en
+  `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` § DHU-024 decisión 8.
 
 ### Deuda técnica a respetar
 - **No instalar `torch` ni `ultralytics` en `core_management_api`**. El endpoint
