@@ -1,7 +1,6 @@
 """
 API for video streaming.
 """
-import cv2
 import asyncio
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -15,6 +14,8 @@ async def video_feed(camera_id: str, type: str = "raw"):
     MJPEG video stream for a specific camera.
     type: 'raw' or 'processed'
     """
+    import cv2
+
     manager = get_manager()
     
     async def frame_generator():
