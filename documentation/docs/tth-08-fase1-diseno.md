@@ -281,6 +281,10 @@ convención global.
 en `domain/repositories.py` (manteniendo la separación arquitectónica del
 patrón Repository según DDD ortodoxo y el `vision/` actual).
 
+> **Nota (Sesión 3):** conteo al cierre de Sesión 1. El Protocol
+> `SyncAggregator` se revirtió en §10 (§6.6); el conteo vigente es **8
+> Service Protocols**. Ver §8.1 y §15.1.
+
 Tres del módulo actual se preservan **con misma firma**. Dos se preservan
 **con firma reescrita** (cambio deliberado documentado). Cinco son nuevos
 (cubren huecos identificados en Fase 0).
@@ -292,7 +296,7 @@ Tres del módulo actual se preservan **con misma firma**. Dos se preservan
 | 3 | `SpeedEstimator` | Preservado mismo nombre, misma firma | Estimación de velocidad. |
 | 4 | `FrameProducer` | Preservado nombre, **firma cambiada** | Fuente de frames. **Breaking**: ver §4.4. |
 | 5 | `ZoneCounter` | **Nuevo** | Conteo por polígono. Cierra Caso A de §4 de Fase 0. |
-| 6 | `SyncAggregator` | **Nuevo** | Cómputo síncrono de `TrafficData`. Cierra Caso A. |
+| 6 | `SyncAggregator` | **Nuevo** | Cómputo síncrono de `TrafficData`. Cierra Caso A. **`SyncAggregator` — superseded por §10 (§6.6, Sesión 3): eliminado del dominio (async-only).** |
 | 7 | `AsyncAggregator` | **Nuevo** | Cómputo asíncrono (worker thread). Cierra Caso A. |
 | 8 | `Broadcaster` | **Nuevo** | Publicación de estado en tiempo real. Cierra Caso A + §6.10. Caso D queda parcialmente cubierto; cierre completo en §6.11 (Sesión 3). |
 | 9 | `FrameRenderer` | **Nuevo** | Anotación visual de frames. Cierra Caso B. |
@@ -342,6 +346,9 @@ class ZoneCounter(Protocol):
     ) -> dict[ZoneId, ZoneVehicleCount]: ...
 
 
+# Superseded por §10 (§6.6, Sesión 3): SyncAggregator se elimina del dominio
+# (async-only). Bloque conservado como registro de Sesión 1; no implementar
+# en Fase 3.
 class SyncAggregator(Protocol):
     """Protocol for synchronous aggregation of frame analyses into traffic data.
 
@@ -419,7 +426,7 @@ class TrafficRepository(Protocol):
 | **Return types** | Explícitos en todos los métodos. | Auditoría detectó que `TrafficRepository.save` no lo tenía. |
 | **`@runtime_checkable`** | No usar. | No surge necesidad de `isinstance(x, Protocol)` en el diseño. Se introduce solo si un caso de uso concreto lo requiere. |
 | **`Repository` write-only** | Solo `save`. Sin query interface. | Las queries históricas las consume `core_management_api`, no `vision/`. F41 (Trabajos Futuros) reevaluará. |
-| **Organización en archivos** | 9 Service Protocols en `protocols.py`, 1 Repository en `repositories.py`. | Separación DDD ortodoxa Service vs Repository. Coincide con el `vision/` actual. |
+| **Organización en archivos** | 9 Service Protocols en `protocols.py`, 1 Repository en `repositories.py`. **Nota (Sesión 3): 8 vigentes tras revertir `SyncAggregator` en §10. Ver §8.1.** | Separación DDD ortodoxa Service vs Repository. Coincide con el `vision/` actual. |
 | **Docstrings** | Una línea para Protocols simples; varias líneas para los que tienen contrato no obvio (`SyncAggregator`, `AsyncAggregator`, `FrameRenderer`). | El `vision/` actual usa una línea para todos. Acá agregamos detalle solo cuando el contrato lo requiere (no es ornamento). |
 | **`frame: object` → `np.ndarray`** | Tipar explícitamente. | **Cambio deliberado** respecto al `vision/` actual. Justificación: `object` renuncia al tipado. El frame es nativo numpy en toda la infraestructura. La auditoría de Fase 0 §3.8 lo identificó como problema. Esto introduce un import de numpy en `domain/`. Es una desviación consciente del principio "dominio sin dependencias técnicas", aceptada porque numpy es el tipo del dato, no una biblioteca de infraestructura. |
 | **Excepciones tipadas** | `VehicleDetector.detect` puede levantar `DetectionError`; `FrameProducer.read` puede levantar `SourceError`. Documentado como nota informal en los docstrings cuando se redacten; no como cláusula estructurada. | `cerebrovial_shared.exceptions` ya las define. Es el patrón del proyecto. |
@@ -486,6 +493,11 @@ Esto adelanta parcialmente §6.6 a Sesión 1: votamos "dos contratos
 separados", no "qué modo se conserva". §6.6 sigue pendiente en cuanto a
 si Fase 5 implementa ambos modos o elimina uno.
 
+> **Nota (Sesión 3):** §6.6 se cerró en §10 — async-only. La separación
+> `SyncAggregator`/`AsyncAggregator` que esta sección anticipó se resolvió
+> eliminando `SyncAggregator`; solo `AsyncAggregator` sobrevive en el
+> dominio.
+
 Impacto: los aggregators concretos, los pipelines y el use case que los
 orquesta se reescriben en Fases 4 y 5.
 
@@ -528,7 +540,7 @@ tests que validan suscriptores se reescriben en Fases 4, 6 y 7.
 | Hueco de Fase 0 | Cubierto por |
 |---|---|
 | §3.8 (encapsulación violada, sentinels `"unknown"`, `frame: object`, ids como `str` plano) | §3 (VOs) + §4.2 (firmas con VOs + `np.ndarray`) |
-| §4 Caso A: `ZoneCounter`, `Aggregator`, `Broadcaster` sin Protocol. | Protocols #5, #6, #7, #8 |
+| §4 Caso A: `ZoneCounter`, `Aggregator`, `Broadcaster` sin Protocol. | Protocols #5, #7, #8 (el #6 `SyncAggregator` se eliminó en §10; el rol de Aggregator lo cubre `AsyncAggregator` = #7). Ver §8.1. |
 | §4 Caso B: `multi_camera` importa `OpenCVVisualizer` de presentación. | Protocol #9 `FrameRenderer`. `OpenCVVisualizer` se reescribe como adaptador de infraestructura. |
 | §6.10: API pública del Broadcaster (no más `broadcaster._subscribers`). | Métodos `subscriber_count()` e `is_subscribed()` en Protocol #8. |
 
@@ -541,14 +553,16 @@ en Sesión 1:
   Protocol #8 tipa `publish(data: TrafficData)` que ya es una entidad
   del dominio. Pero la decisión formal de qué shape se serializa hacia
   suscriptores y dónde se traduce a strings localizadas vive en §6.11.
-  **Pendiente para Sesión 3** (parcialmente cubierto por §6.2 de este
-  documento, ver §6).
+  **Cerrado en Sesión 3 (ver §9)** (el shape estructurado del payload, §6,
+  lo dejaba parcialmente cubierto).
 - **§6.9** (definiciones canónicas de métricas): los métodos del
   `Aggregator` retornan `TrafficData`, cuyos campos se definen
   canónicamente en §6.9. **Cerrado en Sesión 2** (ver §5).
 - **§6.6** (sync vs async pipeline, decisión final): Sesión 1 adelantó la
   decisión de "dos Protocols separados" pero NO la decisión de "qué modo
-  se conserva en Fase 5". §6.6 sigue pendiente para Sesión 3.
+  se conserva en Fase 5". §6.6 **cerrado en Sesión 3 (ver §10)**:
+  async-only, con eliminación del Protocol `SyncAggregator` (#6) introducido
+  acá.
 
 ## 5. §6.9 — Definiciones canónicas de métricas del módulo `vision`
 
@@ -1061,7 +1075,8 @@ edge_device/src/vision/domain/
 │                            # — con __post_init__ donde aplique validación
 ├── value_objects.py         # VehicleId, ZoneId, CameraId
 │                            # — @dataclass(frozen=True) con __post_init__
-├── protocols.py             # Los 9 Service Protocols listados en §4.2
+├── protocols.py             # 8 Service Protocols (§4.2 listaba 9; SyncAggregator
+│                            #   eliminado en §10 / §6.6 — async-only)
 │                            # — firmas con VOs
 │                            # — return types explícitos
 │                            # — frame: np.ndarray (no object)
@@ -1078,11 +1093,14 @@ Cinco archivos. Cuatro ya existen en el módulo actual (`__init__.py`,
 
 ```
 edge_device/src/vision/
-├── domain/               # 9 Service Protocols + 1 Repository (§4 y §8.1)
-├── application/          # Use cases, aggregators, pipelines
+├── domain/               # 8 Service Protocols + 1 Repository (§4 menos
+│                         #   SyncAggregator por §10; ver §8.1)
+├── application/          # Use cases, aggregator async, pipeline async
+│                         # — sin SyncAggregator ni sync_pipeline (async-only, §10)
 │                         # — sin imports a presentation (Caso B resuelto en §7.2)
 │                         # — sin interaction.py (Caso C resuelto en §7.3)
-├── infrastructure/       # YOLO, tracker, sources, persistence, broadcast, zones
+├── infrastructure/       # YOLO, tracker, sources, persistence, broadcast, zones,
+│                         #   config (Settings VISION_ + loader de calibración, §13)
 │                         # — interaction.py YA NO está acá
 └── presentation/         # FastAPI routes, visualizer (implementa FrameRenderer)
 
@@ -1090,23 +1108,283 @@ edge_device/scripts/
 └── calibrate_zones.py    # — antiguo interaction.py, movido y renombrado (§7.3)
 ```
 
-## 9. Lo pendiente para Sesión 3 de Fase 1
+Notas de Sesión 3 sobre esta estructura:
 
-| Decisión | Bloque | Sesión |
-|---|---|---|
-| §6.11 — Separación transporte/presentación en Broadcaster | Bloque 3 | Sesión 3 |
-| §6.6 — Modos de pipeline sync vs async (decisión final: cuál conservar) | Bloque 3 | Sesión 3 |
-| §6.5 — Manejo de errores en workers async | Bloque 3 | Sesión 3 |
-| §6.3 — Política de logging unificada | Bloque 4 | Sesión 3 |
-| §6.4 — Configs YAML: fuente de verdad o ejemplo | Bloque 4 | Sesión 3 |
+- **Config (§13)**: la config operativa (`Settings` con `env_prefix="VISION_"`)
+  y el loader de calibración espacial viven en `infrastructure/config/`,
+  sin introducir capas nuevas. La operativa se instancia como singleton al
+  boot; la calibración se lee de YAML (fuente de verdad) vía loader
+  explícito.
+- **Logging (§12)**: el entrypoint del módulo invoca `setup_logger` de
+  `cerebrovial_shared` **una sola vez** al boot (antes de levantar
+  pipeline/app); los `getLogger(__name__)` de cada archivo heredan handler
+  y formato.
 
-Sesión 3 cierra decisiones derivadas y transversales. Al cierre de
-Sesión 3, Fase 1 está completa y Fase 2 (migración Alembic + levantamiento
-formal de la regla CLAUDE.md) puede arrancar.
+## 9. §6.11 — Separación transporte/presentación en el Broadcaster
 
-## 10. Trazabilidad con Fase 0
+### 9.1 Decisión
 
-### 10.1 Decisiones de §6 de Fase 0 cerradas en este documento
+El broadcaster **no contiene traducción de presentación**. Transporta
+estructuras puras: el payload SSE definido en §6.2, es decir `TrafficData`
+enriquecido con metadata de cámara, tipos numéricos puros, `datetime`
+ISO-8601 tz-aware, y Value Objects serializados como su `str`. La
+localización y el formateo viven aguas abajo del transporte.
+
+### 9.2 Prohibido dentro de `infrastructure/broadcast/`
+
+Queda explícitamente fuera del broadcaster (es transporte, no presentación):
+
+- Strings localizadas de estado (`"Bajo"` / `"Moderado"` / `"Alto"`).
+- Niveles semánticos con umbrales hardcoded (los `30` / `70` actuales).
+- Formateos con `%` o sufijos de unidad (`"32.5 km/h"`, `"47%"`).
+- Campos placeholder (`incidents`, `pedestrians`).
+- Cualquier mapeo a la escala 0-5 de Waze (vive en presentación /
+  predictivo, D-009).
+
+### 9.3 Consecuencia para Fases 5-6
+
+Cualquier localización ocurre en el cliente o en un adapter de
+`presentation/api/` separado del transporte. **Hipótesis fuerte**: ningún
+consumidor del MVP1 requiere strings localizadas en el SSE — el frontend
+consume números crudos (SDD §5.2). Si esa hipótesis cae, el adapter de
+presentación es el único lugar donde se introduce traducción; el
+broadcaster no se toca.
+
+### 9.4 Campos eliminados
+
+- **`pedestrians`**: no se reimplementa el cálculo. El detector está
+  configurado para `car` / `bus` / `truck` / `motorcycle`; no hay clase
+  peatón en el pipeline.
+- **`incidents`**: se elimina del módulo (era placeholder hardcoded,
+  Fase 0 §3.6).
+
+### 9.5 Cierre
+
+Cierra el **Caso D de §4 de Fase 0** (broadcaster mezcla transporte y
+presentación), que el shape estructurado del payload (§6.2) había dejado
+parcialmente cubierto.
+
+## 10. §6.6 — Modos de pipeline: async-only en MVP1
+
+### 10.1 Decisión
+
+**Async-only.** Se elimina `VisionPipeline` (síncrono) del módulo nuevo
+por completo. Se elimina también el Protocol `SyncAggregator` del dominio
+(introducido en §4.1 / §4.2 como Protocol #6): un tipo sin consumidor es
+ruido. Si en el futuro vuelve a hacer falta el modo síncrono, se
+reintroduce explícitamente, con su caller.
+
+### 10.2 Razón
+
+El modo síncrono no tiene caller productivo hoy. Los dos requisitos
+operativos de CT-08.7 — video grabado y stream en vivo — los cubre el
+pipeline async. Eliminar el sync **cierra de raíz** la duplicación DRY de
+§3.2 de Fase 0 (cómputo de agregados copy-paste entre sync y async
+aggregator), no solo la mitiga: al quedar un único aggregator, no hay dos
+implementaciones que mantener en sincronía.
+
+### 10.3 Validación CT-08.9 (≥200 frames)
+
+Script aparte que invoca el detector directamente, sin pipeline completo.
+No necesita broadcaster, aggregator ni persistencia: mide detección, no el
+flujo end-to-end.
+
+### 10.4 Nota de frontera con HU-02
+
+`GET /vision/state` expone un shape compatible con el contrato agnóstico de
+fuente que HU-02 consume. HU-02 no está acoplada a la procedencia del dato;
+en MVP1 se cablea a SUMO (D-007, D-008), y el path visión→HU-02 queda como
+operación hipotética / trabajo futuro (F41). Async-only sostiene que el
+contrato de estado sea robusto en tiempo real, condición para que sea
+intercambiable con SUMO como fuente.
+
+### 10.5 Catch-up logic (requisito de fluidez, NO optimización opcional)
+
+El descarte de frames intermedios de procesamiento para mantener sincronía
+con el reloj de reproducción es **requisito de fluidez visual** del stream
+de frames anotados (CT-08.8), no una mejora opcional. Fase 5 debe
+preservarlo. El mecanismo **difiere por modo**:
+
+- **STREAM en vivo**: se dropean frames para no atrasarse del tiempo real.
+- **VIDEO GRABADO**: se regula el ritmo de salida al fps objetivo (24/30
+  fps) en vez de dropear.
+
+Fase 5 no debe asumir un único mecanismo para ambos modos.
+
+## 11. §6.5 — Manejo de errores en workers async
+
+Aplica porque §6.6 conservó el modo async. Tres reglas.
+
+### 11.1 Regla 1 — errores de `save`
+
+El worker captura la excepción, hace `logger.exception` (captura el
+traceback, **no** `print`), incrementa el contador `aggregation_errors`, y
+**continúa el loop**. No reintenta. El worker nunca mata el pipeline
+principal de captura/detección: un fallo de persistencia degrada la serie
+histórica, no la operación en vivo.
+
+### 11.2 Regla 2 — cola llena (DROP-NEWEST)
+
+Política **drop-newest**, idéntica al patrón del `ActiveStateBroadcaster`
+del core (`core_management_api/src/control/infrastructure/broadcaster.py:60-68`):
+ante `asyncio.QueueFull` se descarta la ventana **entrante** con
+`logger.warning` + contador `data_dropped`; se conserva lo ya encolado.
+
+**Diferencia de contexto con el broadcaster** (importante): el broadcaster
+SSE tolera drop-newest porque el cliente re-lee el estado autoritativo de
+la BD al reconectar (BD = fuente de verdad). El worker de persistencia **no
+tiene ese fallback** — la BD es el destino, no una fuente alterna. Por eso:
+
+- La cola del aggregator se dimensiona **más grande** que la del
+  broadcaster SSE (`maxsize=32`): valor parametrizable por env, default
+  sugerido **~256**, porque la persistencia tolera más latencia que un
+  canal de tiempo real.
+- Drop-newest mantiene la serie histórica **contigua** hasta el punto de
+  saturación, en vez de intercalar huecos.
+
+### 11.3 Regla 3 — observabilidad
+
+Los contadores `aggregation_errors` y `data_dropped` se exponen en el
+health check del módulo (CT-08.10). Sin Prometheus ni métricas formales en
+MVP1: son enteros en el payload del health check, señal de degradación.
+
+### 11.4 Lo que NO se hace
+
+- Sin `tenacity` / `backoff`: el repo no usa ninguna librería de reintentos
+  en ningún módulo (confirmado en la auditoría de Sesión 3).
+- Sin dead-letter queue.
+
+## 12. §6.3 — Política de logging unificada
+
+### 12.1 Hallazgo que reencuadra Fase 0
+
+El patrón canónico del backend (core) es `logging.getLogger(__name__)`
+directo: 4 archivos productivos lo usan, **cero** consumen
+`cerebrovial_shared.logging`. Hoy `setup_logger` solo lo usan
+`edge_device/src/vision/` (a reescribir) y scripts de
+`ia_prediction_service/`. No hay setup central en ningún entrypoint —
+`core_management_api/src/main.py` ni siquiera importa `logging`.
+
+### 12.2 Decisión
+
+El módulo nuevo usa `logging.getLogger(__name__)` por archivo, e invoca
+`setup_logger` de `cerebrovial_shared` **una sola vez** en el boot del
+módulo de visión (antes de levantar pipeline/app), con nivel `INFO`
+configurable por ENV. Los `getLogger(__name__)` heredan handler y formato
+de la raíz.
+
+`print()` queda prohibido en código productivo. Único lugar permitido:
+scripts CLI explícitos — la calibración de zonas
+(`edge_device/scripts/calibrate_zones.py`, §7.3) y el script de validación
+CT-08.9. Aun ahí, preferir logger.
+
+### 12.3 Matices confirmados en la confrontación con el repo
+
+- **(a) Formatter hardcodeado.** `setup_logger` fija
+  `'%(asctime)s - %(name)s - %(levelname)s - %(message)s'`, sin
+  `threadName`. Para MVP1 se acepta tal cual: con un solo worker de
+  persistencia, el `%(name)s` (módulo del aggregator) basta para
+  identificar el origen. Si en el futuro hay múltiples workers, se
+  parametriza el formatter en `cerebrovial_shared` (no vedado). Se registra
+  como nota; no se actúa ahora.
+- **(b) `log_execution_time` es decorador síncrono.** Aplicado a una
+  coroutine mide la creación del coroutine, no su ejecución. **No
+  aplicarlo a código async** (workers, handlers async). Sí sirve para
+  métodos síncronos (el detector ya lo usa correctamente).
+
+### 12.4 Nota al margen (deuda fuera de alcance de TTH-08)
+
+El core no tiene configuración central de logging (`main.py` no importa
+`logging`). Se registra para que un sprint futuro pueda unificarlo; **no se
+actúa sobre el core en TTH-08**.
+
+## 13. §6.4 — Configs: híbrido por clase de configuración
+
+### 13.1 Hallazgo
+
+Tres patrones sin convergencia en el repo: el core con `pydantic-settings`
+env-only; el `ConfigManager` de `cerebrovial_shared` con OmegaConf,
+importado en **0 sitios**; `ia_prediction_service` con `yaml.safe_load`
+directo. El patrón canónico del backend (core) **no usa YAML**: usa
+`pydantic-settings` con env vars + defaults en código.
+
+### 13.2 Decisión: separar dos clases de config
+
+#### Clase 1 — config OPERATIVA
+
+Nivel de logging, fps objetivo, umbral de cola (km/h), frecuencia de
+persistencia, tamaño de queue del aggregator, origen CORS, detección cada N
+frames.
+
+- `pydantic-settings` con `env_prefix="VISION_"`, paralelo al `CONTROL_`
+  del core.
+- Precedencia **env > defaults en código**.
+- Instanciado como **singleton al boot** (una vez a nivel módulo, como
+  `ControlSettings` en `main.py:36`), **no por request**.
+- **Consecuencia**: los perfiles operativos `balanced.yaml` /
+  `low_latency.yaml` **dejan de ser fuente de verdad**; sus valores pasan a
+  defaults en código o a env. Esos YAMLs se eliminan o se mueven a `docs/`
+  como ejemplos.
+
+#### Clase 2 — config ESPACIAL CALIBRADA por intersección
+
+`javier_prado.yaml` (polígonos ROI de CT-08.3, escala espacial de CT-08.2,
+longitud de accesos para densidad) y `vehicle_classes.yaml` (clases YOLO).
+
+- Archivo **YAML, FUENTE DE VERDAD**, leído al boot vía loader explícito.
+- **No se duplica en código** (elimina el problema de `cameras.py:70-85`,
+  que reconstruye en código valores ya presentes en los YAMLs).
+- La ruta del archivo de calibración activo se indica por env var (p.ej.
+  `VISION_CALIBRATION_PATH`).
+
+### 13.3 `ConfigManager` y dependencias
+
+`ConfigManager` / `load_vision_config` de `cerebrovial_shared` (importado
+en 0 sitios, confirmado): se **descarta**. El loader de calibración se
+escribe con `pydantic.BaseModel` (validación de estructura), coherente con
+el core y sin arrastrar OmegaConf.
+
+**Nota de dependencia**: el `Settings` `VISION_` requiere
+`pydantic-settings` en `edge_device/`, que **hoy no lo tiene**
+(`edge_device/requirements.txt` no incluye `pydantic` ni
+`pydantic-settings`). Agregar la dependencia es trabajo de **Fase 4
+(infraestructura)**, no de Sesión 3. El loader de calibración con
+`BaseModel` puro depende también de `pydantic`, igualmente ausente hoy en
+`edge_device/` (misma nota).
+
+### 13.4 Duplicación de YAMLs
+
+Los 5 YAMLs de `core_management_api/conf/vision/` son **byte-idénticos**
+(md5 confirmado) a los de `edge_device/conf/vision/`. Ubicación canónica
+del YAML de calibración: `edge_device/conf/vision/` (el módulo vive ahí; el
+core no lo consume en MVP1). La copia en `core_management_api/conf/vision/`
+se elimina **en Fase 2** (Sesión 3 solo lo decide; el borrado físico es
+trabajo de Fase 2).
+
+### 13.5 CORS — corrección de alcance
+
+§6.4 **no "cierra"** el CORS de §3.4 de Fase 0. Lo que hace: el módulo nuevo
+de visión configura CORS por env var (origen explícito, default
+restrictivo, **nunca `["*"]` con credenciales**). Crea el patrón en visión
+porque el repo **no tiene precedente** de CORS-por-env-var.
+
+**Nota al margen (deuda fuera de alcance de TTH-08)**: el core arrastra el
+mismo defecto — `allow_origins=["*"]` hardcodeado en `main.py:23-29` — y
+además lo combina con `allow_credentials=True`, combinación que los
+navegadores rechazan. Se registra para unificación futura; **no se actúa
+sobre el core en TTH-08**.
+
+## 14. Cierre de Fase 1
+
+Al cierre de Sesión 3, Fase 1 está completa: **no quedan decisiones
+pendientes**. Las cinco decisiones derivadas y transversales (§6.11, §6.6,
+§6.5, §6.3, §6.4) quedan cerradas en §9-§13. Fase 2 (migración Alembic +
+levantamiento formal de la regla CLAUDE.md sobre `edge_device/src/vision/`)
+puede arrancar.
+
+## 15. Trazabilidad con Fase 0
+
+### 15.1 Decisiones de §6 de Fase 0 cerradas en este documento
 
 | Decisión Fase 0 | Cerrada en | Sesión |
 |---|---|---|
@@ -1116,8 +1394,13 @@ formal de la regla CLAUDE.md) puede arrancar.
 | §6.9 — Definiciones canónicas de métricas | §5 | Sesión 2 |
 | §6.10 — API pública del Broadcaster | §4.4 Cambio 3 (parcial) + §6 (detalle) | Sesiones 1 y 2 |
 | §6.8 — Lugar del visualizer y de `interaction` | §7 | Sesión 2 |
+| §6.11 — Separación transporte/presentación en Broadcaster | §9 | Sesión 3 |
+| §6.6 — Modos de pipeline (async-only) | §10 | Sesión 3 |
+| §6.5 — Manejo de errores en workers async | §11 | Sesión 3 |
+| §6.3 — Logging unificado | §12 | Sesión 3 |
+| §6.4 — Configs (híbrido por clase) | §13 | Sesión 3 |
 
-### 10.2 Hallazgos de Fase 0 consumidos directamente
+### 15.2 Hallazgos de Fase 0 consumidos directamente
 
 - §3.2 (duplicación DRY entre sync y async aggregator) → resuelto por
   §4.4 Cambio 2 (separar cómputo de persistencia).
@@ -1136,13 +1419,19 @@ formal de la regla CLAUDE.md) puede arrancar.
   nuevos Protocols y por §7.2 (visualizer inyectado vía `FrameRenderer`).
 - §4 Caso C (`interaction.py` como UI en infraestructura) → resuelto por
   §7.3 (movido a `edge_device/scripts/calibrate_zones.py`).
-- §4 Caso D (broadcaster mezcla transporte y presentación) → parcialmente
-  cubierto por §6.2 (shape estructurado); cierre formal en §6.11
-  (Sesión 3).
+- §4 Caso D (broadcaster mezcla transporte y presentación) → cerrado en §9
+  (§6.11): el broadcaster transporta estructuras puras; toda presentación
+  (strings localizadas, umbrales, escala Waze) vive aguas abajo del
+  transporte.
 - §6.1 (test de aceptación zone_counter) → cerrado con contrato preciso
   en §2.
 - §6.10 (API pública del Broadcaster) → cerrado en §4.4 Cambio 3 (métodos
   públicos) + §6 (detalle del payload, eventos y política de suscriptores).
 
-Sin candidatos a DHU-025 emergentes de Sesiones 1 ni 2. Las ocho decisiones
-de DHU-024 siguen sin contradicción.
+Sin candidatos a DHU-025 emergentes de Sesiones 1, 2 ni 3. Las ocho
+decisiones de DHU-024 siguen sin contradicción. Las observaciones de la
+auditoría de Sesión 3 (el `ConfigManager` muerto de `cerebrovial_shared` y
+la duplicación de los YAMLs de visión) eran insumos de §6.4 y quedan
+resueltas en §13; la deuda de logging central y la de CORS del core son
+notas al margen fuera del alcance de TTH-08 (§12.4, §13.5), no
+contradicciones.
