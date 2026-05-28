@@ -1,159 +1,55 @@
-import cv2
-import time
-import numpy as np
-import supervision as sv
-from typing import List, Dict, Any
+"""Conteo de vehículos por zona (polígono) vía centroide del bbox.
+
+Los polígonos se reciben en coordenadas de pixel del frame. No hay escalado
+implícito de resolución: el rescale 1280x720 del módulo anterior era una de
+las causas del bug C1.8 (vehículos dentro del polígono contaban 0).
+"""
+from collections.abc import Sequence
+
 from ...domain.entities import DetectedVehicle, ZoneVehicleCount
+from ...domain.value_objects import VehicleId, ZoneId
+
+Polygon = Sequence[tuple[int, int]]
+
+
+def _centroid(bbox: tuple[int, int, int, int]) -> tuple[float, float]:
+    x1, y1, x2, y2 = bbox
+    return ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
+
+
+def _point_in_polygon(point: tuple[float, float], polygon: Sequence[tuple[int, int]]) -> bool:
+    """Ray casting (regla even-odd). El centroide es el punto de contención."""
+    x, y = point
+    inside = False
+    n = len(polygon)
+    j = n - 1
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
+
 
 class ZoneCounter:
-    """
-    Manages detection zones and counts vehicles within them.
-    Uses supervision library for polygon operations.
-    """
-    def __init__(self, zones_config: Dict[str, Any], resolution: tuple = (1280, 720)):
-        self.zones: Dict[str, sv.PolygonZone] = {}
-        self.zone_metadata: Dict[str, dict] = {}
-        self.zone_areas: Dict[str, float] = {} # Cache for zone areas
-        self.resolution = resolution
-        
-        for zone_id, config in zones_config.items():
-            # Support both old list format and new dict format
-            if isinstance(config, list):
-                polygon = np.array(config)
-                metadata = {"camera_id": "unknown", "street": "unknown"}
-            else:
-                polygon = np.array(config['polygon'])
-                metadata = {
-                    "camera_id": config.get('camera_id', 'unknown'),
-                    "street": config.get('street', 'unknown')
-                }
-            
-            # Calculate scaling factors
-            # Assuming config points are based on 1280x720 (default reference)
-            ref_w, ref_h = 1280, 720
-            target_w, target_h = self.resolution
-            scale_x = target_w / ref_w
-            scale_y = target_h / ref_h
-            
-            # Scale polygon points
-            polygon = (polygon * [scale_x, scale_y]).astype(int)
-            
-            self.zones[zone_id] = sv.PolygonZone(
-                polygon=polygon
-            )
-            self.zone_metadata[zone_id] = metadata
-            
-            # Pre-calculate zone area
-            self.zone_areas[zone_id] = cv2.contourArea(polygon)
+    """Cuenta vehículos por zona configurada usando el centroide del bbox."""
 
-    def update_zone(self, zone_id: str, points: List[List[int]], resolution: tuple = None):
-        """
-        Updates or adds a zone dynamically.
-        """
-        if resolution:
-            self.resolution = resolution
-            
-        polygon = np.array(points)
-        self.zones[zone_id] = sv.PolygonZone(
-            polygon=polygon
-        )
-        # Preserve existing metadata if updating, or set default
-        if zone_id not in self.zone_metadata:
-             self.zone_metadata[zone_id] = {"camera_id": "unknown", "street": "unknown"}
-             
-        # Update cached area
-        self.zone_areas[zone_id] = cv2.contourArea(polygon)
+    def __init__(self, zones: dict[ZoneId, Polygon]) -> None:
+        self._zones: dict[ZoneId, list[tuple[int, int]]] = {
+            zid: [tuple(pt) for pt in polygon] for zid, polygon in zones.items()
+        }
 
-    def count_vehicles_in_zones(self, detections: List[DetectedVehicle]) -> List[ZoneVehicleCount]:
-        """
-        Updates zone counts based on current detections.
-        """
-        if not detections:
-            return [
-                ZoneVehicleCount(
-                    zone_id=zid, 
-                    vehicle_count=0,
-                    camera_id=self.zone_metadata[zid]['camera_id'],
-                    street_monitored=self.zone_metadata[zid]['street']
-                ) for zid in self.zones
+    def count(
+        self,
+        detections: list[DetectedVehicle],
+        frame_id: int,
+    ) -> dict[ZoneId, ZoneVehicleCount]:
+        result: dict[ZoneId, ZoneVehicleCount] = {}
+        for zid, polygon in self._zones.items():
+            ids: list[VehicleId] = [
+                d.id for d in detections
+                if _point_in_polygon(_centroid(d.bbox), polygon)
             ]
-
-        # Convert domain detections to supervision Detections
-        xyxy = np.array([d.bbox for d in detections])
-        conf = np.array([d.confidence for d in detections])
-        class_ids = np.zeros(len(detections), dtype=int) 
-        
-        sv_detections = sv.Detections(
-            xyxy=xyxy,
-            confidence=conf,
-            class_id=class_ids
-        )
-
-        zone_counts = []
-        current_time = time.time()
-        
-        for zone_id, zone in self.zones.items():
-            # trigger returns a boolean mask of detections inside the zone
-            mask = zone.trigger(detections=sv_detections)
-            
-            # Get indices of detections in this zone
-            indices = np.where(mask)[0]
-            count = len(indices)
-            
-            # Debug: Print zone counts
-            if count > 0:
-               print(f"[DEBUG] Zone {zone_id}: {count} vehicles inside. Detections: {len(detections)}")
-            elif len(detections) > 0:
-               print(f"[DEBUG] Zone {zone_id}: 0 vehicles inside. Detections: {len(detections)}")
-            
-            # Calculate metrics
-            avg_speed = 0.0
-            vehicle_types = {}
-            vehicle_ids = []
-            vehicle_details = {}
-            occupancy = 0.0
-            
-            if count > 0:
-                vehicles_in_zone = [detections[i] for i in indices]
-                
-                # Speed
-                speeds = [v.speed for v in vehicles_in_zone if v.speed is not None]
-                if speeds:
-                    avg_speed = sum(speeds) / len(speeds)
-                
-                # Types and IDs
-                # Optimize: Single pass for types and IDs
-                vehicle_details = {}
-                for v in vehicles_in_zone:
-                    vehicle_types[v.type] = vehicle_types.get(v.type, 0) + 1
-                    vehicle_ids.append(v.id)
-                    vehicle_details[v.id] = v.type
-                
-                # Occupancy (Geometric Estimation)
-                # Use cached zone area
-                zone_area = self.zone_areas.get(zone_id, 0.0)
-                
-                if zone_area > 0:
-                    # Calculate total vehicle area
-                    # Vectorized calculation if possible, but list comprehension is fast enough for small N
-                    total_vehicle_area = sum(
-                        (v.bbox[2] - v.bbox[0]) * (v.bbox[3] - v.bbox[1]) 
-                        for v in vehicles_in_zone
-                    )
-                    occupancy = min(total_vehicle_area / zone_area, 1.0)
-
-            metadata = self.zone_metadata[zone_id]
-            zone_counts.append(ZoneVehicleCount(
-                zone_id=zone_id, 
-                vehicle_count=count,
-                timestamp=current_time,
-                vehicles=vehicle_ids,
-                vehicle_details=vehicle_details,
-                avg_speed=avg_speed,
-                occupancy=occupancy,
-                vehicle_types=vehicle_types,
-                camera_id=metadata['camera_id'],
-                street_monitored=metadata['street']
-            ))
-            
-        return zone_counts
+            result[zid] = ZoneVehicleCount(zone_id=zid, count=len(ids), vehicle_ids=ids)
+        return result

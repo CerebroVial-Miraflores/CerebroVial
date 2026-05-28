@@ -1,39 +1,28 @@
-import pytest
-from src.vision.infrastructure.zones.zone_counter import ZoneCounter
 from src.vision.domain.entities import DetectedVehicle
+from src.vision.domain.value_objects import VehicleId, ZoneId
+from src.vision.infrastructure.zones.zone_counter import ZoneCounter
+
+_SQUARE = [(0, 0), (100, 0), (100, 100), (0, 100)]
+
 
 def test_zone_manager_initialization():
-    config = {
-        "zone1": [[0, 0], [100, 0], [100, 100], [0, 100]]
-    }
-    manager = ZoneCounter(config, resolution=(200, 200))
-    assert "zone1" in manager.zones
+    counter = ZoneCounter({ZoneId("zone1"): _SQUARE})
+    assert ZoneId("zone1") in counter.count(detections=[], frame_id=1)
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="ZoneCounter not detecting vehicles inside polygon. Possibly related to coordinate system change in refactor. Verified failing in commit 0e20b0b4. Tracked as TODO C1.8."
-)
+
 def test_zone_manager_update():
-    config = {
-        "zone1": [[0, 0], [100, 0], [100, 100], [0, 100]]
-    }
-    manager = ZoneCounter(config, resolution=(200, 200))
-    
-    # Vehicle inside zone
-    v1 = DetectedVehicle(id="1", type="car", confidence=0.9, bbox=(10, 10, 50, 50), timestamp=0)
-    # Vehicle outside zone
-    v2 = DetectedVehicle(id="2", type="car", confidence=0.9, bbox=(150, 150, 190, 190), timestamp=0)
-    
-    statuses = manager.count_vehicles_in_zones([v1, v2])
-    
-    assert len(statuses) == 1
-    assert statuses[0].zone_id == "zone1"
-    assert statuses[0].vehicle_count == 1
+    counter = ZoneCounter({ZoneId("zone1"): _SQUARE})
+    # Vehículo dentro de la zona
+    v1 = DetectedVehicle(id=VehicleId("1"), type="car", confidence=0.9, bbox=(10, 10, 50, 50), timestamp=0.0)
+    # Vehículo fuera de la zona
+    v2 = DetectedVehicle(id=VehicleId("2"), type="car", confidence=0.9, bbox=(150, 150, 190, 190), timestamp=0.0)
+
+    result = counter.count(detections=[v1, v2], frame_id=1)
+
+    assert result[ZoneId("zone1")].count == 1
+    assert VehicleId("1") in result[ZoneId("zone1")].vehicle_ids
+
 
 def test_zone_manager_empty_detections():
-    config = {
-        "zone1": [[0, 0], [100, 0], [100, 100], [0, 100]]
-    }
-    manager = ZoneCounter(config, resolution=(200, 200))
-    statuses = manager.count_vehicles_in_zones([])
-    assert statuses[0].vehicle_count == 0
+    counter = ZoneCounter({ZoneId("zone1"): _SQUARE})
+    assert counter.count(detections=[], frame_id=1)[ZoneId("zone1")].count == 0
