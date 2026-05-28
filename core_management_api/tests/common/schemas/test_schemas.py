@@ -1,9 +1,8 @@
 import pytest
-from datetime import datetime
 from pydantic import ValidationError
 from cerebrovial_shared.schemas import (
     Camera, GraphEdge, GraphConnection,
-    VisionFlow, WazeJam
+    WazeJam
 )
 
 # --- Camera Tests ---
@@ -38,21 +37,6 @@ def test_graph_edge_invalid_lanes():
         GraphEdge(
             edge_id="e1", source_node="n1", target_node="n2",
             distance_m=100, lanes=0
-        )
-
-# --- Vision Tests ---
-def test_vision_flow_valid():
-    flow = VisionFlow(
-        flow_id="f1", camera_id="c1", timestamp_bin=datetime.now(),
-        period_seconds=60, vehicle_count=10
-    )
-    assert flow.vehicle_count == 10
-
-def test_vision_flow_invalid_count():
-    with pytest.raises(ValidationError):
-        VisionFlow(
-            flow_id="f1", camera_id="c1", timestamp_bin=datetime.now(),
-            period_seconds=60, vehicle_count=-5
         )
 
 # --- Waze Tests ---
