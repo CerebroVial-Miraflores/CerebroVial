@@ -5,9 +5,9 @@ from src.vision.application.services.multi_camera import MultiCameraManager, Cam
 
 @pytest.fixture
 def mock_broadcaster():
+    """Mock del broadcaster Protocol-conforme (§6.10/§6.11): publish/subscriber_count/is_subscribed."""
     broadcaster = MagicMock()
-    broadcaster.broadcast = AsyncMock()
-    broadcaster.serialize_analysis = MagicMock(return_value="data")
+    broadcaster.publish = AsyncMock()
     return broadcaster
 
 @pytest.fixture

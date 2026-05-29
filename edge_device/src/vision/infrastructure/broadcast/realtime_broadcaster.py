@@ -1,156 +1,154 @@
+"""Broadcaster Protocol-conforme para emitir `TrafficData` al transporte SSE.
+
+Cumple `domain.protocols.Broadcaster` (§6.10/§6.11): `publish(TrafficData)`,
+`subscriber_count()`, `is_subscribed(subscriber_id)`. Cero acceso externo a
+los atributos privados (los consumidores de `presentation/` usan los helpers
+públicos `subscribed_cameras()`, `latest_state()`, `latest_states()`).
+
+Payload §6.2 — agrupado en `schema_version`, `event_type`, `server_timestamp`,
+`camera{id, street_monitored}`, `zone{id}`, `window{start, end, duration_seconds}`,
+`metrics{...}`. Valores Optional del dominio (`mean_speed_kmh`,
+`density_vehicles_per_km`) se serializan como `null`. **Prohibido por §9.2**:
+strings localizadas ("Bajo"/"Moderado"/"Alto"), umbrales hardcoded de
+congestión, formateos con `%` o sufijos de unidad — todo eso vive en el
+frontend (§9.3: ningún consumidor MVP1 requiere strings localizadas en el
+SSE).
+
+`camera.street_monitored` se emite como `null`: el broadcaster es transporte
+canónico y no tiene acceso al registry de cámaras. El frontend resuelve el
+nombre humano vía su propio mapping camera_id → street. F41 puede formalizar
+un `CameraMetadataProvider` inyectable si aparece un consumidor non-frontend
+que lo requiera (YAGNI en MVP1).
+
+Cruce thread→async (DHU del wiring, 6d): el broadcaster **se llama solo desde
+el event loop main**, nunca desde el worker thread del aggregator. El
+`AsyncTrafficAggregator-worker` deposita `TrafficData` en su `_output_queue`
+(thread-safe); el coroutine `MultiCameraManager._run_camera_pipeline` consume
+con `aggregator.flush()` (sync, no bloquea) y hace `await broadcaster.publish(td)`
+desde el event loop. Sin `run_coroutine_threadsafe`, sin event loop en el
+worker.
+"""
+from __future__ import annotations
+
 import asyncio
-from typing import Dict, Set
-from datetime import datetime
-# No domain imports here, but let's check if it uses any.
-# It uses FrameAnalysis in serialize_analysis but as a parameter type hint (implicit or explicit).
-# It doesn't import it. Wait, let's check the content.
+import logging
+import uuid
+from datetime import datetime, timezone
+
+from ...domain.entities import TrafficData
+
+logger = logging.getLogger(__name__)
+
+_SCHEMA_VERSION = "1.0"
+_EVENT_TYPE = "traffic_update"
+
 
 class RealtimeBroadcaster:
-    """
-    Pub/sub system to transmit analysis to connected clients.
-    Thread-safe and asynchronous.
-    """
-    
-    def __init__(self):
-        # Subscribers per camera
-        self._subscribers: Dict[str, Set[asyncio.Queue]] = {}
-        self._lock = asyncio.Lock()
-        
-        # Cache latest state per camera (for new subscribers)
-        self._latest_state: Dict[str, dict] = {}
+    """Broadcaster SSE in-memory Protocol-conforme."""
 
-    async def subscribe(self, camera_id: str, queue_size: int = 50) -> asyncio.Queue:
-        """
-        Subscribes a client to updates from a specific camera.
-        Returns an async queue that will receive the data.
-        """
-        print(f"[Broadcaster] New subscriber for {camera_id}")
-        queue = asyncio.Queue(maxsize=queue_size)
-        
+    def __init__(self) -> None:
+        # subscriber_id -> (camera_id, queue) — único índice de suscripciones.
+        self._subscribers: dict[str, tuple[str, asyncio.Queue]] = {}
+        self._lock = asyncio.Lock()
+        # Último payload §6.2 publicado por camera_id (cache para nuevos
+        # subscribers).
+        self._latest_state: dict[str, dict] = {}
+
+    # ---- Protocol §6.10/§6.11 ------------------------------------------
+
+    async def publish(self, data: TrafficData) -> None:
+        """Emite el payload §6.2 a todos los subscribers de la `camera_id` del dato."""
+        camera_id = data.camera_id.value
+        payload = self._build_payload(data)
+        self._latest_state[camera_id] = payload
+
         async with self._lock:
-            if camera_id not in self._subscribers:
-                self._subscribers[camera_id] = set()
-            self._subscribers[camera_id].add(queue)
-        
-        # Send latest known state immediately
-        if camera_id in self._latest_state:
+            targets = [
+                (sid, queue)
+                for sid, (cid, queue) in self._subscribers.items()
+                if cid == camera_id
+            ]
+
+        for sid, queue in targets:
             try:
-                await queue.put(self._latest_state[camera_id])
+                queue.put_nowait(payload)
+            except asyncio.QueueFull:
+                logger.warning(
+                    "Subscriber %s lento para camera %s; payload dropeado",
+                    sid,
+                    camera_id,
+                )
+
+    def subscriber_count(self) -> int:
+        """Cantidad total de subscribers activos (todas las cámaras)."""
+        return len(self._subscribers)
+
+    def is_subscribed(self, subscriber_id: str) -> bool:
+        return subscriber_id in self._subscribers
+
+    # ---- Gestión de subscribers (API concreta, no Protocol) -----------
+
+    async def subscribe(
+        self, camera_id: str, queue_size: int = 50
+    ) -> tuple[str, asyncio.Queue]:
+        """Registra un subscriber para una `camera_id`. Retorna (subscriber_id, queue).
+
+        Si hay `latest_state` cacheado para la cámara, se envía inmediatamente al
+        nuevo subscriber.
+        """
+        subscriber_id = str(uuid.uuid4())
+        queue: asyncio.Queue = asyncio.Queue(maxsize=queue_size)
+        async with self._lock:
+            self._subscribers[subscriber_id] = (camera_id, queue)
+
+        latest = self._latest_state.get(camera_id)
+        if latest is not None:
+            try:
+                queue.put_nowait(latest)
             except asyncio.QueueFull:
                 pass
-        
-        return queue
+
+        return subscriber_id, queue
+
+    async def unsubscribe(self, subscriber_id: str) -> None:
+        async with self._lock:
+            self._subscribers.pop(subscriber_id, None)
+
+    # ---- Helpers públicos (sin acceso a privados desde presentation) --
 
     def subscribed_cameras(self) -> list[str]:
-        """Lista de camera_ids con al menos un subscriber activo.
-
-        Propiedad pública para que `presentation/` no toque `_subscribers`.
-        6d reescribirá el broadcaster contra el Protocol §6.10/§6.11 y este
-        método quedará reemplazado por `subscriber_count()` + filtros explícitos.
-        """
-        return list(self._subscribers.keys())
+        """Camera IDs con al menos un subscriber activo (orden estable por sort)."""
+        return sorted({cid for cid, _ in self._subscribers.values()})
 
     def latest_state(self, camera_id: str) -> dict | None:
-        """Último estado conocido para una cámara, o `None` si no hay.
-
-        Propiedad pública para que `presentation/` no toque `_latest_state`.
-        """
         return self._latest_state.get(camera_id)
 
     def latest_states(self) -> dict[str, dict]:
-        """Copia del cache de últimos estados por cámara.
-
-        Mantenida para el endpoint `GET /cameras` que devuelve el snapshot
-        global. 6d puede revisitar si conviene seguir exponiéndolo.
-        """
         return dict(self._latest_state)
 
-    async def unsubscribe(self, camera_id: str, queue: asyncio.Queue):
-        """Removes a subscriber."""
-        async with self._lock:
-            if camera_id in self._subscribers:
-                self._subscribers[camera_id].discard(queue)
-                if not self._subscribers[camera_id]:
-                    del self._subscribers[camera_id]
+    # ---- Payload §6.2 --------------------------------------------------
 
-    async def broadcast(self, camera_id: str, analysis_data: dict):
-        """
-        Transmits analysis to all subscribers of a camera.
-        Non-blocking: if a client is slow, it is skipped.
-        """
-        # Update cache
-        self._latest_state[camera_id] = analysis_data
-        
-        async with self._lock:
-            subscribers = self._subscribers.get(camera_id, set()).copy()
-        
-        if subscribers:
-            # print(f"[Broadcaster] Broadcasting to {len(subscribers)} clients for {camera_id}")
-            pass
-
-        # Send to each subscriber (non-blocking)
-        for queue in subscribers:
-            try:
-                queue.put_nowait(analysis_data)
-            except asyncio.QueueFull:
-                # Slow client - skip
-                print(f"[WARNING] Skipping slow client for {camera_id}")
-
-    def serialize_analysis(self, frame_analysis, camera_id: str) -> dict:
-        """
-        Converts FrameAnalysis to JSON-serializable dict.
-        """
-        # Calculate global metrics
-        avg_speed = 0.0
-        density = 0.0
-        congestion_level = "Bajo"
-        pedestrians = 0
-        
-        if frame_analysis.zones:
-            total_speed = sum(z.avg_speed for z in frame_analysis.zones if z.avg_speed > 0)
-            count_speed = sum(1 for z in frame_analysis.zones if z.avg_speed > 0)
-            if count_speed > 0:
-                avg_speed = total_speed / count_speed
-                
-            total_occupancy = sum(z.occupancy for z in frame_analysis.zones)
-            density = (total_occupancy / len(frame_analysis.zones)) * 100 # Convert to percentage
-            
-            if density > 70:
-                congestion_level = "Alto"
-            elif density > 30:
-                congestion_level = "Moderado"
-                
-        if frame_analysis.vehicles:
-            pedestrians = sum(1 for v in frame_analysis.vehicles if v.type == 'person')
-
+    def _build_payload(self, data: TrafficData) -> dict:
         return {
-            "camera_id": camera_id,
-            "timestamp": datetime.now().isoformat(),
-            "frame_id": frame_analysis.frame_id,
-            "total_vehicles": frame_analysis.total_count,
-            "avg_speed": round(avg_speed, 1),
-            "density": f"{round(density)}%",
-            "congestion_level": congestion_level,
-            "pedestrians": pedestrians,
-            "incidents": 0, # Placeholder
-            "vehicles": [
-                {
-                    "id": v.id,
-                    "type": v.type,
-                    "confidence": round(v.confidence, 2),
-                    "bbox": v.bbox,
-                    "speed": round(v.speed, 1) if v.speed else None
-                }
-                for v in frame_analysis.vehicles
-            ] if frame_analysis.vehicles else [],
-            "zones": [
-                {
-                    "zone_id": z.zone_id,
-                    "vehicle_count": z.vehicle_count,
-                    "avg_speed": round(z.avg_speed, 1),
-                    "occupancy": round(z.occupancy, 2),
-                    "vehicle_types": z.vehicle_types
-                }
-                for z in frame_analysis.zones
-            ] if frame_analysis.zones else []
+            "schema_version": _SCHEMA_VERSION,
+            "event_type": _EVENT_TYPE,
+            "server_timestamp": datetime.now(timezone.utc).isoformat(),
+            "camera": {
+                "id": data.camera_id.value,
+                "street_monitored": None,
+            },
+            "zone": {"id": data.zone_id.value},
+            "window": {
+                "start": data.window_start.isoformat(),
+                "end": data.window_end.isoformat(),
+                "duration_seconds": data.window_duration_seconds,
+            },
+            "metrics": {
+                "unique_vehicles": data.unique_vehicles,
+                "vehicles_by_type": dict(data.vehicles_by_type),
+                "mean_speed_kmh": data.mean_speed_kmh,
+                "flow_vehicles_per_hour": data.flow_vehicles_per_hour,
+                "mean_occupancy": data.mean_occupancy,
+                "density_vehicles_per_km": data.density_vehicles_per_km,
+            },
         }

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -21,6 +20,7 @@ from omegaconf import DictConfig
 
 from ...domain.protocols import FrameRenderer
 from ...infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
+from ..aggregators.async_aggregator import AsyncTrafficAggregator
 from ..builders.pipeline_builder import VisionApplicationBuilder
 
 logger = logging.getLogger(__name__)
@@ -34,12 +34,14 @@ class CameraState:
     is_running: bool = False
     latest_frame_raw: Optional[Any] = None
     latest_frame_processed: Optional[Any] = None
-    last_broadcast: float = 0.0
     renderer: Optional[FrameRenderer] = None  # Inyectado opcionalmente; Fase 6 lo cablea.
+    # Conservado para drenar TrafficData y publicar al broadcaster desde el
+    # coroutine. None si persistence.enabled=False (modo dev/test sin agregador).
+    aggregator: Optional[AsyncTrafficAggregator] = None
 
 
 class CameraInstance:
-    """Encapsulates a camera with its pipeline and (optional) frame renderer."""
+    """Encapsulates a camera with its pipeline, optional renderer and aggregator."""
 
     def __init__(
         self,
@@ -48,11 +50,14 @@ class CameraInstance:
         builder: VisionApplicationBuilder,
         renderer: Optional[FrameRenderer] = None,
     ) -> None:
+        pipeline = builder.build_pipeline()
+        aggregator = builder.get_components().get("aggregator")
         self.state = CameraState(
             camera_id=camera_id,
             config=config,
-            pipeline=builder.build_pipeline(),
+            pipeline=pipeline,
             renderer=renderer,
+            aggregator=aggregator,
         )
 
 
@@ -114,24 +119,27 @@ class MultiCameraManager:
         logger.info("Started camera: %s", camera_id)
 
     async def _run_camera_pipeline(self, camera: CameraInstance):
-        """
-        Main loop for a camera.
-        Processes frames and broadcasts to broadcaster.
+        """Main loop: drena TrafficData del aggregator y los publica al broadcaster.
+
+        Cruce thread→async (6d): el worker thread del aggregator NUNCA llama
+        publish; deposita TrafficData en su output_queue (thread-safe). Acá,
+        ya dentro del event loop, hacemos `flush()` (sync no-blocking) y luego
+        `await publish(td)` por item. Sin run_coroutine_threadsafe, sin event
+        loop en el worker.
+
+        El broadcast por-frame (shape viejo `FrameAnalysis` flat) quedó eliminado
+        en 6d: el SSE emite el shape §6.2 que es por-ventana (TrafficData), no
+        por-frame.
         """
         try:
             for frame, analysis in camera.state.pipeline.run():
                 if not camera.state.is_running:
                     break
-                
-                # Serialize and broadcast
-                if analysis:
-                    current_time = time.time()
-                    if current_time - camera.state.last_broadcast >= 2:
-                        # print(f"[MultiCamera] Broadcasting analysis for {camera.state.camera_id}")
-                        data = self.broadcaster.serialize_analysis(analysis, camera.state.camera_id)
-                        await self.broadcaster.broadcast(camera.state.camera_id, data)
-                        camera.state.last_broadcast = current_time
-                    
+
+                if camera.state.aggregator is not None:
+                    for td in camera.state.aggregator.flush():
+                        await self.broadcaster.publish(td)
+
                 # Store frames for video streaming (ALWAYS update).
                 if hasattr(frame, 'image') and frame.image is not None:
                     camera.state.latest_frame_raw = frame.image.copy()
