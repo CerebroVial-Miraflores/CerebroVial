@@ -5,8 +5,14 @@ data/train/*.parquet
 data/valid/*.parquet
 data/kpis/*.parquet
 data/kpis/*.csv
+data/_coverage/
 .env
 *.parquet
 # Intermediarios de build_network.py (regenerables desde el YAML).
 conf/network/_generated_*.xml
+# Outputs SUMO en conf/network/ (generados accidentalmente por corridas
+# fuera del out_dir esperado — coverage_check.py copia add-files al out_dir
+# para que esto no pase).
+conf/network/edgedata.xml
+conf/network/lanearea.xml
 !data/.gitkeep

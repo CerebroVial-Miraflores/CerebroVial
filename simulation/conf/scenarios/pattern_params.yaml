@@ -1,0 +1,56 @@
+# Patrones de demanda (CT-07.2).
+# Flujos en veh/h por dirección de origen. Cada origen se rutea hacia el
+# aproche opuesto (straight only en F2 — turns son refinamiento posterior).
+#
+# Calibrados para cumplir CT-07.2 cobertura:
+# - ≥1 patrón alcanza jam_level ≥ 3 sostenido (am_peak, pm_peak).
+# - ≥1 patrón mantiene jam_level ≤ 2 (offpeak, weekend).
+# - Spillback evitable a 300m N-S / 200m E-W (catch 2).
+#
+# Seeds asignadas en partitions.py (F3) — acá solo flujos.
+
+duration_s: 1200      # 20 min simulados por corrida F2 (suficiente para
+                      # cubrir warmup ~120 s + jam estabilizado ~300 s + decay).
+
+patterns:
+  am_peak:
+    description: "Hora pico — NS ~85% de capacidad para alcanzar jam ≥3 sostenido sin spillback."
+    # Capacidad N por fracción de ciclo: 3 carriles × 1800 × (30/60) = 2700 veh/h.
+    # 2400 ≈ 89% saturación — produce ratio < 0.5 sostenido sin spillback.
+    flows_vph:
+      N: 2400        # N → S (straight)
+      S: 2400        # S → N (straight)
+      E: 600         # E → W
+      W: 600         # W → E
+    target_jam: ">=3"
+    target_direction: "N"
+
+  pm_peak:
+    description: "Hora pico vespertina — ligeramente más cargada que AM, target jam ≥3 en S."
+    flows_vph:
+      N: 2500
+      S: 2500
+      E: 650
+      W: 650
+    target_jam: ">=3"
+    target_direction: "S"
+
+  offpeak:
+    description: "Periodo valle — flujo libre, ratio cercano al free-flow."
+    flows_vph:
+      N: 200
+      S: 200
+      E: 100
+      W: 100
+    target_jam: "<=2"
+    target_direction: null
+
+  weekend:
+    description: "Fin de semana — flujo moderado, sin jam ≥3 sostenido."
+    flows_vph:
+      N: 500
+      S: 500
+      E: 150
+      W: 150
+    target_jam: "<=2"
+    target_direction: null
