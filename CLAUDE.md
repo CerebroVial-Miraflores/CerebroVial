@@ -219,6 +219,12 @@ Cada tipo de doc vive en su carpeta. No mezclar:
   `git push origin <feature-branch>` (nunca `master`/`main`) y
   `gh pr create --body-file <handoff-de-cierre>` usando el handoff de cierre de
   la fase como cuerpo del PR. Reportar la URL al usuario.
+- **Cuerpo del PR**: usar el handoff de cierre íntegro como `--body-file`. El
+  handoff es la fuente de verdad y debe estar libre de framing académico
+  (`jurado`, `tribunal`, `defensa`, "documento de tesis" como audiencia,
+  "el equipo verá") y libre de menciones a `Co-Authored-By`. El cuerpo del PR
+  describe entregables, alcance, follow-ups técnicos y commits — nada más. Si
+  el handoff todavía tiene framing, scrubealo en un commit antes de abrir el PR.
 - **Merge a `master`**: **siempre humano**, fuera del scope del agente, incluso
   con permiso. El agente no mergea.
 - **Herramientas de pregunta vs Bash**: **NO usar `AskUserQuestion` en paralelo
