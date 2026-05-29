@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 from omegaconf import DictConfig
 from src.vision.application.services.multi_camera import MultiCameraManager, CameraInstance
@@ -23,20 +22,19 @@ def mock_builder():
 def manager(mock_broadcaster):
     return MultiCameraManager(mock_broadcaster)
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="CameraInstance.camera_id attribute removed in microservices refactor (commit 7b26edab). Test not updated. Verified failing in commit 0e20b0b4. Tracked as TODO C1.6."
-)
 def test_add_camera(manager):
+    """C1.6 migrado: CameraInstance expone su id vía state.camera_id (no atributo directo)."""
     config = DictConfig({'vision': {'zones': {}}})
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
         MockBuilder.return_value.build_pipeline.return_value = MagicMock()
-        
+
         camera = manager.add_camera("cam1", config)
-        
+
         assert "cam1" in manager.cameras
         assert isinstance(camera, CameraInstance)
-        assert camera.camera_id == "cam1"
+        assert camera.state.camera_id == "cam1"
+        # Caso B roto: renderer no se instancia adentro; default None.
+        assert camera.state.renderer is None
 
 def test_add_duplicate_camera(manager):
     config = DictConfig({'vision': {'zones': {}}})
@@ -45,36 +43,32 @@ def test_add_duplicate_camera(manager):
         with pytest.raises(ValueError):
             manager.add_camera("cam1", config)
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="CameraInstance.is_running attribute removed in microservices refactor (commit 7b26edab). Test not updated. Also fails on cv2.putText with image=None mock. Verified failing in commit 0e20b0b4. Tracked as TODO C1.6."
-)
 @pytest.mark.asyncio
 async def test_start_stop_camera(manager):
+    """C1.6 migrado: is_running vive en state.is_running (no atributo directo).
+
+    Sin OpenCVVisualizer hardcoded (Caso B roto): el pipeline_mock yield
+    MagicMocks sin tocar cv2.putText, porque el render condicional solo se
+    ejecuta si `state.renderer is not None`.
+    """
     config = DictConfig({'vision': {'zones': {}}})
-    
-    # Mock pipeline run to yield one item then sleep
-    async def mock_run_gen():
-        yield (MagicMock(), MagicMock())
-        await asyncio.sleep(0.1)
-        
+
     pipeline_mock = MagicMock()
-    # We need to mock the run method to be an iterator
     pipeline_mock.run.return_value = iter([(MagicMock(), MagicMock())])
-    
+
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
         MockBuilder.return_value.build_pipeline.return_value = pipeline_mock
-        
+
         manager.add_camera("cam1", config)
-        
-        # Start
+
+        # Start.
         await manager.start_camera("cam1")
-        assert manager.cameras["cam1"].is_running
+        assert manager.cameras["cam1"].state.is_running
         assert "cam1" in manager._tasks
-        
-        # Stop
+
+        # Stop.
         await manager.stop_camera("cam1")
-        assert not manager.cameras["cam1"].is_running
+        assert not manager.cameras["cam1"].state.is_running
         assert "cam1" not in manager._tasks
         pipeline_mock.stop.assert_called_once()
 

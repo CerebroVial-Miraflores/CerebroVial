@@ -1,47 +1,59 @@
+"""Manager for multiple independent camera pipelines.
+
+Caso B (acoplamiento `application/` → `presentation/`) roto en Fase 5e:
+`OpenCVVisualizer` ya NO se importa acá. En su lugar, el `CameraInstance`
+acepta un `FrameRenderer` opcional (Protocol del dominio); el concrete
+visualizer se inyecta desde fuera (Fase 6 lo cablea en `presentation/`).
+Default `None` → no se anota el frame; `latest_frame_processed` queda igual
+al raw.
+
+Logging por archivo (§6.3 / §12).
 """
-Manager for multiple independent camera pipelines.
-"""
-import time
-from typing import Dict, Optional, Any
-from dataclasses import dataclass
-from omegaconf import DictConfig
+from __future__ import annotations
+
 import asyncio
-from ..builders.pipeline_builder import VisionApplicationBuilder
+import logging
+import time
+from dataclasses import dataclass
+from typing import Any, Optional
+
+from omegaconf import DictConfig
+
+from ...domain.protocols import FrameRenderer
 from ...infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
-from ...presentation.visualization.opencv_visualizer import OpenCVVisualizer
+from ..builders.pipeline_builder import VisionApplicationBuilder
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class CameraState:
     camera_id: str
     config: DictConfig
-    pipeline: Any # AsyncVisionPipeline
+    pipeline: Any  # AsyncVisionPipeline
     is_running: bool = False
     latest_frame_raw: Optional[Any] = None
     latest_frame_processed: Optional[Any] = None
     last_broadcast: float = 0.0
-    visualizer: Optional[OpenCVVisualizer] = None # Visualizer is initialized later
+    renderer: Optional[FrameRenderer] = None  # Inyectado opcionalmente; Fase 6 lo cablea.
 
 
 class CameraInstance:
-    """Encapsulates a camera with its pipeline and configuration."""
-    
-    def __init__(self, camera_id: str, config: DictConfig, builder: VisionApplicationBuilder):
+    """Encapsulates a camera with its pipeline and (optional) frame renderer."""
+
+    def __init__(
+        self,
+        camera_id: str,
+        config: DictConfig,
+        builder: VisionApplicationBuilder,
+        renderer: Optional[FrameRenderer] = None,
+    ) -> None:
         self.state = CameraState(
             camera_id=camera_id,
             config=config,
-            pipeline=builder.build_pipeline()
+            pipeline=builder.build_pipeline(),
+            renderer=renderer,
         )
-        
-        # Initialize visualizer
-        zones_config = {}
-        if config.vision.zones:
-            for k, v in config.vision.zones.items():
-                # Filter zones for this camera
-                if 'polygon' in v and v.get('camera_id') == camera_id:
-                    zones_config[k] = list(v['polygon'])
-        
-        self.state.visualizer = OpenCVVisualizer(zones_config=zones_config)
 
 
 
@@ -51,54 +63,55 @@ class MultiCameraManager:
     Each camera runs in its own set of threads.
     """
     
-    def __init__(self, broadcaster: RealtimeBroadcaster):
-        self.cameras: Dict[str, CameraInstance] = {}
+    def __init__(self, broadcaster: RealtimeBroadcaster) -> None:
+        self.cameras: dict[str, CameraInstance] = {}
         self.broadcaster = broadcaster
-        self._tasks: Dict[str, asyncio.Task] = {}
+        self._tasks: dict[str, asyncio.Task] = {}
 
-    def add_camera(self, camera_id: str, config: DictConfig) -> CameraInstance:
-        """
-        Adds a new camera to the system.
-        
-        Args:
-            camera_id: Unique identifier (e.g., "CAM_001")
-            config: Hydra configuration for this camera
+    def add_camera(
+        self,
+        camera_id: str,
+        config: DictConfig,
+        renderer: Optional[FrameRenderer] = None,
+    ) -> CameraInstance:
+        """Registra una cámara nueva.
+
+        `renderer` (opcional) anota los frames procesados; default None →
+        `latest_frame_processed` queda igual al raw. Fase 6 inyecta el
+        OpenCVVisualizer adaptado al Protocol `FrameRenderer` desde
+        `presentation/`.
         """
         if camera_id in self.cameras:
             raise ValueError(f"Camera {camera_id} already exists")
-        
-        # Inject camera_id into zones config
+
+        # Inject camera_id into zones config (mutation in-place sobre el
+        # OmegaConf entrante; el caller controla la mutabilidad).
         if 'zones' in config.vision:
             for zone_id, zone_cfg in config.vision.zones.items():
                 if isinstance(zone_cfg, dict) and 'camera_id' not in zone_cfg:
                     zone_cfg['camera_id'] = camera_id
-        
+
         builder = VisionApplicationBuilder(config)
-        camera = CameraInstance(camera_id, config, builder)
-        
+        camera = CameraInstance(camera_id, config, builder, renderer=renderer)
+
         self.cameras[camera_id] = camera
-        print(f"[MultiCamera] Added camera: {camera_id}")
-        
+        logger.info("Added camera: %s", camera_id)
         return camera
 
-    async def start_camera(self, camera_id: str):
+    async def start_camera(self, camera_id: str) -> None:
         """Starts processing for a camera."""
         if camera_id not in self.cameras:
             raise ValueError(f"Camera {camera_id} not found")
-        
+
         camera = self.cameras[camera_id]
         if camera.state.is_running:
-            print(f"[MultiCamera] Camera {camera_id} already running")
+            logger.info("Camera %s already running", camera_id)
             return
-        
+
         camera.state.is_running = True
-        
-        # Create async task for this pipeline
-        task = asyncio.create_task(
-            self._run_camera_pipeline(camera)
-        )
+        task = asyncio.create_task(self._run_camera_pipeline(camera))
         self._tasks[camera_id] = task
-        print(f"[MultiCamera] Started camera: {camera_id}")
+        logger.info("Started camera: %s", camera_id)
 
     async def _run_camera_pipeline(self, camera: CameraInstance):
         """
@@ -119,35 +132,33 @@ class MultiCameraManager:
                         await self.broadcaster.broadcast(camera.state.camera_id, data)
                         camera.state.last_broadcast = current_time
                     
-                # Store frames for video streaming (ALWAYS update)
-                if hasattr(frame, 'image'):
-                    # Raw frame
+                # Store frames for video streaming (ALWAYS update).
+                if hasattr(frame, 'image') and frame.image is not None:
                     camera.state.latest_frame_raw = frame.image.copy()
-                    
-                    # Processed frame - Use current analysis or last known good analysis if needed
+
                     processed_frame = frame.image.copy()
-                    if analysis:
-                        processed_frame = camera.state.visualizer.draw(processed_frame, analysis)
+                    if analysis and camera.state.renderer is not None:
+                        # Caso B roto (Fase 5e): el renderer es opcional vía
+                        # Protocol FrameRenderer; no se importa de presentation/.
+                        processed_frame = camera.state.renderer.render(frame, analysis)
                     camera.state.latest_frame_processed = processed_frame
 
-                
-                # Yield control to avoid blocking event loop
+                # Yield control to avoid blocking the event loop.
                 await asyncio.sleep(0)
-                
-        except Exception as e:
-            print(f"[ERROR] Camera {camera.state.camera_id} failed: {e}")
+
+        except Exception:
+            logger.exception("Camera %s failed", camera.state.camera_id)
             camera.state.is_running = False
 
-    async def stop_camera(self, camera_id: str):
+    async def stop_camera(self, camera_id: str) -> None:
         """Stops a specific camera."""
         if camera_id not in self.cameras:
             return
-        
+
         camera = self.cameras[camera_id]
         camera.state.is_running = False
         camera.state.pipeline.stop()
-        
-        # Cancel task
+
         if camera_id in self._tasks:
             self._tasks[camera_id].cancel()
             try:
@@ -155,8 +166,8 @@ class MultiCameraManager:
             except asyncio.CancelledError:
                 pass
             del self._tasks[camera_id]
-        
-        print(f"[MultiCamera] Stopped camera: {camera_id}")
+
+        logger.info("Stopped camera: %s", camera_id)
 
     async def start_all(self):
         """Starts all registered cameras."""
@@ -168,7 +179,7 @@ class MultiCameraManager:
         tasks = [self.stop_camera(cam_id) for cam_id in list(self.cameras.keys())]
         await asyncio.gather(*tasks)
 
-    def get_status(self) -> Dict:
+    def get_status(self) -> dict:
         """Returns status of all cameras."""
         return {
             cam_id: {
