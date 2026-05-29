@@ -778,12 +778,14 @@ calibración inicial.
 
 ### 5.8 Compatibilidad con `CameraTrafficData` y `vision_aggregates`
 
+> **Nota de Fase 6 (2026-05-28) — divergencia diseño-vs-código resuelta a favor del código.** Esta sección fue escrita en Sesión 1 asumiendo que la BD seguiría siendo legacy (shape `CameraTrafficData`) y que Fase 6 tendría que construir un adapter `TrafficData → CameraTrafficData → BD`. La migración Fase 2/3 (Alembic + DDD) **rehízo `vision_aggregates` con shape canónico** (`unique_vehicles`, `mean_occupancy`, `flow_vehicles_per_hour`, etc., sin `total_vehicles`/`occupancy_rate`/`flow_rate_per_min`/`street_monitored`), y Fase 4c materializó el mapping directo `TrafficData → columnas canónicas` en `PostgresTrafficRepository._to_row()` (`edge_device/src/vision/infrastructure/persistence/postgres_repository.py`). El paso intermedio "→ `CameraTrafficData`" del texto original nunca se implementó porque dejó de tener sentido cuando la BD se rehízo canónica. Por tanto: **no existe ni se construirá un adapter `TrafficData → CameraTrafficData` en Fase 6** — el mapping real vive en `_to_row()` contra el shape canónico de `vision_aggregates`, sin intermediario. La tabla de mapeo de campos a `CameraTrafficData` que sigue queda como **referencia histórica**, no como contrato vivo. `CameraTrafficData` (en `shared/cerebrovial_shared/schemas/camera.py`) queda **huérfana**: solo es referenciada por su definición + un comentario en `core_management_api/scripts/generate_camera_data.py`, sin consumidor runtime. Su borrado requiere coordinación de `shared/` (territorio común al proyecto) y queda nominado fuera de TTH-08. Mismo patrón de registro de divergencia que DHU-025 (Σ→unión en §5.4) y DHU-026 (caller→worker en §4.4/§11).
+
 El `TrafficData` canónico **no es idéntico** a `CameraTrafficData` (schema
 actual en `shared/cerebrovial_shared/schemas/camera.py`). DHU-024 §5 declara
 compatibilidad, lo que significa que existe un adapter que traduce — no
 que los schemas son iguales campo por campo.
 
-Mapeo del adapter (a implementar en Fase 6 — presentación):
+Mapeo del adapter (referencia histórica — *no implementado* como objeto; el mapping real vive en `_to_row()` contra columnas canónicas):
 
 | Campo `TrafficData` canónico | Campo `CameraTrafficData` actual | Traducción |
 |---|---|---|
@@ -817,6 +819,8 @@ Estos consumidores se ajustan en Fase 6 (presentación) — no se cubren
 con el adapter de persistencia de §5.8. La trazabilidad del cambio
 queda en este párrafo para que Fase 6 enumere y actualice los archivos
 afectados sin tener que redescubrirlos.
+
+**Estado real al cierre del batch 1 de Fase 6** (ver nota al inicio de la sección): el frontend SSE (CameraDetailView, DashboardView, TrafficHistoryWidget, predictionService) se migra en la sub-fase 6g al payload §6.2. El predictor (`PredictionInput`, `csv_loader.py`) queda **fuera de Fase 6**: lee CSVs históricos sin writer (Fase 5f eliminó el CSV-persistencia) y no consume `vision_aggregates`; alimentar el RandomForest fallback es responsabilidad de TTH-04/TTH-09. Documentado en el handoff de cierre de Fase 6 como hallazgo colateral.
 
 ## 6. §6.10 — Cierre detallado del Broadcaster
 
