@@ -41,6 +41,30 @@ class RealtimeBroadcaster:
         
         return queue
 
+    def subscribed_cameras(self) -> list[str]:
+        """Lista de camera_ids con al menos un subscriber activo.
+
+        Propiedad pública para que `presentation/` no toque `_subscribers`.
+        6d reescribirá el broadcaster contra el Protocol §6.10/§6.11 y este
+        método quedará reemplazado por `subscriber_count()` + filtros explícitos.
+        """
+        return list(self._subscribers.keys())
+
+    def latest_state(self, camera_id: str) -> dict | None:
+        """Último estado conocido para una cámara, o `None` si no hay.
+
+        Propiedad pública para que `presentation/` no toque `_latest_state`.
+        """
+        return self._latest_state.get(camera_id)
+
+    def latest_states(self) -> dict[str, dict]:
+        """Copia del cache de últimos estados por cámara.
+
+        Mantenida para el endpoint `GET /cameras` que devuelve el snapshot
+        global. 6d puede revisitar si conviene seguir exponiéndolo.
+        """
+        return dict(self._latest_state)
+
     async def unsubscribe(self, camera_id: str, queue: asyncio.Queue):
         """Removes a subscriber."""
         async with self._lock:

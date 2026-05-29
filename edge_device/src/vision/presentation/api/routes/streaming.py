@@ -57,14 +57,15 @@ async def list_cameras():
     """Lists active cameras."""
     broadcaster = get_broadcaster()
     return {
-        "cameras": list(broadcaster._subscribers.keys()),
-        "latest_states": broadcaster._latest_state
+        "cameras": broadcaster.subscribed_cameras(),
+        "latest_states": broadcaster.latest_states(),
     }
 
 @app.get("/snapshot/{camera_id}")
 async def get_snapshot(camera_id: str):
     """Gets latest state of a camera (polling fallback)."""
     broadcaster = get_broadcaster()
-    if camera_id not in broadcaster._latest_state:
+    state = broadcaster.latest_state(camera_id)
+    if state is None:
         raise HTTPException(404, "Camera not found")
-    return broadcaster._latest_state[camera_id]
+    return state
