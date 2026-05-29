@@ -54,10 +54,10 @@ Alcance de F9 según DHU-024 (`documentation/lean-inception/4-decisiones/DECISIO
 **Decisión del usuario, registrada en handoff F7 §6.1 línea 157**: no se etiqueta dataset, no se mide precisión/recall/mAP dentro del sprint TTH-08. F8 queda fuera del sprint como sub-fase de **datos** (etiquetado manual con Roboflow/CVAT/labelImg), ~1.5 SP estimados.
 
 **Implicancia sobre el 88.2%** (D-005, `DECISIONS.md` líneas 70–79):
-- El valor 88.2% es el número aspiracional del documento de tesis original.
+- El valor 88.2% es el número aspiracional declarado en la spec original.
 - **No tiene sustento reproducible al cierre de TTH-08**: no hay dataset etiquetado ni medición cuantitativa propia.
-- Será **sustituido por el mAP real** medido cuando corra F8. Si la realidad medida es peor que 88.2%, se reporta la realidad (integridad académica per D-005).
-- Mientras tanto, **no debe afirmarse como validado** en la tesis ni ante el jurado — debe declararse como "pendiente de medición, ver F8".
+- Será **sustituido por el mAP real** medido cuando corra F8. Si la realidad medida es peor que 88.2%, se reporta la realidad (per D-005).
+- Mientras tanto, **no debe afirmarse como validado** en docs derivados — debe declararse como "pendiente de medición, ver F8".
 
 Estado del diferimiento registrado en:
 - `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` §6.1 (origen)
@@ -144,4 +144,4 @@ Ninguno bloquea el cierre de TTH-08 como Parcial. F8 + F9.z requieren decisión 
 - Abrir PR con este handoff como descripción.
 - El agente **no mergea ni hace push** — esa decisión queda fuera de su scope.
 
-Con Fase 9 mergeada, **TTH-08 cierra como Parcial — F8 diferida, C7.6 reabierta como F9.z**, con todos los entregables documentales prometidos por DHU-024 §5 entregados, cross-refs bidireccionales consistentes, y el backlog post-TTH-08 explícito y visible para que el jurado y el equipo vean la versión honesta: *"medimos lo que pudimos, lo demás está nombrado"*.
+Con Fase 9 mergeada, **TTH-08 cierra como Parcial — F8 diferida, C7.6 reabierta como F9.z**, con todos los entregables documentales prometidos por DHU-024 §5 entregados, cross-refs bidireccionales consistentes y el backlog post-TTH-08 explícito como deuda separable.
