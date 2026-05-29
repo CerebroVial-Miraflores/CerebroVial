@@ -498,6 +498,19 @@ si Fase 5 implementa ambos modos o elimina uno.
 > eliminando `SyncAggregator`; solo `AsyncAggregator` sobrevive en el
 > dominio.
 
+> **Nota (Sesión 3 / DHU-026, 2026-05-28):** el principio "caller persiste"
+> declarado arriba quedó **superseded** en modo async-only (que es el único
+> modo en MVP1 tras §10) por §11 + DHU-026: el **worker** del
+> `AsyncAggregator` es responsable de la persistencia y del manejo de
+> errores §11.1/§11.2. Save y output-queue son paths **independientes** del
+> mismo `TrafficData` computado (un fallo de save no saca el item de la
+> output queue; `flush()` retorna lo computado-y-no-dropeado, no lo
+> persistido). Las otras consecuencias de este Cambio 2 (cómputo separado en
+> función pura `_compute.py`, repositorio inyectado por constructor, tests
+> con repo fake, `flush()` retorna `list[TrafficData]`) siguen vigentes. Ver
+> DHU-026 para el razonamiento completo y el supersede explícito sobre §4.4
+> Cambio 2 y sobre el docstring del Protocol `AsyncAggregator`.
+
 Impacto: los aggregators concretos, los pipelines y el use case que los
 orquesta se reescriben en Fases 4 y 5.
 
@@ -709,7 +722,7 @@ causaba que `flow_rate_per_min` no fuera realmente veh/min.
 
 | Campo | Tipo | Definición | Validación |
 |---|---|---|---|
-| `mean_occupancy` | `float` | Promedio sobre frames de la ventana de `Σ(bbox_area ∩ polygon_area) / polygon_area`. Métrica primaria de "qué tan lleno está el carril visible". | `[0.0, 1.0]` |
+| `mean_occupancy` | `float` | Promedio sobre frames de la ventana de `Σ(bbox_area ∩ polygon_area) / polygon_area`. Métrica primaria de "qué tan lleno está el carril visible". Ver **DHU-025 (Sesión 3 / Fase 5a, 2026-05-28)** para la interpretación del `Σ` como **unión** de bboxes (no suma aritmética con clip): el rango `[0.0, 1.0]` sin clip explícito + la semántica "fracción cubierta" prevalecen sobre la lectura literal del `Σ`. | `[0.0, 1.0]` |
 | `density_vehicles_per_km` | `Optional[float]` | `unique_vehicles / zone.segment_length_meters * 1000`. Requiere que la zona configurada tenga el atributo `segment_length_meters` (calibración de campo). | `None` si la zona carece de `segment_length_meters`. `>= 0` cuando no es `None`. |
 
 **Cambios respecto al actual:**

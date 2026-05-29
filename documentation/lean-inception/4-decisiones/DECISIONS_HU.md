@@ -7,7 +7,7 @@
 > **Relación con `DECISIONS.md`:** El documento `DECISIONS.md` registra decisiones técnicas del producto (arquitectura, modelo, datos). Este documento registra decisiones metodológicas sobre cómo se redacta el backlog. Los códigos no se solapan: `D-xxx` para técnicas, `DHU-xxx` para HUs.
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-05-27 (**DHU-023 y DHU-024 agregadas (misma fecha, sesiones de encuadre distintas).** **DHU-023: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. **DHU-024: encuadre cerrado de TTH-08 (refactor del módulo de visión computacional).** Congela el alcance del refactor (11 CTs operativos, no solo demostrables — el sprint se dimensiona realistamente en 11-13 SP), arquitectura objetivo (DDD completo con capas espejo de `core_management_api`), limpieza vía migración Alembic de las tablas legacy `vision_tracks`/`vision_flows`, preservación del modelo YOLO + ROI calibrada (`conf/vision/javier_prado.yaml`) + assets de demo, contrato técnico de `vision_aggregates` LISTO sin cableado real a `ia_prediction_service/` (esa integración queda como F41 explícitamente fuera de scope), resolución embebida de C7.6 (deuda CUDA→CPU) al reescribir `requirements.txt` desde cero, y planificación del levantamiento formal de la regla CLAUDE.md sobre `edge_device/src/vision/` en el primer commit del sprint (la regla sigue activa hasta entonces). Decisión cerrada al momento de colocarse; consume y preserva D-007 sin reversarlo. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
+> **Última actualización:** 2026-05-28 (**DHU-026 agregada: persistencia en el worker del `AsyncAggregator` para Fase 5 de TTH-08 (paso 0 de 5b); §11 supersede a §4.4 Cambio 2 en async-only MVP1; save y output-queue como paths independientes; reabre Fase 3 únicamente para corregir el docstring del Protocol `AsyncAggregator` + nota cruzada en §4.4 del documento de diseño. DHU-025 agregada en el mismo turno previo: extensión de `ZoneVehicleCount` con `occupancy: float` + formalización del cómputo geométrico de `mean_occupancy`; reabre Fase 3 (entity) y Fase 4a (zone_counter) bajo control DHU.** Previa: 2026-05-27, **DHU-023 y DHU-024 agregadas (misma fecha, sesiones de encuadre distintas).** **DHU-023: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. **DHU-024: encuadre cerrado de TTH-08 (refactor del módulo de visión computacional).** Congela el alcance del refactor (11 CTs operativos, no solo demostrables — el sprint se dimensiona realistamente en 11-13 SP), arquitectura objetivo (DDD completo con capas espejo de `core_management_api`), limpieza vía migración Alembic de las tablas legacy `vision_tracks`/`vision_flows`, preservación del modelo YOLO + ROI calibrada (`conf/vision/javier_prado.yaml`) + assets de demo, contrato técnico de `vision_aggregates` LISTO sin cableado real a `ia_prediction_service/` (esa integración queda como F41 explícitamente fuera de scope), resolución embebida de C7.6 (deuda CUDA→CPU) al reescribir `requirements.txt` desde cero, y planificación del levantamiento formal de la regla CLAUDE.md sobre `edge_device/src/vision/` en el primer commit del sprint (la regla sigue activa hasta entonces). Decisión cerrada al momento de colocarse; consume y preserva D-007 sin reversarlo. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
 
 ---
 
@@ -39,6 +39,8 @@
 | DHU-022 | Nomenclatura de roles del sistema: `operator/manager/admin` como claims técnicos canónicos + labels en español en el frontend (cierre de Delta-02) | 2026-05-20 | Cerrada |
 | DHU-023 | Semántica temporal del estado vigente: activación, ratificación y cambio-dentro-de-estrategia (candidata, a resolver en encuadre de HU-07) | 2026-05-27 | Abierta/Candidata |
 | DHU-024 | Encuadre de TTH-08: refactor del módulo de visión computacional (alcance operativo completo 11 CTs, DDD completo, borrado Alembic de vision_tracks/vision_flows, C7.6 resuelta dentro del refactor, levantamiento planificado de la regla CLAUDE.md, F41 fuera de scope) | 2026-05-27 | Cerrada |
+| DHU-025 | Extensión de `ZoneVehicleCount` con `occupancy: float` y formalización del cómputo geométrico de `mean_occupancy` (Fase 5 TTH-08): elección de interpretación-unión sobre §5.4, approach geométrico canvas-del-bbox del polígono, reapertura formal de Fase 3 (entity) y Fase 4a (zone_counter) | 2026-05-28 | Cerrada |
+| DHU-026 | Persistencia en el worker del `AsyncAggregator`: §11 supersede de §4.4 Cambio 2 en async-only MVP1 (Fase 5 TTH-08, paso 0 de 5b). Save y output-queue como paths independientes; `flush()` retorna lo computado, no lo persistido. Reabre Fase 3 únicamente para corregir docstring del Protocol + nota cruzada en §4.4 | 2026-05-28 | Cerrada |
 
 ---
 
@@ -2563,6 +2565,297 @@ NO se levanta la regla en esta rama documental — solo se prepara el levantamie
 
 ---
 
+## DHU-025 — Extensión de `ZoneVehicleCount` con `occupancy` y formalización del cómputo geométrico de `mean_occupancy` (CERRADA)
+
+**Fecha:** 2026-05-28.
+**Estado:** Cerrada.
+**TTH afectada:** TTH-08, Fase 5 (Application Layer).
+**Decisiones que extiende:** DHU-024 (encuadre TTH-08). Reabre operativamente el cierre
+de Fase 3 (dominio) y Fase 4a (ZoneCounter) — apertura formalizada por este DHU.
+
+### Contexto
+
+Fase 5 de TTH-08 (Application Layer) requiere implementar la capa de cómputo que produce
+`TrafficData` canónico (definido en `documentation/docs/tth-08-fase1-diseno.md` §5.4) a
+partir del stream de `FrameAnalysis` que sale del pipeline de visión. Durante la auditoría
+de arranque de Fase 5 se detectó que **el Protocol `ZoneCounter` y la entidad
+`ZoneVehicleCount`, cerrados en Fase 3, no contienen la información necesaria para
+computar `mean_occupancy`**, uno de los campos validados del schema canónico §5.4.
+
+### Hallazgo
+
+`TrafficData.mean_occupancy` (§5.4, definición literal del diseño cerrado):
+
+> | `mean_occupancy` | `float` | Promedio sobre frames de la ventana de `Σ(bbox_area ∩ polygon_area) / polygon_area`. Métrica primaria de "qué tan lleno está el carril visible". | `[0.0, 1.0]` |
+
+El cómputo de `bbox ∩ polygon` requiere acceso al polígono de la zona, que solo conoce
+`ZoneCounter`. Sin embargo, la entidad `ZoneVehicleCount` (cerrada en Fase 3) expone
+únicamente:
+
+```python
+@dataclass(frozen=True)
+class ZoneVehicleCount:
+    zone_id: ZoneId
+    count: int
+    vehicle_ids: list[VehicleId]
+```
+
+No hay campo de occupancy, ni el aggregator (consumidor de los `FrameAnalysis`) recibe el
+polígono o equivalente geométrico para reconstruirlo. **El contrato actual del bounded
+context de zonas no permite cumplir el contrato §5.4 de `TrafficData`**. Esta es una
+contradicción interna del diseño cerrado en Fase 1, no resoluble sin modificar el dominio.
+
+### Opciones evaluadas
+
+| Opción | Descripción | Trade-off |
+|---|---|---|
+| **A** (elegida) | Extender `ZoneVehicleCount` con `occupancy: float ∈ [0.0, 1.0]`. `ZoneCounter` lo computa (ya conoce el polígono). El aggregator promedia sobre frames. | DDD-ortodoxo: la geometría queda en el bounded context de zonas. Reabre Fase 3 (entity) + Fase 4a (zone_counter) — cambio acotado y trazable. |
+| B | Inyectar el dict `{ZoneId: polygon}` al aggregator. El aggregator computa el overlap. | Saca geometría del bounded context de zonas, viola DDD. Dominio queda intacto pero el aggregator se acopla al detalle geométrico. |
+| C | Crear entity intermedia (e.g., `FrameZoneOccupancy`) que `ZoneCounter` produce además de `ZoneVehicleCount`. | Dominio crece más (dos entities donde una basta), separación cleaner pero overkill para una métrica derivada simple. |
+
+### Decisión
+
+**Se elige la opción A.** Justificación:
+
+1. La occupancy es propiedad geométrica de la zona, no del aggregator → su cómputo
+   pertenece al bounded context de zonas (DDD ortodoxo).
+2. Cambio acotado: una columna nueva en la entity + un cálculo en una clase. Sin
+   ramificaciones cruzadas al resto del dominio.
+3. Mantiene a `ZoneCounter` como única autoridad sobre los polígonos (no se duplica el
+   conocimiento geométrico hacia el aggregator).
+4. Compatible con el principio del repo: "si un contrato no es implementable se abre DHU,
+   no se modifica en silencio" — este documento es esa apertura formal.
+
+### Fórmula de occupancy: lectura literal de §5.4 y elección
+
+§5.4 define `mean_occupancy` literal como
+`Promedio sobre frames de la ventana de Σ(bbox_area ∩ polygon_area) / polygon_area`, rango
+`[0.0, 1.0]`, descrita semánticamente como **"qué tan lleno está el carril visible"**.
+
+El `Σ` es notación matemática de suma. Aplicada literal a varios bboxes solapados en la
+misma zona, la suma de áreas de intersección puede exceder `polygon_area` (cada solapamiento
+double-cuenta), forzando un clip a 1.0 que **satura justo en el régimen de congestión alta
+que es el que más importa medir**. Esa lectura es internamente inconsistente con la propia
+validación `[0.0, 1.0]` del campo, que no menciona clip ni truncamiento — lo que sugiere
+que el cómputo debe estar naturalmente acotado.
+
+Dos interpretaciones operativas posibles del texto:
+
+- **Unión** (elegida): `(área de la unión de bboxes) ∩ polígono / polygon_area`.
+  Implementación: `bitwise_or` sobre las máscaras de todos los bboxes de la zona →
+  `bitwise_and` con `zone_mask` → `countNonZero / polygon_area`. Naturalmente ∈ [0, 1] sin
+  clip. Alineada con la semántica "qué tan lleno está el carril visible" (un peatón parado
+  encima de un auto no agrega *fullness* sobre el área que el auto ya cubre).
+- **Suma + clip** (descartada): `Σ(bbox_area ∩ polygon_area) / polygon_area`, clipped a 1.0.
+  Fiel a la letra del `Σ`, pero satura en congestión alta y obliga a clip que §5.4 no menciona.
+
+**Se elige la unión**, registrando explícitamente que se interpreta el `Σ` de §5.4 como
+notación informal de "área cubierta por vehículos" (suma de áreas no solapadas), no como
+suma aritmética con solapamiento double-counted. Esta elección preserva las dos garantías
+de §5.4 (rango `[0.0, 1.0]` sin clip y semántica de "fracción del carril cubierta") sin
+contradecir el `Σ` literal, que queda reinterpretado como "área-unión".
+
+Si en el futuro se quisiera una métrica de "intensidad" (Σ + clip, sensible al solapamiento
+como proxy de superposición de vehículos), se modela como métrica separada en F41
+(Trabajos Futuros), no como reinterpretación de `mean_occupancy`.
+
+### Approach geométrico
+
+Implementación de la occupancy por frame en `ZoneCounter.count(...)`:
+
+- **Canvas del bounding-box del polígono, no del frame.** La intersección
+  `bbox ∩ polygon` está siempre contenida en el bounding-box del polígono → trabajar a
+  esa escala local. Esto **no cambia la firma del `__init__`** (no requiere pasar
+  `frame_shape`, evita acoplamiento ZoneCounter → builder, y es robusto si el feed entrega
+  otra resolución).
+- En `__init__`, por cada zona: extraer `bbox_poly = (xmin, ymin, xmax, ymax)` del polígono,
+  trasladar el polígono a coords locales (`pt - (xmin, ymin)`), construir `zone_mask` con
+  `cv2.fillPoly`, precomputar `polygon_area = cv2.countNonZero(zone_mask)`. Una sola vez
+  por zona.
+- En `count()`, por frame: para cada detección, clipear el bbox al `bbox_poly`, trasladar
+  a coords locales, construir `union_mask` con `bitwise_or` de los rectángulos de todos
+  los bboxes que tocan la zona. `frame_occupancy = countNonZero(union_mask & zone_mask) / polygon_area`.
+- Dependencia nueva: `cv2` (ya es dep del módulo `vision/`, no se agrega `shapely`).
+
+El aggregator de Fase 5 simplemente promedia `occupancy` sobre los frames de la ventana
+para obtener `TrafficData.mean_occupancy`. Sin geometría duplicada en application/.
+
+### Alcance del cambio
+
+| Archivo | Cambio | Fase reabierta |
+|---|---|---|
+| `edge_device/src/vision/domain/entities.py` | `ZoneVehicleCount` gana campo `occupancy: float` con validación `0.0 ≤ occupancy ≤ 1.0` en `__post_init__`. | Fase 3 (dominio) |
+| `edge_device/src/vision/infrastructure/zones/zone_counter.py` | `__init__` precomputa `zone_mask` y `polygon_area` por zona en canvas local del bbox del polígono. `count()` retorna `ZoneVehicleCount` con `occupancy` computado vía `bitwise_or` + `bitwise_and` + `countNonZero`. | Fase 4a (zone_counter) |
+| `edge_device/tests/vision/integration/test_zone_counter_basic.py` y tests asociados | Ampliados con casos de occupancy: bbox fuera (0.0), bbox contenido (área-bbox / área-polígono), bbox parcial, múltiples bboxes solapados (verifica unión vs suma aritmética). El test de aceptación §6.1 (regresión C1.8) se conserva sin alteración semántica. | Fase 4a (zone_counter) |
+| `documentation/docs/tth-08-fase1-diseno.md` | Sin cambios. Este DHU registra la interpretación de §5.4 sin modificar el texto del diseño. | — |
+
+### Trazabilidad
+
+- Fuente del hallazgo: auditoría de arranque de Fase 5 TTH-08, 2026-05-28, sesión claude.ai
+  con Cesar.
+- Decisión #9 en plan de Fase 5 (`/Users/rasec/.claude/plans/fase-4-de-tth-08-splendid-hoare.md` §2).
+- §5.4 del documento de diseño (`documentation/docs/tth-08-fase1-diseno.md`) — cita literal
+  preservada en este DHU para auditabilidad futura.
+
+### Documentos relacionados
+
+- `documentation/docs/tth-08-fase1-diseno.md` §5.4 (definición de `mean_occupancy`) + §4.2
+  (Protocol `ZoneCounter` cerrado en Fase 3).
+- `edge_device/src/vision/domain/entities.py` (entidad a extender).
+- `edge_device/src/vision/infrastructure/zones/zone_counter.py` (implementación a extender).
+- DHU-024 — encuadre TTH-08 que este DHU reabre operativamente sobre Fase 3/4a.
+
+---
+
+## DHU-026 — Persistencia en el worker del `AsyncAggregator`: §11 supersede de §4.4 Cambio 2 en async-only MVP1 (CERRADA)
+
+**Fecha:** 2026-05-28.
+**Estado:** Cerrada.
+**TTH afectada:** TTH-08, Fase 5 (paso 0 de 5b).
+**Decisiones que extiende:** DHU-024 (encuadre TTH-08), DHU-025 (extensión de
+`ZoneVehicleCount`). Reabre la **Fase 3** únicamente para corregir el docstring
+del Protocol `AsyncAggregator` y la sección §4.4 Cambio 2 del documento de
+diseño.
+
+### Contexto
+
+Al iniciar el paso 0 de 5b (reconciliación §4.4 Cambio 2 vs §11), la auditoría
+detectó que el documento `tth-08-fase1-diseno.md` y el Protocol del dominio
+`AsyncAggregator` (`edge_device/src/vision/domain/protocols.py`) contienen un
+**conflicto interno no resuelto explícitamente** sobre quién persiste en modo
+async-only — el único modo MVP1 tras §10. Implementar el worker de 5b sin
+declarar la decisión sería reabrir un contrato de Fase 3 en silencio, igual que
+el riesgo que DHU-025 evitó para `ZoneVehicleCount`.
+
+### Hallazgo (citas literales)
+
+**§4.4 Cambio 2 (Sesión 1), `tth-08-fase1-diseno.md:476-485`** — el caller persiste:
+
+> "Cambio: `add(analysis)` solo acumula; `flush()` calcula y **retorna**
+> `list[TrafficData]`. **La persistencia es responsabilidad del caller** (use
+> case en `application/`), que pasa el resultado al `TrafficRepository`.
+>
+> Razón: separar cómputo de persistencia es lo que prescribe DDD ortodoxo. La
+> auditoría de Fase 0 §3.2 identificó la duplicación masiva entre sync y async
+> aggregator: ambos contenían cómputo idéntico + persistencia mezclada. Separar
+> permite (a) una función pura de cómputo reusable entre los dos modos, (b)
+> tests sin mockear el repository, (c) cumplir Single Responsibility."
+
+**Docstring del Protocol `AsyncAggregator` (`domain/protocols.py:72-73`)** — caller
+persiste, en el código:
+
+> "The caller (typically a use case in `application/`) is responsible for
+> persistence via the `TrafficRepository` Protocol."
+
+**§11 (Sesión 3), `tth-08-fase1-diseno.md:1218-1241`** — el worker persiste:
+
+> "11.1 Regla 1 — errores de `save`: **El worker** captura la excepción, hace
+> `logger.exception` … incrementa el contador `aggregation_errors`, y continúa
+> el loop. … El worker nunca mata el pipeline principal de captura/detección:
+> un fallo de persistencia degrada la serie histórica, no la operación en vivo."
+>
+> "11.2 Regla 2 — cola llena (DROP-NEWEST): … ante `asyncio.QueueFull` se
+> descarta la ventana **entrante** … El worker de persistencia no tiene
+> [el fallback del broadcaster SSE] — la BD es el destino, no una fuente
+> alterna. … La cola del aggregator se dimensiona más grande … default sugerido
+> **~256**."
+
+§11 modela explícitamente "**el worker**" como el que captura errores de `save`,
+lo llama "**worker de persistencia**", y habla de "**la cola del aggregator**".
+El lenguaje literal de §11 es **worker-persiste**, en oposición directa a §4.4
+Cambio 2.
+
+**Sesión 3 no rectificó §4.4 Cambio 2 ni el docstring del Protocol**. La única
+nota de Sesión 3 sobre §4.4 declara supersede de §6.6 (eliminación de
+`SyncAggregator`), pero deja el principio "caller persiste" vigente
+literalmente en dos fuentes oficiales.
+
+### Opciones evaluadas
+
+| Opción | Descripción | Trade-off |
+|---|---|---|
+| **(a)** (elegida) | Worker-persiste. §11 supersede tácita explicitada vía este DHU + corrección de las dos fuentes contradictorias. El worker del `AsyncAggregator` corre la persistencia con §11.1/§11.2. | Cumple la letra de §11 directamente. Las garantías que motivaron §4.4 Cambio 2 sobreviven: cómputo separado en `_compute.py` (5a), repositorio inyectado por constructor, tests con repo fake. |
+| (b) | Caller-persiste. AsyncAggregator solo computa; el use case del caller corre un thread/coroutine persister que aplica §11. | Conserva §4.4 + Protocol al pie, pero **no cambia el runtime** — el caller termina necesitando un worker persister desacoplado igual que (a), porque persistir síncrono bloquearía el pipeline. Pura indirección sin ganancia operativa, contra la letra de §11 que habla del worker. |
+| (c) | `add+flush` síncronos sin worker async dentro del aggregator. | Elimina el async-real del Protocol, mata el aislamiento de I/O que §6.6 conservó a propósito. Descartada. |
+
+### Decisión
+
+**Se elige la opción (a).** Justificación:
+
+1. **(a) y (b) no difieren en runtime.** Ambas necesitan un worker async que
+   persiste con §11 — si el caller persistiera síncronamente bloquearía el
+   pipeline (operación en vivo), que es exactamente lo que §11.1 protege contra.
+   (b) solo agrega una capa organizacional para satisfacer la letra de §4.4 sin
+   ganancia operativa. **Mismo comportamiento, más arquitectura.**
+2. **Single Responsibility de §4.4 es más débil acá de lo que aparenta.** Aplica
+   a entidades de dominio. `AsyncAggregator` no es entidad de dominio: es
+   componente de aplicación con lifecycle (worker thread, `force_flush`,
+   `stop`). Que un componente de pipeline async sea responsable de "agregar y
+   darle durabilidad a lo agregado" es una responsabilidad cohesiva, y como
+   depende del Protocol `TrafficRepository` (abstracción inyectada, no Postgres
+   concreto), **Dependency Inversion queda intacto**. (a) no viola DDD; lo
+   cumple por la vía correcta para esta clase de componente.
+3. **Las garantías de §4.4 que importan sobreviven en (a)**:
+   - Función pura de cómputo reusable: `_compute.py` ya extraída en 5a.
+   - Tests sin mockear el repo real: el repo se inyecta por constructor, los
+     tests inyectan un fake.
+   - Separación cómputo/persistencia: la pura calcula, el worker delega el
+     save a la abstracción `TrafficRepository`.
+   Lo único que se relaja es "el caller orquesta el save explícitamente",
+   que en async-only es difícil de combinar con un worker thread continuo.
+
+### Refinamiento de implementación: save y output-queue independientes
+
+El plan inicial decía "el worker persiste antes de pushear a output queue,
+`flush()` retorna lo persistido". **Se refina: `flush()` retorna lo computado,
+no lo persistido.** La razón viene de la propia §11.1:
+
+> "un fallo de persistencia degrada la serie histórica, no la operación en vivo".
+
+La output queue es la **operación en vivo** (telemetría). El `save` es la
+**serie histórica**. §11.1 los declara independientes. Por lo tanto:
+
+- `compute → save best-effort (§11.1: try/except + aggregation_errors + continue) e independientemente push a output queue best-effort (§11.2: drop-newest + data_dropped)`.
+- **Un fallo de save no saca el item de la output queue** — la operación en
+  vivo sobrevive, exactamente lo que §11.1 promete.
+- `flush()` drena la output queue = lo computado-y-no-dropeado, alineado con
+  el docstring del Protocol que dice "already computed and waiting in the
+  output queue" (no dice "persisted"). Bonus: el docstring de `flush()` no
+  necesita corrección — solo la cláusula "caller persiste".
+
+### Alcance del cambio
+
+El registro se aplica en **tres lugares** simultáneamente para que el contrato
+quede coherente en registro, código y diseño — no un DHU que hay que ir a
+buscar mientras dos fuentes oficiales dicen lo opuesto.
+
+| Lugar | Cambio | Razón |
+|---|---|---|
+| Este DHU-026 en `DECISIONS_HU.md` | Fuente canónica de la decisión (paralelo a DHU-025). | Trazabilidad en el registro de decisiones. |
+| Docstring del Protocol `AsyncAggregator` en `edge_device/src/vision/domain/protocols.py` | Reemplazar la frase literal "the caller … is responsible for persistence" por la cláusula "worker-persiste en MVP1, §11 / DHU-026" + nota sobre save y output-queue independientes. | Hoy el código contradice lo que el worker va a hacer línea por línea. Dejarlo así es deuda activa durante toda 5b. Reabre Fase 3 únicamente para esta corrección, autorizado por este DHU. |
+| Nota cruzada en `tth-08-fase1-diseno.md` §4.4 Cambio 2 | Una línea apuntando a DHU-026 para que quien lea §4.4 sepa que el caller-persiste quedó superseded en modo async. | El conflicto vive en tres lugares; si no se anota en §4.4 queda mintiendo. |
+
+### Trazabilidad
+
+- Fuente del hallazgo: paso 0 de 5b TTH-08, sesión claude.ai 2026-05-28 con
+  Cesar, después del cierre limpio de 5a (DHU-025 + ZoneVehicleCount.occupancy
+  + `_compute.py`).
+- Plan de Fase 5, §5b paso 0 (`/Users/rasec/.claude/plans/fase-4-de-tth-08-splendid-hoare.md`).
+- Decisión cerrada en mismo turno; salida (a) elegida sobre (b) por equivalencia
+  de runtime y sobre (c) por preservación del aislamiento async de §6.6.
+
+### Documentos relacionados
+
+- `documentation/docs/tth-08-fase1-diseno.md` §4.4 Cambio 2 (Sesión 1) + §11
+  (Sesión 3) + nota cruzada que este DHU agrega al §4.4.
+- `edge_device/src/vision/domain/protocols.py` (docstring del `AsyncAggregator`
+  a corregir).
+- DHU-024 — encuadre TTH-08.
+- DHU-025 — precedente del patrón "abrir DHU cuando un contrato necesita
+  cambiar bajo Fase posterior".
+
+---
+
 ---
 
 ## Resumen de impacto en los bloques redactados hasta la fecha
@@ -2573,7 +2866,7 @@ NO se levanta la regla en esta rama documental — solo se prepara el levantamie
 | Bloque B | HU-02 a HU-09 | (ninguna nueva) | DHU-003, DHU-005 (refinada con A y B), DHU-006, DHU-007 |
 | Bloque C | HU-10, HU-11, HU-12 (HU-13 eliminada por DHU-011) | TTH-04, TTH-05 | DHU-005, DHU-006, DHU-007, DHU-008, DHU-009, DHU-010, DHU-011 |
 | Bloque D | HU-13, HU-14, HU-15 | (ninguna nueva del MVP1); TTH-06 agregada como Trabajos Futuros; CT-04.5 de TTH-04 ampliada | DHU-013 (clasificación), DHU-014 (decisiones de redacción) |
-| Bloque E | (ninguna HU operativa) | TTH-07, TTH-08, TTH-09, TTH-10, TTH-11 | DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH durante la redacción); DHU-024 (encuadre cerrado del refactor de TTH-08: alcance 11 CTs operativos, arquitectura DDD completa, borrado Alembic de vision_tracks/vision_flows, C7.6 resuelta dentro del refactor, F41 fuera de scope, levantamiento de la regla CLAUDE.md planificado al primer commit del sprint) |
+| Bloque E | (ninguna HU operativa) | TTH-07, TTH-08, TTH-09, TTH-10, TTH-11 | DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH durante la redacción); DHU-024 (encuadre cerrado del refactor de TTH-08: alcance 11 CTs operativos, arquitectura DDD completa, borrado Alembic de vision_tracks/vision_flows, C7.6 resuelta dentro del refactor, F41 fuera de scope, levantamiento de la regla CLAUDE.md planificado al primer commit del sprint); DHU-025 (extensión de `ZoneVehicleCount` con `occupancy: float` + cómputo geométrico de `mean_occupancy` por unión, reapertura formal de Fase 3/4a en Fase 5 de TTH-08); DHU-026 (persistencia en el worker del `AsyncAggregator` para Fase 5 de TTH-08: §11 supersede a §4.4 Cambio 2 en async-only MVP1, save y output-queue como paths independientes, reapertura mínima de Fase 3 para corregir docstring del Protocol + nota cruzada en §4.4) |
 | Bloque F | HU-16, HU-17 (F12+F13 fusionadas con F30 inglobada; F14) | (ninguna nueva) | DHU-016 (decisiones consolidadas de redacción del Bloque F en diez subsecciones) |
 | MVP2 | HU-18, HU-19, HU-20, HU-21 (HU-09 cerrada previamente en `HU_BLOQUE_B.md`) | (ninguna nueva) | DHU-017 (decisiones consolidadas de redacción del MVP2 en diez subsecciones) |
 | Transversal | — | — | DHU-012 (auditoría de coherencia documental, aplica a todos los bloques y documentos relacionados); DHU-018 (patrón "Resumen ejecutivo" aplicado retroactivamente a las 21 HUs, aditivo y sin modificar contenido sustantivo); DHU-019 (decisiones metodológicas para la redacción del documento RF/RNF, ejecuta la sesión dedicada que DHU-007 declaró pendiente; aditiva sobre las HUs en su pasada de referencias `→ RNF-XXX-NN` sobre los Candidatos a RNF); DHU-020 (semántica de ControlView, cierre de Delta-08; decisión de alineación especificación↔código que ratifica la semántica pasiva de HU-05 y alinea el código a ella, sin modificar la redacción de ninguna HU; afecta principalmente al Bloque B vía la cadena HU-05→HU-08); DHU-021 (decisiones metodológicas de redacción del SDD, 17 de redacción + 4 ajustes derivados de la verificación SDD↔repo; consolida el cierre del SDD sin reabrir HUs/TTH/`D-`); DHU-022 (nomenclatura de roles `operator/manager/admin` con labels en español, cierre de Delta-02; decisión de producto que TTH-01 y las HUs con acceso por rol consumirán) |

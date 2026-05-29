@@ -1,211 +1,230 @@
+"""Asynchronous traffic aggregator: Protocol-conforme + worker §11.
+
+Implementa el contrato del Protocol `domain.protocols.AsyncAggregator`. El
+worker thread es dueño de la persistencia (DHU-026, supersede de §4.4 Cambio
+2 en modo async-only MVP1).
+
+Save y push a output queue son **paths independientes best-effort** para el
+mismo `TrafficData` computado:
+
+- §11.1: `repository.save` falla → `logger.exception` + counter
+  `aggregation_errors` + el loop continúa. Sin retry, sin DLQ (§11.4).
+- §11.2: output queue llena → drop-newest (la ventana entrante se descarta) +
+  counter `data_dropped`.
+- Un fallo de save **NO** saca el item de la output queue (la operación en
+  vivo sobrevive, exactamente lo que §11.1 promete).
+
+`flush()` drena la output queue = lo computado-y-no-dropeado (alineado con el
+docstring del Protocol). NO retorna lo persistido.
+
+Tamaño default de la output queue: 256 (§11.2 "sugerido ~256"),
+parametrizable por la variable de entorno `VISION_AGGREGATOR_QUEUE_SIZE`.
+
+Logging vía `logging.getLogger(__name__)` por archivo (§6.3 / §12).
 """
-Asynchronous aggregator that does not block the main pipeline.
-"""
-import time
-import threading
+from __future__ import annotations
+
+import logging
+import os
 import queue
-from typing import List
-from collections import defaultdict
+import threading
+from datetime import datetime, timezone
+
 from ...domain.entities import FrameAnalysis, TrafficData
 from ...domain.repositories import TrafficRepository
+from ...domain.value_objects import CameraId, ZoneId
+from ._compute import compute_traffic_data
 
-class AsyncTrafficDataAggregator:
+logger = logging.getLogger(__name__)
+
+_DEFAULT_OUTPUT_QUEUE_MAXSIZE = int(
+    os.environ.get("VISION_AGGREGATOR_QUEUE_SIZE", "256")
+)
+_FORCE_FLUSH_TIMEOUT_S = 10.0
+_STOP_JOIN_TIMEOUT_S = 5.0
+
+
+class AsyncTrafficAggregator:
+    """Aggregator basado en worker thread que es dueño de la persistencia.
+
+    Cumple `domain.protocols.AsyncAggregator`: `add` / `flush` / `force_flush`
+    / `stop`. Ver el docstring del Protocol para el contrato público.
     """
-    Aggregator that uses a separate thread for flushing to DB/CSV.
-    The main pipeline never waits for persistence I/O.
-    """
-    
+
     def __init__(
-        self, 
-        repository: TrafficRepository, 
-        window_duration: float = 60.0,
-        flush_queue_size: int = 100
-    ):
-        self.repository = repository
-        self.window_duration = window_duration
-        
-        # Thread-safe buffer
-        self.buffer: List[FrameAnalysis] = []
-        self.buffer_lock = threading.Lock()
-        self.last_flush_time = time.time()
-        
-        # Queue for data ready to persist
-        self.flush_queue = queue.Queue(maxsize=flush_queue_size)
-        
-        # Worker thread for I/O
-        self._stop_event = threading.Event()
-        self._worker_thread = threading.Thread(
-            target=self._flush_worker,
-            name="PersistenceWorker",
-            daemon=True
+        self,
+        repository: TrafficRepository,
+        camera_id: CameraId,
+        window_duration_s: float,
+        zone_segment_lengths: dict[ZoneId, float | None] | None = None,
+        output_queue_maxsize: int = _DEFAULT_OUTPUT_QUEUE_MAXSIZE,
+    ) -> None:
+        if window_duration_s <= 0:
+            raise ValueError("window_duration_s debe ser > 0")
+        self._repository = repository
+        self._camera_id = camera_id
+        self._window_duration_s = window_duration_s
+        self._zone_segment_lengths: dict[ZoneId, float | None] = (
+            dict(zone_segment_lengths) if zone_segment_lengths else {}
         )
-        self._worker_thread.start()
 
-    def aggregate_and_persist(self, analysis: FrameAnalysis):
-        """
-        Adds analysis to buffer. Non-blocking.
-        """
-        with self.buffer_lock:
-            self.buffer.append(analysis)
-            current_time = time.time()
-            
-            # If time passed, prepare flush
-            if current_time - self.last_flush_time >= self.window_duration:
-                self._schedule_flush()
+        # Buffer de FrameAnalysis pendientes de procesar. El worker lo vacía
+        # cada window_duration_s o ante un force_flush.
+        self._buffer: list[FrameAnalysis] = []
+        self._buffer_lock = threading.Lock()
+        self._window_start: datetime | None = None
 
-    def _schedule_flush(self):
-        """
-        Moves data from buffer to flush queue (non-blocking).
-        Called with lock acquired.
-        """
-        if not self.buffer:
-            self.last_flush_time = time.time()
-            return
-        
-        # Calculate aggregates BEFORE releasing lock
-        timestamp = time.time()
-        duration = timestamp - self.last_flush_time
-        aggregated_data = self._compute_aggregates(self.buffer, timestamp, duration)
-        
-        # Clear buffer
-        self.buffer = []
-        self.last_flush_time = timestamp
-        
-        # Send to worker (non-blocking)
-        try:
-            self.flush_queue.put_nowait(aggregated_data)
-        except queue.Full:
-            print("[WARNING] Flush queue full - data dropped")
+        # Output queue: TrafficData computados, esperando flush() del caller.
+        self._output_queue: queue.Queue[TrafficData] = queue.Queue(
+            maxsize=output_queue_maxsize
+        )
 
-    def _compute_aggregates(
-        self, 
-        buffer: List[FrameAnalysis], 
-        timestamp: float, 
-        duration: float
-    ) -> List[TrafficData]:
-        """
-        Computes aggregates without I/O. Pure CPU-bound.
-        """
-        zone_stats = defaultdict(list)
-        
-        for analysis in buffer:
-            if not analysis.zones:
-                continue
-            for zone in analysis.zones:
-                zone_stats[zone.zone_id].append(zone)
-        
-        results = []
-        for zone_id, statuses in zone_stats.items():
-            if not statuses:
-                continue
-            
-            # Calculations (same as before)
-            counts = [s.vehicle_count for s in statuses]
-            avg_density = sum(counts) / len(counts)
-            
-            occupancies = [s.occupancy for s in statuses]
-            avg_occupancy = sum(occupancies) / len(occupancies) if occupancies else 0.0
-            
-            # Weighted speed
-            total_speed_sum = 0.0
-            total_vehicles_with_speed = 0
-            for s in statuses:
-                if s.avg_speed > 0 and s.vehicle_count > 0:
-                    total_speed_sum += s.avg_speed * s.vehicle_count
-                    total_vehicles_with_speed += s.vehicle_count
-            avg_speed = total_speed_sum / total_vehicles_with_speed if total_vehicles_with_speed > 0 else 0.0
-            
-            # Unique vehicles
-            unique_vehicles = set()
-            for s in statuses:
-                if s.vehicles:
-                    unique_vehicles.update(s.vehicles)
-            flow_rate_per_min = len(unique_vehicles)
-            
-            # Breakdown by type with conflict resolution (Majority Vote)
-            vehicle_type_observations = defaultdict(list)
-            for s in statuses:
-                if s.vehicle_details:
-                    for v_id, v_type in s.vehicle_details.items():
-                        vehicle_type_observations[v_id].append(v_type)
-            
-            # Resolve type for each vehicle ID
-            resolved_vehicle_types = {}
-            for v_id, types in vehicle_type_observations.items():
-                if not types:
-                    continue
-                # Pick most frequent type
-                resolved_type = max(set(types), key=types.count)
-                resolved_vehicle_types[v_id] = resolved_type
-            
-            # Count by resolved type
-            counts_by_type = defaultdict(int)
-            for v_type in resolved_vehicle_types.values():
-                counts_by_type[v_type] += 1
-            
-            car_count = counts_by_type['car']
-            bus_count = counts_by_type['bus']
-            truck_count = counts_by_type['truck']
-            motorcycle_count = counts_by_type['motorcycle']
-            
-            # Total vehicles is the number of unique IDs
-            total_vehicles = len(resolved_vehicle_types)
-            
-            # Metadata
-            metadata = statuses[0]
-            
-            data = TrafficData(
-                timestamp=timestamp,
-                zone_id=zone_id,
-                camera_id=metadata.camera_id,
-                street_monitored=metadata.street_monitored,
-                duration_seconds=duration,
-                avg_density=avg_density,
-                total_vehicles=total_vehicles,
-                avg_speed=avg_speed,
-                avg_occupancy=avg_occupancy,
-                flow_rate_per_min=flow_rate_per_min,
-                car_count=car_count,
-                bus_count=bus_count,
-                truck_count=truck_count,
-                motorcycle_count=motorcycle_count,
-                vehicle_types=dict(counts_by_type)
-            )
-            results.append(data)
-        
-        return results
+        # Worker control.
+        self._stop_event = threading.Event()
+        self._force_flush_event = threading.Event()
+        self._force_flush_done = threading.Event()
 
-    def _flush_worker(self):
+        # Counters §11.3 (expuestos como properties).
+        self._aggregation_errors = 0
+        self._data_dropped = 0
+        self._counters_lock = threading.Lock()
+
+        self._worker = threading.Thread(
+            target=self._worker_loop,
+            name="AsyncTrafficAggregator-worker",
+            daemon=True,
+        )
+        self._worker.start()
+
+    # ---- Public Protocol contract --------------------------------------
+
+    def add(self, analysis: FrameAnalysis) -> None:
+        """Non-blocking: acumula `analysis` en el buffer de la ventana actual."""
+        with self._buffer_lock:
+            if self._window_start is None:
+                self._window_start = datetime.now(timezone.utc)
+            self._buffer.append(analysis)
+
+    def flush(self) -> list[TrafficData]:
+        """Non-blocking: drena la output queue.
+
+        Retorna los `TrafficData` ya computados y no dropeados al momento de
+        la llamada. NO incluye los que están siendo procesados por el worker.
         """
-        Worker thread that handles persistence I/O.
-        """
-        while not self._stop_event.is_set():
+        out: list[TrafficData] = []
+        while True:
             try:
-                # Block until data available or timeout
-                data_batch = self.flush_queue.get(timeout=1.0)
-                
-                # Persist (I/O)
-                for data in data_batch:
-                    try:
-                        self.repository.save(data)
-                        print(f"[Aggregator] Saved {data.zone_id}: Density={data.avg_density:.1f}")
-                    except Exception as e:
-                        print(f"[ERROR] Failed to save data: {e}")
-                
+                out.append(self._output_queue.get_nowait())
             except queue.Empty:
-                continue
-            except Exception as e:
-                print(f"[ERROR] Flush worker error: {e}")
+                break
+        return out
 
-    def force_flush(self):
-        """
-        Forces immediate flush. Useful when closing application.
-        """
-        with self.buffer_lock:
-            self._schedule_flush()
+    def force_flush(self) -> list[TrafficData]:
+        """Blocking: fuerza al worker a cerrar la ventana actual y drena.
 
-    def stop(self):
-        """Stops the worker thread."""
-        self.force_flush()
+        Útil en shutdown limpio (antes de `stop`) y para sincronización de
+        tests.
+        """
+        if self._stop_event.is_set():
+            return self.flush()
+        self._force_flush_done.clear()
+        self._force_flush_event.set()
+        self._force_flush_done.wait(timeout=_FORCE_FLUSH_TIMEOUT_S)
+        return self.flush()
+
+    def stop(self) -> None:
+        """Señaliza al worker que termine. NO retorna data (usar `force_flush` antes)."""
         self._stop_event.set()
-        self._worker_thread.join(timeout=3.0)
+        # Despierta al worker si estaba esperando el timeout de la ventana.
+        self._force_flush_event.set()
+        self._worker.join(timeout=_STOP_JOIN_TIMEOUT_S)
+
+    # ---- Counters (telemetría §11.3) -----------------------------------
+
+    @property
+    def aggregation_errors(self) -> int:
+        """Cantidad de saves fallidos desde el arranque (§11.1)."""
+        with self._counters_lock:
+            return self._aggregation_errors
+
+    @property
+    def data_dropped(self) -> int:
+        """Cantidad de TrafficData dropeados por output queue llena (§11.2)."""
+        with self._counters_lock:
+            return self._data_dropped
+
+    # ---- Worker loop + window processing -------------------------------
+
+    def _worker_loop(self) -> None:
+        while not self._stop_event.is_set():
+            triggered = self._force_flush_event.wait(
+                timeout=self._window_duration_s
+            )
+
+            # Snapshot atómico del buffer + reset.
+            with self._buffer_lock:
+                snapshot = list(self._buffer)
+                self._buffer.clear()
+                window_start = self._window_start
+                window_end = datetime.now(timezone.utc)
+                self._window_start = None
+
+            if snapshot and window_start is not None and window_end > window_start:
+                self._process_window(snapshot, window_start, window_end)
+
+            if triggered:
+                self._force_flush_event.clear()
+                self._force_flush_done.set()
+
+            if self._stop_event.is_set():
+                break
+
+    def _process_window(
+        self,
+        analyses: list[FrameAnalysis],
+        window_start: datetime,
+        window_end: datetime,
+    ) -> None:
+        try:
+            traffic_data = compute_traffic_data(
+                analyses,
+                self._camera_id,
+                window_start,
+                window_end,
+                self._zone_segment_lengths,
+            )
+        except Exception:
+            # Error de cómputo (no de save): la ventana no se emite. No
+            # incrementamos aggregation_errors (ese contador es de save).
+            logger.exception(
+                "compute_traffic_data falló; ventana [%s, %s] descartada",
+                window_start.isoformat(),
+                window_end.isoformat(),
+            )
+            return
+
+        for td in traffic_data:
+            # §11.1 — save best-effort. INDEPENDIENTE del push a output queue
+            # (DHU-026): un fallo de save NO impide ni revierte el push.
+            try:
+                self._repository.save(td)
+            except Exception:
+                logger.exception(
+                    "TrafficRepository.save falló para zone_id=%s; continuando (§11.1)",
+                    td.zone_id.value,
+                )
+                with self._counters_lock:
+                    self._aggregation_errors += 1
+
+            # §11.2 — push best-effort a output queue. INDEPENDIENTE del
+            # resultado del save: si save falló, el item igualmente entra a
+            # la output queue (telemetría en vivo sobrevive).
+            try:
+                self._output_queue.put_nowait(td)
+            except queue.Full:
+                logger.warning(
+                    "Output queue llena; drop-newest TrafficData zone_id=%s (§11.2)",
+                    td.zone_id.value,
+                )
+                with self._counters_lock:
+                    self._data_dropped += 1

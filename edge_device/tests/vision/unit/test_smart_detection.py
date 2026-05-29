@@ -1,109 +1,94 @@
-import pytest
+"""Tests del SmartDetectionProcessor — skip-cada-N puro (Fase 5d).
+
+Los dos xfails C1.7 previos (`test_interpolation_logic`, `test_trajectory_update`)
+testeaban funcionalidad que el refactor de Sesión 1 ya había marcado como
+movida al tracker (ByteTrack con `lost_track_buffer=60`) y que Sesión 3
+declaró fuera del scope de este processor (decisión #5d del plan de Fase 5).
+Verificación del tracker hecha en el paso 0 de 5d.
+
+Esos dos tests se eliminan en lugar de "resolverse" — no quedan en el set
+xfails como deuda muerta.
+"""
 from unittest.mock import MagicMock
-from src.vision.application.processors.smart_detection import SmartDetectionProcessor
-from src.vision.domain.entities import Frame, FrameAnalysis, DetectedVehicle
 
-@pytest.fixture
-def mock_detector():
+import numpy as np
+import pytest
+
+from src.vision.application.processors.smart_detection import (
+    SmartDetectionProcessor,
+)
+from src.vision.domain.entities import DetectedVehicle, Frame
+from src.vision.domain.value_objects import VehicleId
+
+
+def _img():
+    return np.zeros((4, 4, 3), dtype=np.uint8)
+
+
+def _frame(fid: int) -> Frame:
+    return Frame(id=fid, timestamp=float(fid) * 0.01, image=_img())
+
+
+def test_detection_frequency():
+    """Detector llamado en frames 0, 3, 6, ...; el resto son skip con FrameAnalysis vacío."""
     detector = MagicMock()
-    return detector
-
-@pytest.fixture
-def mock_metrics():
-    return MagicMock()
-
-def test_detection_frequency(mock_detector, mock_metrics):
+    metrics = MagicMock()
+    detector.detect.return_value = [
+        DetectedVehicle(
+            id=VehicleId("1"),
+            type="car",
+            confidence=0.9,
+            bbox=(0, 0, 10, 10),
+            timestamp=0.0,
+        )
+    ]
     processor = SmartDetectionProcessor(
-        detector=mock_detector,
+        detector=detector,
         detect_every_n=3,
-        metrics_collector=mock_metrics,
-        interpolate=False
+        metrics_collector=metrics,
     )
-    
-    # Frame 0: Should detect
-    frame0 = Frame(id=0, timestamp=1.0, image=None)
-    mock_detector.detect.return_value = FrameAnalysis(0, 1.0, [], 0)
-    processor._process(frame0, None)
-    mock_detector.detect.assert_called_once()
-    mock_metrics.record_detection.assert_called_once()
-    
-    # Frame 1: Should skip
-    frame1 = Frame(id=1, timestamp=1.1, image=None)
-    processor._process(frame1, None)
-    mock_detector.detect.assert_called_once() # Count shouldn't increase
-    
-    # Frame 2: Should skip
-    frame2 = Frame(id=2, timestamp=1.2, image=None)
-    processor._process(frame2, None)
-    mock_detector.detect.assert_called_once()
-    
-    # Frame 3: Should detect
-    frame3 = Frame(id=3, timestamp=1.3, image=None)
-    processor._process(frame3, None)
-    assert mock_detector.detect.call_count == 2
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="SmartDetectionProcessor interpolation broken after refactor. Returns empty vehicles list when expected fallback. Verified failing in commit 0e20b0b4. Tracked as TODO C1.7."
-)
-def test_interpolation_logic(mock_detector):
-    processor = SmartDetectionProcessor(
-        detector=mock_detector,
-        detect_every_n=2,
-        interpolate=True
-    )
-    
-    # Frame 0: Detect vehicle at [0, 0, 10, 10]
-    v0 = DetectedVehicle("1", "car", 0.9, (0, 0, 10, 10), 1.0)
-    mock_detector.detect.return_value = FrameAnalysis(0, 1.0, [v0], 1)
-    
-    frame0 = Frame(id=0, timestamp=1.0, image=None)
-    processor._process(frame0, None)
-    
-    # Frame 1: Interpolate. 
-    # Since we only have 1 point, it should return the same position (fallback)
-    frame1 = Frame(id=1, timestamp=1.1, image=None)
-    analysis1 = processor._process(frame1, None)
-    assert analysis1.vehicles[0].bbox == (0, 0, 10, 10)
-    
-    # Frame 2: Detect vehicle at [10, 10, 20, 20]
-    v2 = DetectedVehicle("1", "car", 0.9, (10, 10, 20, 20), 1.2)
-    mock_detector.detect.return_value = FrameAnalysis(2, 1.2, [v2], 1)
-    
-    frame2 = Frame(id=2, timestamp=1.2, image=None)
-    processor._process(frame2, None)
-    
-    # Frame 3: Interpolate/Extrapolate
-    # Trajectory has (0, [0,0,10,10]) and (2, [10,10,20,20])
-    # Frame 3 is next.
-    # t = (3 - 2) / (2 - 0) = 1 / 2 = 0.5
-    # bbox = bbox2 + t * (bbox2 - bbox1)
-    # x1 = 10 + 0.5 * (10 - 0) = 15
-    # y1 = 10 + 0.5 * (10 - 0) = 15
-    # x2 = 20 + 0.5 * (20 - 10) = 25
-    # y2 = 20 + 0.5 * (20 - 10) = 25
-    
-    frame3 = Frame(id=3, timestamp=1.3, image=None)
-    analysis3 = processor._process(frame3, None)
-    
-    assert len(analysis3.vehicles) == 1
-    bbox = analysis3.vehicles[0].bbox
-    assert bbox == (15, 15, 25, 25)
-    assert analysis3.vehicles[0].confidence < 0.9 # Should be reduced
+    # Frame 0: detecta (primer frame, sentinel _last_detection_frame=-1).
+    a0 = processor._process(_frame(0), None)
+    assert detector.detect.call_count == 1
+    assert a0 is not None
+    assert a0.frame_id == 0
+    assert len(a0.vehicles) == 1
+    assert a0.unique_vehicles == 1
+    assert a0.zones == {}
+    metrics.record_detection.assert_called_once()
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="SmartDetectionProcessor trajectory tracking broken after refactor. _vehicle_trajectories not populated. Verified failing in commit 0e20b0b4. Tracked as TODO C1.7."
-)
-def test_trajectory_update(mock_detector):
-    processor = SmartDetectionProcessor(mock_detector, detect_every_n=1)
-    
-    # Process 6 frames to fill buffer (max 5)
-    for i in range(6):
-        v = DetectedVehicle("1", "car", 0.9, (i, i, i+10, i+10), float(i))
-        mock_detector.detect.return_value = FrameAnalysis(i, float(i), [v], 1)
-        processor._process(Frame(i, float(i), None), None)
-        
-    assert len(processor._vehicle_trajectories["1"]) == 5
-    assert processor._vehicle_trajectories["1"][-1][0] == 5 # Last frame id
-    assert processor._vehicle_trajectories["1"][0][0] == 1 # First frame id (0 popped)
+    # Frame 1: skip.
+    a1 = processor._process(_frame(1), None)
+    assert detector.detect.call_count == 1
+    assert a1.vehicles == []
+    assert a1.unique_vehicles == 0
+    assert a1.zones == {}
+
+    # Frame 2: skip.
+    processor._process(_frame(2), None)
+    assert detector.detect.call_count == 1
+
+    # Frame 3: detecta (>= 3 frames desde la última detección).
+    processor._process(_frame(3), None)
+    assert detector.detect.call_count == 2
+
+
+def test_smart_detection_rejects_invalid_n():
+    detector = MagicMock()
+    with pytest.raises(ValueError, match="detect_every_n"):
+        SmartDetectionProcessor(detector=detector, detect_every_n=0)
+    with pytest.raises(ValueError, match="detect_every_n"):
+        SmartDetectionProcessor(detector=detector, detect_every_n=-1)
+
+
+def test_detect_every_n_one_runs_detector_every_frame():
+    """N=1: caso degenerado, detección en cada frame, sin skip."""
+    detector = MagicMock()
+    detector.detect.return_value = []
+    processor = SmartDetectionProcessor(detector=detector, detect_every_n=1)
+
+    for fid in range(5):
+        processor._process(_frame(fid), None)
+
+    assert detector.detect.call_count == 5

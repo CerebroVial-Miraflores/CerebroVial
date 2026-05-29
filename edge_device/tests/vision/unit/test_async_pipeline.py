@@ -1,30 +1,65 @@
-import pytest
+"""Tests del AsyncVisionPipeline migrado a `FrameProducer.read()` (Fase 5c).
+
+Cubre lifecycle (start / stop limpios), C1.5 (fix de race en stop, antes
+xfail), terminación natural por EOF (source.read() → None), recovery ante
+SourceError, y get_latest().
+
+Los Mocks viejos usaban `source.__iter__.return_value = iter([...])` —
+incompatible con el contrato nuevo del Protocol `FrameProducer` (read +
+release). Acá `MockSource` implementa `read()` devolviendo frames y `None`
+al final.
+"""
 import time
 from unittest.mock import MagicMock
+
+import numpy as np
+
 from src.vision.application.pipelines.async_pipeline import AsyncVisionPipeline
 from src.vision.domain.entities import Frame, FrameAnalysis
 
+
 class MockSource:
+    """FrameProducer fake: devuelve los frames en orden y luego None (EOF)."""
+
     def __init__(self, frames):
-        self.frames = frames
+        self.frames = list(frames)
+        self._idx = 0
         self.released = False
 
-    def __iter__(self):
-        for frame in self.frames:
-            yield frame
-            time.sleep(0.01) # Simulate delay
+    def read(self):
+        if self.released:
+            return None
+        if self._idx >= len(self.frames):
+            time.sleep(0.01)
+            return None
+        frame = self.frames[self._idx]
+        self._idx += 1
+        return frame
 
     def release(self):
         self.released = True
 
-class MockProcessor:
+
+class _PassThroughProcessor:
+    """Implementa FrameProcessor: process(frame, analysis) → FrameAnalysis nuevo."""
+
+    def __init__(self):
+        self.call_count = 0
+
     def process(self, frame, analysis):
+        self.call_count += 1
         return FrameAnalysis(
             frame_id=frame.id,
             timestamp=frame.timestamp,
             vehicles=[],
-            total_count=0
+            unique_vehicles=0,
+            zones={},
         )
+
+
+def _img():
+    return np.zeros((4, 4, 3), dtype=np.uint8)
+
 
 def test_pipeline_initialization():
     source = MagicMock()
@@ -33,72 +68,198 @@ def test_pipeline_initialization():
     assert pipeline.frame_queue.maxsize == 10
     assert pipeline.result_queue.maxsize == 30
 
-def test_pipeline_start_stop():
-    source = MagicMock()
-    # Make source infinite so thread stays alive
-    source.__iter__.return_value = iter(lambda: time.sleep(0.1) or Frame(1, 1.0, None), 1)
-    
-    processor = MagicMock()
-    pipeline = AsyncVisionPipeline(source, processor)
-    
+
+def test_pipeline_start_stop_lifecycle():
+    """start() arranca threads; stop() los baja limpio y libera el source."""
+
+    class InfiniteSource:
+        def __init__(self):
+            self.released = False
+
+        def read(self):
+            time.sleep(0.05)
+            return Frame(id=1, timestamp=time.time(), image=_img())
+
+        def release(self):
+            self.released = True
+
+    source = InfiniteSource()
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
     pipeline.start()
-    # Give threads time to start
     time.sleep(0.1)
     assert pipeline._capture_thread.is_alive()
     assert pipeline._processing_thread.is_alive()
-    
+
     pipeline.stop()
-    # Give threads time to stop
-    time.sleep(0.2)
     assert not pipeline._capture_thread.is_alive()
     assert not pipeline._processing_thread.is_alive()
-
-@pytest.mark.xfail(
-    reason="Pre-existing race condition between pipeline.stop() and "
-           "processing thread. Verified failing in commit 0e20b0b4 "
-           "(pre-refactor). Tracked as TODO C1.5.",
-    strict=False,
-)
-def test_pipeline_processing_flow():
-    # Setup
-    frames = [
-        Frame(id=1, timestamp=1.0, image=None),
-        Frame(id=2, timestamp=2.0, image=None)
-    ]
-    source = MockSource(frames)
-    processor = MockProcessor()
-    pipeline = AsyncVisionPipeline(source, processor)
-    
-    # Run
-    results = []
-    
-    # We run the generator in a way that we can break out
-    gen = pipeline.run()
-    try:
-        for _ in range(2):
-            result = next(gen)
-            results.append(result)
-    except StopIteration:
-        pass
-    finally:
-        pipeline.stop()
-
-    # Verify
-    assert len(results) == 2
-    assert results[0][0].id == 1
-    assert results[1][0].id == 2
     assert source.released
 
-def test_pipeline_stop_event_propagation():
-    """Verify that stopping the pipeline stops the capture loop even if source is infinite."""
+
+def test_pipeline_processing_flow_drains_all_frames_C1_5():
+    """C1.5 fix: dados N frames finitos, run() yields exactamente N.
+
+    Era xfail por la race entre capture seteando `_stop_event` en su
+    finally y processing perdiendo el último item. El fix (separación
+    `_stop_event` / `_capture_done` / `_processing_done`) hace que `run()`
+    drene todo lo procesado antes de salir.
+    """
+    # Timestamps cercanos (gap << 1.5s) para que catch-up §10.5 no dispare
+    # skip — el catch-up apunta a streams reales rezagados, no a tests con
+    # timestamps artificialmente espaciados.
+    t0 = time.time()
+    frames = [
+        Frame(id=1, timestamp=t0 + 0.00, image=_img()),
+        Frame(id=2, timestamp=t0 + 0.01, image=_img()),
+        Frame(id=3, timestamp=t0 + 0.02, image=_img()),
+    ]
+    source = MockSource(frames)
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    results = list(pipeline.run())
+
+    assert len(results) == 3
+    assert [r[0].id for r in results] == [1, 2, 3]
+    # FrameAnalysis trae `zones` como dict (schema §5.4).
+    assert all(isinstance(r[1].zones, dict) for r in results)
+    # source.release() invocado por run()'s finally → stop().
+    assert source.released
+
+
+def test_pipeline_terminates_naturally_on_eof():
+    """source.read() retorna None → capture termina → processing drena → run() sale."""
+    t0 = time.time()
+    frames = [Frame(id=i, timestamp=t0 + i * 0.01, image=_img()) for i in range(5)]
+    source = MockSource(frames)
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    results = list(pipeline.run())
+
+    assert len(results) == 5
+    assert processor.call_count == 5
+    assert source.released
+
+
+def test_pipeline_handles_source_error_and_recovers():
+    """SourceError no propaga: se loguea, el loop sigue leyendo el siguiente frame."""
+    from cerebrovial_shared.exceptions import SourceError
+
+    class FlakySource:
+        def __init__(self):
+            self.calls = 0
+            self.released = False
+
+        def read(self):
+            self.calls += 1
+            if self.calls == 1:
+                raise SourceError("transitorio simulado")
+            if self.calls == 2:
+                return Frame(id=1, timestamp=time.time(), image=_img())
+            return None  # EOF
+
+        def release(self):
+            self.released = True
+
+    source = FlakySource()
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    results = list(pipeline.run())
+
+    assert len(results) == 1
+    assert results[0][0].id == 1
+    assert source.released
+
+
+def test_catch_up_skips_frames_when_lag_exceeds_threshold():
+    """§10.5: con lag > 1.5s, el processing salta frames (skip 1 de cada 2 o 3).
+
+    Manipulación manual del pipeline: pre-seteamos `_latest_capture_ts` para
+    forzar lag artificial, ponemos frames "viejos" en la frame_queue, y
+    arrancamos solo el processing thread. El capture_done garantiza que el
+    processing termine de drenar y salga. Vale como cobertura mínima del
+    catch-up — el plan obligaba §10.5 por diseño y este test demuestra que
+    se dispara y NO procesa todos los frames cuando el lag está alto.
+    """
+    import threading
+
     source = MagicMock()
-    source.__iter__.return_value = iter([Frame(id=i, timestamp=i, image=None) for i in range(1000)])
-    processor = MagicMock()
-    
-    pipeline = AsyncVisionPipeline(source, processor)
-    pipeline.start()
-    
-    time.sleep(0.1)
-    pipeline.stop()
-    
-    assert not pipeline._capture_thread.is_alive()
+    source.release = MagicMock()
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    # Simulamos: el capture ya leyó un frame muy reciente (timestamp altísimo)
+    # por lo que el _latest_capture_ts está en 100.0. Inyectamos en
+    # frame_queue 6 frames "viejos" con timestamps 98.0+...
+    # → lag ≈ 2.0s → cae en la rama "1.5 < lag <= 2.5" → skip modulo 2.
+    pipeline._latest_capture_ts = 100.0
+    for fid in range(6):
+        pipeline.frame_queue.put_nowait(
+            Frame(id=fid, timestamp=98.0 + fid * 0.001, image=_img())
+        )
+
+    # Capture nunca arrancará — señalamos que terminó para que processing
+    # termine de drenar y salga.
+    pipeline._capture_done.set()
+    pipeline._processing_thread = threading.Thread(
+        target=pipeline._processing_loop, name="ProcessingThreadTest", daemon=True
+    )
+    pipeline._processing_thread.start()
+    pipeline._processing_thread.join(timeout=2.0)
+
+    # Catch-up activo: NO se procesan los 6 frames. Al menos 1 se procesa
+    # (cada 2 con skip_modulo=2). El gate exacto depende de la dinámica del
+    # skipped_counter; el invariante observable es: 0 < procesados < 6.
+    assert 0 < processor.call_count < 6, (
+        f"catch-up §10.5 debió saltar al menos un frame con lag artificial alto; "
+        f"procesados={processor.call_count} de 6"
+    )
+
+
+def test_catch_up_inactive_when_no_lag():
+    """Sin lag (timestamps fresh), el processing NO salta ningún frame."""
+    import threading
+
+    source = MagicMock()
+    source.release = MagicMock()
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    # Lag ~ 0: _latest_capture_ts coincide (o casi) con timestamp de los frames.
+    t0 = time.time()
+    pipeline._latest_capture_ts = t0
+    for fid in range(4):
+        pipeline.frame_queue.put_nowait(
+            Frame(id=fid, timestamp=t0 - fid * 0.001, image=_img())
+        )
+
+    pipeline._capture_done.set()
+    pipeline._processing_thread = threading.Thread(
+        target=pipeline._processing_loop, name="ProcessingThreadTest", daemon=True
+    )
+    pipeline._processing_thread.start()
+    pipeline._processing_thread.join(timeout=2.0)
+
+    # Sin lag → catch-up no se dispara → procesa los 4.
+    assert processor.call_count == 4
+
+
+def test_get_latest_returns_most_recent_after_processing():
+    """get_latest() refleja el último (frame, analysis) procesado."""
+    t0 = time.time()
+    frames = [Frame(id=i, timestamp=t0 + i * 0.01, image=_img()) for i in range(3)]
+    source = MockSource(frames)
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    list(pipeline.run())
+
+    latest = pipeline.get_latest()
+    assert latest is not None
+    frame, analysis = latest
+    assert frame.id == 2
+    assert isinstance(analysis, FrameAnalysis)

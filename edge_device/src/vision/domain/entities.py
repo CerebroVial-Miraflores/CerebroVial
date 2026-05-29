@@ -25,10 +25,22 @@ class DetectedVehicle:
 
 @dataclass(frozen=True)
 class ZoneVehicleCount:
-    """Vehicles counted within a single configured zone (polygon) for a frame."""
+    """Vehicles counted within a single configured zone (polygon) for a frame.
+
+    `occupancy` is the fraction of the polygon area covered by the UNION of the
+    detected bboxes intersected with the polygon, in `[0.0, 1.0]`. See DHU-025
+    for the interpretation of §5.4's `Σ` as union (vs. arithmetic sum + clip).
+    """
     zone_id: ZoneId
     count: int
     vehicle_ids: list[VehicleId]
+    occupancy: float
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.occupancy <= 1.0:
+            raise ValueError(
+                f"occupancy debe estar en [0.0, 1.0]; recibido {self.occupancy!r}"
+            )
 
 
 @dataclass(frozen=True)
