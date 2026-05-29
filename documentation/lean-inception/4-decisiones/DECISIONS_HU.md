@@ -2563,6 +2563,69 @@ NO se levanta la regla en esta rama documental — solo se prepara el levantamie
 - `TODO.md` — C1.5-C1.8, C7.6.
 - `BACKLOG_LITE_PRIORIZADO.md` — sizing y clasificación.
 
+### Addendum F9 (2026-05-29): estado real al cierre de TTH-08
+
+Este addendum es **append-only**: no reescribe el texto histórico de DHU-024 — refleja
+qué de lo decidido el 2026-05-27 se materializó y qué no, al cerrar Fase 9 del sprint.
+Lectura obligatoria antes de citar DHU-024 como autoridad.
+
+**§5 — Contrato técnico LISTO**: **CUMPLIDO.** El contract canónico vive en
+`documentation/vision_contract.md` (commit `docs(tth-08): 9a — contrato canónico de
+visión`). Materializa shape de `GET /vision/state`, `GET /vision/health`, payload SSE,
+schema `vision_aggregates`, alcance honesto de validación, F41 como integración futura
+y deudas heredadas. El compromiso documental de §5 queda saldado.
+
+**§7 — Resolución de C7.6 (deuda CUDA) dentro de TTH-08**: **NO CUMPLIDO.** La
+decisión declaró que al reescribir `edge_device/requirements.txt` desde cero se
+definirían las dependencias con `--index-url https://download.pytorch.org/whl/cpu`.
+Auditoría F9 confirmó que `edge_device/requirements.txt:5` sigue siendo `torch` sin
+ningún index URL — el pin CPU **no se aplicó**. C7.6 sigue viva y se **reabre como
+F9.z** en `TODO.md` (sub-fase de infra separable post-F9, fuera del scope F9 = solo
+documentación). No se aplica el fix de 1 línea en F9 por la restricción dura "CERO
+código productivo, CERO tests nuevos" — exigiría smoke build/import y no cabe en
+0.5 SP. Esta divergencia es deliberadamente honesta y no se disimula con un cross-ref
+retroactivo a algo que no ocurrió.
+
+**§1 — Alcance: 11 CTs operativos**: **PARCIAL.** Validados al cierre de Fase 7:
+CT-08.1–08.8, 08.10, 08.11(a–f). **CT-08.11(e) acotado** a `repo↔modelo↔Postgres
+vivo` (testcontainers), **NO** valida migración↔modelo ni pipeline-de-video — ver
+handoff F7 §4.1–§4.2 para alcance honesto. **CT-08.9 diferido**: dataset etiquetado
+≥200 frames + métricas mAP/precisión/recall no se ejecutaron. Diferimiento decidido
+por el usuario y registrado en handoff F7 §6.1 línea 157. El número 88.2% del
+documento de tesis (rastreado por D-005) **queda sin sustento reproducible al cierre
+de TTH-08** y será sustituido por el mAP real cuando corra F8.
+
+**§6 — Validación 88.2% como última fase**: **DIFERIDA.** Misma razón que §1 →
+CT-08.9. El rastreo honesto del 88.2% queda nominado para F8 (post-TTH-08).
+
+**Implicancias sobre otros DHU / TTH / HU — estado actualizado al cierre F9**:
+
+- **C1.5, C1.6, C1.7, C1.8**: retirados de la lista activa de `TODO.md`.
+  - C1.5 `[x]` resuelta por F5c (AsyncVisionPipeline reescrito).
+  - C1.6 `[~]` obsoleta (MultiCameraManager reemplazado por F4b; tests legacy en
+    `edge_device/tests/vision/unit/test_multi_camera_manager.py` quedan como pieza
+    muerta nominada a **F9.y**).
+  - C1.7 `[~]` obsoleta (DHU-024 §3 declaró `SmartDetectionProcessor.get_analysis_for_frame()`
+    lógica muerta; el source en `edge_device/src/vision/application/processors/smart_detection.py`
+    queda huérfano nominado a **F9.y**).
+  - C1.8 `[x]` resuelta por F4a + DHU-025 (ZoneCounter extendido con `mean_occupancy`).
+- **C7.6**: **reabierta como F9.z** (ver §7 arriba). Cross-ref bidireccional con
+  `TODO.md` C7.6 y `vision_contract.md` §7.
+- **C9.7 / C9.8** (nominadas en F9): paridad migración↔modelo y wirear
+  `edge_device/tests` a CI. Promovidas desde handoff F7 §6.2/§6.3 a `TODO.md` como
+  ítems trackables.
+- **F8**: diferida. Estado consolidado de TTH-08 al cierre: **"Parcial — F8 diferida,
+  C7.6 reabierta como F9.z"** (NO Done). `ESTIMACION_SP.md` fila TTH-08 refleja este
+  estado.
+- **F41**: reafirmada sin cambios estructurales. Cross-refs forward en
+  `EVOLUCION_TESIS.md` §8 y `LEAN_INCEPTION_CEREBROVIAL.md` "Trabajos Futuros" al
+  `vision_contract.md` §6 (integración futura).
+
+**Cierre del sprint**: handoff F9 en `documentation/docs/tth-08-fase9-handoff.md`
+(commit `docs(tth-08): 9h`). Backlog consolidado post-TTH-08 con los 5 ítems
+separables (F8, C9.7, C9.8, F9.y, F9.z) en la sección "Backlog post-TTH-08
+(infra/cleanup separable)" del handoff F9.
+
 ---
 
 ## DHU-025 — Extensión de `ZoneVehicleCount` con `occupancy` y formalización del cómputo geométrico de `mean_occupancy` (CERRADA)
