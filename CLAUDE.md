@@ -185,6 +185,52 @@ Migraciones:
 - **Migraciones de BD**: siempre con Alembic. Nunca usar
   `Base.metadata.create_all()`. Schema actual en `documentation/docs/DATA_MODEL.md`.
 
+### Ubicación de documentos
+Cada tipo de doc vive en su carpeta. No mezclar:
+
+- **`documentation/handoffs/<tth-o-hu>/`** — handoffs de cierre de fase, uno por
+  fase del sprint (p. ej. `documentation/handoffs/tth-08/tth-08-fase7-handoff.md`).
+  Una sub-carpeta por feature/sprint.
+- **`documentation/contracts/`** — contratos de módulo: shape de endpoints,
+  schemas de tablas, semántica de campos, alcance honesto de validación. Documentos
+  vivos del producto, no del proceso (p. ej.
+  `documentation/contracts/vision_contract.md`).
+- **`documentation/docs/`** — diseño técnico, lecciones de fase, discovery, planes
+  históricos, schema canónico (`DATA_MODEL.md`), `TODO.md`. **NO handoffs sueltos,
+  NO contratos sueltos**.
+- **`documentation/lean-inception/`** — decisiones (`4-decisiones/DECISIONS.md`,
+  `DECISIONS_HU.md`), planificación (`planificacion/ESTIMACION_SP.md`, etc.),
+  contexto (`1-contexto/EVOLUCION_TESIS.md`, `LEAN_INCEPTION_CEREBROVIAL.md`).
+- **`documentation/legacy/`** — referencias históricas (configs muertas, docs
+  OBSOLETOS). Cada archivo movido a `legacy/` debe tener header explicando
+  contexto, motivo del retiro y condición de reactivación.
+
+### Flujo de trabajo (plan, commits, push, PR)
+- **Plan-antes-de-ejecutar**: ante cualquier tarea no trivial, el agente primero
+  hace auditoría read-only (grep, lectura de archivos, reporte de estado actual) y
+  escribe un plan en `~/.claude/plans/` antes de tocar nada. ExitPlanMode con OK
+  explícito del usuario antes de ejecutar. **Stage-gates** entre fases: el agente
+  para entre fases largas (p. ej. F1 → F2) y reporta antes de seguir.
+- **Commits granulares en español**, una unidad atómica por commit, **sin línea
+  `Co-Authored-By:`** (decisión del usuario — historial limpio).
+- **Push / PR — defecto**: el agente commitea + verifica end-to-end + **PARA**.
+  **NO `git push`, NO `gh pr create`, NO merge** desde el agente.
+- **Push / PR — solo con pedido explícito del usuario**:
+  `git push origin <feature-branch>` (nunca `master`/`main`) y
+  `gh pr create --body-file <handoff-de-cierre>` usando el handoff de cierre de
+  la fase como cuerpo del PR. Reportar la URL al usuario.
+- **Cuerpo del PR**: usar el handoff de cierre íntegro como `--body-file`. El
+  handoff es la fuente de verdad y debe estar libre de framing académico
+  (`jurado`, `tribunal`, `defensa`, "documento de tesis" como audiencia,
+  "el equipo verá") y libre de menciones a `Co-Authored-By`. El cuerpo del PR
+  describe entregables, alcance, follow-ups técnicos y commits — nada más. Si
+  el handoff todavía tiene framing, scrubealo en un commit antes de abrir el PR.
+- **Merge a `master`**: **siempre humano**, fuera del scope del agente, incluso
+  con permiso. El agente no mergea.
+- **Herramientas de pregunta vs Bash**: **NO usar `AskUserQuestion` en paralelo
+  con `Bash`**. Si hay que preguntar al usuario, esperar primero a que los
+  resultados de Bash estén disponibles, sintetizarlos y entonces preguntar.
+
 ## Estado del proyecto
 
 Estado vivo y sprint en curso: `documentation/ESTADO_Y_PROXIMOS_PASOS.md`.

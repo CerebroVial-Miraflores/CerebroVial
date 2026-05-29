@@ -287,6 +287,8 @@ F12 Dashboard ejecutivo, F13 Selector de periodo, F14 Vista comparativa entre pe
 | F40 | Notificaciones push y monitoreo proactivo de cámaras | — |
 | F41 | Integración cerrada del módulo de visión al loop de validación cuantitativa | D-007 |
 
+> **F41 reafirmada en TTH-08 F9 (2026-05-29).** Sin cambios estructurales: integración vision→predictivo queda fuera de MVP1, ámbito reservado al ciclo F41. Ver `documentation/contracts/vision_contract.md` §6 (shape, columna `queue` nullable, calibración direccional postergada) y `DECISIONS_HU.md` DHU-024 addendum F9.
+
 Ver fichas detalladas en `FEATURE_BACKLOG_DETALLADO.md`. Ver `EVOLUCION_TESIS.md` sección 8 para la conexión con el capítulo de trabajo futuro de la tesis.
 
 ---
