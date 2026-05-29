@@ -156,18 +156,20 @@ Nominado en §6 como deuda separable F9.x.
 |---|---|---|
 | **F8 — dataset etiquetado ≥200 frames + métricas mAP/precisión/recall (CT-08.9)** | NO se etiqueta dataset, NO se mide precisión, NO se toca validación de detección dentro de F7. | F8 cuando el usuario lo decida. Es trabajo de **datos**, no de código — el grueso es etiquetar manualmente con Roboflow/CVAT/labelImg. |
 
+> **Cerrado por F9 (2026-05-29) — F8 confirmada diferida fuera del sprint TTH-08.** Ver `tth-08-fase9-handoff.md` §[diferimientos] y addendum F9 al pie de DHU-024 en `DECISIONS_HU.md`. El estado de TTH-08 en `ESTIMACION_SP.md` se actualizó a "Parcial — F8 diferida" (1.5 SP restantes fuera del sprint).
+
 ### 6.2 Para F9 (documentación contractual y cross-refs)
 
 | Deuda | Detalle | Forma de cierre sugerida |
 |---|---|---|
-| **`javier_prado.yaml` muerta** | Auditoría F7 confirmó: `grep -rn "javier_prado.yaml\|conf/vision/javier_prado" --include="*.py"` → 0 matches. Hydra root (`conf/config.yaml`) compone `vision: default`, no `javier_prado`. Las referencias a `javier_prado` en código son al string literal `cam_javier_prado_01` (camera_id de tests), no al YAML. Además tiene `persistence.type: "csv"` — bit-rot post-F5b. | Decidir en F9: (i) borrar; (ii) reescribir a postgres + zona Javier Prado real y documentar como "config de demo en vivo"; (iii) mover a `legacy/` con header explicando que quedó como referencia histórica de F1. |
-| **Paridad migración Alembic ↔ modelo SQLAlchemy** | El e2e de F7 valida repo↔modelo↔BD pero NO migración↔modelo. Mismo patrón de bit-rot que el proyecto viene pisando (csv legacy F5b, divergencia §5.8). | Test chico que use `alembic.autogenerate.api.compare_metadata` contra una BD post-`upgrade head` y reviente si el diff no está vacío. Forma barata; cabe en F9 sin engordar 1.5 SP. |
+| **`javier_prado.yaml` muerta** | Auditoría F7 confirmó: `grep -rn "javier_prado.yaml\|conf/vision/javier_prado" --include="*.py"` → 0 matches. Hydra root (`conf/config.yaml`) compone `vision: default`, no `javier_prado`. Las referencias a `javier_prado` en código son al string literal `cam_javier_prado_01` (camera_id de tests), no al YAML. Además tiene `persistence.type: "csv"` — bit-rot post-F5b. | **Decidido en F9 — alt. (iii)**: movido a `documentation/legacy/vision_configs/javier_prado.yaml` con header explicando estado histórico y condición de reactivación. Ver `tth-08-fase9-handoff.md` §[limpieza javier_prado]. |
+| **Paridad migración Alembic ↔ modelo SQLAlchemy** | El e2e de F7 valida repo↔modelo↔BD pero NO migración↔modelo. Mismo patrón de bit-rot que el proyecto viene pisando (csv legacy F5b, divergencia §5.8). | **Promovida a C9.7 en `TODO.md` por F9.** Forma de cierre sugerida: test chico con `alembic.autogenerate.api.compare_metadata` contra BD post-`upgrade head`. NO ejecutada en F9 (fuera del alcance "cero código productivo / cero tests nuevos"). Ver `tth-08-fase9-handoff.md` §[backlog post-TTH-08]. |
 
 ### 6.3 Para F9.x (separable, opcional)
 
 | Deuda | Detalle | Dueño |
 |---|---|---|
-| **Wirear `edge_device/tests` a CI** | TTH-03 históricamente postergado *"hasta que TTH-08 entregue módulo y tests estables"* — F7 cumple esa condición. Falta job CI nuevo con Docker, caché de imagen TimescaleDB, y decisión sobre deps pesadas (YOLO/torch). | F9.x o TTH-03 retomado. |
+| **Wirear `edge_device/tests` a CI** | TTH-03 históricamente postergado *"hasta que TTH-08 entregue módulo y tests estables"* — F7 cumple esa condición. Falta job CI nuevo con Docker, caché de imagen TimescaleDB, y decisión sobre deps pesadas (YOLO/torch). | **Promovida a C9.8 en `TODO.md` por F9** (o TTH-03 retomado). NO ejecutada en F9. Ver `tth-08-fase9-handoff.md` §[backlog post-TTH-08]. |
 
 ---
 
