@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Webster fijo precomputado offline (Catch B): cycle=51.4s, Y=0.611, green_NS=30.1, green_EW=11.3. -->
+<additional>
+  <tlLogic id="center" type="static" programID="webster_fixed" offset="0">
+    <phase duration="30.13" state="GGGGgrrrrGGGGgrrrr"/>  <!-- NS_g -->
+    <phase duration="3.00" state="yyyyyrrrryyyyyrrrr"/>  <!-- NS_y -->
+    <phase duration="2.00" state="rrrrrrrrrrrrrrrrrr"/>  <!-- NS_r -->
+    <phase duration="11.30" state="rrrrrGGGgrrrrrGGGg"/>  <!-- EW_g -->
+    <phase duration="3.00" state="rrrrryyyyrrrrryyyy"/>  <!-- EW_y -->
+    <phase duration="2.00" state="rrrrrrrrrrrrrrrrrr"/>  <!-- EW_r -->
+  </tlLogic>
+</additional>
