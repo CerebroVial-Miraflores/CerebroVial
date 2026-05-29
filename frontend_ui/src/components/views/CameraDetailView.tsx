@@ -11,6 +11,8 @@ import {
 import { Card } from '../ui/Card';
 import { predictionService, type PredictionResult } from '../../services/predictionService';
 import { TrafficHistoryWidget } from '../widgets/TrafficHistoryWidget';
+import type { VisionStreamPayload } from '../../types/visionStream';
+import { congestionLabel, densityPercent } from '../../utils/trafficLabels';
 
 interface CameraDetailViewProps {
     cameraId: string;
@@ -26,7 +28,7 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, on
     const [metrics, setMetrics] = useState({
         vehiclesPerHour: 0,
         avgSpeed: 0,
-        congestionLevel: 'Low',
+        congestionLevel: 'Bajo',
         density: '0%',
         pedestrians: 0,
         incidents: 0,
@@ -37,26 +39,28 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, on
     });
     const [prediction, setPrediction] = useState<PredictionResult | null>(null);
 
-    // SSE Effect
+    // SSE Effect — shape §6.2 (TTH-08 6d). El backend emite `event: traffic_update`
+    // con números crudos; la discretización ES y el `%` se computan client-side.
     useEffect(() => {
         const edgeApiUrl = (import.meta.env?.VITE_EDGE_API_URL) || 'http://localhost:8000';
         const sseUrl = `${edgeApiUrl}/stream/${cameraId}`;
         const eventSource = new EventSource(sseUrl);
 
-        eventSource.addEventListener('analysis', (event) => {
+        eventSource.addEventListener('traffic_update', (event) => {
             try {
-                const data = JSON.parse(event.data);
+                const data = JSON.parse(event.data) as VisionStreamPayload;
+                const m = data.metrics;
                 setMetrics({
-                    vehiclesPerHour: data.total_vehicles || 0,
-                    avgSpeed: data.avg_speed || 0,
-                    congestionLevel: data.congestion_level || 'Low',
-                    density: data.density || '0%',
-                    pedestrians: data.pedestrians || 0,
-                    incidents: data.incidents || 0,
-                    fps: data.system?.fps || 0,
-                    bitrate: data.system?.bitrate_mbps || 0,
-                    latency: data.system?.latency_ms || 0,
-                    flowRate: data.flow_rate_per_min || 0
+                    vehiclesPerHour: m.unique_vehicles,
+                    avgSpeed: m.mean_speed_kmh ?? 0,
+                    congestionLevel: congestionLabel(m.mean_occupancy),
+                    density: densityPercent(m.mean_occupancy),
+                    pedestrians: 0,
+                    incidents: 0,
+                    fps: 0,
+                    bitrate: 0,
+                    latency: 0,
+                    flowRate: m.flow_vehicles_per_hour / 60,
                 });
             } catch (e) {
                 console.error("Error parsing SSE data", e);

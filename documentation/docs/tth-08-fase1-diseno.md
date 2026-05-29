@@ -846,6 +846,22 @@ Mandar solo `TrafficData` obligaría a una segunda llamada para metadata.
 El enriquecimiento ocurre dentro del broadcaster concreto (o en un adapter
 justo antes de publicar) — NO cambia el Protocol del dominio.
 
+> **Nota de Fase 6 (2026-05-29) — `camera.street_monitored` se emite como
+> `null` en MVP1.** Auditoría del frontend al cierre del paso-0 de 6g: cero
+> consumidores leen el campo (ni los listeners SSE de `CameraDetailView`/
+> `DashboardView`, ni el `predictionService`, ni el `TrafficHistoryWidget`).
+> La premisa de "el frontend lo necesita para HU-02" no se materializó en
+> MVP1; HU-02 se cablea a SUMO (D-007, §10.4), no a vision. Por tanto
+> enriquecer dentro del broadcaster sería infraestructura especulativa para
+> un consumidor inexistente (YAGNI). Implementación 6d emite `"street_monitored":
+> null` y el frontend lo ignora. Si en F41 o una HU futura aparece un
+> consumidor que requiera el nombre humano, **dos rutas siguen abiertas
+> sin tocar el dominio**: (i) `CameraMetadataProvider` inyectable en el
+> broadcaster concreto (volver a esta sección al pie), (ii) registry en el
+> frontend que mapee `camera_id → street_monitored` desde la metadata de
+> cámara del core. Mismo patrón de registro de divergencia que §5.8 / DHU-025
+> (Σ→unión) / DHU-026 (caller→worker). Ver handoff de Fase 6 para el detalle.
+
 ```json
 {
   "schema_version": "1.0",

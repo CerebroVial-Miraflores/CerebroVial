@@ -5,6 +5,8 @@ import { LoadingOverlay } from '../ui/LoadingStates';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import type { VisionStreamPayload } from '../../types/visionStream';
+import { congestionUiStatus } from '../../utils/trafficLabels';
 
 // Fix for default marker icon in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -84,23 +86,16 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string)
             const sseUrl = `${baseUrl}/stream/${camera.id}`;
             const eventSource = new EventSource(sseUrl);
 
-            eventSource.addEventListener('analysis', (event) => {
+            eventSource.addEventListener('traffic_update', (event) => {
                 try {
-                    const data = JSON.parse(event.data);
-                    
-                    // Translate status from backend to frontend semantic
-                    let uiStatus = 'fluid';
-                    const congestion = data.congestion_level?.toLowerCase() || '';
-                    if (congestion === 'alto') uiStatus = 'critical';
-                    else if (congestion === 'moderado') uiStatus = 'moderate';
-                    else uiStatus = 'fluid';
-
+                    const data = JSON.parse(event.data) as VisionStreamPayload;
+                    const m = data.metrics;
                     setRealData(prev => ({
                         ...prev,
                         [camera.id]: {
-                            speed: Math.round(data.avg_speed || 0),
-                            flow: data.total_vehicles || 0,
-                            status: uiStatus
+                            speed: Math.round(m.mean_speed_kmh ?? 0),
+                            flow: m.unique_vehicles,
+                            status: congestionUiStatus(m.mean_occupancy),
                         }
                     }));
                 } catch (err) {
