@@ -2494,7 +2494,7 @@ TTH-08 entrega:
   `{intersection_id, timestamp, directions: [{direction, count, queue, flow, density}]}`
 - Tabla `vision_aggregates` con schema compatible con `CameraTrafficData` de `shared/`.
 - OpenAPI generado automáticamente desde FastAPI.
-- Documento `documentation/vision_contract.md` con shape, ejemplos, semántica.
+- Documento `documentation/contracts/vision_contract.md` con shape, ejemplos, semántica.
 
 CERO acoplamiento real con `ia_prediction_service/` en este TTH. Ningún import, ningún
 endpoint compartido, ninguna dependencia transitiva. La integración con el módulo
@@ -2570,7 +2570,7 @@ qué de lo decidido el 2026-05-27 se materializó y qué no, al cerrar Fase 9 de
 Lectura obligatoria antes de citar DHU-024 como autoridad.
 
 **§5 — Contrato técnico LISTO**: **CUMPLIDO.** El contract canónico vive en
-`documentation/vision_contract.md` (commit `docs(tth-08): 9a — contrato canónico de
+`documentation/contracts/vision_contract.md` (commit `docs(tth-08): 9a — contrato canónico de
 visión`). Materializa shape de `GET /vision/state`, `GET /vision/health`, payload SSE,
 schema `vision_aggregates`, alcance honesto de validación, F41 como integración futura
 y deudas heredadas. El compromiso documental de §5 queda saldado.

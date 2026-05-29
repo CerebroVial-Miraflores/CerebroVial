@@ -13,7 +13,7 @@ Alcance de F9 según DHU-024 (`documentation/lean-inception/4-decisiones/DECISIO
 
 | # | Entregable | Archivo | Commit |
 |---|------------|---------|--------|
-| 9a | **Contrato canónico del módulo de visión** (DHU-024 §5) | `documentation/vision_contract.md` (nuevo) | `docs(tth-08): 9a — contrato canónico de visión` |
+| 9a | **Contrato canónico del módulo de visión** (DHU-024 §5) | `documentation/contracts/vision_contract.md` (nuevo) | `docs(tth-08): 9a — contrato canónico de visión` |
 | 9b | **`javier_prado.yaml` movida a `documentation/legacy/`** (alt. iii) con header | `documentation/legacy/vision_configs/javier_prado.yaml` (movido + header) | `chore(tth-08): 9b — mueve javier_prado.yaml a documentation/legacy` |
 | 9c | **TODO.md** — retira C1.5/C1.6/C1.7/C1.8, reabre C7.6 como F9.z, nomina C9.7/C9.8/F9.y/F9.z | `documentation/docs/TODO.md` | `docs(tth-08): 9c — retira C1.x, reabre C7.6 como F9.z y nomina C9.7/C9.8` |
 | 9d | **Addendum F9 a DHU-024** con estado real al cierre (append-only) | `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` | `docs(tth-08): 9d — addendum F9 a DHU-024` |
@@ -63,7 +63,7 @@ Estado del diferimiento registrado en:
 - `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` §6.1 (origen)
 - `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` addendum F9 al pie de DHU-024
 - `documentation/lean-inception/planificacion/ESTIMACION_SP.md` fila TTH-08 (Parcial — F8 diferida)
-- `documentation/vision_contract.md` §5.2
+- `documentation/contracts/vision_contract.md` §5.2
 
 ### 3.2 C7.6 reabierta como F9.z
 
@@ -114,7 +114,7 @@ Ninguno bloquea el cierre de TTH-08 como Parcial. F8 + F9.z requieren decisión 
 
 | Doc | Anclaje desde F9 | Anclaje hacia F9 |
 |-----|------------------|------------------|
-| `documentation/vision_contract.md` | §1 contract entregado | §7 deudas heredadas (F9.z, C9.7, C9.8, F9.y) y §8 cross-refs apuntan al handoff F9 |
+| `documentation/contracts/vision_contract.md` | §1 contract entregado | §7 deudas heredadas (F9.z, C9.7, C9.8, F9.y) y §8 cross-refs apuntan al handoff F9 |
 | `DECISIONS_HU.md` DHU-024 | §3.1 (F8) y §3.2 (C7.6) citan el addendum F9 | Addendum F9 al pie de DHU-024 cita este handoff |
 | `tth-08-fase7-handoff.md` | §3 retiro C1.x e historial de cierre | §6.1, §6.2, §6.3 con punteros forward al handoff F9 (commit `docs(tth-08): 9g`) |
 | `TODO.md` | §3.3 retiro C1.x; §4 backlog post-TTH-08 | C1.5/C1.8 `[x]`, C1.6/C1.7 `[~]`, C7.6 reabierta, C9.7/C9.8/F9.y/F9.z nuevos — todos con cross-ref a este handoff |
