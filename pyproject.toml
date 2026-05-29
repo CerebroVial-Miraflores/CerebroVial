@@ -62,3 +62,8 @@ dummy-variable-rgx = "^(_+|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "edge_device/src/vision/application/processors/__init__.py" = ["F401"]
 "edge_device/src/vision/infrastructure/sources/__init__.py" = ["F401"]
 "edge_device/src/vision/presentation/visualization/opencv_visualizer.py" = ["E701"] # Allow multiple statements on one line (colon) for the color mapping
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end test que requiere Docker (TTH-08 Fase 7: e2e CT-08.11(e) levanta Postgres/Timescale efímero con testcontainers; skip-graceful si Docker no está disponible)",
+]
