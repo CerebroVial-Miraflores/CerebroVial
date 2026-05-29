@@ -47,12 +47,12 @@ def main(cfg: DictConfig):
     
     try:
         for frame, analysis in pipeline.run():
-            # Visualization
-            if analysis:
-                frame.image = visualizer.draw(frame.image, analysis)
-            
+            display_image = (
+                visualizer.render(frame, analysis) if analysis else frame.image
+            )
+
             if vision_cfg.display:
-                cv2.imshow("CerebroVial Vision", frame.image)
+                cv2.imshow("CerebroVial Vision", display_image)
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
                     break
@@ -60,7 +60,7 @@ def main(cfg: DictConfig):
                     # Enter ROI selection mode
                     print("\nSelect ROI...")
                     selector = InteractiveZoneSelector(window_name="CerebroVial Vision")
-                    points = selector.select_zone(frame.image)
+                    points = selector.select_zone(display_image)
                     if points:
                         print(f"Zone selected: {points}")
                         # Update zone manager

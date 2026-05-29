@@ -23,33 +23,29 @@ def get_broadcaster() -> RealtimeBroadcaster:
 
 @app.get("/stream/{camera_id}")
 async def stream_camera(camera_id: str):
-    """
-    Server-Sent Events endpoint for streaming.
-    
-    Frontend usage:
-    ```javascript
-    const eventSource = new EventSource('/stream/CAM_001');
-    eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Vehicles:', data.total_vehicles);
-    };
-    ```
+    """Server-Sent Events endpoint para una cámara.
+
+    Emite el payload §6.2 (event_type `traffic_update`) por cada `TrafficData`
+    agregado de la ventana. Frontend consume `data.metrics.unique_vehicles`,
+    `data.metrics.flow_vehicles_per_hour`, etc.; la discretización a labels
+    ES (`Bajo`/`Moderado`/`Alto`) y el `density %` se computan client-side
+    (§9.2 prohíbe localización en transporte).
     """
     broadcaster = get_broadcaster()
-    queue = await broadcaster.subscribe(camera_id)
-    
+    subscriber_id, queue = await broadcaster.subscribe(camera_id)
+
     async def event_generator():
         try:
             while True:
                 data = await queue.get()
                 yield {
-                    "event": "analysis",
-                    "data": json.dumps(data)
+                    "event": data.get("event_type", "traffic_update"),
+                    "data": json.dumps(data),
                 }
         except asyncio.CancelledError:
-            await broadcaster.unsubscribe(camera_id, queue)
+            await broadcaster.unsubscribe(subscriber_id)
             raise
-    
+
     return EventSourceResponse(event_generator())
 
 @app.get("/cameras")
@@ -57,14 +53,15 @@ async def list_cameras():
     """Lists active cameras."""
     broadcaster = get_broadcaster()
     return {
-        "cameras": list(broadcaster._subscribers.keys()),
-        "latest_states": broadcaster._latest_state
+        "cameras": broadcaster.subscribed_cameras(),
+        "latest_states": broadcaster.latest_states(),
     }
 
 @app.get("/snapshot/{camera_id}")
 async def get_snapshot(camera_id: str):
     """Gets latest state of a camera (polling fallback)."""
     broadcaster = get_broadcaster()
-    if camera_id not in broadcaster._latest_state:
+    state = broadcaster.latest_state(camera_id)
+    if state is None:
         raise HTTPException(404, "Camera not found")
-    return broadcaster._latest_state[camera_id]
+    return state

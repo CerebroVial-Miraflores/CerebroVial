@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 from ....application.services.multi_camera import MultiCameraManager
 from ....infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
+from ...visualization import build_visualizer_from_vision_cfg
 
 app = FastAPI()
 
@@ -84,5 +85,6 @@ async def add_camera(camera_id: str, config: CameraConfig):
         }
     })
     
-    manager.add_camera(camera_id, cfg)
+    renderer = build_visualizer_from_vision_cfg(cfg.vision)
+    manager.add_camera(camera_id, cfg, renderer=renderer)
     return {"status": "added", "camera_id": camera_id}

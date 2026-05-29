@@ -40,6 +40,12 @@ class PostgresTrafficRepository(TrafficRepository):
         `queue` se omite a propósito (NULL en MVP1; F41 lo poblará). Los Optional
         del dominio (`mean_speed_kmh`, `density_vehicles_per_km`) pasan tal cual:
         `None` se materializa como NULL en la columna nullable.
+
+        Este mapping cumple lo que §5.8 llamaba "adapter de persistencia": la
+        migración Fase 2/3 dejó `vision_aggregates` con shape canónico (no
+        `CameraTrafficData`), así que el adapter como objeto intermedio nunca
+        se construye — el mapping `TrafficData → columnas` vive directamente
+        acá. Ver nota de Fase 6 al inicio de §5.8 en `tth-08-fase1-diseno.md`.
         """
         by_type = data.vehicles_by_type
         return {
