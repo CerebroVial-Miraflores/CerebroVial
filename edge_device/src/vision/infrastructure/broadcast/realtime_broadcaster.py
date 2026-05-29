@@ -53,14 +53,21 @@ class RealtimeBroadcaster:
         # Último payload §6.2 publicado por camera_id (cache para nuevos
         # subscribers).
         self._latest_state: dict[str, dict] = {}
+        # Último TrafficData por (camera_id, zone_id). 6e lo necesita para
+        # armar `GET /vision/state/{intersection_id}` con TODAS las direcciones
+        # de la cámara — el cache `_latest_state` por sí solo solo guardaría
+        # la zona del último publish.
+        self._latest_traffic_data: dict[str, dict[str, TrafficData]] = {}
 
     # ---- Protocol §6.10/§6.11 ------------------------------------------
 
     async def publish(self, data: TrafficData) -> None:
         """Emite el payload §6.2 a todos los subscribers de la `camera_id` del dato."""
         camera_id = data.camera_id.value
+        zone_id = data.zone_id.value
         payload = self._build_payload(data)
         self._latest_state[camera_id] = payload
+        self._latest_traffic_data.setdefault(camera_id, {})[zone_id] = data
 
         async with self._lock:
             targets = [
@@ -125,6 +132,15 @@ class RealtimeBroadcaster:
 
     def latest_states(self) -> dict[str, dict]:
         return dict(self._latest_state)
+
+    def traffic_data_for(self, camera_id: str) -> dict[str, TrafficData]:
+        """Últimos `TrafficData` por zona para una `camera_id`.
+
+        Devuelve `{zone_id: TrafficData}`; vacío si nunca se publicó nada para
+        esa cámara. Consumido por `GET /vision/state/{intersection_id}` (6e)
+        para armar el shape §6.5 con todas las direcciones.
+        """
+        return dict(self._latest_traffic_data.get(camera_id, {}))
 
     # ---- Payload §6.2 --------------------------------------------------
 
