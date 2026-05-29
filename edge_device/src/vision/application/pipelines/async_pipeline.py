@@ -228,6 +228,22 @@ class AsyncVisionPipeline:
         Auto-arranca threads. Bloquea entre yields para mantener pacing a
         `target_fps`. Termina cuando el processing terminó Y la result_queue
         está vacía (drenado limpio), o cuando `stop()` se llamó.
+
+        NOTA — Pre-buffering eliminado en Fase 5c, queda pendiente de
+        validación con stream real en Fase 6 / Fases 7-9. La versión vieja
+        tenía aquí `while self.result_queue.qsize() < 5 and not self._stop_event.is_set(): time.sleep(0.1)`
+        — un pre-buffer de 5 items antes de comenzar a yield, para absorber
+        jitter de red en streams largos. Se quitó porque (a) complicaba el
+        shutdown limpio cuando el stream es corto (interactúa mal con el
+        _stop_event seteado por el capture al terminar), (b) no es feature
+        del Protocol, (c) la ventana de agregación del aggregator (default
+        60s, §11.2) ya absorbe variabilidad a nivel de minutos. Para el
+        pacing intra-yield, `target_fps` ya da salida estable. La hipótesis
+        "producción no necesita buffering" queda pendiente de datos del
+        smoke en vivo de Fase 6 / Fases 7-9 con streams HLS reales; si el
+        smoke muestra micro-jitter visible a 30 FPS, considerar re-introducir
+        un pre-buffer condicionable por config con timeout total para no
+        romper shutdown limpio.
         """
         self.start()
         frame_duration_s = 1.0 / self.target_fps if self.target_fps > 0 else 0.0

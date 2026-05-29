@@ -175,6 +175,79 @@ def test_pipeline_handles_source_error_and_recovers():
     assert source.released
 
 
+def test_catch_up_skips_frames_when_lag_exceeds_threshold():
+    """§10.5: con lag > 1.5s, el processing salta frames (skip 1 de cada 2 o 3).
+
+    Manipulación manual del pipeline: pre-seteamos `_latest_capture_ts` para
+    forzar lag artificial, ponemos frames "viejos" en la frame_queue, y
+    arrancamos solo el processing thread. El capture_done garantiza que el
+    processing termine de drenar y salga. Vale como cobertura mínima del
+    catch-up — el plan obligaba §10.5 por diseño y este test demuestra que
+    se dispara y NO procesa todos los frames cuando el lag está alto.
+    """
+    import threading
+
+    source = MagicMock()
+    source.release = MagicMock()
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    # Simulamos: el capture ya leyó un frame muy reciente (timestamp altísimo)
+    # por lo que el _latest_capture_ts está en 100.0. Inyectamos en
+    # frame_queue 6 frames "viejos" con timestamps 98.0+...
+    # → lag ≈ 2.0s → cae en la rama "1.5 < lag <= 2.5" → skip modulo 2.
+    pipeline._latest_capture_ts = 100.0
+    for fid in range(6):
+        pipeline.frame_queue.put_nowait(
+            Frame(id=fid, timestamp=98.0 + fid * 0.001, image=_img())
+        )
+
+    # Capture nunca arrancará — señalamos que terminó para que processing
+    # termine de drenar y salga.
+    pipeline._capture_done.set()
+    pipeline._processing_thread = threading.Thread(
+        target=pipeline._processing_loop, name="ProcessingThreadTest", daemon=True
+    )
+    pipeline._processing_thread.start()
+    pipeline._processing_thread.join(timeout=2.0)
+
+    # Catch-up activo: NO se procesan los 6 frames. Al menos 1 se procesa
+    # (cada 2 con skip_modulo=2). El gate exacto depende de la dinámica del
+    # skipped_counter; el invariante observable es: 0 < procesados < 6.
+    assert 0 < processor.call_count < 6, (
+        f"catch-up §10.5 debió saltar al menos un frame con lag artificial alto; "
+        f"procesados={processor.call_count} de 6"
+    )
+
+
+def test_catch_up_inactive_when_no_lag():
+    """Sin lag (timestamps fresh), el processing NO salta ningún frame."""
+    import threading
+
+    source = MagicMock()
+    source.release = MagicMock()
+    processor = _PassThroughProcessor()
+    pipeline = AsyncVisionPipeline(source, processor, target_fps=1000)
+
+    # Lag ~ 0: _latest_capture_ts coincide (o casi) con timestamp de los frames.
+    t0 = time.time()
+    pipeline._latest_capture_ts = t0
+    for fid in range(4):
+        pipeline.frame_queue.put_nowait(
+            Frame(id=fid, timestamp=t0 - fid * 0.001, image=_img())
+        )
+
+    pipeline._capture_done.set()
+    pipeline._processing_thread = threading.Thread(
+        target=pipeline._processing_loop, name="ProcessingThreadTest", daemon=True
+    )
+    pipeline._processing_thread.start()
+    pipeline._processing_thread.join(timeout=2.0)
+
+    # Sin lag → catch-up no se dispara → procesa los 4.
+    assert processor.call_count == 4
+
+
 def test_get_latest_returns_most_recent_after_processing():
     """get_latest() refleja el último (frame, analysis) procesado."""
     t0 = time.time()
