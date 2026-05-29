@@ -69,8 +69,20 @@ class AsyncAggregator(Protocol):
       data; callers that need final data should invoke `force_flush()`
       first.
 
-    The caller (typically a use case in `application/`) is responsible for
-    persistence via the `TrafficRepository` Protocol.
+    Persistence (async-only MVP1 — §11 + DHU-026, supersede de §4.4 Cambio
+    2 / Sesión 1): the **worker** of this aggregator owns persistence and
+    §11.1/§11.2 error handling. The caller injects a concrete
+    `TrafficRepository` (e.g., `PostgresTrafficRepository`) via the
+    constructor.
+
+    Save and output-queue push are **independent best-effort paths** for the
+    same computed `TrafficData` (not sequential): a `save` failure
+    (`logger.exception` + `aggregation_errors` counter, §11.1) does NOT
+    remove the item from the output queue, and an output-queue overflow
+    (drop-newest + `data_dropped` counter, §11.2) does NOT roll back the
+    save. `flush()` returns what was computed-and-not-dropped from the
+    output queue — alignment with "already computed and waiting in the
+    output queue" above — NOT what was persisted.
     """
     def add(self, analysis: FrameAnalysis) -> None: ...
     def flush(self) -> list[TrafficData]: ...
