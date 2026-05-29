@@ -27,13 +27,17 @@ def main(cfg: DictConfig):
         {"id": "CAM_003", "source": "https://www.youtube.com/watch?v=0IgonpX1jMg"},
         {"id": "CAM_004", "source": "https://www.youtube.com/watch?v=rPxWUFTKgds"},
     ]
-    
+
     # Add cameras
     for cam_info in CAMERAS:
         try:
             # Create a copy of the config for this camera
             cam_cfg = cfg.copy()
             cam_cfg.vision.source = cam_info["source"]
+            # Bug-fix Fase 5f: el builder.build_persistence() exige vision.camera_id
+            # cuando persistence.enabled=True (pipeline_builder.py:166-170). Hasta
+            # ahora nadie lo seteaba — bit-rot que ningún test cubría.
+            cam_cfg.vision.camera_id = cam_info["id"]
 
             renderer = build_visualizer_from_vision_cfg(cam_cfg.vision)
             manager.add_camera(cam_info["id"], cam_cfg, renderer=renderer)

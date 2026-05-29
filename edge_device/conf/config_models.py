@@ -33,7 +33,8 @@ class SpeedEstimationConfig:
 @dataclass
 class VisionConfig:
     source: str
-    source_type: str = "youtube"
+    source_type: str = "auto"
+    camera_id: Optional[str] = None  # Obligatorio cuando persistence.enabled (validado por el builder).
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     zones: Dict[str, List[List[int]]] = field(default_factory=dict) # Simplified to match hydra dict structure for now
