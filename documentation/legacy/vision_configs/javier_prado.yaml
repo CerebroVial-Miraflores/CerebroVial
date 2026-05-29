@@ -22,9 +22,9 @@
 #   4. Volver a colocar bajo `edge_device/conf/vision/` y declarar en
 #      `edge_device/conf/config.yaml` (cambiar `vision: default` → `vision: javier_prado`).
 #
-# Ver `documentation/docs/tth-08-fase9-handoff.md` (sección "limpieza javier_prado")
-# y `documentation/docs/tth-08-fase7-handoff.md` §6.2 (auditoría que confirmó
-# la deuda).
+# Ver `documentation/handoffs/tth-08/tth-08-fase9-handoff.md` (sección "limpieza
+# javier_prado") y `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` §6.2
+# (auditoría que confirmó la deuda).
 
 source: "https://live.smartechlatam.online/claro/javierprado/index.m3u8"
 source_type: "file" # "file" usa cv2.VideoCapture directo, que soporta .m3u8

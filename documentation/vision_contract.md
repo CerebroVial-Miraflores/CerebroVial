@@ -271,8 +271,8 @@ Estas cinco deudas + **F8 (CT-08.9)** se agrupan como **"Backlog post-TTH-08 (in
 - **Diseño que materializa este contrato**: `documentation/docs/tth-08-fase1-diseno.md` §5 (TrafficData), §6.2 (SSE), §6.5 (vision_aggregates).
 - **Implementación**: [edge_device/src/vision/](../edge_device/src/vision/) — capas `domain/`, `application/`, `infrastructure/`, `presentation/`.
 - **Honestidad del 88.2%**: `DECISIONS.md` D-005 (líneas 70–79).
-- **Alcance acotado de CT-08.11(e)**: `documentation/docs/tth-08-fase7-handoff.md` §4.1–§4.2 (qué SÍ valida, qué NO valida) y §2 fila (e).
-- **Diferimiento de F8**: `documentation/docs/tth-08-fase7-handoff.md` §6.1, `documentation/docs/tth-08-fase9-handoff.md` §[diferimientos], addendum F9 de DHU-024.
+- **Alcance acotado de CT-08.11(e)**: `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` §4.1–§4.2 (qué SÍ valida, qué NO valida) y §2 fila (e).
+- **Diferimiento de F8**: `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` §6.1, `documentation/handoffs/tth-08/tth-08-fase9-handoff.md` §[diferimientos], addendum F9 de DHU-024.
 - **F41 como Trabajos Futuros**: `EVOLUCION_TESIS.md` §8 (línea 161), `LEAN_INCEPTION_CEREBROVIAL.md` sección "Trabajos Futuros" (línea 288).
 - **Deudas nominadas F9.x / F9.y / F9.z**: `documentation/docs/TODO.md` (C7.6 reabierta, C9.7 paridad, C9.8 CI, F9.y barrido).
-- **Cierre del sprint**: `documentation/docs/tth-08-fase9-handoff.md`.
+- **Cierre del sprint**: `documentation/handoffs/tth-08/tth-08-fase9-handoff.md`.

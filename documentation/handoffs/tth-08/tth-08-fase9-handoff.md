@@ -19,8 +19,8 @@ Alcance de F9 según DHU-024 (`documentation/lean-inception/4-decisiones/DECISIO
 | 9d | **Addendum F9 a DHU-024** con estado real al cierre (append-only) | `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` | `docs(tth-08): 9d — addendum F9 a DHU-024` |
 | 9e | **ESTIMACION_SP** — TTH-08 fila Parcial + F8 diferida + subtotal recalculado | `documentation/lean-inception/planificacion/ESTIMACION_SP.md` | `docs(tth-08): 9e — TTH-08 marcado como Parcial` |
 | 9f | **Notas F41 reafirmadas** en EVOLUCION_TESIS §8 y LEAN_INCEPTION "Trabajos Futuros" | `documentation/lean-inception/1-contexto/EVOLUCION_TESIS.md` + `LEAN_INCEPTION_CEREBROVIAL.md` | `docs(tth-08): 9f — reafirma F41 como integración futura` |
-| 9g | **Cross-refs forward** desde handoff F7 hacia F9 | `documentation/docs/tth-08-fase7-handoff.md` | `docs(tth-08): 9g — cross-refs forward desde handoff F7 hacia F9` |
-| 9h | **Este handoff** | `documentation/docs/tth-08-fase9-handoff.md` (nuevo) | `docs(tth-08): 9h — handoff Fase 9 + cierre documental del sprint TTH-08` |
+| 9g | **Cross-refs forward** desde handoff F7 hacia F9 | `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` | `docs(tth-08): 9g — cross-refs forward desde handoff F7 hacia F9` |
+| 9h | **Este handoff** | `documentation/handoffs/tth-08/tth-08-fase9-handoff.md` (nuevo) | `docs(tth-08): 9h — handoff Fase 9 + cierre documental del sprint TTH-08` |
 
 8 commits, 2 docs nuevos, 6 modificaciones, 1 `git mv` con header. Cero `.py`, cero `requirements*.txt`, cero Dockerfile, cero YAML de configuración activa.
 
@@ -60,7 +60,7 @@ Alcance de F9 según DHU-024 (`documentation/lean-inception/4-decisiones/DECISIO
 - Mientras tanto, **no debe afirmarse como validado** en la tesis ni ante el jurado — debe declararse como "pendiente de medición, ver F8".
 
 Estado del diferimiento registrado en:
-- `documentation/docs/tth-08-fase7-handoff.md` §6.1 (origen)
+- `documentation/handoffs/tth-08/tth-08-fase7-handoff.md` §6.1 (origen)
 - `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` addendum F9 al pie de DHU-024
 - `documentation/lean-inception/planificacion/ESTIMACION_SP.md` fila TTH-08 (Parcial — F8 diferida)
 - `documentation/vision_contract.md` §5.2
@@ -103,6 +103,10 @@ Cinco ítems descubribles como conjunto. **Ninguno se ejecuta en F9** — todos 
 | **F9.z** | Infra reqs | Aplicar `--index-url https://download.pytorch.org/whl/cpu` (o equivalente) a `edge_device/requirements.txt:5` + smoke build/import | C7.6 reabierta + addendum F9 a DHU-024 §7 | `TODO.md` C7.6 (reabierta) + F9.z (nuevo) |
 
 Ninguno bloquea el cierre de TTH-08 como Parcial. F8 + F9.z requieren decisión del usuario para arrancar (datos / infra). C9.7, C9.8, F9.y son cleanup recogedibles en cualquier momento.
+
+### 4.1 Notas chicas (sub-deudas separables)
+
+- **Docstring stale en `edge_device/tests/vision/integration/test_persistence_e2e.py:4`**. La cabecera del test referencia `documentation/docs/tth-08-fase6-handoff.md` §1 y §4.3, ruta vieja del handoff F6 que la reorganización F9i movió a `documentation/handoffs/tth-08/tth-08-fase6-handoff.md`. **F9i NO actualizó esa línea del `.py`** porque tocar código productivo rompe el guard "cero código productivo" de la rama de cierre. Es un docstring informativo, sin impacto en comportamiento. **Se corrige cuando F9.y o un TTH-03 retomado toque ese test** — ese día se aprovecha para reapuntar la ruta del docstring a la ubicación actual.
 
 ---
 

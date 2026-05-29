@@ -2621,7 +2621,7 @@ CT-08.9. El rastreo honesto del 88.2% queda nominado para F8 (post-TTH-08).
   `EVOLUCION_TESIS.md` §8 y `LEAN_INCEPTION_CEREBROVIAL.md` "Trabajos Futuros" al
   `vision_contract.md` §6 (integración futura).
 
-**Cierre del sprint**: handoff F9 en `documentation/docs/tth-08-fase9-handoff.md`
+**Cierre del sprint**: handoff F9 en `documentation/handoffs/tth-08/tth-08-fase9-handoff.md`
 (commit `docs(tth-08): 9h`). Backlog consolidado post-TTH-08 con los 5 ítems
 separables (F8, C9.7, C9.8, F9.y, F9.z) en la sección "Backlog post-TTH-08
 (infra/cleanup separable)" del handoff F9.
