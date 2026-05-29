@@ -4,7 +4,6 @@ import time
 from ...domain.entities import Frame, FrameAnalysis, DetectedVehicle
 from ...domain.protocols import VehicleDetector, VehicleTracker, SpeedEstimator
 from ...infrastructure.zones.zone_counter import ZoneCounter
-from ..aggregators.sync_aggregator import TrafficDataAggregator
 from cerebrovial_shared.metrics import MetricsCollector
 
 class FrameProcessor(ABC):

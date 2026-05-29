@@ -7,8 +7,7 @@ from ...infrastructure.sources import create_source
 from ...infrastructure.tracking.supervision_tracker import SupervisionTracker
 from ...infrastructure.tracking.speed_estimator import SimpleSpeedEstimator
 from ...infrastructure.zones.zone_counter import ZoneCounter
-from ...infrastructure.persistence.csv_repository import CSVTrafficRepository
-from ..aggregators.async_aggregator import AsyncTrafficDataAggregator
+from ..aggregators.async_aggregator import AsyncTrafficAggregator
 from ..processors import (
     TrackingProcessor, 
     SpeedEstimationProcessor, ZoneProcessor, AggregationProcessor
@@ -33,7 +32,7 @@ class VisionApplicationBuilder:
         self.tracker: Optional[VehicleTracker] = None
         self.speed_estimator: Optional[SpeedEstimator] = None
         self.zone_counter: Optional[ZoneCounter] = None
-        self.aggregator: Optional[AsyncTrafficDataAggregator] = None
+        self.aggregator: Optional[AsyncTrafficAggregator] = None
         self.source: Optional[FrameProducer] = None
         self.pipeline: Optional[AsyncVisionPipeline] = None
 
@@ -101,16 +100,16 @@ class VisionApplicationBuilder:
         return self
 
     def build_persistence(self) -> 'VisionApplicationBuilder':
+        # Wiring final del aggregator + TrafficRepository pendiente para 5f
+        # (rama Postgres con PostgresTrafficRepository + AsyncTrafficAggregator
+        # firma nueva camera_id / window_duration_s / zone_segment_lengths).
+        # CSV eliminado en 5b (decisión #8 / DHU-026 contexto).
         if self.vision_cfg.get('persistence', {}).get('enabled', False):
-            print("Initializing data persistence...")
-            repo_type = self.vision_cfg.persistence.type
-            output_dir = self.vision_cfg.persistence.output_dir
-            interval = self.vision_cfg.persistence.interval_seconds
-            
-            if repo_type == 'csv':
-                repository = CSVTrafficRepository(output_dir=output_dir)
-                # Use AsyncTrafficDataAggregator
-                self.aggregator = AsyncTrafficDataAggregator(repository=repository, window_duration=interval)
+            raise NotImplementedError(
+                "build_persistence está pendiente para Fase 5f de TTH-08: "
+                "solo Postgres soportado (CSV eliminado), wiring del "
+                "AsyncTrafficAggregator nuevo no implementado todavía."
+            )
         return self
 
     def build_pipeline(self) -> AsyncVisionPipeline:
