@@ -1,33 +1,73 @@
-from omegaconf import DictConfig
-from typing import Optional, Dict
+"""Builder de la aplicación de visión (cierre de Fase 5f).
 
-from ...domain.protocols import FrameProducer, VehicleDetector, VehicleTracker, SpeedEstimator
-from ...infrastructure.detection.yolo_detector import YoloDetector
-from ...infrastructure.sources import create_source
-from ...infrastructure.tracking.supervision_tracker import SupervisionTracker
-from ...infrastructure.tracking.speed_estimator import SimpleSpeedEstimator
-from ...infrastructure.zones.zone_counter import ZoneCounter
-from ..aggregators.async_aggregator import AsyncTrafficAggregator
-from ..processors import (
-    TrackingProcessor, 
-    SpeedEstimationProcessor, ZoneProcessor, AggregationProcessor
-)
-from ..processors.smart_detection import SmartDetectionProcessor
-from ..pipelines.async_pipeline import AsyncVisionPipeline
+Cablea los componentes Protocol-conformes producidos en 5a-5e:
+- `AsyncTrafficAggregator` (5b) con su `TrafficRepository` inyectado.
+- `AsyncVisionPipeline` (5c) sobre `FrameProducer.read()`.
+- Processors nuevos (5d) con firmas Protocol.
+- `FrameRenderer` opcional (5e) — pasado al MultiCameraManager por afuera.
+
+Persistencia: **solo Postgres** en MVP1. CSV eliminado en 5b (decisión #8 del
+plan de Fase 5; reasonado en DHU-026 contexto). Si `persistence.enabled` está
+en `True` pero `type` no es `'postgres'`, se levanta `ValueError` en boot
+(sin fallback silencioso).
+
+Logging por archivo (§6.3). El builder NO importa de `presentation/`.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from typing import Optional
+
+from omegaconf import DictConfig, OmegaConf
+
 from cerebrovial_shared.metrics import MetricsCollector
 
+from ...domain.protocols import (
+    FrameProducer,
+    SpeedEstimator,
+    VehicleDetector,
+    VehicleTracker,
+)
+from ...domain.repositories import TrafficRepository
+from ...domain.value_objects import CameraId, ZoneId
+from ...infrastructure.detection.yolo_detector import YoloDetector
+from ...infrastructure.persistence.postgres_repository import (
+    PostgresTrafficRepository,
+)
+from ...infrastructure.sources import create_source
+from ...infrastructure.tracking.speed_estimator import SimpleSpeedEstimator
+from ...infrastructure.tracking.supervision_tracker import SupervisionTracker
+from ...infrastructure.zones.zone_counter import ZoneCounter
+from ..aggregators.async_aggregator import AsyncTrafficAggregator
+from ..pipelines.async_pipeline import AsyncVisionPipeline
+from ..processors import (
+    AggregationProcessor,
+    SpeedEstimationProcessor,
+    TrackingProcessor,
+    ZoneProcessor,
+)
+from ..processors.smart_detection import SmartDetectionProcessor
+
+logger = logging.getLogger(__name__)
+
+_DEFAULT_VEHICLE_CLASSES = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
+
+
 class VisionApplicationBuilder:
+    """Builder pattern del pipeline de visión.
+
+    Construye, en orden o todo de una vez vía `build_pipeline()`:
+    detector → source → tracker → speed_estimator → zone_counter →
+    persistence (aggregator+repo) → pipeline.
     """
-    Builder pattern for constructing the Vision Pipeline application.
-    Centralizes component instantiation and wiring.
-    """
-    
-    def __init__(self, config: DictConfig):
+
+    def __init__(self, config: DictConfig) -> None:
         self.config = config
         self.vision_cfg = config.vision
         self.metrics_collector = MetricsCollector()
-        
-        # Components
+
+        # Componentes (poblados por build_*).
         self.detector: Optional[VehicleDetector] = None
         self.tracker: Optional[VehicleTracker] = None
         self.speed_estimator: Optional[SpeedEstimator] = None
@@ -36,16 +76,26 @@ class VisionApplicationBuilder:
         self.source: Optional[FrameProducer] = None
         self.pipeline: Optional[AsyncVisionPipeline] = None
 
+        # Mapeo zone_id → segment_length_meters (None si no calibrada).
+        # Lo llena `build_zones()` y lo consume `build_persistence()`.
+        self._zone_segment_lengths: dict[ZoneId, float | None] = {}
+
+    # ---- Component builders --------------------------------------------
+
     def build_detector(self) -> 'VisionApplicationBuilder':
-        print(f"Loading model: {self.vision_cfg.model.path}...")
+        logger.info("Loading model: %s", self.vision_cfg.model.path)
         self.detector = YoloDetector(
-            model_path=self.vision_cfg.model.path, 
-            conf_threshold=self.vision_cfg.model.conf_threshold
+            model_path=self.vision_cfg.model.path,
+            conf_threshold=self.vision_cfg.model.conf_threshold,
         )
         return self
 
     def build_source(self) -> 'VisionApplicationBuilder':
-        print(f"Opening source: {self.vision_cfg.source} (Type: {self.vision_cfg.source_type})...")
+        logger.info(
+            "Opening source: %s (Type: %s)",
+            self.vision_cfg.source,
+            self.vision_cfg.source_type,
+        )
         perf_cfg = self.vision_cfg.get('performance', {})
         self.source = create_source(
             source_config=self.vision_cfg.source,
@@ -53,66 +103,93 @@ class VisionApplicationBuilder:
             buffer_size=perf_cfg.get('opencv_buffer_size', 3),
             target_width=perf_cfg.get('target_width', None),
             target_height=perf_cfg.get('target_height', None),
-            format=perf_cfg.get('youtube_format', 'best')
+            format=perf_cfg.get('youtube_format', 'best'),
         )
         return self
 
     def build_tracker(self) -> 'VisionApplicationBuilder':
-        print("Initializing tracking...")
-        try:
-            # Load vehicle classes from external config
-            from omegaconf import OmegaConf
-            import os
-            
-            config_path = "conf/vision/vehicle_classes.yaml"
-            if os.path.exists(config_path):
-                vc_cfg = OmegaConf.load(config_path)
-                vehicle_classes = dict(vc_cfg.vehicle_classes)
-            else:
-                print(f"Warning: {config_path} not found, using defaults.")
-                vehicle_classes = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
-        except Exception as e:
-            print(f"Warning: Failed to load vehicle classes: {e}. Using defaults.")
-            vehicle_classes = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
-            
+        logger.info("Initializing tracking")
+        vehicle_classes = _load_vehicle_classes()
         self.tracker = SupervisionTracker(vehicle_classes)
         return self
 
     def build_speed_estimator(self) -> 'VisionApplicationBuilder':
         if self.vision_cfg.speed_estimation.enabled:
-            print("Initializing speed estimation...")
-            pixels_per_meter = self.vision_cfg.speed_estimation.pixels_per_meter
-            self.speed_estimator = SimpleSpeedEstimator(pixels_per_meter=pixels_per_meter)
+            logger.info("Initializing speed estimation")
+            self.speed_estimator = SimpleSpeedEstimator(
+                pixels_per_meter=self.vision_cfg.speed_estimation.pixels_per_meter
+            )
         return self
 
     def build_zones(self) -> 'VisionApplicationBuilder':
-        if 'zones' in self.vision_cfg and self.vision_cfg.zones:
-            print("Initializing zones...")
-            # Convert OmegaConf to dict/list to preserve structure (dict with metadata or list of points)
-            from omegaconf import OmegaConf
-            zones_config = OmegaConf.to_container(self.vision_cfg.zones, resolve=True)
-            perf_cfg = self.vision_cfg.get('performance', {})
-            resolution = (
-                perf_cfg.get('target_width', 1280), 
-                perf_cfg.get('target_height', 720)
+        zones_cfg = self.vision_cfg.get('zones', {})
+        if not zones_cfg:
+            return self
+        logger.info("Initializing zones")
+        raw = OmegaConf.to_container(zones_cfg, resolve=True)
+        zones_for_counter: dict[ZoneId, list[tuple[int, int]]] = {}
+        for zid, zcfg in raw.items():
+            if not isinstance(zcfg, dict) or 'polygon' not in zcfg:
+                continue
+            zone_id = ZoneId(zid)
+            zones_for_counter[zone_id] = [tuple(pt) for pt in zcfg['polygon']]
+            self._zone_segment_lengths[zone_id] = zcfg.get(
+                'segment_length_meters', None
             )
-            self.zone_counter = ZoneCounter(zones_config, resolution=resolution)
+        if zones_for_counter:
+            self.zone_counter = ZoneCounter(zones_for_counter)
         return self
 
     def build_persistence(self) -> 'VisionApplicationBuilder':
-        # Wiring final del aggregator + TrafficRepository pendiente para 5f
-        # (rama Postgres con PostgresTrafficRepository + AsyncTrafficAggregator
-        # firma nueva camera_id / window_duration_s / zone_segment_lengths).
-        # CSV eliminado en 5b (decisión #8 / DHU-026 contexto).
-        if self.vision_cfg.get('persistence', {}).get('enabled', False):
-            raise NotImplementedError(
-                "build_persistence está pendiente para Fase 5f de TTH-08: "
-                "solo Postgres soportado (CSV eliminado), wiring del "
-                "AsyncTrafficAggregator nuevo no implementado todavía."
+        """Construye el AsyncTrafficAggregator con su `TrafficRepository`.
+
+        Solo soporta Postgres (CSV eliminado en 5b). `type != 'postgres'` o
+        ausente con `enabled=True` levanta `ValueError` (sin fallback
+        silencioso). `enabled=False` → no se construye aggregator (modo
+        dev/test sin persistencia).
+
+        `camera_id` se lee de `vision.camera_id`. Required si
+        `persistence.enabled`. Sin él, `ValueError` explícito.
+        """
+        pcfg = self.vision_cfg.get('persistence', {})
+        if not pcfg.get('enabled', False):
+            return self
+
+        ptype = pcfg.get('type', None)
+        if ptype != 'postgres':
+            raise ValueError(
+                "persistence.type debe ser 'postgres' "
+                f"(recibido: {ptype!r}). CSV eliminado en Fase 5 (decisión #8)."
             )
+
+        cam = self.vision_cfg.get('camera_id', None)
+        if cam is None:
+            raise ValueError(
+                "vision.camera_id es obligatorio cuando persistence.enabled "
+                "(el aggregator lo requiere para construir TrafficData)."
+            )
+        camera_id = CameraId(str(cam))
+
+        window_duration_s = float(pcfg.get('interval_seconds', 60.0))
+        repository: TrafficRepository = PostgresTrafficRepository()
+
+        self.aggregator = AsyncTrafficAggregator(
+            repository=repository,
+            camera_id=camera_id,
+            window_duration_s=window_duration_s,
+            zone_segment_lengths=self._zone_segment_lengths,
+        )
+        logger.info(
+            "Persistence wired: postgres, camera_id=%s, window=%.1fs",
+            camera_id.value,
+            window_duration_s,
+        )
         return self
 
+    # ---- Pipeline assembly --------------------------------------------
+
     def build_pipeline(self) -> AsyncVisionPipeline:
+        """Orquesta la construcción completa si algún componente falta."""
         if not self.detector:
             self.build_detector()
         if not self.source:
@@ -125,57 +202,65 @@ class VisionApplicationBuilder:
             self.build_zones()
         if not self.aggregator:
             self.build_persistence()
-            
-        # Build Chain
-        detect_every_n = self.vision_cfg.get('performance', {}).get('detect_every_n_frames', 3)
-        
-        processor_chain = SmartDetectionProcessor(
-            self.detector, 
-            detect_every_n=detect_every_n, 
-            metrics_collector=self.metrics_collector,
-            interpolate=True
-        )
-        current_link = processor_chain
-        
-        if self.tracker:
-            tracking_processor = TrackingProcessor(self.tracker, metrics_collector=self.metrics_collector)
-            current_link.set_next(tracking_processor)
-            current_link = tracking_processor
-            
-        if self.speed_estimator:
-            speed_processor = SpeedEstimationProcessor(self.speed_estimator)
-            current_link.set_next(speed_processor)
-            current_link = speed_processor
-            
-        if self.zone_counter:
-            zone_processor = ZoneProcessor(self.zone_counter)
-            current_link.set_next(zone_processor)
-            current_link = zone_processor
-            
-        if self.aggregator:
-            agg_processor = AggregationProcessor(self.aggregator)
-            current_link.set_next(agg_processor)
-            current_link = agg_processor
 
-        # Use AsyncVisionPipeline
+        perf_cfg = self.vision_cfg.get('performance', {})
+        detect_every_n = perf_cfg.get('detect_every_n_frames', 3)
+
+        # Chain of Responsibility — el primer link es SmartDetection.
+        head = SmartDetectionProcessor(
+            self.detector,
+            detect_every_n=detect_every_n,
+            metrics_collector=self.metrics_collector,
+        )
+        current = head
+        if self.tracker:
+            tp = TrackingProcessor(self.tracker, metrics_collector=self.metrics_collector)
+            current.set_next(tp)
+            current = tp
+        if self.speed_estimator:
+            sp = SpeedEstimationProcessor(self.speed_estimator)
+            current.set_next(sp)
+            current = sp
+        if self.zone_counter:
+            zp = ZoneProcessor(self.zone_counter)
+            current.set_next(zp)
+            current = zp
+        if self.aggregator:
+            ap = AggregationProcessor(self.aggregator)
+            current.set_next(ap)
+            current = ap
+
         self.pipeline = AsyncVisionPipeline(
             source=self.source,
-            processor_chain=processor_chain,
+            processor_chain=head,
             metrics_collector=self.metrics_collector,
-            frame_buffer_size=self.vision_cfg.get('performance', {}).get('frame_buffer_size', 30),
-            result_buffer_size=self.vision_cfg.get('performance', {}).get('result_buffer_size', 30),
-            target_fps=self.vision_cfg.get('performance', {}).get('target_fps', 30),
-            source_fps=self.vision_cfg.get('performance', {}).get('source_fps', 30)
+            frame_buffer_size=perf_cfg.get('frame_buffer_size', 10),
+            result_buffer_size=perf_cfg.get('result_buffer_size', 30),
+            target_fps=perf_cfg.get('target_fps', 30),
         )
         return self.pipeline
 
-    def get_components(self) -> Dict:
-        """Returns built components for external use (e.g. visualization)"""
+    def get_components(self) -> dict:
+        """Componentes construidos, para consumo externo (e.g., Fase 6 cablea el renderer)."""
         return {
             'detector': self.detector,
             'tracker': self.tracker,
             'speed_estimator': self.speed_estimator,
             'zone_counter': self.zone_counter,
             'aggregator': self.aggregator,
-            'metrics_collector': self.metrics_collector
+            'metrics_collector': self.metrics_collector,
         }
+
+
+def _load_vehicle_classes() -> dict[str, int]:
+    """Carga vehicle_classes.yaml si existe; fallback a defaults."""
+    config_path = "conf/vision/vehicle_classes.yaml"
+    if os.path.exists(config_path):
+        try:
+            vc_cfg = OmegaConf.load(config_path)
+            return dict(vc_cfg.vehicle_classes)
+        except Exception:
+            logger.warning(
+                "Falló al cargar %s; usando defaults", config_path, exc_info=True
+            )
+    return dict(_DEFAULT_VEHICLE_CLASSES)
