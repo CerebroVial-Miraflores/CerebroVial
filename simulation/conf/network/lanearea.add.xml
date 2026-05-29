@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Detectores laneArea (E2) cubriendo el último ~75-80% de cada lane de aproche.
+     Campo canónico consumido: jamLengthInMeters (cola estabilizada + spillback).
+     freq=60 alineado con sampling del dataset (F3 Δt_in provisional).
+     Fuente única para F2 spillback, F3 queue_length_m, F5 KPIs cola.
+
+     Formato XML (fallback documentado del plan F1.bis): SUMO 1.26 arrow writer
+     NO soporta append multi-interval. Pipeline: SUMO escribe XML, F3
+     dataset.generate parsea con sumolib.xml.parse + convierte a Parquet
+     via pyarrow.
+     Todos los detectores comparten un único lanearea.xml — SUMO sí soporta
+     multi-detector single-file en formato XML.
+-->
+<additional>
+  <!-- N approach (3 lanes, lane length ≈ 289.6 m) -->
+  <laneAreaDetector id="LA_N_0" lane="N_in_0" pos="60" length="220" freq="60" file="lanearea.xml"/>
+  <laneAreaDetector id="LA_N_1" lane="N_in_1" pos="60" length="220" freq="60" file="lanearea.xml"/>
+  <laneAreaDetector id="LA_N_2" lane="N_in_2" pos="60" length="220" freq="60" file="lanearea.xml"/>
+  <!-- S approach -->
+  <laneAreaDetector id="LA_S_0" lane="S_in_0" pos="60" length="220" freq="60" file="lanearea.xml"/>
+  <laneAreaDetector id="LA_S_1" lane="S_in_1" pos="60" length="220" freq="60" file="lanearea.xml"/>
+  <laneAreaDetector id="LA_S_2" lane="S_in_2" pos="60" length="220" freq="60" file="lanearea.xml"/>
+  <!-- E approach (2 lanes, lane length ≈ 186.4 m) -->
+  <laneAreaDetector id="LA_E_0" lane="E_in_0" pos="40" length="140" freq="60" file="lanearea.xml"/>
+  <laneAreaDetector id="LA_E_1" lane="E_in_1" pos="40" length="140" freq="60" file="lanearea.xml"/>
+  <!-- W approach -->
+  <laneAreaDetector id="LA_W_0" lane="W_in_0" pos="40" length="140" freq="60" file="lanearea.xml"/>
+  <laneAreaDetector id="LA_W_1" lane="W_in_1" pos="40" length="140" freq="60" file="lanearea.xml"/>
+</additional>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Meandata por edge: velocidad / densidad / count por bucket 60s.
+     Fuente canónica de F2 (cobertura jam level) y F3 (dataset por dirección).
+
+     Formato XML (fallback documentado del plan F1.bis): SUMO 1.26 arrow
+     writer NO soporta append multi-interval (1 write por freq), por lo que
+     edgeData con freq=60 + end>60 falla a Parquet directo.
+     Pipeline: SUMO escribe XML aquí, F3 dataset.generate convierte a Parquet
+     via pyarrow.
+-->
+<additional>
+  <edgeData id="aggE" freq="60" file="edgedata.xml" excludeEmpty="true"/>
+</additional>

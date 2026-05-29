@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Route fixture for F1 tests. NOT a demand pattern (those son F2).
+     20 vehículos repartidos en 4 direcciones a lo largo de 60s. -->
+<routes>
+  <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" maxSpeed="13.89"/>
+
+  <route id="N_to_S" edges="N_in S_out"/>
+  <route id="S_to_N" edges="S_in N_out"/>
+  <route id="E_to_W" edges="E_in W_out"/>
+  <route id="W_to_E" edges="W_in E_out"/>
+
+  <!-- Carga moderada: ~5 veh por dirección en 60 s.
+       Spaced para que algunos lleguen durante NS-verde y otros durante EW-verde. -->
+  <flow id="fN" type="car" route="N_to_S" begin="0"  end="60" number="5"/>
+  <flow id="fS" type="car" route="S_to_N" begin="0"  end="60" number="5"/>
+  <flow id="fE" type="car" route="E_to_W" begin="0"  end="60" number="5"/>
+  <flow id="fW" type="car" route="W_to_E" begin="0"  end="60" number="5"/>
+</routes>

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+data/train/*.parquet
+data/valid/*.parquet
+data/kpis/*.parquet
+data/kpis/*.csv
+.env
+*.parquet
+# Intermediarios de build_network.py (regenerables desde el YAML).
+conf/network/_generated_*.xml
+!data/.gitkeep
