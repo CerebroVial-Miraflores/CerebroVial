@@ -1,0 +1,73 @@
+# conf/vision/javier_prado.yaml — REFERENCIA HISTÓRICA (movida desde edge_device por F9)
+#
+# Este YAML fue config viva en F1 del sprint TTH-08 (demo de cámara HLS Smartech
+# para Av. Javier Prado). Auditoría de Fase 7 confirmó que ya no es compuesto por
+# Hydra (`edge_device/conf/config.yaml` usa `vision: default`, no `javier_prado`)
+# y que cero módulos del repo lo cargan — las menciones a "javier_prado" en código
+# son al string literal `cam_javier_prado_01` (camera_id de tests), no al YAML.
+#
+# Además, `persistence.type: csv` quedó bit-rot post-Fase 5b (decisión #8 del
+# sprint eliminó CSV; el builder canónico solo acepta postgres).
+#
+# F9 (cierre documental de TTH-08, 2026-05-29) movió este archivo a
+# `documentation/legacy/vision_configs/` con alternativa (iii): preservar como
+# referencia histórica del flujo HLS Smartech en lugar de borrarlo, sin promoverlo
+# a "config de demo en vivo" (alt. ii) porque eso ataría con la calibración
+# direccional que F8 difiere.
+#
+# Para reactivar:
+#   1. Alinear al builder canónico de Fase 4c: `persistence.type: postgres`.
+#   2. Adoptar shape DHU-025 con `occupancy` (Fase 5a / DHU-025 2026-05-28).
+#   3. Revalidar la URL HLS y `pixels_per_meter` contra el encuadre real actual.
+#   4. Volver a colocar bajo `edge_device/conf/vision/` y declarar en
+#      `edge_device/conf/config.yaml` (cambiar `vision: default` → `vision: javier_prado`).
+#
+# Ver `documentation/docs/tth-08-fase9-handoff.md` (sección "limpieza javier_prado")
+# y `documentation/docs/tth-08-fase7-handoff.md` §6.2 (auditoría que confirmó
+# la deuda).
+
+source: "https://live.smartechlatam.online/claro/javierprado/index.m3u8"
+source_type: "file" # "file" usa cv2.VideoCapture directo, que soporta .m3u8
+
+# ROI Zones (Ajustar si la cámara tiene diferente encuadre)
+zones:
+  zone1:
+    camera_id: "CAM_JAVIER_PRADO"
+    street: "Av. Javier Prado"
+    # Polígono inicial (ajustar con 'r' al iniciar)
+    polygon:
+      - [100, 500]
+      - [400, 500]
+      - [400, 700]
+      - [100, 700]
+
+speed_estimation:
+  enabled: true
+  pixels_per_meter: 10.0
+
+persistence:
+  enabled: true
+  type: "csv"
+  interval_seconds: 60
+  output_dir: "data/traffic_logs"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+performance:
+  target_width: 1280
+  target_height: 720
+  opencv_buffer_size: 60
+  detect_every_n_frames: 3
+  frame_buffer_size: 30
+  result_buffer_size: 30
+  capture_buffer_size: 60
+  target_fps: 30
+  source_fps: 30
+
+model:
+  path: "yolo11n.pt"
+  conf_threshold: 0.5
+
+display: true
