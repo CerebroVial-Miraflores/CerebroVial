@@ -154,27 +154,95 @@ def _is_cycle_edge(tls_id: str, sim_time: float) -> bool:
     return sim_time <= nxt <= sim_time + 1.001
 
 
-def _bootstrap_program(node: NodeCfg, linkstates: dict) -> None:
+# --- Onda verde (ciclo común fijo + offset). Cero core: normaliza la respuesta
+#     del motor en el adaptador; el motor sigue decidiendo el ratio por presión. ---
+MIN_GREEN = 7.0     # MTC (motor): no se viola, solo se estrecha (ver normalize_cycle)
+MAX_GREEN = 60.0
+
+
+def normalize_cycle(timings: list[dict], cycle: float = 90.0) -> list[dict]:
+    """Reescala los verdes del motor para que el ciclo total sea exactamente `cycle`.
+
+    Solo para 2 fases (LARCO, TRANSV). El motor decide el RATIO por presión; acá se
+    fija el ciclo. presupuesto_verde = cycle - Σ(yellow+all_red). Con 2 fases sumando
+    el presupuesto, la cota g≤MAX_GREEN fuerza g≥(presupuesto-MAX_GREEN) y viceversa →
+    el rango factible por fase es [presupuesto-MAX_GREEN, MAX_GREEN] ⊂ [MIN_GREEN,
+    MAX_GREEN] (para cycle=90 → [20,60]). No viola MTC; solo estrecha el piso.
+
+    El `round` único (no dos por separado) mantiene la suma exacta → ciclo invariante,
+    lo que preserva el offset entre nodos sin drift.
+    """
+    if len(timings) != 2:
+        raise ValueError(f"normalize_cycle asume 2 fases, recibió {len(timings)}")
+    lost = sum(t["yellow"] + t["all_red"] for t in timings)
+    budget = cycle - lost
+    lo = max(MIN_GREEN, budget - MAX_GREEN)
+    hi = min(MAX_GREEN, budget - MIN_GREEN)
+    g = [t["green"] for t in timings]
+    s = sum(g)
+    g0 = g[0] * budget / s if s > 0 else budget / 2.0
+    g0 = float(round(min(max(g0, lo), hi)))
+    out = [dict(t) for t in timings]
+    out[0]["green"] = g0
+    out[1]["green"] = budget - g0
+    return out
+
+
+def _phase_at_pos(durs: list[float], pos: float) -> tuple[int, float]:
+    """Dada la lista de duraciones de sub-fase y una posición en el ciclo, devuelve
+    (idx de la sub-fase que contiene `pos`, tiempo restante en esa sub-fase).
+
+    Para materializar el offset: arrancar Schell en (idx, rem) hace que su fase 0
+    (LARCO verde) empiece exactamente en t = offset.
+    """
+    acc = 0.0
+    for idx, d in enumerate(durs):
+        if pos < acc + d:
+            return idx, (acc + d) - pos
+        acc += d
+    return 0, durs[0]   # pos == ciclo → arranque limpio en fase 0
+
+
+def _bootstrap_program(node: NodeCfg, linkstates: dict,
+                       cycle: Optional[float] = None, offset: float = 0.0) -> None:
     """Instala el programa adaptativo de 6 sub-fases (verde seed) y lo activa.
 
     Necesario: los programas del net.xml tienen 4 sub-fases (sin all-red) → getPhase
     nunca llega a idx 5. Con seed timings (verde = split fijo, yellow=3, all_red=2).
+
+    Onda verde: si `cycle` está fijo, los verdes seed se normalizan a ese ciclo. Si
+    `offset > 0`, el nodo arranca "metido" en su ciclo (posición = (cycle-offset)%cycle)
+    para que su fase 0 empiece en t=offset (SUMO 1.26 no aplica Logic.offset en runtime).
     """
     timings = [
         {"phase_id": ph.phase_id,
          "green": node.seed_green[ph.phase_id], "yellow": 3.0, "all_red": 2.0}
         for ph in node.phases
     ]
+    if cycle is not None:
+        timings = normalize_cycle(timings, cycle)
     sumo_phases = tllogic_applier.expand_timings_to_sumo_phases(timings, linkstates)
     logic = traci.trafficlight.Logic(programID="adaptive", type=0, currentPhaseIndex=0,
                                      phases=sumo_phases)
     traci.trafficlight.setProgramLogic(node.tls_id, logic)
     traci.trafficlight.setProgram(node.tls_id, "adaptive")
-    traci.trafficlight.setPhase(node.tls_id, 0)
+
+    if cycle is not None and offset:
+        durs = [p.duration for p in sumo_phases]
+        pos = (cycle - offset) % cycle
+        idx, rem = _phase_at_pos(durs, pos)
+        traci.trafficlight.setPhase(node.tls_id, idx)
+        traci.trafficlight.setPhaseDuration(node.tls_id, rem)
+    else:
+        traci.trafficlight.setPhase(node.tls_id, 0)
 
 
 def run_adaptive(seed: int, end_s: int, out_dir: Path,
-                 engine_recommend_fn: Optional[Callable] = None) -> dict:
+                 engine_recommend_fn: Optional[Callable] = None,
+                 cycle: Optional[float] = None, offset: float = 0.0) -> dict:
+    """Lazo adaptativo. Onda verde opcional: `cycle` fija el ciclo común (None = ciclo
+    variable, comportamiento histórico); `offset` desfasa el arranque de Schell respecto
+    a Benavides (solo aplica si `cycle` está fijo). Defaults = comportamiento actual."""
     if engine_recommend_fn is None:
         engine_recommend_fn = recommend
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -204,8 +272,11 @@ def run_adaptive(seed: int, end_s: int, out_dir: Path,
     traci.start(sumo_cmd, label="corredor_adaptive")
     try:
         # Bootstrap: instalar el programa de 6 sub-fases en cada nodo controlado.
+        # El offset solo aplica a Schell (Benavides es la referencia, arranca en t=0).
         for n in NODES:
-            _bootstrap_program(n, all_linkstates[n.intersection_id])
+            node_offset = offset if n.intersection_id == "larco_schell" else 0.0
+            _bootstrap_program(n, all_linkstates[n.intersection_id],
+                               cycle=cycle, offset=node_offset)
 
         step = 0
         while step < end_s:
@@ -232,6 +303,9 @@ def run_adaptive(seed: int, end_s: int, out_dir: Path,
                         )
                         stats[iid]["calls"] += 1
                         stats[iid]["modes"].append(rec.get("mode", "unknown"))
+                        if cycle is not None:
+                            rec = {**rec,
+                                   "phase_timings": normalize_cycle(rec["phase_timings"], cycle)}
                         appliers[iid].update_pending(rec)
                     except EngineUnavailable as exc:
                         stats[iid]["errors"].append(f"step={step}: {exc}")
@@ -265,9 +339,14 @@ def main() -> int:
     ap.add_argument("--end", type=int, default=1800)
     ap.add_argument("--out", type=Path,
                     default=SIM_ROOT / "data" / "corredor_larco" / "peak_s_n_adaptive_seed42_end1800")
+    ap.add_argument("--cycle", type=float, default=None,
+                    help="ciclo común fijo (onda verde); None = ciclo variable (default histórico)")
+    ap.add_argument("--offset", type=float, default=0.0,
+                    help="desfase del arranque de Schell respecto a Benavides (solo con --cycle)")
     args = ap.parse_args()
 
-    stats = run_adaptive(seed=args.seed, end_s=args.end, out_dir=args.out)
+    stats = run_adaptive(seed=args.seed, end_s=args.end, out_dir=args.out,
+                         cycle=args.cycle, offset=args.offset)
     _print_stats(stats, args.end)
 
     # Catch C: bajo peak ambos nodos deberían rutear a max_pressure al menos una vez.
