@@ -1,0 +1,19 @@
+{
+  "_comment": "Linkstates de las 6 sub-fases por TLS, COPIADOS EXACTOS de los tlLogic de corredor_larco.net.xml (mismo orden de link-index). Orden de fases enviado al motor: [LARCO, TRANSV] -> sub-fases idx 0..5 = LARCO_g,LARCO_y,LARCO_r,TRANSV_g,TRANSV_y,TRANSV_r. all-red = todo 'r'. NO editar a mano: derivado del net.xml.",
+  "larco_benavides": {
+    "LARCO_g": "rrrrGGggGGGrrrr",
+    "LARCO_y": "rrrryyyyyyyrrrr",
+    "LARCO_r": "rrrrrrrrrrrrrrr",
+    "TRANSV_g": "GGGGrrrrrrrGGGg",
+    "TRANSV_y": "yyyyrrrrrrryyyy",
+    "TRANSV_r": "rrrrrrrrrrrrrrr"
+  },
+  "larco_schell": {
+    "LARCO_g": "rrrrGgGGG",
+    "LARCO_y": "rrrryyyyy",
+    "LARCO_r": "rrrrrrrrr",
+    "TRANSV_g": "GGGGrrrrr",
+    "TRANSV_y": "yyyyrrrrr",
+    "TRANSV_r": "rrrrrrrrr"
+  }
+}

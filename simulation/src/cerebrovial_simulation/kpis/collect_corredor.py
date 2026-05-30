@@ -95,6 +95,7 @@ class CorredorKPIs:
     corridor_mean_travel_time_s: float       # solo vehículos f_larco_S_N (S→N completo)
     corridor_n: int
     net_mean_travel_time_s_postwarm: float
+    net_mean_timeloss_s_postwarm: float
     corridor_mean_travel_time_s_postwarm: float
     # colas
     edge_queues: list = field(default_factory=list)
@@ -147,7 +148,7 @@ def _read_tripinfo_rich(parquet_path: Path, warmup_s: int):
 
     n_all, net_tt, net_tl = _agg(all_mask)
     n_corr, corr_tt, _ = _agg(corr_mask)
-    _, net_tt_pw, _ = _agg(postwarm_mask)
+    _, net_tt_pw, net_tl_pw = _agg(postwarm_mask)
     _, corr_tt_pw, _ = _agg(corr_pw_mask)
     return {
         "n_arrived": n_all,
@@ -156,6 +157,7 @@ def _read_tripinfo_rich(parquet_path: Path, warmup_s: int):
         "corr_tt": corr_tt,
         "corr_n": n_corr,
         "net_tt_pw": net_tt_pw,
+        "net_tl_pw": net_tl_pw,
         "corr_tt_pw": corr_tt_pw,
     }
 
@@ -307,6 +309,7 @@ def collect_corredor(out_dir: Path, warmup_s: int, params_path: Path | None) -> 
         corridor_mean_travel_time_s=round(trip["corr_tt"], 1),
         corridor_n=trip["corr_n"],
         net_mean_travel_time_s_postwarm=round(trip["net_tt_pw"], 1),
+        net_mean_timeloss_s_postwarm=round(trip["net_tl_pw"], 1),
         corridor_mean_travel_time_s_postwarm=round(trip["corr_tt_pw"], 1),
         edge_queues=queues,
     )
@@ -328,7 +331,8 @@ def _print_report(k: CorredorKPIs) -> None:
     print("DEMORA / TIEMPO DE VIAJE")
     print(f"  red  TT medio           : {k.net_mean_travel_time_s:.1f}s   "
           f"(post-warmup {k.net_mean_travel_time_s_postwarm:.1f}s)")
-    print(f"  red  timeLoss medio     : {k.net_mean_timeloss_s:.1f}s")
+    print(f"  red  timeLoss medio     : {k.net_mean_timeloss_s:.1f}s   "
+          f"(post-warmup {k.net_mean_timeloss_s_postwarm:.1f}s)")
     print(f"  corredor S→N TT medio   : {k.corridor_mean_travel_time_s:.1f}s   "
           f"(post-warmup {k.corridor_mean_travel_time_s_postwarm:.1f}s, n={k.corridor_n})")
     print("COLAS POR EDGE (ventana post-warmup; (INT)=link interno entre TLS)")
