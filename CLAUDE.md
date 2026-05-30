@@ -235,12 +235,19 @@ Cada tipo de doc vive en su carpeta. No mezclar:
   - Framing "X [persona] revisó/corrigió mi error" que implica un autor-máquina
     supervisado. Si un catch o decisión importa, descríbelo en pasiva o en voz
     de equipo: *"se detectó que el default 8000 era incorrecto"*, no
-    *"Cesar al revisar el plan vio que mi default era error mío"*.
+    *"al revisar el plan se vio que mi default era error mío"*.
   - Líneas de proceso que asumen un agente: *"este handoff es el cuerpo del PR"*,
-    *"lo corre Cesar", "la decisión de mergear es humana"*. El "merge lo hace una
-    persona" es una regla de este repo, no contenido del PR — no va en el body.
-  Mencionar a una persona del equipo por su rol técnico está bien (*"validado en
-  el smoke vivo"*); lo que se elimina es el contraste autor-IA ↔ revisor-humano.
+    *"lo corre <persona>"*, *"la decisión de mergear es humana"*. El "merge lo hace
+    una persona" es una regla de este repo, no contenido del PR — no va en el body.
+  No nombrar personas del equipo en el body (ni autor ni revisor): el trabajo se
+  describe en voz de equipo, no atribuido a un individuo. Lo que se elimina es
+  tanto el contraste autor-IA ↔ revisor-humano como la firma personal.
+
+  Ejemplo (scrub de una celda de la tabla de catches):
+  - ❌ *"Cesar al revisar el plan; default 8000 era error mío. Verificado contra
+    `docker-compose.yml:37`."*
+  - ✅ *"Al revisar el plan se detectó que el default 8000 era incorrecto.
+    Verificado contra `docker-compose.yml:37`."*
 - **Merge a `master`**: **siempre humano**, fuera del scope del agente, incluso
   con permiso. El agente no mergea.
 - **Herramientas de pregunta vs Bash**: **NO usar `AskUserQuestion` en paralelo
