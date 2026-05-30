@@ -3009,18 +3009,29 @@ Miraflores ni de su Subgerencia de Movilidad. Se usan como referencia de magnitu
 
 ### Estado de ejecución de IE05 (Etapa 2, corredor Larco)
 
-**IE05 (RD% ≥ 15%, validación de red vía SUMO): EN PROGRESO.**
+**IE05 (RD% ≥ 15%, validación de red vía SUMO): ALCANZADO EN LA MEDIA con adaptación local
+(cumplimiento marginal).**
 
-- **Fase 1 — adaptación local (Max Pressure per-node) vs control fijo: CERRADA.** RD% = +1.0% ±
-  7.5% (10 semillas pareadas) → empate estadístico; no alcanza el umbral ≥15% con adaptación local
-  sola. Mecanismo de acoplamiento Benavides→Schell confirmado 10/10 (drenaje del cuello de entrada
-  sur + relocalización del tapón al link interno). Detalle en
-  `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
-- **Fase 2 — coordinación de offsets (onda verde) / Max Pressure de red: PENDIENTE.** Siguiente
-  intento de alcanzar el umbral.
+- **Número final: RD% RED = +15.7% ± 8.1 (SD), 10 semillas pareadas, 9/10 positivas**, con la
+  métrica de demora **puerta-a-puerta robusta a censura** (tiempo total en el sistema vía Little's
+  law: cuenta espera para entrar + autos abandonados en la cola de inserción, no solo los que
+  completan dentro de la red). Sistema = **MP per-node de ciclo variable**. Cumplimiento
+  **ajustado** del umbral 15% (media−SD = +7.6%; el 15% cae dentro de la dispersión); mejora
+  robusta y significativa, con dispersión reportada. Beneficio físico: **−67% de espera para
+  entrar**, tiempo adentro casi igual (tapón relocalizado).
+- **El "empate" previo (+1.0% ± 7.5) era artefacto de medición:** la métrica vieja (timeLoss
+  dentro de la red, solo completados) no contaba a los autos que el control fijo deja sin insertar
+  (68 vs 23 del adaptativo, media) → sesgo a favor del que abandona más autos. Corregida la métrica,
+  la adaptación local **sí** alcanza el umbral. Mecanismo de acoplamiento Benavides→Schell 10/10
+  intacto. Detalle en `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
+- **Fase 2 (onda verde / ciclo común fijo): EXPLORADA y DESCARTADA.** Offset óptimo = 0 (coordinar
+  perjudica en régimen sobresaturado, deja autos sin insertar); ciclo fijo no mejora al ciclo
+  variable (vs MP variable −5.3% ± 18.8, no generaliza).
+- **Mirar-al-vecino (network-aware MP): EXPLORACIÓN, plan-first (toca el motor).** Como el +15.7%
+  es ajustado, podría correr el cumplimiento de marginal a holgado; no imprescindible.
 
 (La fila DHU-027 de la tabla resumen queda **Cerrada** porque refiere a la *decisión* de reformular
-IE05, no al *indicador* IE05, que sigue en progreso.)
+IE05; el *indicador* IE05 queda **alcanzado en la media con adaptación local**.)
 
 ---
 

@@ -12,15 +12,20 @@ Comando de arranque: /speckit-implement sobre TTH-01.
 Autoridad del alcance del sprint: tasks.md (NO los 32 elementos del inventario; solo estos 5).
 
 ## Corredor Larco / IE05 (validación SUMO) — Etapa 2 (2026-05-30)
-**IE05 (RD% ≥ 15%): EN PROGRESO** (track paralelo al Sprint 4; no lo bloquea).
-- **Fase 1 — adaptación local (Max Pressure per-node) vs control fijo: CERRADA.** RD% = +1.0% ±
-  7.5% (10 semillas pareadas) → empate estadístico; no alcanza ≥15% con adaptación local sola.
-  Mecanismo de acoplamiento Benavides→Schell confirmado 10/10 (drenaje del cuello de entrada sur +
-  relocalización al link interno). Encadenamiento baseline → barrido de demanda → IE05 adaptativo en
-  `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
-- **Próximo paso: experimento de ONDA VERDE** (coordinación de offsets Benavides↔Schell) / Max
-  Pressure de red — Fase 2 de IE05, siguiente intento de alcanzar el umbral. Es donde el mecanismo
-  robusto indica que está el valor que la adaptación local no captura.
+**IE05 (RD% ≥ 15%): ALCANZADO EN LA MEDIA con adaptación local (cumplimiento marginal)** (track
+paralelo al Sprint 4).
+- **Número final: RD% RED = +15.7% ± 8.1 (10 semillas, 9/10 positivas)** con métrica de demora
+  **puerta-a-puerta robusta a censura** (cuenta espera para entrar + autos abandonados en la cola,
+  no solo los que completan dentro de la red). Sistema = **MP per-node de ciclo variable**.
+  Cumplimiento **ajustado** (media−SD = +7.6%); mejora robusta y significativa, dispersión
+  reportada. Beneficio físico: **−67% de espera para entrar**, adentro casi igual.
+- **El "empate" previo (+1.0% ± 7.5) era artefacto de medición** (la métrica vieja no contaba a los
+  autos que el fijo deja sin insertar: 68 vs 23). Mecanismo Benavides→Schell 10/10 intacto. Detalle
+  y framing honesto en `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
+- **Onda verde (offsets) y ciclo común fijo: explorados y DESCARTADOS** (offset=0 óptimo; ciclo
+  fijo no mejora al variable, no generaliza).
+- **Próximo paso (opcional, plan-first — toca el motor): mirar-al-vecino (network-aware MP).** Como
+  el +15.7% es ajustado, podría correr el cumplimiento de marginal a holgado. No imprescindible.
 
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue
