@@ -77,6 +77,17 @@ echo "OSM válido: $(grep -c "<node " "$OSM_FILE") nodos, $(wc -c < "$OSM_FILE")
 # --junctions.join    : limpia la avenida dividida en cruces únicos (join-dist por defecto 10 m)
 # --keep-edges.by-vclass passenger : red vehicular
 # NO se usa --tls.guess (inventaría semáforos donde OSM no los tiene).
+#
+# --remove-edges.explicit : recorte de saneamiento posterior a la revisión visual (gate
+#   DHU-027). Elimina geometría fuera del corredor de 3 cruces:
+#     406008845#5, 344159559#0 → las dos calzadas de Av. Benavides MÁS ALLÁ de los 2 TLS
+#       extra al este (~160 m de Larco); al quedar como dead-end, netconvert descarta esos
+#       2 semáforos → la red queda con EXACTAMENTE 3 TLS (Diez Canseco, Schell, Benavides).
+#       Se conserva ~145-150 m de approach de Benavides al cruce con Larco (edges 406008845#1
+#       y 344159559#2, que NO se remueven).
+#     39441587 → 313 m de Av. Ernesto Diez Canseco colgando hacia el este (fuera del corredor).
+#   Los ramales cortos Pasaje Tello (406010997) y Cristóbal Colón (406007420) se CONSERVAN.
+REMOVE_EDGES="406008845#5,344159559#0,39441587"
 echo "Ejecutando netconvert → $NET_FILE"
 netconvert \
   --osm-files "$OSM_FILE" \
@@ -88,7 +99,8 @@ netconvert \
   --tls.guess-signals --tls.join false \
   --junctions.join \
   --no-turnarounds true \
-  --output.street-names true --output.original-names true
+  --output.street-names true --output.original-names true \
+  --remove-edges.explicit "$REMOVE_EDGES"
 
 echo "Listo: $NET_FILE"
 echo "Recordatorio: tras editar en netedit, este .net.xml es la fuente de verdad (no re-ejecutar el script)."
