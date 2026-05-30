@@ -104,6 +104,12 @@ class TllogicApplier:
             phases=sumo_phases,
         )
         traci.trafficlight.setProgramLogic(self.tls_id, logic)
+        # setProgramLogic NO reinicia el reloj de la fase 0 en SUMO 1.26: retiene el
+        # next-switch agendado del EW_r saliente (observado: nextSwitch queda en
+        # now+0.1–0.7s en vez de now+green_NS) → NS_g se trunca a ~1 step. Forzar el
+        # arranque limpio de la fase 0 con su verde completo.
+        traci.trafficlight.setPhase(self.tls_id, 0)
+        traci.trafficlight.setPhaseDuration(self.tls_id, sumo_phases[0].duration)
         self.pending_plan = None
         self.applied_count += 1
         return True
