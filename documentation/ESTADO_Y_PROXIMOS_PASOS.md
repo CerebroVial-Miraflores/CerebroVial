@@ -24,8 +24,17 @@ paralelo al Sprint 4).
   y framing honesto en `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
 - **Onda verde (offsets) y ciclo común fijo: explorados y DESCARTADOS** (offset=0 óptimo; ciclo
   fijo no mejora al variable, no generaliza).
-- **Próximo paso (opcional, plan-first — toca el motor): mirar-al-vecino (network-aware MP).** Como
-  el +15.7% es ajustado, podría correr el cumplimiento de marginal a holgado. No imprescindible.
+- **Mirar-al-vecino (MP de red, downstream del link interno): EJECUTADO y DESCARTADO (2026-05-30).**
+  Se extendió el motor con término downstream opcional (Etapa 1, retrocompat bit-a-bit) y se corrió
+  pareado 42–51 (Etapa 2). **Refutado:** MP-red **empeora** la demora RED vs per-node — Δ pareado
+  **+35.07 s**, IC **[+21.59, +48.55] excluye 0**, Wilcoxon **p=0.002**, **0/10** favorables; MP-red
+  **−9.2% vs fijo**. Mecanismo (capacidad-limitado): alivia el link interno (benSch mean −22%) pero
+  relocaliza la cola a la entrada (larcoS 144.6→172.2 m) y cuadruplica la espera para entrar (w_wait
+  12.2→48.2 s). **Sistema adoptado: MP per-node (τ=0).** Detalle:
+  `documentation/handoffs/corredor-larco/etapa-2-cierre-mp-red.md`.
+- **Runtime:** `:8001` corre ahora `feature/corredor-larco-mp-red` (Etapa-1 deployada vía rebuild del
+  contenedor `core_management_api`); ruta sin-downstream byte-idéntica al per-node, **sin migración**,
+  **sin mergear a master**.
 
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue

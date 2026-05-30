@@ -3027,8 +3027,20 @@ Miraflores ni de su Subgerencia de Movilidad. Se usan como referencia de magnitu
 - **Fase 2 (onda verde / ciclo común fijo): EXPLORADA y DESCARTADA.** Offset óptimo = 0 (coordinar
   perjudica en régimen sobresaturado, deja autos sin insertar); ciclo fijo no mejora al ciclo
   variable (vs MP variable −5.3% ± 18.8, no generaliza).
-- **Mirar-al-vecino (network-aware MP): EXPLORACIÓN, plan-first (toca el motor).** Como el +15.7%
-  es ajustado, podría correr el cumplimiento de marginal a holgado; no imprescindible.
+- **Mirar-al-vecino (MP de red, downstream del link interno): EXPLORADO y DESCARTADO.** Se extendió el
+  motor con un término downstream opcional `P(φ)=s·(x_local − Στ·x_down)` (Benavides lee la cola del
+  link interno `279893875#1`, τ=1.0) y se corrió pareado 42–51. **Refutado:** MP-red **empeora** la
+  demora RED vs per-node — Δ pareado **+35.07 s ± 18.85**, IC 95% **[+21.59, +48.55] (excluye 0)**,
+  Wilcoxon **p=0.0020**, **0/10** semillas favorables; MP-red queda en **−9.2% vs fijo** (vs +15.7% del
+  per-node). Mecanismo medido: régimen **capacidad-limitado** (Schell es el binding constraint) — retener
+  en Benavides alivia el link interno (benSch mean −22%) **pero relocaliza la cola a la entrada** (larcoS
+  144.6→172.2 m) y **cuadruplica la espera para entrar** (w_wait 12.2→48.2 s); el neto puerta-a-puerta
+  es peor. **Sistema adoptado = per-node (τ=0).** El término queda en el motor, opcional y desactivado
+  (retrocompat bit-a-bit, probada por no-regresión semilla a semilla exacta). Matiz declarado: x_down(#1)
+  es un downstream **compartido** (~11% del inflow son giros de TRANSV, ~89% LARCO-recta) → mis-atribución
+  ≤~11%, acota el null como capacidad-limitado y no como artefacto. **Future work:** término por-movimiento
+  (Varaiya riguroso, ponderar también los giros de TRANSV) y barrido τ∈{0.5,0.75}; ninguno imprescindible.
+  Detalle en `documentation/handoffs/corredor-larco/etapa-2-cierre-mp-red.md`.
 
 (La fila DHU-027 de la tabla resumen queda **Cerrada** porque refiere a la *decisión* de reformular
 IE05; el *indicador* IE05 queda **alcanzado en la media con adaptación local**.)
