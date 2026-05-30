@@ -195,6 +195,23 @@ def multiseed(seeds: list[int], off_opt: int) -> int:
     return 0
 
 
+def fixedcycle(seeds: list[int]) -> int:
+    """Genera las corridas 'ciclo fijo 90 + offset=0' (motor decide solo el split,
+    ciclo invariante) para las semillas dadas. Skip si ya existe el output. La
+    comparación pareada (vs fijo / vs MP variable) la hace reprocess_door2door."""
+    if not _check_engine():
+        return 1
+    for s in seeds:
+        out_dir = ss.DATA / f"peak_s_n_adaptive_seed{s}_cyc90_off0_end{ss.END}"
+        if (out_dir / "tripinfo.parquet").exists():
+            print(f"  seed {s}: ya existe → skip", file=sys.stderr)
+            continue
+        _run_adaptive_offset(s, CYCLE, 0)
+        print(f"  seed {s}: ciclo fijo 90 / off=0 OK", file=sys.stderr)
+    print("Listo. Comparar con: reprocess_door2door.py fixedcycle", file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="cmd")
@@ -204,10 +221,14 @@ def main() -> int:
     p_ms = sub.add_parser("multiseed", help="FASE 3: multi-semilla en offset óptimo")
     p_ms.add_argument("--offset-opt", type=int, required=True)
     p_ms.add_argument("--seeds", type=int, nargs="+", default=list(range(42, 52)))
+    p_fc = sub.add_parser("fixedcycle", help="ciclo fijo 90 + off=0 multi-semilla")
+    p_fc.add_argument("--seeds", type=int, nargs="+", default=list(range(42, 52)))
     args = ap.parse_args()
 
     if args.cmd == "multiseed":
         return multiseed(args.seeds, args.offset_opt)
+    if args.cmd == "fixedcycle":
+        return fixedcycle(args.seeds)
     # default = sweep (FASE 2)
     seed = getattr(args, "seed", 42)
     offsets = getattr(args, "offsets", DEFAULT_OFFSETS)

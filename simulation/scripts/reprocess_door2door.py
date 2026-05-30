@@ -123,6 +123,61 @@ def ie05(seeds: list[int]) -> int:
     return 0
 
 
+def fixedcycle(seeds: list[int]) -> int:
+    """Confirma si imponer CICLO FIJO 90 (offset=0, motor decide solo el split) mejora
+    sobre el MP de ciclo VARIABLE. RD% RED canónico, pareado por semilla, vs dos refs:
+    fijo baseline y MP per-node variable (ambos ya corridos)."""
+    rows = []
+    for s in seeds:
+        fix = _k(DATA / f"peak_s_n_seed{s}_end{END}")               # fijo baseline
+        mp = _k(DATA / f"peak_s_n_adaptive_seed{s}_end{END}")        # MP ciclo variable
+        cf = _k(DATA / f"peak_s_n_adaptive_seed{s}_cyc90_off0_end{END}")  # ciclo fijo 90
+        if fix is None or mp is None or cf is None:
+            print(f"  ⚠️ faltan outputs para seed {s} — salteado", file=sys.stderr)
+            continue
+        rows.append({
+            "seed": s,
+            "rd_vs_fijo": _rd(fix.w_red_door2door_s_postwarm, cf.w_red_door2door_s_postwarm),
+            "rd_vs_mp": _rd(mp.w_red_door2door_s_postwarm, cf.w_red_door2door_s_postwarm),
+            "w_fix": fix.w_red_door2door_s_postwarm,
+            "w_mp": mp.w_red_door2door_s_postwarm,
+            "w_cf": cf.w_red_door2door_s_postwarm,
+            "cf_wait": cf.w_red_wait_s_postwarm, "cf_in": cf.w_red_inside_s_postwarm,
+            "mp_wait": mp.w_red_wait_s_postwarm, "mp_in": mp.w_red_inside_s_postwarm,
+            "ni_mp": mp.never_inserted_veh, "ni_cf": cf.never_inserted_veh,
+            "thr_cf": cf.throughput_veh_per_h,
+        })
+
+    W = 96
+    print("\n" + "=" * W)
+    print(f"CICLO FIJO 90 (off=0) vs MP variable y vs FIJO | RED robusto canónico | "
+          f"n={len(rows)} pareadas | end={END} warmup={WARMUP}")
+    print("=" * W)
+    print("RD% > 0 = ciclo-fijo MEJOR que la referencia.")
+    print(f"{'seed':>5} | {'RD%vsFijo':>10} {'RD%vsMP':>9} | {'W_fijo':>7} {'W_MPvar':>8} {'W_cicfij':>9} | "
+          f"{'nunca_ins MP→cf':>16} {'thr_cf':>7}")
+    for r in rows:
+        print(f"{r['seed']:>5} | {r['rd_vs_fijo']:>+10.1f} {r['rd_vs_mp']:>+9.1f} | "
+              f"{r['w_fix']:>7.1f} {r['w_mp']:>8.1f} {r['w_cf']:>9.1f} | "
+              f"{r['ni_mp']:>7d} → {r['ni_cf']:<6d} {r['thr_cf']:>7.0f}")
+    print("-" * W)
+    for key, label in [("rd_vs_fijo", "ciclo-fijo vs FIJO"),
+                       ("rd_vs_mp", "ciclo-fijo vs MP variable")]:
+        m, sd, se, lo, hi = _agg([r[key] for r in rows])
+        crosses = lo <= 0 <= hi
+        pos = sum(1 for r in rows if r[key] > 0)
+        print(f"  RD% {label:<26} = {m:>+6.2f}% ± SD {sd:5.2f} (SE {se:.2f})  "
+              f"[{lo:+.2f}…{hi:+.2f}]  ¿cruza 0? {'SÍ' if crosses else 'NO'}  >0: {pos}/{len(rows)}")
+    mw = statistics.mean([r["mp_wait"] for r in rows])
+    cw = statistics.mean([r["cf_wait"] for r in rows])
+    mi = statistics.mean([r["mp_in"] for r in rows])
+    ci = statistics.mean([r["cf_in"] for r in rows])
+    print(f"  DESGLOSE (media): espera  MP {mw:.1f}s → cicfij {cw:.1f}s | "
+          f"adentro MP {mi:.1f}s → cicfij {ci:.1f}s")
+    print("=" * W)
+    return 0
+
+
 def offsets(offs: list[int]) -> int:
     rows = []
     for o in offs:
@@ -169,6 +224,8 @@ def main(argv: list[str]) -> int:
         ie05(list(range(42, 52)))
     if cmd in ("offsets", "all"):
         offsets(list(range(0, 81, 10)))
+    if cmd == "fixedcycle":
+        fixedcycle(list(range(42, 52)))
     return 0
 
 
