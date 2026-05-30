@@ -1,0 +1,39 @@
+# Parámetros legibles de la intersección genérica 4-vías (CT-07.1).
+# Justificación contra Larco × Schell en documentation/handoffs/tth-07/tth-07-fase1-handoff.md.
+# NO hardcodear estos valores en scripts — leerlos desde acá.
+
+intersection:
+  id: "miraflores_4way"
+  # Aproches arteriales (N-S, "Larco-like"). 3 carriles por sentido + largo 300 m.
+  ns:
+    lanes_per_approach: 3
+    approach_length_m: 300
+    saturation_flow_vph_per_lane: 1800  # HCM 2010 ajustado
+  # Aproches secundarios (E-W, "Schell-like"). 2 carriles por sentido + largo 200 m.
+  ew:
+    lanes_per_approach: 2
+    approach_length_m: 200
+    saturation_flow_vph_per_lane: 1800
+
+speeds:
+  vmax_kmh: 50            # normativa peruana urbana
+  vmax_mps: 13.89         # = 50 * 1000 / 3600 ≈ 13.888...
+
+tllogic:
+  # Option A: 2 fases de control NS + EW, lefts permissive.
+  # Cada fase expande a 3 sub-fases SUMO (g/y/r) — total 6 sub-fases en el programa baseline.
+  # phase_id values consumidos por el motor (Engine PhaseFlow.phase_id).
+  program_id_baseline: "baseline"
+  phases:
+    - phase_id: "NS"
+      green_baseline_s: 30
+      yellow_s: 3
+      all_red_s: 2
+      has_pedestrian: true
+    - phase_id: "EW"
+      green_baseline_s: 25
+      yellow_s: 3
+      all_red_s: 2
+      has_pedestrian: true
+  # Lost time efectivo para Webster: 2 fases × (yellow + all_red) = 10 s.
+  lost_time_s: 10

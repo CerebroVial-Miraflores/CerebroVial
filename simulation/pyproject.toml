@@ -1,0 +1,30 @@
+[project]
+name = "cerebrovial-simulation"
+version = "0.1.0"
+description = "Módulo SUMO de CerebroVial — topología, escenarios, dataset y adaptador TraCI ↔ motor adaptativo (TTH-07)."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    # Pin exacto al wheel mac arm64 / manylinux confirmado en F0 (escenario A — wheel autocontenido con bin/, tools/, data/).
+    "eclipse-sumo==1.26.0",
+    "traci==1.26.0",
+    # sumolib es transitivo de traci==1.26.0 (requires >=1.26.0) y resuelve a 1.27.0 — F0 documentó el gap PyPI 1.22-1.26.
+    "sumolib>=1.26.0",
+    # Lectura de salidas Parquet de SUMO (edgeData, laneArea, summary, tripinfo).
+    "pyarrow>=15.0",
+    "pyyaml>=6.0",
+    # HTTP client para invocar el motor adaptativo via POST /control/recommend (F4).
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

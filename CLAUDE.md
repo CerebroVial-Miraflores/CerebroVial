@@ -219,12 +219,35 @@ Cada tipo de doc vive en su carpeta. No mezclar:
   `git push origin <feature-branch>` (nunca `master`/`main`) y
   `gh pr create --body-file <handoff-de-cierre>` usando el handoff de cierre de
   la fase como cuerpo del PR. Reportar la URL al usuario.
-- **Cuerpo del PR**: usar el handoff de cierre íntegro como `--body-file`. El
-  handoff es la fuente de verdad y debe estar libre de framing académico
+- **Cuerpo del PR**: usar el handoff de cierre como base del `--body-file`. El
+  handoff es la fuente de verdad técnica y debe estar libre de framing académico
   (`jurado`, `tribunal`, `defensa`, "documento de tesis" como audiencia,
   "el equipo verá") y libre de menciones a `Co-Authored-By`. El cuerpo del PR
   describe entregables, alcance, follow-ups técnicos y commits — nada más. Si
   el handoff todavía tiene framing, scrubealo en un commit antes de abrir el PR.
+- **El cuerpo del PR se redacta en voz neutra de equipo**, no debe delatar cómo se
+  produjo internamente. Aunque los handoffs se generan con asistencia de IA, el
+  body del PR **no** menciona quién o qué hizo cada paso. Prohibido:
+  - Atribuciones de autoría humano-vs-máquina: `IA`, `agente`, `el agente`,
+    `humano`, `Claude`, `Codex`, `Gemini`, `asistente`, `co-pilot`.
+  - Primera persona que delata al autor automático: `error mío`, `mi default`,
+    `yo apliqué`, `me equivoqué`.
+  - Framing "X [persona] revisó/corrigió mi error" que implica un autor-máquina
+    supervisado. Si un catch o decisión importa, descríbelo en pasiva o en voz
+    de equipo: *"se detectó que el default 8000 era incorrecto"*, no
+    *"al revisar el plan se vio que mi default era error mío"*.
+  - Líneas de proceso que asumen un agente: *"este handoff es el cuerpo del PR"*,
+    *"lo corre <persona>"*, *"la decisión de mergear es humana"*. El "merge lo hace
+    una persona" es una regla de este repo, no contenido del PR — no va en el body.
+  No nombrar personas del equipo en el body (ni autor ni revisor): el trabajo se
+  describe en voz de equipo, no atribuido a un individuo. Lo que se elimina es
+  tanto el contraste autor-IA ↔ revisor-humano como la firma personal.
+
+  Ejemplo (scrub de una celda de la tabla de catches):
+  - ❌ *"Cesar al revisar el plan; default 8000 era error mío. Verificado contra
+    `docker-compose.yml:37`."*
+  - ✅ *"Al revisar el plan se detectó que el default 8000 era incorrecto.
+    Verificado contra `docker-compose.yml:37`."*
 - **Merge a `master`**: **siempre humano**, fuera del scope del agente, incluso
   con permiso. El agente no mergea.
 - **Herramientas de pregunta vs Bash**: **NO usar `AskUserQuestion` en paralelo

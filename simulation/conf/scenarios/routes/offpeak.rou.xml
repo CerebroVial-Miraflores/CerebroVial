@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- offpeak: Periodo valle — flujo libre, ratio cercano al free-flow. -->
+<routes>
+  <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" maxSpeed="13.89"/>
+  <route id="r_N_to_S" edges="N_in S_out"/>
+  <route id="r_S_to_N" edges="S_in N_out"/>
+  <route id="r_E_to_W" edges="E_in W_out"/>
+  <route id="r_W_to_E" edges="W_in E_out"/>
+  <flow id="f_N" type="car" route="r_N_to_S" begin="0" end="1200" vehsPerHour="200" departLane="best" departSpeed="max"/>
+  <flow id="f_S" type="car" route="r_S_to_N" begin="0" end="1200" vehsPerHour="200" departLane="best" departSpeed="max"/>
+  <flow id="f_E" type="car" route="r_E_to_W" begin="0" end="1200" vehsPerHour="100" departLane="best" departSpeed="max"/>
+  <flow id="f_W" type="car" route="r_W_to_E" begin="0" end="1200" vehsPerHour="100" departLane="best" departSpeed="max"/>
+</routes>

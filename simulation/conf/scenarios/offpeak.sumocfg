@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- offpeak: periodo valle, flujo libre, target jam ≤2. -->
+<configuration>
+  <input>
+    <net-file value="../network/miraflores_4way.net.xml"/>
+    <route-files value="routes/offpeak.rou.xml"/>
+    <additional-files value="../network/miraflores_4way.tllogic.add.xml,../network/edgedata.add.xml,../network/lanearea.add.xml"/>
+  </input>
+  <time>
+    <begin value="0"/>
+    <end value="1200"/>
+    <step-length value="1"/>
+  </time>
+  <report>
+    <no-step-log value="true"/>
+    <no-warnings value="true"/>
+  </report>
+</configuration>
