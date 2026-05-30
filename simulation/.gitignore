@@ -6,6 +6,9 @@ data/valid/*.parquet
 data/kpis/
 data/_coverage/
 data/_e2e/
+# Outputs del corredor Larco (ETAPA 2): baseline + barrido de demanda.
+# Regenerables determinísticamente (seed fija) — kpis locales, no se versionan.
+data/corredor_larco/
 .env
 *.parquet
 # Intermediarios de build_network.py (regenerables desde el YAML).
