@@ -53,6 +53,12 @@ class PhaseCfg:
     phase_id: str           # "LARCO" | "TRANSV"
     edges: list[str]        # aproches que sirve la fase (cruces + halting se suman)
     lanes: float            # carriles generales que descargan en la fase
+    # Max Pressure de red (Etapa 2): links downstream a los que descarga la fase.
+    # El sensor mide su halting medio y, con --downstream, lo manda como
+    # downstream=[{queue, turn_ratio}] en el payload. Vacío ⇒ sin término (sink
+    # libre, p.ej. Schell→DC). Solo Benavides-LARCO lo usa en este corredor.
+    downstream_edges: list[str] = field(default_factory=list)
+    turn_ratio: float = 1.0  # τ: fracción del flujo de la fase que va al link downstream
 
     @property
     def saturation(self) -> float:
@@ -72,7 +78,11 @@ NODES: list[NodeCfg] = [
         intersection_id="larco_benavides",
         tls_id="cluster_108178119_263630444_2673400749_3245705958_#6more",
         phases=[
-            PhaseCfg("LARCO", ["129466113#0"], lanes=2),               # Larco S→N (2 grales; lane0 bus)
+            # LARCO descarga al link interno Benavides→Schell (279893875#1): el tapón
+            # demostrado (~99% en IE05). τ=1.0 (≈89% del inflow de #1 es este pasante;
+            # ver auditoría Etapa 2). x_local 129466113#0 es de un solo sentido → resta limpia.
+            PhaseCfg("LARCO", ["129466113#0"], lanes=2,                 # Larco S→N (2 grales; lane0 bus)
+                     downstream_edges=["279893875#1"], turn_ratio=1.0),
             PhaseCfg("TRANSV", ["344159559#2", "406007422#0"], lanes=4),  # Benavides E(2 gral) + O(2)
         ],
         seed_green={"LARCO": 41.0, "TRANSV": 41.0},
@@ -101,6 +111,7 @@ class NodeSensor:
     _prev_ids: dict = field(default_factory=dict)
     _crossed: dict = field(default_factory=dict)
     _halt_samples: dict = field(default_factory=dict)
+    _down_halt_samples: dict = field(default_factory=dict)  # halting de links downstream
     _t0: float = 0.0
 
     def __post_init__(self) -> None:
@@ -109,6 +120,8 @@ class NodeSensor:
                 self._prev_ids[e] = set()
                 self._crossed[e] = 0
                 self._halt_samples[e] = []
+            for e in ph.downstream_edges:
+                self._down_halt_samples.setdefault(e, [])
 
     def observe(self, teleporting: set) -> None:
         for e in self._crossed:
@@ -117,9 +130,19 @@ class NodeSensor:
             self._crossed[e] += len(departed)
             self._prev_ids[e] = current
             self._halt_samples[e].append(int(traci.edge.getLastStepHaltingNumber(e)))
+        # Halting de los links downstream (cola del vecino, p.ej. Benavides→Schell).
+        # Muestreado sobre el MISMO ciclo que x_local (sin lag stale).
+        for e in self._down_halt_samples:
+            self._down_halt_samples[e].append(int(traci.edge.getLastStepHaltingNumber(e)))
 
-    def commit_cycle(self, sim_time: float) -> list[dict]:
-        """Cierra el ciclo: devuelve la lista de PhaseFlow para el motor."""
+    def commit_cycle(self, sim_time: float, downstream: bool = False) -> list[dict]:
+        """Cierra el ciclo: devuelve la lista de PhaseFlow para el motor.
+
+        Con ``downstream=True``, las fases con ``downstream_edges`` adjuntan
+        ``downstream=[{queue, turn_ratio}]`` (Max Pressure de red). Con
+        ``downstream=False`` (default) el payload NO lleva la clave → idéntico
+        byte-a-byte al per-node (retrocompat / brazo de control del experimento).
+        """
         window = max(1.0, sim_time - self._t0)
         phase_flows = []
         for ph in self.cfg.phases:
@@ -132,17 +155,29 @@ class NodeSensor:
             ]
             queue = int(round(sum(per_edge_mean)))
             flow_vph = crossed * (3600.0 / window)
-            phase_flows.append({
+            phase_flow = {
                 "phase_id": ph.phase_id,
                 "flow": flow_vph,
                 "saturation_flow": ph.saturation,
                 "queue": queue,
                 "has_pedestrian": False,
-            })
+            }
+            if downstream and ph.downstream_edges:
+                down_mean = sum(
+                    (sum(self._down_halt_samples[e]) / len(self._down_halt_samples[e]))
+                    if self._down_halt_samples[e] else 0.0
+                    for e in ph.downstream_edges
+                )
+                phase_flow["downstream"] = [
+                    {"queue": int(round(down_mean)), "turn_ratio": ph.turn_ratio}
+                ]
+            phase_flows.append(phase_flow)
         # reset acumuladores de ciclo (prev_ids NO se resetea: continuidad entre ciclos)
         for e in self._crossed:
             self._crossed[e] = 0
             self._halt_samples[e].clear()
+        for e in self._down_halt_samples:
+            self._down_halt_samples[e].clear()
         self._t0 = sim_time
         return phase_flows
 
@@ -239,10 +274,13 @@ def _bootstrap_program(node: NodeCfg, linkstates: dict,
 
 def run_adaptive(seed: int, end_s: int, out_dir: Path,
                  engine_recommend_fn: Optional[Callable] = None,
-                 cycle: Optional[float] = None, offset: float = 0.0) -> dict:
+                 cycle: Optional[float] = None, offset: float = 0.0,
+                 downstream: bool = False) -> dict:
     """Lazo adaptativo. Onda verde opcional: `cycle` fija el ciclo común (None = ciclo
     variable, comportamiento histórico); `offset` desfasa el arranque de Schell respecto
-    a Benavides (solo aplica si `cycle` está fijo). Defaults = comportamiento actual."""
+    a Benavides (solo aplica si `cycle` está fijo). `downstream` activa el término de
+    Max Pressure de red (manda la cola del link interno Benavides→Schell). Defaults =
+    comportamiento per-node histórico (downstream OFF ⇒ payload byte-idéntico)."""
     if engine_recommend_fn is None:
         engine_recommend_fn = recommend
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -293,7 +331,7 @@ def run_adaptive(seed: int, end_s: int, out_dir: Path,
                     stats[iid]["allred_steps"] += 1
 
                 if _is_cycle_edge(n.tls_id, sim_time):
-                    phase_flows = sensors[iid].commit_cycle(sim_time)
+                    phase_flows = sensors[iid].commit_cycle(sim_time, downstream=downstream)
                     try:
                         rec = engine_recommend_fn(
                             intersection_id=iid,
@@ -343,10 +381,12 @@ def main() -> int:
                     help="ciclo común fijo (onda verde); None = ciclo variable (default histórico)")
     ap.add_argument("--offset", type=float, default=0.0,
                     help="desfase del arranque de Schell respecto a Benavides (solo con --cycle)")
+    ap.add_argument("--downstream", action="store_true",
+                    help="activa el término Max Pressure de red (cola del link interno Benavides→Schell)")
     args = ap.parse_args()
 
     stats = run_adaptive(seed=args.seed, end_s=args.end, out_dir=args.out,
-                         cycle=args.cycle, offset=args.offset)
+                         cycle=args.cycle, offset=args.offset, downstream=args.downstream)
     _print_stats(stats, args.end)
 
     # Catch C: bajo peak ambos nodos deberían rutear a max_pressure al menos una vez.
