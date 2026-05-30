@@ -97,6 +97,28 @@ class CorredorKPIs:
     net_mean_travel_time_s_postwarm: float
     net_mean_timeloss_s_postwarm: float
     corridor_mean_travel_time_s_postwarm: float
+    # --- censura / inserción (loaded vs inserted; los never-inserted no están en tripinfo) ---
+    loaded_veh: int
+    inserted_veh: int
+    never_inserted_veh: int
+    # --- RED puerta-a-puerta ROBUSTO a censura (Little's law, post-warmup): cuenta a TODOS
+    #     los autos (circulan + esperan entrar). w = wait(entrar) + inside(adentro). NÚMERO PRINCIPAL ---
+    w_red_door2door_s_postwarm: float
+    w_red_wait_s_postwarm: float
+    w_red_inside_s_postwarm: float
+    tts_red_veh_s_postwarm: float
+    # --- RED puerta-a-puerta por vehículo COMPLETADO (censurado; para comparar/intuición) ---
+    d2d_red_completed_s_postwarm: float
+    departdelay_red_completed_s_postwarm: float
+    duration_red_completed_s_postwarm: float
+    red_completed_n: int
+    # --- CORREDOR S→N (complementario): puerta-a-puerta de completados + ratio de completación ---
+    d2d_corr_s_postwarm: float
+    departdelay_corr_s_postwarm: float
+    duration_corr_s_postwarm: float
+    corr_completed_n: int
+    corr_generated_n: float
+    corr_completion_ratio: float
     # colas
     edge_queues: list = field(default_factory=list)
     # veredicto
@@ -180,6 +202,76 @@ def _read_summary_extras(parquet_path: Path) -> dict:
         "discarded_total": int(sum(discarded)),
         "final_running": int(running[-1]) if running else 0,
         "final_ended": int(ended[-1]) if ended else 0,
+    }
+
+
+def _read_tts(parquet_path: Path, warmup_s: int) -> dict:
+    """Tiempo total en el sistema (robusto a censura) desde la summary.
+
+    Σ(running + waiting) sobre los steps post-warmup = veh·s que TODOS los autos
+    (los que circulan en la red + los que esperan para INSERTARSE) pasan en el
+    sistema. No depende de quién completa el viaje → no esconde a los autos que el
+    control deja afuera. Por Little's law, dividido por la tasa de arribo λ da el
+    tiempo medio puerta-a-puerta por auto, desglosable en espera-para-entrar
+    (waiting) vs manejar-adentro (running).
+    """
+    table = pq.read_table(str(parquet_path))
+    cols = set(table.column_names)
+
+    def series(name: str):
+        c = f"step_{name}" if f"step_{name}" in cols else (name if name in cols else None)
+        return [_to_float(v) for v in table.column(c).to_pylist()] if c else []
+
+    times = series("time")
+    running = series("running")
+    waiting = series("waiting")
+    loaded = series("loaded")
+    inserted = series("inserted")
+    idx = [i for i, t in enumerate(times) if t > warmup_s] or list(range(len(running)))
+    n = len(idx)
+    sum_run = sum(running[i] for i in idx)
+    sum_wait = sum(waiting[i] for i in idx)
+    return {
+        "tts_postwarm": sum_run + sum_wait,           # veh·s (step=1s)
+        "mean_running_postwarm": sum_run / n if n else 0.0,
+        "mean_waiting_postwarm": sum_wait / n if n else 0.0,
+        "loaded": int(loaded[-1]) if loaded else 0,
+        "inserted": int(inserted[-1]) if inserted else 0,
+    }
+
+
+def _read_door2door(parquet_path: Path, warmup_s: int, prefix: str | None = None) -> dict:
+    """Puerta-a-puerta por vehículo COMPLETADO (post-warmup): espera para entrar
+    (departDelay) + tiempo dentro de la red (duration). `prefix` filtra una población
+    (p.ej. 'f_larco_S_N.' para el corredor S→N); None = toda la red.
+
+    OJO: solo cuenta completados (censurado). Se reporta SIEMPRE junto al ratio de
+    completación para que la censura quede a la vista.
+    """
+    table = pq.read_table(str(parquet_path))
+    cols = set(table.column_names)
+
+    def col(name: str):
+        c = f"tripinfo_{name}"
+        return c if c in cols else (name if name in cols else None)
+
+    id_c, dur_c, dd_c, dep_c = (col("id"), col("duration"),
+                                col("departDelay"), col("depart"))
+    ids = table.column(id_c).to_pylist() if id_c else []
+    durs = [_to_float(v) for v in table.column(dur_c).to_pylist()] if dur_c else []
+    dds = [_to_float(v) for v in table.column(dd_c).to_pylist()] if dd_c else [0.0] * len(durs)
+    deps = [_to_float(v) for v in table.column(dep_c).to_pylist()] if dep_c else [0.0] * len(durs)
+
+    sel = [i for i in range(len(durs))
+           if deps[i] >= warmup_s and (prefix is None or str(ids[i]).startswith(prefix))]
+    n = len(sel)
+    mean_dd = sum(dds[i] for i in sel) / n if n else 0.0
+    mean_dur = sum(durs[i] for i in sel) / n if n else 0.0
+    return {
+        "n": n,
+        "departdelay_s": mean_dd,        # espera para entrar
+        "duration_s": mean_dur,          # manejar adentro
+        "door2door_s": mean_dd + mean_dur,
     }
 
 
@@ -279,18 +371,32 @@ def collect_corredor(out_dir: Path, warmup_s: int, params_path: Path | None) -> 
     trip = _read_tripinfo_rich(tripinfo, warmup_s)
     extras = _read_summary_extras(summary)
     queues = _read_queues(lanearea, warmup_s)
+    tts = _read_tts(summary, warmup_s)
+    d2d_red = _read_door2door(tripinfo, warmup_s, prefix=None)
+    d2d_corr = _read_door2door(tripinfo, warmup_s, prefix="f_larco_S_N.")
 
-    # demanda teórica generada
+    # demanda teórica generada (total y del corredor S→N)
     generated = 0.0
+    corr_generated = 0.0
+    dur = sim_dur
     if params_path and params_path.exists():
         with open(params_path) as f:
             cfg = yaml.safe_load(f)
         dur = cfg.get("duration_s", sim_dur)
-        generated = sum(v for v in cfg.get("flows_vph", {}).values() if v > 0) * dur / 3600.0
+        flows = cfg.get("flows_vph", {})
+        generated = sum(v for v in flows.values() if v > 0) * dur / 3600.0
+        corr_generated = flows.get("larco_S_N", 0.0) * dur / 3600.0
 
     arrived = trip["n_arrived"]
     throughput = (arrived * 3600.0 / sim_dur) if sim_dur > 0 else 0.0
     completion = (arrived / generated) if generated > 0 else 0.0
+
+    # RED robusto vía Little's law: W = occupancy_media / λ  (λ = tasa de arribo).
+    lam = (generated / dur) if dur > 0 else 0.0   # veh/s
+    w_wait = (tts["mean_waiting_postwarm"] / lam) if lam > 0 else 0.0
+    w_inside = (tts["mean_running_postwarm"] / lam) if lam > 0 else 0.0
+    never_inserted = max(0, tts["loaded"] - tts["inserted"])
+    corr_ratio = (d2d_corr["n"] / corr_generated) if corr_generated > 0 else 0.0
 
     kpis = CorredorKPIs(
         out_dir=str(out_dir),
@@ -311,6 +417,23 @@ def collect_corredor(out_dir: Path, warmup_s: int, params_path: Path | None) -> 
         net_mean_travel_time_s_postwarm=round(trip["net_tt_pw"], 1),
         net_mean_timeloss_s_postwarm=round(trip["net_tl_pw"], 1),
         corridor_mean_travel_time_s_postwarm=round(trip["corr_tt_pw"], 1),
+        loaded_veh=tts["loaded"],
+        inserted_veh=tts["inserted"],
+        never_inserted_veh=never_inserted,
+        w_red_door2door_s_postwarm=round(w_wait + w_inside, 1),
+        w_red_wait_s_postwarm=round(w_wait, 1),
+        w_red_inside_s_postwarm=round(w_inside, 1),
+        tts_red_veh_s_postwarm=round(tts["tts_postwarm"], 0),
+        d2d_red_completed_s_postwarm=round(d2d_red["door2door_s"], 1),
+        departdelay_red_completed_s_postwarm=round(d2d_red["departdelay_s"], 1),
+        duration_red_completed_s_postwarm=round(d2d_red["duration_s"], 1),
+        red_completed_n=d2d_red["n"],
+        d2d_corr_s_postwarm=round(d2d_corr["door2door_s"], 1),
+        departdelay_corr_s_postwarm=round(d2d_corr["departdelay_s"], 1),
+        duration_corr_s_postwarm=round(d2d_corr["duration_s"], 1),
+        corr_completed_n=d2d_corr["n"],
+        corr_generated_n=round(corr_generated, 1),
+        corr_completion_ratio=round(corr_ratio, 3),
         edge_queues=queues,
     )
     kpis.verdict, kpis.verdict_reason = _classify(kpis)
@@ -335,6 +458,17 @@ def _print_report(k: CorredorKPIs) -> None:
           f"(post-warmup {k.net_mean_timeloss_s_postwarm:.1f}s)")
     print(f"  corredor S→N TT medio   : {k.corridor_mean_travel_time_s:.1f}s   "
           f"(post-warmup {k.corridor_mean_travel_time_s_postwarm:.1f}s, n={k.corridor_n})")
+    print("PUERTA-A-PUERTA post-warmup (espera-entrar + adentro)")
+    print(f"  RED robusto (Little's law, TODOS los autos): {k.w_red_door2door_s_postwarm:.1f}s "
+          f"= espera {k.w_red_wait_s_postwarm:.1f}s + adentro {k.w_red_inside_s_postwarm:.1f}s")
+    print(f"  RED completados (censurado): {k.d2d_red_completed_s_postwarm:.1f}s "
+          f"= espera {k.departdelay_red_completed_s_postwarm:.1f}s + adentro "
+          f"{k.duration_red_completed_s_postwarm:.1f}s  (n={k.red_completed_n})")
+    print(f"  CORREDOR S→N: {k.d2d_corr_s_postwarm:.1f}s = espera {k.departdelay_corr_s_postwarm:.1f}s "
+          f"+ adentro {k.duration_corr_s_postwarm:.1f}s  "
+          f"(completados {k.corr_completed_n}/{k.corr_generated_n:.0f} = {k.corr_completion_ratio:.0%})")
+    print(f"  CENSURA: loaded={k.loaded_veh} inserted={k.inserted_veh} "
+          f"NUNCA-insertados={k.never_inserted_veh}")
     print("COLAS POR EDGE (ventana post-warmup; (INT)=link interno entre TLS)")
     for eq in k.edge_queues:
         flag = "  <<< SPILLBACK" if eq.spillback else ""
