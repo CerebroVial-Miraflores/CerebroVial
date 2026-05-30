@@ -192,7 +192,7 @@ def write_addfile(
 def main() -> int:
     plan = compute_from_pattern("am_peak")
     out = write_addfile(plan)
-    print(f"Webster fijo (am_peak):")
+    print("Webster fijo (am_peak):")
     print(f"  cycle = {plan.cycle_seconds:.2f}s")
     print(f"  green_NS = {plan.green_NS:.2f}s")
     print(f"  green_EW = {plan.green_EW:.2f}s")

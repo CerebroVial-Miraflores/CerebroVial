@@ -18,7 +18,6 @@ Lefts permissive: el char es ``g`` minúscula durante la verde de su fase
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

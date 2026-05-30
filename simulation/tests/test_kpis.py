@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from cerebrovial_simulation.fixed_control import webster_fixed
-from cerebrovial_simulation.kpis import collect, run_comparison
+from cerebrovial_simulation.kpis import run_comparison
 
 
 SIM_ROOT = Path(__file__).resolve().parent.parent

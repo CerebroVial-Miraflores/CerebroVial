@@ -98,7 +98,6 @@ def run_e2e(
     # Traci.start lanza sumo como subprocess y conecta.
     traci.start(sumo_cmd, port=None, label=f"e2e_{pattern}_{seed}")
     try:
-        prev_commit_time = 0.0
         step = 0
         while step < end_s:
             traci.simulationStep()
@@ -160,7 +159,7 @@ def main() -> int:
     print(f"  setProgramLogic:    {stats['n_applications']} (Catch A: ≤ ciclos/{args.end // 60 + 1})")
     print(f"  modes ejercitados:  {set(stats['engine_modes'])}")
     if stats["engine_errors"]:
-        print(f"  errores motor:")
+        print("  errores motor:")
         for e in stats["engine_errors"][:5]:
             print(f"    {e}")
     # Catch C: bajo am/pm peak debe rutear a max_pressure al menos una vez.

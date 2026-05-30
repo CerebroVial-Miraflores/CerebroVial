@@ -15,7 +15,6 @@ import tempfile
 from pathlib import Path
 
 import pyarrow.parquet as pq
-import pytest
 
 from cerebrovial_simulation.dataset import generate as gen_mod
 from cerebrovial_simulation.dataset import partitions, schema
