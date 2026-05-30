@@ -60,8 +60,9 @@ sube de forma consistente (+1…+3%, 10/10).
 **Lectura:** la adaptación local **conserva y relocaliza** la demora (de la entrada al link
 interno), no la elimina; y al hacerlo **convierte un corredor desacoplado (fijo) en uno acoplado
 (spillback Benavides→Schell)**. La demora relocalizada al link interno es precisamente lo que una
-optimización de offsets podría atacar y que bajo fijo no existía. **IE05 no cumple su umbral
-≥15%, pero demuestra empíricamente por qué la coordinación es el siguiente paso necesario.**
+optimización de offsets podría atacar y que bajo fijo no existía. **La adaptación local no alcanza
+el umbral ≥15%, pero demuestra empíricamente por qué la coordinación (Fase 2 de IE05) es el
+siguiente paso necesario.**
 
 ## Diferencias de control declaradas (no confounds ocultos)
 
