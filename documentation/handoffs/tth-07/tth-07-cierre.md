@@ -3,9 +3,11 @@
 **Rama**: `feature/tth-07` (desde `feature/tth-07-fase0-docs` ←
 `master@85d56bb4` = merge PR #34 cierre TTH-08 F9).
 **Fecha de cierre**: 2026-05-29.
-**Estado al cierre**: **TTH-07 Done** — 8/8 CTs cubiertos, 27/27 tests
-verdes. Sprint ejecutado en 6 fases (F0-F6) sobre una sola rama, un
-commit por fase.
+**Estado al cierre**: 8/8 CTs (capacidades) cubiertos, 27/27 tests verdes.
+Sprint en 6 fases (F0-F6), un commit por fase, + 3 fixes post-cierre
+(intersection_id, medición de cola/flujo, truncación de fase). **Bajo pico el
+comparativo CT-07.6 arroja un adaptive que aún underperforma al fixed-Webster
+por aliasing residual de sensado en nodo único (§7.1, deuda abierta).**
 
 ---
 
@@ -34,7 +36,11 @@ commit por fase.
 | F3 | `939361b9` | dataset Parquet + particiones train/valid + tests c1-c5 |
 | F4 | `d8194a44` | contrato motor + adaptador TraCI ↔ HTTP + e2e + tests d1-d5 |
 | F5 | `64aae34a` | Webster offline (Catch B) + KPIs comparativos + tests e1-e4 |
-| F6 | (este) | README final CT-07.7 + handoff de cierre |
+| F6 | `1b48727b` | README final CT-07.7 + handoff de cierre |
+| post | `c9ff69ce` | fix: e2e usa intersection_id del seed (larco_schell) |
+| post | `9413ef22` | fix: medición — cola = promedio de ventana, flujo = cruces reales |
+| post | `a637b000` | fix: reinicio de fase al aplicar plan vía TraCI (anti-truncación NS_g) |
+| post | (este) | docs: actualiza handoff de cierre (fixes + deudas §7.1/§7.2) |
 
 ## 3. Catches incorporados (planificación → ejecución)
 
@@ -45,7 +51,7 @@ commit por fase.
 | **C3 — Aplicar en borde de fase (luego CICLO)** | Plan original aplicaba en cada borde sub-fase ⇒ reset a NS_g cada 30s ⇒ hambreado EW. Cesar (Catch A) refinó a borde de ciclo (EW_r → NS_g). | `tllogic_applier.maybe_apply`: solo aplica si `getPhase==5` Y `getNextSwitch==sim_time`. | F4 test d3: 180s sim, engine llamado 6 veces, setProgramLogic ≤ 3 aplicaciones (no 6). |
 | **A — Borde de ciclo, no de sub-fase** | Cesar al revisar plan. Mismo que C3 después del refinamiento. | Idem. | Idem. |
 | **B — Webster offline directo, NO via motor** | Cesar: AM-peak ≥ PEAK_THRESHOLD ⇒ engine rutea a max_pressure ⇒ "Webster fijo via engine" sería realmente max_pressure congelado. | `fixed_control/webster_fixed.py` implementa fórmula transcrita literal de `webster.py:7-12` sin HTTP. | F5 test e1: MTC bounds + suma consistente. Test e3: consistencia con flujos YAML. F5 NO requiere `invoke up`. |
-| **C — Flow es tasa de paso, no ocupación** | Cesar: si flow se estima con `getLastStepVehicleNumber` (ocupación instantánea), `flow_total` se subestima ⇒ engine no rutea a max_pressure bajo pico ⇒ "adaptive" sería Webster-dinámico y se pierde el punto de la tesis. | `state_reader.StateTracker.observe()/commit_window()` cuenta IDs únicos en ventana 30s ⇒ `flow_vph = N × 3600/30`. | F4 test d5: aggregator con flujos am_peak produce `flow_total > 1500`. `run_e2e` exit code 2 con STOP-CONDITION si bajo am/pm peak engine nunca ruteó a max_pressure. |
+| **C — Flow es tasa de paso, no ocupación** | Cesar: si flow se estima con `getLastStepVehicleNumber` (ocupación instantánea), `flow_total` se subestima ⇒ engine no rutea a max_pressure bajo pico ⇒ "adaptive" sería Webster-dinámico congelado y se pierde el objetivo del comparativo (no ejercita max_pressure bajo pico). | `state_reader.StateTracker.observe()/commit_window()` cuenta IDs únicos en ventana 30s ⇒ `flow_vph = N × 3600/30`. | F4 test d5: aggregator con flujos am_peak produce `flow_total > 1500`. `run_e2e` exit code 2 con STOP-CONDITION si bajo am/pm peak engine nunca ruteó a max_pressure. |
 
 ## 4. Correcciones de método (todas aterrizadas)
 
@@ -92,6 +98,8 @@ F5 (4 tests):            Webster offline MTC bounds + KPIs finitos
 | Turns en demanda | Routes straight-only por simplicidad | F2 | F41 / refinamiento posterior |
 | libsumo in-process | Toolchain alternativo si TraCI no alcanza throughput | F0 opción C | Trabajos futuros |
 | CT-10.11 integración R2 | Adaptador con persistencia + estado vigente | core (TTH-10) | R2 |
+| **Aliasing residual de sensado bajo pico (nodo único)** | Limitación de diseño de medición | Diagnóstico post-cierre | §7.1 — optimizar medición vs. escalar a mini-red |
+| **`next_phase` ignorado en el aplicador** | Inconsistencia menor contrato↔aplicación | Diagnóstico post-cierre | §7.2 — trabajo futuro |
 
 **Adenda post-cierre (smoke vivo).** El contrato del motor transcrito en F4
 (`engine_recommend_contract.md`) estaba **incompleto**: el motor valida el
@@ -104,6 +112,45 @@ validación hasta el primer smoke con motor real. Corregido en `fix(tth-07)`:
 y el README documenta `invoke seed` como paso obligatorio del e2e (CT-07.7). El smoke
 vivo (sin 422, `max_pressure` bajo am_peak, `setProgramLogic > 0`) lo corre Cesar.
 
+**Adenda 2 — fixes post-cierre (medición + aplicación) y resultado del comparativo.**
+El smoke + `run_comparison` mostraron al adaptive gridlockeando. Dos fixes (solo
+`simulation/`, cero core), validados con instrumentación read-only + 27/27 tests:
+
+- **Medición (`9413ef22`, `state_reader.py`).** La cola era un snapshot único de
+  `getLastStepHaltingNumber` que aliaseaba con la fase → ahora se muestrea cada step y
+  se devuelve el **promedio** de la ventana. El flujo contaba la unión de IDs presentes
+  (inflado por la cola parada) → ahora cuenta **cruces reales** (IDs que salieron del
+  aproche entre steps, excluyendo teleports). Refina la implementación de Catch C (de
+  unión-de-IDs a tasa-de-paso real). Contrato `DirectionState`/`PhaseFlow` intacto.
+- **Aplicación (`a637b000`, `tllogic_applier.py`).** `setProgramLogic(currentPhaseIndex=0)`
+  no reiniciaba el reloj de la fase 0 en SUMO 1.26 → NS_g se truncaba a ~1 step
+  (`nextSwitch` quedaba en now+0.1–0.7s) → NS hambreado. Fix: `setPhase(0)` +
+  `setPhaseDuration(green_NS)` tras `setProgramLogic`. Verificado: NS_g corre su verde
+  completo tras cada apply, ciclo = `cycle_seconds` del motor, EW_g intacto.
+
+**Resultado tras ambos fixes:** ya no hay gridlock, pero **bajo pico el adaptive aún
+underperforma al fixed-Webster** (cola NS 214–494m vs ~100m; delay 1.6–2.2×; alta
+varianza entre seeds). Causa raíz en §7.1.
+
+**§7.1 — Aliasing residual de sensado (deuda; causa del underperform bajo pico).** La
+ventana de sensado (30s) es más corta que el ciclo (variable, hasta 120s) y está
+desincronizada, así que cola y flujo aliasean contra la fase del semáforo. Diagnóstico
+(instrumentación read-only am_peak seed=2): cuando la ventana cae sobre NS-siendo-servido,
+NS lee 0–1 veh (real 4–43) → `pressure = sat × queue` colapsa para NS → el split se va al
+eje liviano EW (`green_NS:green_EW` se invierte a ~0.20–0.35 en ~4/20 ventanas). El flujo
+también aliasea (f_NS de 0 a 11400 veh/h entre ventanas; un flap espurio a webster con
+f_NS=0 y cola NS=43). **No** es bug mecánico (aplicación sana, opener=NS en 10/10).
+Reducible: alinear la ventana a un múltiplo del ciclo o medir sobre un ciclo completo. El
+nodo aislado con ciclo variable es el régimen donde más muerde → pendiente de decisión
+(optimizar medición vs. escalar a mini-red coordinada donde Max Pressure tiene su ventaja).
+
+**§7.2 — `next_phase` ignorado en el aplicador (deuda menor).** El motor a veces devuelve
+`next_phase=EW` (3/20 calls en am_peak s2), pero `expand_timings_to_sumo_phases` arma el
+programa en el orden de `phase_timings` y el ciclo aplicado **siempre abre con NS_g**
+(opener=NS en 10/10 applies). La sugerencia `next_phase` no se respeta en el orden de
+sub-fases cargado. No causó la cola NS elevada (si algo, sirve NS primero), pero es una
+inconsistencia contrato-motor ↔ aplicación TraCI. Trabajo futuro.
+
 ## 8. Cross-refs
 
 - Plan ejecutado: `~/.claude/plans/auditor-a-read-only-de-arranque-virtual-spark.md`
@@ -114,9 +161,13 @@ vivo (sin 422, `max_pressure` bajo am_peak, `setProgramLogic > 0`) lo corre Cesa
 
 ## 9. Cierre
 
-Sprint TTH-07 cierra con 8/8 CTs cubiertos sobre `feature/tth-07`. La
-rama tiene 7 commits desde `master@85d56bb4`. Listo para el PR único
-que abre Cesar.
+Sprint TTH-07 cierra con 8/8 CTs (capacidades) cubiertos sobre
+`feature/tth-07`, 27/27 tests verdes. La rama tiene 10 commits desde
+`master@85d56bb4` (F0-F6 + 3 fixes post-cierre + este docs). La
+infraestructura (topología, patrones, dataset, adaptador TraCI↔motor,
+comparativo) está completa; el comparativo CT-07.6 arroja un adaptive que
+aún underperforma al fixed bajo pico por aliasing residual (§7.1) —
+deuda abierta, la decisión de mergear con ella es humana.
 
-**No push, no merge desde el agente** ([CLAUDE.md](../../CLAUDE.md)
-§"Flujo de trabajo"). El cuerpo del PR usa este handoff como `--body-file`.
+**Merge a `master`: humano** ([CLAUDE.md](../../CLAUDE.md) §"Flujo de
+trabajo"). Este handoff es el cuerpo del PR.
