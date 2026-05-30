@@ -36,7 +36,7 @@ LINKSTATES_JSON = SIM_ROOT / "conf" / "network" / "linkstates.json"
 
 # Plan fijo del motor (max_pressure ciclo 60s) — para mocks.
 MOCK_RECOMMENDATION = {
-    "intersection_id": "miraflores_4way",
+    "intersection_id": "larco_schell",
     "mode": "max_pressure",
     "cycle_seconds": 60.0,
     "phase_timings": [

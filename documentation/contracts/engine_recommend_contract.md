@@ -33,7 +33,7 @@ documentado en `simulation/.env.example`, env-configurable.
 
 ```json
 {
-  "intersection_id": "miraflores_4way",
+  "intersection_id": "larco_schell",
   "timestamp": "2026-05-29T10:00:00Z",
   "phases": [
     {
@@ -81,7 +81,7 @@ Campos del top-level:
 ```json
 {
   "data": {
-    "intersection_id": "miraflores_4way",
+    "intersection_id": "larco_schell",
     "mode": "max_pressure",
     "cycle_seconds": 84.5,
     "phase_timings": [

@@ -93,6 +93,17 @@ F5 (4 tests):            Webster offline MTC bounds + KPIs finitos
 | libsumo in-process | Toolchain alternativo si TraCI no alcanza throughput | F0 opción C | Trabajos futuros |
 | CT-10.11 integración R2 | Adaptador con persistencia + estado vigente | core (TTH-10) | R2 |
 
+**Adenda post-cierre (smoke vivo).** El contrato del motor transcrito en F4
+(`engine_recommend_contract.md`) estaba **incompleto**: el motor valida el
+`intersection_id` contra la tabla `graph_nodes` (fail-fast **422
+`unknown_intersection`**, `DHU-021 V1`) y depende de **`invoke seed`** para poblarla
+(`invoke up` solo migra; tabla vacía → 422 con *cualquier* ID). F4 lo capturó con un
+mock que devolvía un `intersection_id` inventado (`miraflores_4way`), lo que ocultó la
+validación hasta el primer smoke con motor real. Corregido en `fix(tth-07)`:
+`INTERSECTION_ID = "larco_schell"` (nodo del seed), contrato + README + mock alineados,
+y el README documenta `invoke seed` como paso obligatorio del e2e (CT-07.7). El smoke
+vivo (sin 422, `max_pressure` bajo am_peak, `setProgramLogic > 0`) lo corre Cesar.
+
 ## 8. Cross-refs
 
 - Plan ejecutado: `~/.claude/plans/auditor-a-read-only-de-arranque-virtual-spark.md`

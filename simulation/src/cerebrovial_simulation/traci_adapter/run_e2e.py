@@ -37,7 +37,7 @@ SCENARIOS_DIR = SIM_ROOT / "conf" / "scenarios"
 NETWORK_DIR = SIM_ROOT / "conf" / "network"
 LINKSTATES_JSON = NETWORK_DIR / "linkstates.json"
 
-INTERSECTION_ID = "miraflores_4way"
+INTERSECTION_ID = "larco_schell"  # nodo del seed del core (graph_nodes); ver README §e2e
 TLS_ID = "center"
 
 SENSE_INTERVAL_S = 30  # Catch C: ventana de sensado.

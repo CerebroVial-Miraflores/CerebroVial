@@ -87,6 +87,7 @@ Requiere el core `core_management_api` corriendo en otra terminal:
 ```bash
 # Terminal 1 (desde la raíz del repo)
 invoke up
+invoke seed   # ← imprescindible: graph_nodes arranca vacía; sin seed el motor responde 422
 
 # Terminal 2
 cd simulation
@@ -95,6 +96,14 @@ bash scripts/run_e2e_with_engine.sh --pattern am_peak --seed 1 --end 600
 
 El script valida `curl /control/health` antes de arrancar. Si el motor
 no responde, falla rápido con instrucciones.
+
+> **Dependencia del seed (CT-07.7).** El motor valida el `intersection_id`
+> entrante contra la tabla `graph_nodes` y devuelve **422 `unknown_intersection`**
+> si el nodo no existe. `invoke up` solo corre las migraciones (tabla vacía); es
+> `invoke seed` el que registra los nodos de Miraflores. El `INTERSECTION_ID` del
+> e2e (`run_e2e.py`) debe ser **uno de los nodos seedeados** — hoy `larco_schell`.
+> IDs válidos tras el seed: `larco_schell`, `larco_benavides`, `benavides_miraflores`,
+> `arequipa_angamos`, `ejercito_sucre` (ver `scripts/seed.py` en la raíz del repo).
 
 ### Comparación adaptive vs fixed-Webster (CT-07.6)
 
