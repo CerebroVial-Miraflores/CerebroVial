@@ -419,6 +419,8 @@ El motor soporta N fases. Webster suma sobre N términos en el cálculo de Y, y 
 
 En SP4 se simula la misma intersección en SUMO con dos configuraciones: (a) tiempos fijos pre-calibrados, (b) motor adaptativo recibiendo inputs sintéticos del simulador. Se compara la demora promedio por vehículo (KPI principal del IE05). El criterio de éxito es RD% ≥ 15%.
 
+> **Nota (DHU-027, 2026-05-29):** esta definición de IE05 quedó **superada**. La validación se extiende de **nodo único a RED/corredor coordinado** (corredor Av. José Larco, Miraflores: Diez Canseco, Schell, Benavides), porque la ventaja de Max Pressure es estructuralmente de red (término *downstream* `x_down`, ≈0 en nodo aislado). IE05 se reformula al KPI de **demora promedio de red** (promediada sobre el corredor), **conservando** el umbral RD% ≥ 15%. Detalle, sustento y frontera real-vs-supuesto en `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` § DHU-027.
+
 ### "¿Cumple con la regulación peruana?"
 
 El motor incorpora explícitamente las restricciones del Manual MTC R.D. 26-2024-MTC/18 (octubre 2024) vía la capa MTC: mínimos de verde, amarillos, all-reds y mínimos peatonales. Las constantes son parametrizables si la regulación cambia. La justificación regulatoria está documentada en Cap 2 (Marco regulatorio peruano).
