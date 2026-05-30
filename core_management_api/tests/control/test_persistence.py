@@ -79,6 +79,24 @@ def test_inputs_snapshot_is_faithful_to_payload_ct_10_9_3(
         assert snap_phase["queue"] == req_phase["queue"]
 
 
+def test_inputs_snapshot_includes_downstream_ct_10_9_3(
+    client_with_db, motor_db_session, http_payload
+):
+    """CT-10.9.3 (ext. Max Pressure de red): el snapshot reproduce el campo
+    ``downstream`` por fase para que la decisión sea reproducible. Ausente ⇒ None."""
+    payload = http_payload(flow_total=2000.0, queues=(15, 4))
+    payload["phases"][0]["downstream"] = [{"queue": 14, "turn_ratio": 1.0}]
+
+    response = client_with_db.post("/control/recommend", json=payload)
+    assert response.status_code == 200, response.text
+
+    row = motor_db_session.query(MotorDecisionDB).one()
+    snap = row.inputs_snapshot
+    assert snap["phases"][0]["downstream"] == [{"queue": 14, "turn_ratio": 1.0}]
+    # La fase sin downstream lo persiste como None (retrocompat).
+    assert snap["phases"][1]["downstream"] is None
+
+
 def test_peak_path_persists_max_pressure_ct_10_9_4(
     client_with_db, motor_db_session, http_payload
 ):

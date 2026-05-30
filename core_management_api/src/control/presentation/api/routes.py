@@ -35,6 +35,7 @@ from ...application.adaptive_engine import (
     PhaseFlowDC,
     RecommendationDC,
 )
+from ...application.max_pressure import DownstreamLinkDC
 from ...application.webster import WebsterInfeasible
 from ...infrastructure import (
     ActiveStateBroadcaster,
@@ -80,6 +81,11 @@ def _to_dataclass(state: IntersectionState) -> IntersectionStateDC:
                 saturation_flow=p.saturation_flow,
                 queue=p.queue,
                 has_pedestrian=p.has_pedestrian,
+                downstream=(
+                    [DownstreamLinkDC(queue=d.queue, turn_ratio=d.turn_ratio) for d in p.downstream]
+                    if p.downstream
+                    else None
+                ),
             )
             for p in state.phases
         ],
@@ -119,6 +125,11 @@ def _build_inputs_snapshot(state: IntersectionState) -> dict:
                 "saturation_flow": p.saturation_flow,
                 "queue": p.queue,
                 "has_pedestrian": p.has_pedestrian,
+                "downstream": (
+                    [{"queue": d.queue, "turn_ratio": d.turn_ratio} for d in p.downstream]
+                    if p.downstream
+                    else None
+                ),
             }
             for p in state.phases
         ],

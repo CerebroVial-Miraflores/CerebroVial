@@ -16,7 +16,7 @@ exercised in tests without spinning up FastAPI.
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .max_pressure import MaxPressureController
+from .max_pressure import DownstreamLinkDC, MaxPressureController
 from .mtc_constraints import MTCRestrictionApplier, PhaseTiming
 from .webster import WebsterCalculator, WebsterInfeasible
 
@@ -28,6 +28,9 @@ class PhaseFlowDC:
     saturation_flow: float
     queue: int = 0
     has_pedestrian: bool = False
+    # Movimientos de salida (Varaiya). None ⇒ término downstream = 0 ⇒ P = s·q
+    # (retrocompat per-node / IE05). Aditivo y opcional.
+    downstream: Optional[list[DownstreamLinkDC]] = None
 
 
 @dataclass
@@ -76,6 +79,7 @@ class AdaptiveEngine:
         saturations = {p.phase_id: p.saturation_flow for p in state.phases}
         queues = {p.phase_id: p.queue for p in state.phases}
         pedestrians = {p.phase_id: p.has_pedestrian for p in state.phases}
+        downstreams = {p.phase_id: p.downstream for p in state.phases}
 
         flow_total = sum(flows.values())
 
@@ -95,6 +99,7 @@ class AdaptiveEngine:
             queues=queues,
             pedestrians=pedestrians,
             flow_total=flow_total,
+            downstreams=downstreams,
         )
 
     def _webster_branch(
@@ -141,6 +146,7 @@ class AdaptiveEngine:
         queues: dict[str, int],
         pedestrians: dict[str, bool],
         flow_total: float,
+        downstreams: Optional[dict[str, Optional[list[DownstreamLinkDC]]]] = None,
     ) -> RecommendationDC:
         y_load_factor: Optional[float] = None
         try:
@@ -161,6 +167,7 @@ class AdaptiveEngine:
             saturations=saturations,
             lost_time=state.lost_time,
             cycle_seconds=base_cycle,
+            downstreams=downstreams,
         )
         constrained = self.mtc.apply(
             green_by_phase=decision.green_by_phase,
