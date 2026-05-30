@@ -3007,6 +3007,21 @@ Miraflores ni de su Subgerencia de Movilidad. Se usan como referencia de magnitu
   decisión lockeada de "topología genérica, no OSM" **sigue vigente para el 4-vías**, y este DHU no
   la reabre: introduce un camino OSM **paralelo** para el corredor.
 
+### Estado de ejecución de IE05 (Etapa 2, corredor Larco)
+
+**IE05 (RD% ≥ 15%, validación de red vía SUMO): EN PROGRESO.**
+
+- **Fase 1 — adaptación local (Max Pressure per-node) vs control fijo: CERRADA.** RD% = +1.0% ±
+  7.5% (10 semillas pareadas) → empate estadístico; no alcanza el umbral ≥15% con adaptación local
+  sola. Mecanismo de acoplamiento Benavides→Schell confirmado 10/10 (drenaje del cuello de entrada
+  sur + relocalización del tapón al link interno). Detalle en
+  `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
+- **Fase 2 — coordinación de offsets (onda verde) / Max Pressure de red: PENDIENTE.** Siguiente
+  intento de alcanzar el umbral.
+
+(La fila DHU-027 de la tabla resumen queda **Cerrada** porque refiere a la *decisión* de reformular
+IE05, no al *indicador* IE05, que sigue en progreso.)
+
 ---
 
 ---

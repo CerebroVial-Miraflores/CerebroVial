@@ -1,4 +1,4 @@
-# Estado de la tesis CerebroVial — actualizado 2026-05-25
+# Estado de la tesis CerebroVial — actualizado 2026-05-30
 
 ## Dónde estoy
 Ciclo SDD (Spec Kit v0.8.11, brownfield) cerrado y sellado. 6/6 artefactos poblados y verificados:
@@ -10,6 +10,17 @@ Orden comprometido (19 SP, de tasks.md): TTH-01 (Auth JWT+bcrypt) → HU-01 (RBA
 TTH-10 (cierre Motor) → HU-05 (ControlView pasiva) → TTH-03 (cierre CI).
 Comando de arranque: /speckit-implement sobre TTH-01.
 Autoridad del alcance del sprint: tasks.md (NO los 32 elementos del inventario; solo estos 5).
+
+## Corredor Larco / IE05 (validación SUMO) — Etapa 2 (2026-05-30)
+**IE05 (RD% ≥ 15%): EN PROGRESO** (track paralelo al Sprint 4; no lo bloquea).
+- **Fase 1 — adaptación local (Max Pressure per-node) vs control fijo: CERRADA.** RD% = +1.0% ±
+  7.5% (10 semillas pareadas) → empate estadístico; no alcanza ≥15% con adaptación local sola.
+  Mecanismo de acoplamiento Benavides→Schell confirmado 10/10 (drenaje del cuello de entrada sur +
+  relocalización al link interno). Encadenamiento baseline → barrido de demanda → IE05 adaptativo en
+  `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
+- **Próximo paso: experimento de ONDA VERDE** (coordinación de offsets Benavides↔Schell) / Max
+  Pressure de red — Fase 2 de IE05, siguiente intento de alcanzar el umbral. Es donde el mecanismo
+  robusto indica que está el valor que la adaptación local no captura.
 
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue

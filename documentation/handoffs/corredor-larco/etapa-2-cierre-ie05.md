@@ -1,4 +1,4 @@
-# Corredor Larco — Etapa 2 / IE05: cierre (baseline fijo + barrido de demanda + MP adaptativo vs fijo)
+# Corredor Larco — Etapa 2 / IE05 Fase 1: cierre (baseline fijo + barrido de demanda + MP adaptativo vs fijo)
 
 **Rama:** `feature/corredor-larco-max-pressure`. Sin push, sin PR, sin merge.
 **Alcance:** ejecución del experimento sobre la red base de Etapa 1. **No toca el motor**
@@ -6,16 +6,20 @@
 **Escenario fijado:** demanda peak S→N, `scale=1.0`, `seed` variable, `end=1800`, `warmup=600`,
 mismos 18 detectores E2, mismo `.sumocfg`. La única variable entre fijo y adaptativo es el control.
 
-## Resultado de IE05 (honesto)
+## Resultado (IE05 Fase 1 — adaptación local)
 
-**IE05 (DHU-027) exige RD% ≥ 15% sobre demora de RED. NO se alcanza.**
-El RD% (reducción de demora de red, post-warmup, comparación pareada) es un **empate
-estadístico**: **+1.0% ± 7.5% (SD)** sobre 10 semillas (media±SD = −6.5%…+8.5%, cruza el cero;
-4/10 semillas positivas, la media positiva la arrastra un único outlier). La adaptación local
-per-node, sola, **no reduce la demora de red** en este corredor.
+**IE05 sigue EN PROGRESO. Lo que cierra esta etapa es su Fase 1 (adaptación local per-node), no
+el indicador entero.** IE05 (DHU-027) exige RD% ≥ 15% sobre demora de RED; **la adaptación local,
+sola, NO alcanza ese umbral**: el RD% (reducción de demora de red, post-warmup, comparación
+pareada) es un **empate estadístico** — **+1.0% ± 7.5% (SD)** sobre 10 semillas (media±SD =
+−6.5%…+8.5%, cruza el cero; 4/10 semillas positivas, la media positiva la arrastra un único
+outlier).
 
-Pero el experimento **no es un nulo**: revela un mecanismo estructural robusto (10/10 semillas)
-que reformula el hallazgo y motiva el siguiente paso (coordinación). Ver §"Mecanismo".
+**La Fase 2 (coordinación de offsets / Max Pressure de red) queda PENDIENTE — es el siguiente
+intento de alcanzar el umbral.** Este cierre no entierra IE05: cierra la fase local y deja
+documentada la bisagra hacia coordinación. El experimento no es un nulo: revela un mecanismo
+estructural robusto (10/10 semillas, ver §"Mecanismo") que es justamente lo que la coordinación
+puede atacar.
 
 ## Qué se ejecutó (3 hallazgos encadenados)
 
@@ -86,8 +90,10 @@ optimización de offsets podría atacar y que bajo fijo no existía. **IE05 no c
 
 - **Coordinación (offsets Benavides↔Schell):** siguiente paso natural — el mecanismo robusto dice
   que ahí está el valor que la adaptación local no captura.
-- **IE05 ≥15% no alcanzado a nivel nodo-local.** Reabrir requeriría: sensibilidad a la saturación
-  transversal, o evaluar el RD% bajo control coordinado (no per-node aislado).
+- **IE05 sigue EN PROGRESO (Fase 2 pendiente).** La Fase 1 (adaptación local) no alcanza ≥15%; la
+  Fase 2 —coordinación de offsets (onda verde) / Max Pressure de red— es el siguiente intento de
+  alcanzar el umbral. Sensibilidad a la saturación transversal de Benavides queda como variante
+  opcional si se quiere afinar la Fase 1.
 - **Una sola configuración de demanda** (peak S→N supuesto). Tiempos fijos y matriz OD siguen
   SUPUESTOS (Etapa 1); reemplazo cuando la Subgerencia provea tiempos 2014 + conteos.
 - Diez Canseco sin conflicto transversal (deuda de Etapa 1, sin cambios).
