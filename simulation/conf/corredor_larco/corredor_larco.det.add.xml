@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Detectores laneArea (E2) para medir spillback en el corredor Larco (ETAPA 2).
+     Cada detector cubre el largo COMPLETO de su edge (pos=0, length≈largo del edge,
+     friendlyPos para clamp seguro) → jamLengthInMeters puede alcanzar el cruce de
+     aguas arriba = spillback real, no solo cola local.
+     Campo canónico consumido: maxJamLengthInMeters / jamLengthInMeters.
+     freq=60 → serie temporal de 60 s (distingue spillback estable de gridlock creciente).
+     Todos comparten un único lanearea.xml (multi-detector single-file, XML — el arrow
+     writer de SUMO 1.26 no soporta append multi-interval).
+
+     NOTA: el carril 0 del eje Larco es bus/bici (allow="bus bicycle"); los detectores
+     _0 sobre Larco leerán ~0 cola de tráfico general (esperado). El collector agrega
+     por edge (max/suma sobre carriles). Largos de edge (de corredor_larco.net.xml):
+       129466113#0 247.55 | 279893875#1 96.92 | 279893875#2 48.00 | 279893875#4 48.26
+       344159559#2 153.34 | 430180649 141.46
+-->
+<additional>
+  <!-- Aproximación principal S→N (fuente sur → Benavides) -->
+  <laneAreaDetector id="e2_larcoS_0" lane="129466113#0_0" pos="0" length="247" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_larcoS_1" lane="129466113#0_1" pos="0" length="247" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_larcoS_2" lane="129466113#0_2" pos="0" length="247" freq="60" friendlyPos="true" file="lanearea.xml"/>
+
+  <!-- Link interno Benavides→Schell (279893875#1) — SPILLBACK Schell→Benavides -->
+  <laneAreaDetector id="e2_benSch_0" lane="279893875#1_0" pos="0" length="96" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_benSch_1" lane="279893875#1_1" pos="0" length="96" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_benSch_2" lane="279893875#1_2" pos="0" length="96" freq="60" friendlyPos="true" file="lanearea.xml"/>
+
+  <!-- Aproximación a Schell (279893875#2) -->
+  <laneAreaDetector id="e2_tarSch_0" lane="279893875#2_0" pos="0" length="47" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_tarSch_1" lane="279893875#2_1" pos="0" length="47" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_tarSch_2" lane="279893875#2_2" pos="0" length="47" freq="60" friendlyPos="true" file="lanearea.xml"/>
+
+  <!-- Link interno Schell→Diez Canseco (279893875#4) — SPILLBACK Schell→DC -->
+  <laneAreaDetector id="e2_schDc_0" lane="279893875#4_0" pos="0" length="48" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_schDc_1" lane="279893875#4_1" pos="0" length="48" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_schDc_2" lane="279893875#4_2" pos="0" length="48" freq="60" friendlyPos="true" file="lanearea.xml"/>
+
+  <!-- Aproximación transversal Benavides Este (344159559#2) -->
+  <laneAreaDetector id="e2_benE_0" lane="344159559#2_0" pos="0" length="153" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_benE_1" lane="344159559#2_1" pos="0" length="153" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_benE_2" lane="344159559#2_2" pos="0" length="153" freq="60" friendlyPos="true" file="lanearea.xml"/>
+
+  <!-- Aproximación transversal Schell Este (430180649) -->
+  <laneAreaDetector id="e2_schE_0" lane="430180649_0" pos="0" length="141" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_schE_1" lane="430180649_1" pos="0" length="141" freq="60" friendlyPos="true" file="lanearea.xml"/>
+  <laneAreaDetector id="e2_schE_2" lane="430180649_2" pos="0" length="141" freq="60" friendlyPos="true" file="lanearea.xml"/>
+</additional>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- peak S→N corredor Larco — flujos OD explícitos (ETAPA 2 baseline). Generado desde demand_params.yaml; NO editar a mano. -->
+<routes>
+  <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" maxSpeed="13.89"/>
+  <route id="larco_S_N" edges="129466113#0 279893875#1 279893875#2 279893875#4 279893875#5"/>
+  <route id="larco_S_benE" edges="129466113#0 406008845#1"/>
+  <route id="larco_S_benW" edges="129466113#0 279893831#2 1152291911"/>
+  <route id="larco_S_schW" edges="129466113#0 279893875#1 279893875#2 436771522#0"/>
+  <route id="larco_S_dcE" edges="129466113#0 279893875#1 279893875#2 279893875#4 511823826"/>
+  <route id="benE_W" edges="344159559#2 279893831#2 1152291911"/>
+  <route id="benE_larcoN" edges="344159559#2 279893875#1 279893875#2 279893875#4 279893875#5"/>
+  <route id="benW_E" edges="406007411 406007422#0 406008845#1"/>
+  <route id="benW_larcoN" edges="406007411 406007422#0 279893875#1 279893875#2 279893875#4 279893875#5"/>
+  <route id="schE_W" edges="430180649 436771522#0"/>
+  <route id="schE_larcoN" edges="430180649 279893875#4 279893875#5"/>
+  <flow id="f_larco_S_N" type="car" route="larco_S_N" begin="0" end="1800" vehsPerHour="1440" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE" type="car" route="larco_S_benE" begin="0" end="1800" vehsPerHour="140" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW" type="car" route="larco_S_benW" begin="0" end="1800" vehsPerHour="130" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW" type="car" route="larco_S_schW" begin="0" end="1800" vehsPerHour="50" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE" type="car" route="larco_S_dcE" begin="0" end="1800" vehsPerHour="40" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W" type="car" route="benE_W" begin="0" end="1800" vehsPerHour="380" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN" type="car" route="benE_larcoN" begin="0" end="1800" vehsPerHour="120" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E" type="car" route="benW_E" begin="0" end="1800" vehsPerHour="230" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN" type="car" route="benW_larcoN" begin="0" end="1800" vehsPerHour="70" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W" type="car" route="schE_W" begin="0" end="1800" vehsPerHour="380" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN" type="car" route="schE_larcoN" begin="0" end="1800" vehsPerHour="120" departLane="best" departSpeed="max"/>
+</routes>

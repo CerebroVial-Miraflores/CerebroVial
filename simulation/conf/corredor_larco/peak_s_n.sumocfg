@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Baseline peak S→N corredor Larco (ETAPA 2). Control FIJO: usa los programas
+     tlLogic estáticos ya embebidos en el .net.xml (defaults de netconvert) — NO se
+     carga additional-file de tlLogic.
+     Outputs (tripinfo/summary) y semilla se pasan por CLI desde run_corredor_baseline.sh.
+     no-warnings=false a propósito: queremos capturar teleports/gridlock en el log. -->
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+  <input>
+    <net-file value="corredor_larco.net.xml"/>
+    <route-files value="routes/peak_s_n.rou.xml"/>
+    <additional-files value="corredor_larco.det.add.xml"/>
+  </input>
+  <time>
+    <begin value="0"/>
+    <end value="1800"/>
+    <step-length value="1"/>
+  </time>
+  <report>
+    <no-step-log value="true"/>
+    <no-warnings value="false"/>
+  </report>
+</configuration>
