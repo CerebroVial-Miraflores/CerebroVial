@@ -3,9 +3,9 @@ __pycache__/
 *.pyc
 data/train/*.parquet
 data/valid/*.parquet
-data/kpis/*.parquet
-data/kpis/*.csv
+data/kpis/
 data/_coverage/
+data/_e2e/
 .env
 *.parquet
 # Intermediarios de build_network.py (regenerables desde el YAML).
