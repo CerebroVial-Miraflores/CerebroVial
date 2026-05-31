@@ -212,14 +212,36 @@ def build_sequences(
     return out
 
 
-def compute_class_weights(y: np.ndarray, n_classes: int = N_CLASSES) -> np.ndarray:
-    """Class weights por inverso de frecuencia (balanceado) sobre el target ``y``.
+WEIGHT_STRATEGIES: tuple[str, ...] = ("none", "inverse", "sqrt", "effective", "cap")
 
-    Fórmula (estilo sklearn 'balanced', sobre clases PRESENTES):
-        w[c] = n_muestras / (n_clases_presentes * conteo[c])
-    de modo que las clases raras reciben peso alto y las frecuentes peso bajo.
 
-    Clases con conteo 0 → peso 0.0 (evita la división por cero / inf). Esto cubre:
+def compute_class_weights(
+    y: np.ndarray,
+    n_classes: int = N_CLASSES,
+    strategy: str = "inverse",
+    beta: float = 0.999,
+) -> np.ndarray:
+    """Class weights sobre el target ``y`` según la estrategia elegida.
+
+    El inverso de frecuencia puro (``inverse``) sobre-corrige bajo desbalance extremo:
+    en la eval full, N/S cayeron POR DEBAJO del majority baseline porque el modelo
+    abandona la mayoritaria j1 para perseguir las raras (peso j3 ~27×). Las demás
+    estrategias amortiguan ese peso. Todas operan SOLO sobre las clases presentes
+    (``conteo[c] > 0``); el resto queda en 0.0 (ver invariante de peso-0 abajo).
+
+    Sea ``N = conteo.sum()``, ``n_present = (conteo>0).sum()``. Por estrategia:
+      - ``none``      → w[c] = 1.0  (CrossEntropy sin reponderar; todas las presentes igual).
+      - ``inverse``   → w[c] = N / (n_present * conteo[c])  (estilo sklearn 'balanced'; DEFAULT,
+                        reproduce exactamente el comportamiento histórico).
+      - ``sqrt``      → w[c] = sqrt(N / conteo[c])  (amortigua el inverso; literal (N/N_c)^0.5).
+      - ``effective`` → w[c] = (1 - beta) / (1 - beta**conteo[c])  (Cui et al. 2019, "Class-Balanced
+                        Loss Based on Effective Number of Samples", beta=0.999 por defecto; raw,
+                        sin renormalizar — CrossEntropy usa pesos relativos).
+      - ``cap``       → ``inverse`` topeado a max 10× el peso mínimo presente (la mayoritaria),
+                        i.e. clip(w, max=10 * min(w_present)). Baja j3 de ~27× a 10×.
+
+    Clases con conteo 0 → peso 0.0 (evita la división por cero / inf) en TODAS las
+    estrategias. Esto cubre:
       - jam5 SIEMPRE (clase 5 sin muestras por diseño del dataset). El peso nunca se
         usa: la clase 5 jamás es target, así que CrossEntropyLoss no lo indexa.
       - Bajo ``--quick`` es ESPERADO Y CORRECTO que las clases raras (j3 en N/S
@@ -229,6 +251,11 @@ def compute_class_weights(y: np.ndarray, n_classes: int = N_CLASSES) -> np.ndarr
 
     ``y`` puede ser 1D o 2D (multi-output (n_seq, horizonte)): se aplana para contar.
     """
+    if strategy not in WEIGHT_STRATEGIES:
+        raise ValueError(
+            f"strategy desconocida: {strategy!r}. Válidas: {WEIGHT_STRATEGIES}."
+        )
+
     flat = np.asarray(y).reshape(-1).astype(int)
     counts = np.bincount(flat, minlength=n_classes)[:n_classes]
     n_present = int((counts > 0).sum())
@@ -238,5 +265,17 @@ def compute_class_weights(y: np.ndarray, n_classes: int = N_CLASSES) -> np.ndarr
     if n_present == 0 or n_samples == 0:
         return weights
     present = counts > 0
-    weights[present] = n_samples / (n_present * counts[present])
+    c = counts[present].astype(np.float64)
+
+    if strategy == "none":
+        weights[present] = 1.0
+    elif strategy == "inverse":
+        weights[present] = n_samples / (n_present * c)
+    elif strategy == "sqrt":
+        weights[present] = np.sqrt(n_samples / c)
+    elif strategy == "effective":
+        weights[present] = (1.0 - beta) / (1.0 - np.power(beta, c))
+    elif strategy == "cap":
+        inv = n_samples / (n_present * c)
+        weights[present] = np.minimum(inv, 10.0 * inv.min())
     return weights

@@ -45,6 +45,7 @@ sys.path.insert(0, str(SRC))
 from data.tth09_temporal_loader import (  # noqa: E402
     DIRECTIONS,
     N_CLASSES,
+    WEIGHT_STRATEGIES,
     build_sequences,
     compute_class_weights,
     load_partition,
@@ -150,6 +151,48 @@ def train_direction(
     return model
 
 
+def build_checkpoint(
+    model: GRUMultiOutput,
+    direction: str,
+    weights: np.ndarray,
+    counts: np.ndarray,
+    horizonte: int,
+    batch: int,
+    epochs: int,
+    strategy: str,
+    beta: float,
+) -> dict:
+    """Arma el dict de checkpoint persistido por dirección.
+
+    Reutilizado por el entrenamiento (``main``) y por el barrido de pesos
+    (``tth09_weight_sweep``) para que ambos artefactos compartan EXACTAMENTE la
+    misma estructura. ``weight_strategy`` queda siempre registrado; ``weight_beta``
+    solo cuando la estrategia lo usa (``effective``).
+    """
+    ckpt = {
+        "state_dict": model.state_dict(),
+        "version": VERSION,
+        "direction": direction,
+        "seed": SEED,
+        "lookback": (LOOKBACK_MIN * 60) // 60,
+        "horizonte": horizonte,
+        "n_classes": N_CLASSES,
+        "input_norm": "/5.0",
+        "hyperparams": {
+            "hidden": HIDDEN,
+            "lr": LR,
+            "batch": batch,
+            "epochs": epochs,
+        },
+        "weight_strategy": strategy,
+        "class_weights": weights.tolist(),
+        "class_counts": counts.tolist(),
+    }
+    if strategy == "effective":
+        ckpt["weight_beta"] = beta
+    return ckpt
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="TTH-09 entrenamiento GRU multi-output")
     parser.add_argument(
@@ -159,16 +202,32 @@ def main() -> None:
     )
     parser.add_argument("--epochs", type=int, default=None, help="Override de epochs.")
     parser.add_argument("--batch", type=int, default=None, help="Override de batch.")
+    parser.add_argument(
+        "--weight-strategy",
+        choices=WEIGHT_STRATEGIES,
+        default="inverse",
+        help="Estrategia de class weights (default: inverse, comportamiento histórico).",
+    )
+    parser.add_argument(
+        "--weight-beta",
+        type=float,
+        default=0.999,
+        help="Beta para la estrategia 'effective' (Cui et al. 2019). Ignorado por el resto.",
+    )
     args = parser.parse_args()
 
     quick = args.quick
     epochs = args.epochs if args.epochs is not None else (QUICK_EPOCHS if quick else EPOCHS)
     batch = args.batch if args.batch is not None else (QUICK_BATCH if quick else BATCH)
+    weight_strategy = args.weight_strategy
+    weight_beta = args.weight_beta
     max_runs = QUICK_RUNS if quick else None
 
     set_seeds(SEED)
     print(f"[tth09] device={DEV} quick={quick} epochs={epochs} batch={batch} "
-          f"max_runs={max_runs} lookback={LOOKBACK_MIN}min horizonte={HORIZONTE_MIN}min")
+          f"max_runs={max_runs} lookback={LOOKBACK_MIN}min horizonte={HORIZONTE_MIN}min "
+          f"weight_strategy={weight_strategy}"
+          + (f" weight_beta={weight_beta}" if weight_strategy == "effective" else ""))
 
     train_dir = REPO_ROOT / "simulation" / "data" / "train"
     train_runs = load_partition(train_dir, max_runs=max_runs)
@@ -190,6 +249,8 @@ def main() -> None:
             "horizonte_min": HORIZONTE_MIN,
             "n_classes": N_CLASSES,
             "input_norm": "/5.0",
+            "weight_strategy": weight_strategy,
+            **({"weight_beta": weight_beta} if weight_strategy == "effective" else {}),
         },
         "directions": {},
     }
@@ -197,7 +258,7 @@ def main() -> None:
     for d in DIRECTIONS:
         X, y = seqs[d]
         counts = np.bincount(np.asarray(y).reshape(-1).astype(int), minlength=N_CLASSES)[:N_CLASSES]
-        weights = compute_class_weights(y, N_CLASSES)
+        weights = compute_class_weights(y, N_CLASSES, strategy=weight_strategy, beta=weight_beta)
         zero_causes = describe_zero_weight_classes(weights, counts)
 
         # Log explícito de qué clases quedaron en peso 0 y POR QUÉ (legible en voz alta).
@@ -216,24 +277,10 @@ def main() -> None:
         dt = time.time() - t0
 
         horizonte = y.shape[1]
-        ckpt = {
-            "state_dict": model.state_dict(),
-            "version": VERSION,
-            "direction": d,
-            "seed": SEED,
-            "lookback": (LOOKBACK_MIN * 60) // 60,
-            "horizonte": horizonte,
-            "n_classes": N_CLASSES,
-            "input_norm": "/5.0",
-            "hyperparams": {
-                "hidden": HIDDEN,
-                "lr": LR,
-                "batch": batch,
-                "epochs": epochs,
-            },
-            "class_weights": weights.tolist(),
-            "class_counts": counts.tolist(),
-        }
+        ckpt = build_checkpoint(
+            model, d, weights, counts, horizonte, batch, epochs,
+            weight_strategy, weight_beta,
+        )
         out_path = MODELS_DIR / f"gru_{d}.pt"
         torch.save(ckpt, out_path)
         print(f"[{d}] entrenado en {dt:.1f}s -> {out_path}")
