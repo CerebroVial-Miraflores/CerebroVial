@@ -7,7 +7,13 @@
      edgeData con freq=60 + end>60 falla a Parquet directo.
      Pipeline: SUMO escribe XML aquí, F3 dataset.generate convierte a Parquet
      via pyarrow.
+
+     excludeEmpty="false" (2026-05-31): un edge sin tráfico se emite igual, con
+     sampledSeconds="0.00" y SIN atributo speed (medido en 2b). Los consumidores
+     (generate.py, coverage_check.py) usan sampledSeconds como señal de presencia
+     para distinguir "calle vacía" (jam 0) de "atasco real" (jam 5), en vez de
+     mapear el speed ausente→0 a jam 5.
 -->
 <additional>
-  <edgeData id="aggE" freq="60" file="edgedata.xml" excludeEmpty="true"/>
+  <edgeData id="aggE" freq="60" file="edgedata.xml" excludeEmpty="false"/>
 </additional>
