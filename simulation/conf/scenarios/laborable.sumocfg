@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- laborable: perfil-día de 24h (TTH-11), demanda variable con doble pico laboral.
+     Set DESACOPLADO de los patrones constantes de TTH-07 (am_peak/etc.) — mismo
+     net 4-way y mismos add-files de detección, pero end=86400 y rutas fásicas.
+     Outputs (edgedata/lanearea/summary/tripinfo) los inyecta generate.py /
+     coverage_perfil_dia.py por CLI. -->
+<configuration>
+  <input>
+    <net-file value="../network/miraflores_4way.net.xml"/>
+    <route-files value="routes/laborable.rou.xml"/>
+    <additional-files value="../network/miraflores_4way.tllogic.add.xml,../network/edgedata.add.xml,../network/lanearea.add.xml"/>
+  </input>
+  <time>
+    <begin value="0"/>
+    <end value="86400"/>
+    <step-length value="1"/>
+  </time>
+  <report>
+    <no-step-log value="true"/>
+    <no-warnings value="true"/>
+  </report>
+</configuration>

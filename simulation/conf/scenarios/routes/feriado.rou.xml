@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- feriado: Feriado — valle profundo; actividad baja diurna (jam 1) y repunte vespertino moderado 18-21h (jam 2). -->
+<routes>
+  <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" maxSpeed="13.89"/>
+  <route id="r_N_to_S" edges="N_in S_out"/>
+  <route id="r_S_to_N" edges="S_in N_out"/>
+  <route id="r_E_to_W" edges="E_in W_out"/>
+  <route id="r_W_to_E" edges="W_in E_out"/>
+  <flow id="f_N_0" type="car" route="r_N_to_S" begin="0" end="36000" vehsPerHour="100" departLane="best" departSpeed="max"/>
+  <flow id="f_S_0" type="car" route="r_S_to_N" begin="0" end="36000" vehsPerHour="100" departLane="best" departSpeed="max"/>
+  <flow id="f_E_0" type="car" route="r_E_to_W" begin="0" end="36000" vehsPerHour="25" departLane="best" departSpeed="max"/>
+  <flow id="f_W_0" type="car" route="r_W_to_E" begin="0" end="36000" vehsPerHour="25" departLane="best" departSpeed="max"/>
+  <flow id="f_N_1" type="car" route="r_N_to_S" begin="36000" end="64800" vehsPerHour="500" departLane="best" departSpeed="max"/>
+  <flow id="f_S_1" type="car" route="r_S_to_N" begin="36000" end="64800" vehsPerHour="500" departLane="best" departSpeed="max"/>
+  <flow id="f_E_1" type="car" route="r_E_to_W" begin="36000" end="64800" vehsPerHour="125" departLane="best" departSpeed="max"/>
+  <flow id="f_W_1" type="car" route="r_W_to_E" begin="36000" end="64800" vehsPerHour="125" departLane="best" departSpeed="max"/>
+  <flow id="f_N_2" type="car" route="r_N_to_S" begin="64800" end="75600" vehsPerHour="1200" departLane="best" departSpeed="max"/>
+  <flow id="f_S_2" type="car" route="r_S_to_N" begin="64800" end="75600" vehsPerHour="1200" departLane="best" departSpeed="max"/>
+  <flow id="f_E_2" type="car" route="r_E_to_W" begin="64800" end="75600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+  <flow id="f_W_2" type="car" route="r_W_to_E" begin="64800" end="75600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+  <flow id="f_N_3" type="car" route="r_N_to_S" begin="75600" end="86400" vehsPerHour="400" departLane="best" departSpeed="max"/>
+  <flow id="f_S_3" type="car" route="r_S_to_N" begin="75600" end="86400" vehsPerHour="400" departLane="best" departSpeed="max"/>
+  <flow id="f_E_3" type="car" route="r_E_to_W" begin="75600" end="86400" vehsPerHour="100" departLane="best" departSpeed="max"/>
+  <flow id="f_W_3" type="car" route="r_W_to_E" begin="75600" end="86400" vehsPerHour="100" departLane="best" departSpeed="max"/>
+</routes>

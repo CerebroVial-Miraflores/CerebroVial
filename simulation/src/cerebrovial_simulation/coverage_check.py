@@ -81,8 +81,13 @@ def _parse_edgedata(path: Path) -> dict[str, list[tuple[float, float]]]:
             d = EDGE_TO_DIR.get(eid)
             if d is None:
                 continue
-            # `speed` puede estar ausente si edge vacío (no debería con excludeEmpty=true).
-            speed = float(edge.attrib.get("speed", "0"))
+            # Con excludeEmpty="false" un edge vacío se emite con sampledSeconds="0.00"
+            # y SIN atributo speed (2b). sampledSeconds es la señal de presencia:
+            # sin muestras = calle vacía = flujo libre (jam 0), no vía cerrada (jam 5).
+            sampled = float(edge.attrib.get("sampledSeconds", "0"))
+            speed = float(edge.attrib.get("speed", "-1"))  # -1 = atributo ausente
+            if sampled <= 0.0:
+                speed = VMAX_MPS  # sumo_to_jam_level(VMAX, VMAX) → ratio 1.0 → jam 0
             per_dir[d].append((bucket_t, speed))
     for d in per_dir:
         per_dir[d].sort(key=lambda t: t[0])

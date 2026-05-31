@@ -90,12 +90,17 @@ def _run_sumo(pattern: str, seed: int, out_dir: Path) -> tuple[Path, Path]:
 
 
 def _parse_edgedata_buckets(path: Path) -> dict[tuple[float, str], dict[str, float]]:
-    """Retorna {(bucket_t, direction): {'speed': X, 'departed': Y}} para edges de aproche.
+    """Retorna {(bucket_t, direction): {'speed': X, 'departed': Y, 'sampled': Z}}.
 
     `departed` cuenta vehículos spawneados en el bucket (apto para approach
     edges alimentados por <flow>). `entered` es 0 para source edges porque
     nadie viene "de otra parte" — la N_in/etc. son nodos priority dead-end
     en este net.
+
+    `sampled` (sampledSeconds) es la señal de presencia: con excludeEmpty="false"
+    un edge vacío se emite con sampledSeconds="0.00" y SIN atributo speed (2b).
+    Por eso `speed` usa centinela -1 (atributo ausente) y NUNCA se lee cuando
+    sampled<=0 — ver _build_rows_for_run.
     """
     root = ET.parse(path).getroot()
     result: dict[tuple[float, str], dict[str, float]] = {}
@@ -106,9 +111,10 @@ def _parse_edgedata_buckets(path: Path) -> dict[tuple[float, str], dict[str, flo
             d = EDGE_TO_DIR.get(eid)
             if d is None:
                 continue
-            speed = float(edge.attrib.get("speed", "0"))
+            speed = float(edge.attrib.get("speed", "-1"))  # -1 = atributo ausente
             departed = float(edge.attrib.get("departed", "0"))
-            result[(bucket_t, d)] = {"speed": speed, "departed": departed}
+            sampled = float(edge.attrib.get("sampledSeconds", "0"))
+            result[(bucket_t, d)] = {"speed": speed, "departed": departed, "sampled": sampled}
     return result
 
 
@@ -143,21 +149,34 @@ def _build_rows_for_run(
     rows = []
     for t in buckets:
         for d in schema.DIRECTIONS:
-            e = edge_data.get((t, d), {"speed": 0.0, "departed": 0})
+            e = edge_data.get((t, d))
             q = lane_data.get((t, d), 0.0)
-            speed = e["speed"]
-            ratio = speed / schema.VMAX_MPS if schema.VMAX_MPS > 0 else 0.0
+            if e is None or e["sampled"] <= 0.0:
+                # Sin observación: calle vacía = flujo libre (jam 0), NO vía cerrada.
+                # SUMO emite el bucket vacío con sampledSeconds="0.00" y sin atributo
+                # speed (medido en 2b); usar sampledSeconds como señal de presencia
+                # evita mapear ese hueco a jam 5.
+                # SUPUESTO: vacío = sin demanda. Válido en la 4-way sintética (demanda
+                # controlada). En red real multi-intersección (TTH-09) un edge puede
+                # estar vacío por bloqueo aguas arriba → revisar antes de heredarlo.
+                speed, ratio, n_veh, jam = schema.VMAX_MPS, 1.0, 0, 0
+            else:
+                speed = e["speed"]
+                n_veh = int(e["departed"])
+                ratio = speed / schema.VMAX_MPS if schema.VMAX_MPS > 0 else 0.0
+                # speed=0 con vehículos presentes → ratio 0 → jam 5 (atasco real).
+                jam = int(ratio_to_jam_level(ratio))
             rows.append({
                 "seed": seed,
                 "pattern": pattern,
                 "t_sim_s": float(t),
                 "direction": d,
                 "mean_speed_mps": float(speed),
-                "n_vehicles": int(e["departed"]),
+                "n_vehicles": int(n_veh),
                 "queue_length_m": float(q),
                 "max_speed_mps": schema.VMAX_MPS,
                 "ratio": float(ratio),
-                "jam_level": int(ratio_to_jam_level(ratio)),
+                "jam_level": int(jam),
             })
     return rows
 

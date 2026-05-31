@@ -1,0 +1,113 @@
+# Perfiles-día (TTH-11 — dataset del predictor GRU; base TTH-09).
+#
+# Reemplaza, SOLO para el dataset, los 4 patrones de demanda constante de 20 min
+# (am_peak/pm_peak/offpeak/weekend en pattern_params.yaml) por 4 perfiles-día de
+# 24h con demanda VARIABLE en el tiempo (valle→pico→valle). Anclados a las franjas
+# reales de Lima (pico AM 07-09h, pico PM 18-20h) y a la paleta de demanda calibrada
+# empíricamente en el sub-paso previo (escala Waze 80/60/40/20 ya aplicada).
+#
+# DESACOPLADO de pattern_params.yaml a propósito: ese archivo y los 4 patrones
+# constantes los comparte el pipeline de comparación de control de TTH-07 (Webster
+# fijo + KPIs), que quiere carga estable. Este set vive aparte y no toca TTH-07.
+#
+# Paleta calibrada (eje dominante N-S, escala Waze):
+#   jam 0 → < ~300 veh/h (o bucket vacío vía fix edge-vacío)
+#   jam 1 → 300-600     jam 2 → 1200-2500     jam 3 → ~2600 (banda estrecha)
+#   jam 4 → ≥3000 (satura).  jam 5 NO alcanzable por demanda (evento de bloqueo,
+#   fuera de scope — tarea de TTH-09).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# BIMODALIDAD (hallazgo del barrido del 2026-05-31 — marcar para CT-11.6 en el doc
+# de TTH-11; es una PROPIEDAD del dataset que TTH-09 hereda):
+#
+# En esta 4-way la congestión por demanda sostenida es BIMODAL, no gradual. Un
+# barrido de 7 valores (bloques de 2h) mostró un CLIFF, no un gradiente:
+#     vph (sostenido 2h):  2300 2400 2500 | 2550 2600 2700 2800
+#     jam_N estable:         2    2    2   |   4    4    4    4
+# Por debajo de capacidad (~2700 vph teórica para N) la intersección vacía cada
+# ciclo y se queda en jam 2; apenas la demanda excede capacidad, la cola crece sin
+# acotar y la velocidad colapsa pasando jam 3 DE LARGO hasta jam 4 (gridlock).
+# → jam 3 (ratio 0.20-0.40) NO existe como meseta sostenida: es un estado de medida
+#   cero que solo aparece TRANSITORIAMENTE en las rampas de subida/bajada de un pico.
+#
+# Implicación de diseño (decisión de Cesar, Opción A): la separación entre `laborable`
+# y `especial` NO es de nivel de pico (ambos ápices tocan jam 4) sino TEMPORAL —
+# laborable = dos spikes agudos de 2h con rise/fall completo (1→2→3→4→3→2; el jam 3
+# vive en los hombros, el jam 4 es breve en el ápice); especial = meseta jam 4 plana
+# de 10h. Esa dinámica distinta es justo la señal que el predictor lookback×horizonte
+# debe aprender. Los picos de laborable cruzan el cliff (AM 2600 / PM 2700) a
+# propósito, para que el transitorio jam-3 aparezca; el `especial` satura profundo
+# (3000) en meseta larga.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Cada fase = bloque de vehsPerHour constante por dirección dominante (N y S).
+# El eje secundario E-W se deriva: E=W = round(vph / secondary_ratio). Las rampas
+# entre mesetas son fases intermedias EXPLÍCITAS (staircase auditable) — clave para
+# que el predictor aprenda la dinámica de subida/bajada (spike lookback×horizonte).
+#
+# Convención: begin_h/end_h en horas; el generador las pasa a segundos (h*3600).
+# Seeds asignadas en partitions.py — acá solo demanda.
+
+period_s: 86400          # 24h simuladas por corrida (buckets de 60s = 1440/corrida).
+secondary_ratio: 4       # E-W = round(dominante / 4) — vía dominante N-S.
+
+patterns:
+  laborable:
+    description: "Día laborable — doble spike agudo: AM 07-09h y PM 18-20h (rise/fall 1→2→3→4→3→2, jam 3 transitorio en hombros, jam 4 en ápice), meseta media diurna (jam 2), valles nocturnos."
+    coverage:
+      # peak_jam_min=3 se satisface vía el transitorio jam-3 (rampa) Y el ápice jam-4
+      # del pico. Ver nota de BIMODALIDAD arriba: jam 3 no es meseta, es el hombro del spike.
+      peak_windows_h: [[7, 9], [18, 20]]
+      peak_direction: "N"
+      peak_jam_min: 3
+      valley_windows_h: [[0, 4]]
+    phases:
+      - {begin_h: 0,  end_h: 4,  vph: 150}    # valle nocturno (jam 0)
+      - {begin_h: 4,  end_h: 6,  vph: 400}    # subida amanecer (jam 1)
+      - {begin_h: 6,  end_h: 7,  vph: 1500}   # rampa a pico AM (jam 2 → transitorio jam 3 al entrar al pico)
+      - {begin_h: 7,  end_h: 9,  vph: 2600}   # pico AM (cruza el cliff: jam 4 en ápice, hombros jam 3)
+      - {begin_h: 9,  end_h: 10, vph: 1800}   # bajada post-AM (drena por jam 3 → jam 2)
+      - {begin_h: 10, end_h: 17, vph: 1500}   # meseta media (jam 2)
+      - {begin_h: 17, end_h: 18, vph: 1900}   # rampa a pico PM (jam 2 → transitorio jam 3)
+      - {begin_h: 18, end_h: 20, vph: 2700}   # pico PM (jam 4 en ápice, levemente > AM)
+      - {begin_h: 20, end_h: 22, vph: 1000}   # bajada noche (drena por jam 3 → jam 1-2)
+      - {begin_h: 22, end_h: 24, vph: 400}    # valle noche (jam 1)
+
+  finde:
+    description: "Fin de semana — sin picos laborales; valle largo de madrugada y meseta de ocio 12-19h (jam 2)."
+    coverage:
+      meseta_jam_min: 2
+      meseta_direction: "N"
+      no_sustained_ge3: true
+      valley_windows_h: [[0, 9]]
+    phases:
+      - {begin_h: 0,  end_h: 9,  vph: 150}    # valle largo madrugada (jam 0)
+      - {begin_h: 9,  end_h: 12, vph: 600}    # rampa diurna (jam 1)
+      - {begin_h: 12, end_h: 19, vph: 1200}   # meseta de ocio (jam 2)
+      - {begin_h: 19, end_h: 22, vph: 500}    # bajada (jam 1)
+      - {begin_h: 22, end_h: 24, vph: 200}    # valle noche (jam 0)
+
+  feriado:
+    description: "Feriado — valle profundo; actividad baja diurna (jam 1) y repunte vespertino moderado 18-21h (jam 2)."
+    coverage:
+      meseta_jam_min: 2
+      meseta_direction: "N"
+      no_sustained_ge3: true
+      valley_windows_h: [[0, 10]]
+    phases:
+      - {begin_h: 0,  end_h: 10, vph: 100}    # valle profundo (jam 0)
+      - {begin_h: 10, end_h: 18, vph: 500}    # actividad baja diurna (jam 1)
+      - {begin_h: 18, end_h: 21, vph: 1200}   # repunte vespertino (jam 2)
+      - {begin_h: 21, end_h: 24, vph: 400}    # bajada (jam 1)
+
+  especial:
+    description: "Evento atípico (Día de la Madre / concierto) — sin doble pico laboral; meseta ALTA sostenida 12-22h (jam 4)."
+    coverage:
+      peak_windows_h: [[12, 22]]
+      peak_direction: "N"
+      peak_jam_min: 4
+    phases:
+      - {begin_h: 0,  end_h: 11, vph: 300}    # valle (jam 1)
+      - {begin_h: 11, end_h: 12, vph: 1800}   # rampa de subida (jam 2)
+      - {begin_h: 12, end_h: 22, vph: 3000}   # meseta ALTA sostenida (jam 4)
+      - {begin_h: 22, end_h: 24, vph: 1200}   # bajada (jam 2)
