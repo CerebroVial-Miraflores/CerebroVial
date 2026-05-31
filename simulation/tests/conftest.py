@@ -14,3 +14,11 @@ os.environ.setdefault("SUMO_HOME", str(_SUMO_PKG))
 _BIN = str(_SUMO_PKG / "bin")
 if _BIN not in os.environ.get("PATH", "").split(os.pathsep):
     os.environ["PATH"] = _BIN + os.pathsep + os.environ.get("PATH", "")
+
+
+def pytest_configure(config):
+    """Registra el marker `slow` (corridas SUMO de 24h del perfil-día)."""
+    config.addinivalue_line(
+        "markers",
+        "slow: corrida SUMO larga (p. ej. perfil-día 24h); deseleccionar con -m 'not slow'.",
+    )
