@@ -3038,9 +3038,15 @@ Miraflores ni de su Subgerencia de Movilidad. Se usan como referencia de magnitu
   es peor. **Sistema adoptado = per-node (τ=0).** El término queda en el motor, opcional y desactivado
   (retrocompat bit-a-bit, probada por no-regresión semilla a semilla exacta). Matiz declarado: x_down(#1)
   es un downstream **compartido** (~11% del inflow son giros de TRANSV, ~89% LARCO-recta) → mis-atribución
-  ≤~11%, acota el null como capacidad-limitado y no como artefacto. **Future work:** término por-movimiento
-  (Varaiya riguroso, ponderar también los giros de TRANSV) y barrido τ∈{0.5,0.75}; ninguno imprescindible.
-  Detalle en `documentation/handoffs/corredor-larco/etapa-2-cierre-mp-red.md`.
+  ≤~11%, acota el null como capacidad-limitado y no como artefacto. **Barrido τ (eje de acoplamiento):
+  ejecutado, confirma la conclusión.** RD% vs fijo a lo largo del eje es **monótono**: τ=0 (per-node)
+  +15.6% → τ=0.5 +2.5% → τ=0.75 −2.6% → τ=1.0 −9.2%. Cada τ>0 da Δ pareado peor que per-node con IC que
+  excluye 0 (τ0.5 +18.6s p=0.004; τ0.75 +25.7s p=0.002; τ1.0 +35.1s p=0.002), 0/10 favorables en los tres.
+  **Ningún τ supera al per-node → per-node (τ=0) es el óptimo del eje**; el problema no es la sintonía de
+  τ sino la idea en este régimen. **Future work:** término por-movimiento (Varaiya riguroso, ponderar
+  también los giros de TRANSV); no imprescindible. Detalle en
+  `documentation/handoffs/corredor-larco/etapa-2-cierre-mp-red.md` y síntesis legible en
+  `documentation/handoffs/corredor-larco/sintesis-corredor-larco.md`.
 
 (La fila DHU-027 de la tabla resumen queda **Cerrada** porque refiere a la *decisión* de reformular
 IE05; el *indicador* IE05 queda **alcanzado en la media con adaptación local**.)

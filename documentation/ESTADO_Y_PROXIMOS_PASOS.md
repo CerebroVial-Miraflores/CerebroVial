@@ -30,8 +30,10 @@ paralelo al Sprint 4).
   **+35.07 s**, IC **[+21.59, +48.55] excluye 0**, Wilcoxon **p=0.002**, **0/10** favorables; MP-red
   **−9.2% vs fijo**. Mecanismo (capacidad-limitado): alivia el link interno (benSch mean −22%) pero
   relocaliza la cola a la entrada (larcoS 144.6→172.2 m) y cuadruplica la espera para entrar (w_wait
-  12.2→48.2 s). **Sistema adoptado: MP per-node (τ=0).** Detalle:
-  `documentation/handoffs/corredor-larco/etapa-2-cierre-mp-red.md`.
+  12.2→48.2 s). **Barrido τ (0/0.5/0.75/1.0) ejecutado:** eje monótono +15.6% → +2.5% → −2.6% → −9.2%
+  vs fijo; ningún τ supera al per-node (IC pareado excluye 0 en los tres τ>0). **Sistema adoptado: MP
+  per-node (τ=0), óptimo del eje.** Detalle: `etapa-2-cierre-mp-red.md`; síntesis legible (benchmark,
+  glosario, supuestos, configs): `sintesis-corredor-larco.md` (ambos en `documentation/handoffs/corredor-larco/`).
 - **Runtime:** `:8001` corre ahora `feature/corredor-larco-mp-red` (Etapa-1 deployada vía rebuild del
   contenedor `core_management_api`); ruta sin-downstream byte-idéntica al per-node, **sin migración**,
   **sin mergear a master**.
