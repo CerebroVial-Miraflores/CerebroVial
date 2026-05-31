@@ -189,8 +189,15 @@ def main() -> int:
     lam_xs = scales
     lam_ys = [lam_corr[s] for s in scales]
     axB.plot(lam_xs, lam_ys, color="0.3", ls="--", lw=1.3, label="demanda corredor ofrecida λ_corr")
-    axB.axhline(mu_hat, color="green", ls="-.", lw=1.2)
-    axB.text(scales[0], mu_hat, f" μ̂≈{mu_hat:.0f} veh/h (s*={s_star:.1f})",
+    # Techo de descarga del per-node (NO la capacidad física: es el techo de ESE control).
+    axB.axhline(mu_hat, color="#4c72b0", ls="-.", lw=1.2)
+    axB.text(scales[0], mu_hat, f" techo descarga per-node ≈{mu_hat:.0f} veh/h (s*={s_star:.1f})",
+             color="#4c72b0", va="top", fontsize=8)
+    # Capacidad física DEMOSTRADA por el fijo (cota inferior = su descarga a la escala máxima);
+    # no es un máximo teórico, es lo que el plan fijo logró pasar por Schell.
+    cap_phys = agg[(scales[-1], "fijo")]["schell_discharge_vph"][0]
+    axB.axhline(cap_phys, color="green", ls="-.", lw=1.2)
+    axB.text(scales[0], cap_phys, f" capacidad demostrada por el fijo ≈{cap_phys:.0f} veh/h",
              color="green", va="bottom", fontsize=8)
     if onset is not None:
         axB.axvspan(onset, scales[-1], color="#c44e52", alpha=0.08)

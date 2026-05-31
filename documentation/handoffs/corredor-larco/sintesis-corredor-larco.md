@@ -134,52 +134,70 @@ la curva. Figura: `simulation/data/corredor_larco/capacity_sweep/capacity_sweep.
 
 Dos lecturas, una por panel:
 
-- **El techo de capacidad (panel B).** Se mide el **flujo de descarga por Schell** —los autos que
-  cruzan la línea de pare de Schell hacia el norte, contados con el detector del link Schell→Diez
-  Canseco, no derivados de un ratio de completados (que se sesga al cierre de ventana). Sube con la
-  demanda hasta scale = 1.0 y **ahí se aplana**: μ̂ ≈ **1740 veh/h** para el per-node, plano de 1.0 a
-  2.0. Ese es el techo: por más demanda que entre, no descargan más autos por Schell. Confirma —desde
-  otro ángulo y de forma cuantitativa— el cuello estructural de Etapa 1 (~1650–1700 veh/h clavados).
-  La demanda del corredor ofrecida a scale = 1.0 (λ_corr ≈ 1790 veh/h) ya **iguala** ese techo: **el
-  punto de operación de IE05 está justo en la rodilla de capacidad** (s* = 1.0).
+- **El techo de descarga de cada control (panel B).** Se mide el **flujo de descarga por Schell** —los
+  autos que cruzan la línea de pare de Schell hacia el norte, contados con el detector del link
+  Schell→Diez Canseco, no derivados de un ratio de completados (que se sesga al cierre de ventana).
+  La descarga del **per-node** sube con la demanda hasta scale = 1.0 y **ahí se aplana**: su **techo de
+  descarga μ̂_pn ≈ 1742 veh/h**, plano de 1.0 a 2.0. **Pero μ̂_pn no es la capacidad física de Schell:
+  es el techo de ESE control.** El **fijo** sigue subiendo y demuestra una descarga de **1964 veh/h a
+  scale = 2.0** (consistente con la saturación de los 2 carriles Larco de Schell, 2×1800 = 3600 veh/h,
+  por una fracción de verde efectivo ~0.55). O sea: la capacidad física de Schell es **≥ 1964 veh/h**,
+  y el per-node **deja ~11 % de esa capacidad sin usar** en sobre-saturación. El μ̂_pn ≈ 1742 está cerca
+  del "~1650–1700 clavados" que Etapa 1 atribuyó al cuello estructural — pero esa cifra medía la
+  **extracción del control adaptativo**, no el tope de la intersección, que el plan fijo muestra más
+  alto. La demanda del corredor ofrecida a scale = 1.0 (λ_corr ≈ 1790 veh/h) ya **iguala** μ̂_pn: **el
+  punto de operación de IE05 cae justo en la rodilla de descarga del per-node** (s* = 1.0).
 
-- **La demora y su descomposición (panel A).** Por debajo de capacidad (≤0.8) la espera-para-entrar
-  (w_wait) es **cero** y la demora es modesta y sensible al temporizado: el per-node gana (a 0.6,
-  36.9 s vs 40.9 s). En la rodilla (1.0) aparece el número de IE05: per-node 124 s vs fijo 142 s,
-  −13 % — y **todo ese ahorro vive en w_wait** (el per-node vacía la entrada mejor: 14 s vs 38 s),
-  no en el tiempo adentro (≈igual, ~105–110 s). Pasada la capacidad, w_wait **explota**: 38 → 182 →
-  822 s a medida que la demanda supera el techo, y **domina** la demora total (el tiempo adentro
-  queda acotado, ~110–148 s en todo el rango). Esa explosión es la parte **irreducible por
-  capacidad**: es el exceso (λ − μ̂) que se acumula en la cola de ingreso, ~lineal en la demanda, y
-  **ningún temporizado la evita** —fijo y per-node la siguen casi pegados (dentro de ~10 %)—. La línea
-  punteada de la figura es el piso teórico determinístico de sobre-saturación (λ−μ̂)·T/2λ; ambos
-  brazos quedan **por encima** (el corredor real tiene varias colas acopladas), pero acotados por el
-  mismo muro.
+- **La demora y su descomposición (panel A).** Por debajo del techo de descarga (≤0.8) la
+  espera-para-entrar (w_wait) es **cero** y la demora es modesta y sensible al temporizado: el per-node
+  gana (a 0.6, 36.9 s vs 40.9 s). En la rodilla (1.0) aparece el número de IE05: per-node 124 s vs fijo
+  142 s, −13 % en estas 5 semillas (el titular de IE05, +15.7 %, es sobre 10 semillas) — y **todo ese
+  ahorro vive en w_wait** (el per-node vacía la entrada mejor: 14 s vs 38 s), no en el tiempo adentro
+  (≈igual, ~105–110 s). Pasada la rodilla del per-node, su w_wait **explota**: 38 → 182 → 822 s, y
+  **domina** la demora total (el tiempo adentro queda acotado, ~110–148 s en todo el rango). Esa
+  explosión es el exceso (λ − μ̂_pn) acumulándose en la cola de ingreso, ~lineal en la demanda. **Pero
+  es irreducible solo en parte: parte es física (demanda > capacidad de Schell) y parte es la propia
+  sub-optimalidad de descarga del per-node** (el fijo, con su techo ~11 % más alto, sostiene la misma
+  demanda con algo menos de cola). La línea punteada de la figura es el piso teórico determinístico
+  (λ−μ̂_pn)·T/2λ dibujado **con el techo del per-node**: es el piso de demora **dado ese techo**, NO el
+  irreducible por capacidad física (que con ≥1964 veh/h sería más bajo). Ambos brazos quedan por encima
+  de esa línea (el corredor real tiene varias colas acopladas).
 
-**Honestidad del techo.** SUMO podría inflar el techo teletransportando autos atascados (los saca del
-tapón y los manda río abajo), lo que subiría el throughput y bajaría la demora justo en las escalas
+**Honestidad del techo.** SUMO podría inflar la descarga teletransportando autos atascados (los saca
+del tapón y los manda río abajo), lo que subiría el throughput y bajaría la demora justo en las escalas
 altas. No pasó: **teleports = 0 en todas las escalas, ambos brazos**. La sobre-saturación se manifestó
 como **backlog de ingreso** (autos que nunca entran: 0 → 1080 a scale 2.0), que la métrica cuenta
-honestamente dentro de w_wait. El techo medido no es un artefacto.
+honestamente dentro de w_wait. Las descargas medidas no son artefacto.
 
-**El cruce en sobre-saturación profunda — honesto y consistente.** Hay un cruce cerca de scale ≈ 1.1:
-por debajo, el per-node gana (régimen de IE05); por encima (≥1.2), el **fijo** queda algo mejor en
-demora (a 2.0: 891 s vs 970 s) porque sostiene un poco más de descarga por Schell (1964 vs 1740 a
-2.0). Es esperable: el per-node de Etapa 1 (sin término de aguas abajo) balancea presión **local**, y
-cuando el link interno se satura no prioriza la descarga del recto de Larco tan agresivamente como el
-plan fijo. Es exactamente el modo de falla de alta demanda que el término "mirar al vecino" (MP de red,
-§4.4) apuntaba a corregir —y que §4.4/§4.5 **refutaron** como net-negativo, porque retener arriba mueve
-la cola a la entrada—. Importa leer la escala: ese cruce vive en el régimen sobre-saturado profundo,
-donde la demora ya se multiplicó por ~8 por puro exceso de demanda; la diferencia entre controles
-(±10 %) es **de segundo orden** frente al muro de capacidad. En el punto de operación y por debajo, el
-per-node es el óptimo.
+**El cruce en sobre-saturación — per-node es throughput-subóptimo.** Hay un cruce cerca de scale ≈ 1.1:
+por debajo, el per-node gana en demora (régimen de IE05); por encima (≥1.2), el **fijo** queda mejor —
+ya a scale = 1.2 el per-node **pierde** (298 s vs 280 s), y la brecha se abre hasta 2.0 (970 s vs
+891 s). La causa es la sub-optimalidad de descarga: el per-node de Etapa 1 (Max Pressure local, sin
+término de aguas abajo) balancea presión **local** y, cuando el link interno se satura, no prioriza la
+descarga del recto de Larco tan agresivamente como el plan fijo de verdes estables — por eso descarga
+~11 % menos por Schell. **No hay que apoyarse en la optimalidad de throughput de Max Pressure** (el
+resultado de Varaiya vale bajo supuestos idealizados —sin tiempo perdido— y este barrido muestra que
+**no transfiere** a la sobre-saturación de este corredor): la ventaja del per-node en el punto de
+operación se sostiene con la **demora medida**, no con la teoría. Es, además, el mismo modo de falla de
+alta demanda que el término "mirar al vecino" (MP de red, §4.4) apuntaba a corregir y que §4.4/§4.5
+**refutaron** como net-negativo (retener arriba mueve la cola a la entrada).
 
-**El número titular de la caracterización.** En el corredor Larco, a la demanda pico, lo **arreglable
-por temporizado** es la fracción de demora que el mejor control quita en o por debajo de la capacidad:
-~13–16 % (el per-node, todo vía la espera de ingreso). Lo **irreducible por capacidad** es el resto y,
-pasada la rodilla, **casi todo**: la descarga por Schell está topada en ~1740 veh/h y el per-node ya
-está en ese techo desde scale = 1.0. No hay temporizado que pase más autos por Schell —eso es
-capacidad, no control—.
+**Sobre operativo y fragilidad del +15.7 %.** El ahorro del per-node es **real en el punto de
+operación** (scale = 1.0) — eso no cambia. Lo que el barrido agrega es su **sobre operativo**: la
+ventaja vale hasta la rodilla y es **frágil al crecimiento de demanda**. El cruce está cerca (scale ≈
+1.1–1.2): un ~15–20 % más de demanda invierte el ranking de demora. Lectura de despliegue: el control
+adaptativo mejora la demora **mientras el corredor opera en o por debajo de su rodilla**; en
+sobre-saturación extrema, un plan fijo de verdes estables sostiene **más descarga** y menos demora.
+Quien despliegue per-node debería monitorear el margen a la rodilla, no asumir que la mejora escala con
+la demanda.
+
+**El número titular de la caracterización.** A la demanda pico, lo **arreglable por temporizado** —la
+fracción de demora que el per-node quita en el punto de operación— es ~13–16 % (todo vía la espera de
+ingreso). El resto, pasada la rodilla, lo fija el muro de capacidad **menos** lo que el control deja sin
+usar: la descarga del per-node está topada en ~1742 veh/h pese a que Schell puede dar ≥1964; ese ~11 %
+sin usar es **recuperable en principio por un mejor temporizado en sobre-saturación** (no por el
+per-node tal cual), mientras que el exceso de demanda sobre la capacidad física **sí** es irreducible
+por cualquier control.
 
 ---
 
@@ -290,10 +308,14 @@ agregados de la tabla da +15.6 %; es la misma señal, distinta forma de promedia
 τ)— **no mejora o empeora**. La razón es estructural: el cuello es Schell; cualquier estrategia que
 retenga o sincronice aguas arriba termina **moviendo la cola a la entrada**, donde el conductor espera
 más. La lección general: en un corredor capacidad-limitado con un cuello claro, la gestión local de
-cola le gana a la coordinación. El **barrido de capacidad** (§4.6) lo cierra con número: la descarga
-por Schell está topada en ~1740 veh/h, el punto de operación cae justo en esa rodilla, y el per-node ya
-entrega ese techo — lo arreglable por temporizado (~13–16 %) ya está arreglado; lo que queda, pasada la
-capacidad, es irreducible y ningún control lo evita.
+cola le gana a la coordinación. El **barrido de capacidad** (§4.6) lo matiza con número, sin suavizar:
+el ahorro del per-node (~13–16 % en demora) es real **en el punto de operación**, donde el corredor cae
+justo en la rodilla de descarga del per-node (~1742 veh/h). Pero esa ventaja es **frágil** —a scale =
+1.2 el per-node ya pierde en demora contra el fijo (298 s vs 280 s)— y el per-node es
+**throughput-subóptimo** en sobre-saturación: el plan fijo demuestra que Schell puede descargar
+≥1964 veh/h, ~11 % más, así que parte de la demora en sobre-saturación es del control, no de la
+capacidad física. La recomendación de operación (per-node por defecto) se sostiene con la demora medida
+en el punto de operación, no con una optimalidad de throughput que el barrido refuta para este régimen.
 
 **Por qué el resultado es confiable.** Comparación pareada por semilla; el control de referencia
 reproduce su número histórico **exacto al dígito** (el flujo de autos es idéntico entre brazos); el MP
