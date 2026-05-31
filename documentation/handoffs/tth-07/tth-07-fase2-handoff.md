@@ -36,6 +36,16 @@ simulation/
 | offpeak | 200 | 200 | 100 | 100 | jam ≤2 | N/S/E/W ≤4 | todas ≈0 |
 | weekend | 500 | 500 | 150 | 150 | jam ≤2 | N/S=0, E=3, W=2 | N=14, S=12, E=0, W=0 |
 
+> **Nota de reenvío 2026-05-31 — realineación a escala Waze.** Los conteos
+> `Sustained jam ≥3` de esta tabla (am_peak N=5, pm_peak S=18) se calcularon con
+> los cortes **previos** de jam_level (90/70/50/30). La realineación a la escala
+> oficial de Waze (80/60/40/20; ver nota en D-009, DECISIONS.md) reclasifica el
+> mismo tráfico ~1 nivel hacia abajo: bajo los cortes nuevos las dirs target N/S de
+> am_peak/pm_peak topan en jam 2 y ya no alcanzan jam ≥3 sostenido. Estos números
+> históricos **no se recalculan** (sprint cerrado). Recuperar cobertura jam ≥3 bajo
+> la escala corregida requiere recalibrar la demanda (tarea aparte); mientras tanto
+> `test_b2_coverage_satisfied_for_all_patterns` queda marcado `xfail`.
+
 Capacidad por dirección (3 carriles × 1800 sat × 30/60 cycle fraction) =
 2700 veh/h ⇒ am_peak 2400 = 89% saturación, pm_peak 2500 = 93%.
 Sin spillback (max queue NS=222m < 261m threshold 90% × 290m efectivos).
