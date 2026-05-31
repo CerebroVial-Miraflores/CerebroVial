@@ -135,13 +135,17 @@ class NodeSensor:
         for e in self._down_halt_samples:
             self._down_halt_samples[e].append(int(traci.edge.getLastStepHaltingNumber(e)))
 
-    def commit_cycle(self, sim_time: float, downstream: bool = False) -> list[dict]:
+    def commit_cycle(self, sim_time: float, downstream: bool = False,
+                     turn_ratio: Optional[float] = None) -> list[dict]:
         """Cierra el ciclo: devuelve la lista de PhaseFlow para el motor.
 
         Con ``downstream=True``, las fases con ``downstream_edges`` adjuntan
         ``downstream=[{queue, turn_ratio}]`` (Max Pressure de red). Con
         ``downstream=False`` (default) el payload NO lleva la clave → idéntico
         byte-a-byte al per-node (retrocompat / brazo de control del experimento).
+
+        ``turn_ratio`` (override) reemplaza el τ de cada PhaseCfg (barrido del eje
+        de acoplamiento). None ⇒ usa el τ configurado en NODES.
         """
         window = max(1.0, sim_time - self._t0)
         phase_flows = []
@@ -168,8 +172,9 @@ class NodeSensor:
                     if self._down_halt_samples[e] else 0.0
                     for e in ph.downstream_edges
                 )
+                tau = ph.turn_ratio if turn_ratio is None else turn_ratio
                 phase_flow["downstream"] = [
-                    {"queue": int(round(down_mean)), "turn_ratio": ph.turn_ratio}
+                    {"queue": int(round(down_mean)), "turn_ratio": tau}
                 ]
             phase_flows.append(phase_flow)
         # reset acumuladores de ciclo (prev_ids NO se resetea: continuidad entre ciclos)
@@ -275,7 +280,7 @@ def _bootstrap_program(node: NodeCfg, linkstates: dict,
 def run_adaptive(seed: int, end_s: int, out_dir: Path,
                  engine_recommend_fn: Optional[Callable] = None,
                  cycle: Optional[float] = None, offset: float = 0.0,
-                 downstream: bool = False) -> dict:
+                 downstream: bool = False, turn_ratio: Optional[float] = None) -> dict:
     """Lazo adaptativo. Onda verde opcional: `cycle` fija el ciclo común (None = ciclo
     variable, comportamiento histórico); `offset` desfasa el arranque de Schell respecto
     a Benavides (solo aplica si `cycle` está fijo). `downstream` activa el término de
@@ -331,7 +336,8 @@ def run_adaptive(seed: int, end_s: int, out_dir: Path,
                     stats[iid]["allred_steps"] += 1
 
                 if _is_cycle_edge(n.tls_id, sim_time):
-                    phase_flows = sensors[iid].commit_cycle(sim_time, downstream=downstream)
+                    phase_flows = sensors[iid].commit_cycle(sim_time, downstream=downstream,
+                                                            turn_ratio=turn_ratio)
                     try:
                         rec = engine_recommend_fn(
                             intersection_id=iid,
