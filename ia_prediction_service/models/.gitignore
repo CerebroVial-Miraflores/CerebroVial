@@ -1,0 +1,5 @@
+# Salida de entrenamiento TTH-09 (CT-09.3). Los binarios de modelo van por Git LFS
+# cuando se versionen (convención del repo para .pt); en Fase 1 NO se commitean.
+# Este directorio es la ubicación fija documentada (contrato §4 / CT-09.4.a).
+*.pt
+metadata.json
