@@ -4,15 +4,43 @@ Max Pressure controller (Varaiya, 2013) for over-saturated intersections.
 Reference: Varaiya, P. (2013). "Max pressure control of a network of signalized
 intersections". Transportation Research Part C, 36, 177-195.
 
-Simplified pressure for SP3 (no downstream link state available yet):
+Pressure per phase, network form (Varaiya):
+    P(φ) = saturation_flow_φ · (queue_φ − Σ τ · queue_down)
+
+donde el término downstream es OPCIONAL y ADITIVO. Si no se pasa ``downstreams``
+(o es vacío para una fase), el término es 0 y la fórmula colapsa al per-node
+simplificado de SP3:
     P(φ) = saturation_flow_φ · queue_φ
 
-The controller selects the next active phase as argmax(P). Greens are split
-proportionally to pressure across the cycle minus the lost time. When all
-queues are empty, the controller falls back to a deterministic round-robin
-(alphabetical order of phase_id) to keep the system live.
+La presión es FIRMADA (puede ser < 0 cuando el link downstream está más lleno
+que la cola local). El controlador selecciona ``next_phase`` como argmax(P) sobre
+las presiones firmadas (tie-break alfabético). Los verdes se reparten en
+proporción al PESO de cada fase, donde ``weight = max(0, P)``: una fase con
+presión ≤ 0 recibe peso 0 (verde 0 en el split crudo; la capa MTC lo eleva a
+``min_green``). Cuando ningún peso es positivo (todas las presiones ≤ 0, lo que
+incluye el caso histórico de todas las colas vacías) el controlador cae a un
+round-robin determinista (orden alfabético de phase_id) para mantener el sistema
+vivo.
+
+RETROCOMPATIBILIDAD: con ``downstreams=None`` (o un dict de puros ``None``), las
+presiones son todas ≥ 0, ``weight == P`` y ``total_weight == total_pressure``, de
+modo que ``next_phase`` y ``green_by_phase`` salen BIT-A-BIT idénticos al motor
+per-node anterior (ver test_max_pressure::test_no_downstream_matches_current_behavior).
 """
 from dataclasses import dataclass
+
+
+@dataclass
+class DownstreamLinkDC:
+    """Un movimiento de salida de una fase (Varaiya): cola del link downstream
+    al que descarga la fase (``queue``, en vehículos) y la fracción del flujo de
+    la fase que descarga a ese link (``turn_ratio`` = τ).
+
+    La presión resta ``Σ τ · queue`` sobre los links de la fase. Para un corredor
+    pasante de un sentido, una sola descarga con τ=1.0.
+    """
+    queue: int
+    turn_ratio: float = 1.0
 
 
 @dataclass
@@ -34,6 +62,7 @@ class MaxPressureController:
         saturations: dict[str, float],
         lost_time: float,
         cycle_seconds: float | None = None,
+        downstreams: dict[str, list[DownstreamLinkDC] | None] | None = None,
     ) -> MaxPressureDecision:
         if not queues:
             raise ValueError("queues must contain at least one phase.")
@@ -52,24 +81,44 @@ class MaxPressureController:
                 raise ValueError(f"saturation_flow for phase {phase_id!r} must be > 0.")
             if q < 0:
                 raise ValueError(f"queue for phase {phase_id!r} must be >= 0.")
-            pressures[phase_id] = s * q
-
-        total_pressure = sum(pressures.values())
+            # Término downstream OPCIONAL y ADITIVO: Σ τ · queue_down.
+            # Sin downstreams (o lista None/vacía para la fase) ⇒ 0 ⇒ P = s·q.
+            down_term = 0.0
+            if downstreams is not None:
+                links = downstreams.get(phase_id)
+                if links:
+                    for link in links:
+                        if link.turn_ratio <= 0:
+                            raise ValueError(
+                                f"turn_ratio for phase {phase_id!r} must be > 0."
+                            )
+                        if link.queue < 0:
+                            raise ValueError(
+                                f"downstream queue for phase {phase_id!r} must be >= 0."
+                            )
+                        down_term += link.turn_ratio * link.queue
+            pressures[phase_id] = s * (q - down_term)
 
         ordered = sorted(queues)
 
-        if total_pressure == 0.0:
-            # Round-robin fallback: deterministic alphabetical order.
+        # Solo las presiones positivas reparten verde. Una presión ≤ 0 (link
+        # downstream más lleno que la cola local) recibe peso 0.
+        weights = {p: max(0.0, pressures[p]) for p in pressures}
+        total_weight = sum(weights.values())
+
+        if total_weight == 0.0:
+            # Round-robin fallback: ninguna fase con presión positiva
+            # (incluye el caso histórico de todas las colas vacías).
             next_phase = ordered[0]
             share = usable_green / len(ordered)
             green_by_phase = {p: share for p in ordered}
         else:
-            # Iterate alphabetically so that ties in pressure resolve to the
-            # smaller phase_id (max() returns the first key when values tie).
+            # argmax sobre presiones FIRMADAS, iterando alfabéticamente para que
+            # los empates resuelvan al phase_id menor (max() devuelve la primera
+            # clave en empate).
             next_phase = max(ordered, key=lambda p: pressures[p])
             green_by_phase = {
-                p: usable_green * (pressure / total_pressure)
-                for p, pressure in pressures.items()
+                p: usable_green * (weights[p] / total_weight) for p in pressures
             }
 
         return MaxPressureDecision(

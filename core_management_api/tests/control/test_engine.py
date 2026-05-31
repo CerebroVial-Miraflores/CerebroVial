@@ -34,6 +34,39 @@ def test_recommend_peak_routes_to_max_pressure(engine, build_state):
     assert all(t.green >= 7.0 for t in rec.phase_timings)
 
 
+def test_recommend_peak_downstream_flips_next_phase(engine):
+    """Max Pressure de red end-to-end: NS tiene la cola dominante, pero su link
+    downstream casi-lleno baja su presión por debajo de EW → next_phase = EW.
+    Recorre recommend() + MTC (verdes ≥ min_green)."""
+    from src.control.application.adaptive_engine import (
+        IntersectionStateDC,
+        PhaseFlowDC,
+    )
+    from src.control.application.max_pressure import DownstreamLinkDC
+
+    state = IntersectionStateDC(
+        intersection_id="I-001",
+        timestamp="2026-05-09T10:00:00Z",
+        lost_time=10.0,
+        phases=[
+            PhaseFlowDC(
+                phase_id="NS",
+                flow=1600.0,
+                saturation_flow=1800.0,
+                queue=15,
+                downstream=[DownstreamLinkDC(queue=14, turn_ratio=1.0)],  # net = 1
+            ),
+            PhaseFlowDC(phase_id="EW", flow=400.0, saturation_flow=1800.0, queue=4),
+        ],
+    )
+
+    rec = engine.recommend(state)
+
+    assert rec.mode == "max_pressure"
+    assert rec.next_phase == "EW"  # 1800 < 7200 → la transversal gana
+    assert all(t.green >= 7.0 for t in rec.phase_timings)  # MTC piso intacto
+
+
 def test_recommend_at_threshold_uses_max_pressure(engine, build_state):
     # PEAK_THRESHOLD is exclusive on Webster (< threshold). Equal goes to MP.
     state = build_state(flow_total=engine.PEAK_THRESHOLD)
@@ -80,6 +113,33 @@ def test_endpoint_peak_returns_max_pressure_recommendation(client_with_db, http_
     body = response.json()
     assert body["data"]["mode"] == "max_pressure"
     assert body["data"]["next_phase"] == "NS"
+
+
+def test_endpoint_accepts_downstream_and_flips_next_phase(client_with_db):
+    """El schema HTTP acepta ``downstream`` por fase; el link interno lleno baja
+    la presión de NS y EW gana el next_phase (Max Pressure de red end-to-end)."""
+    payload = {
+        "intersection_id": "larco_schell",
+        "timestamp": "2026-05-09T10:00:00Z",
+        "lost_time": 10.0,
+        "phases": [
+            {
+                "phase_id": "NS",
+                "flow": 1600.0,
+                "saturation_flow": 1800.0,
+                "queue": 15,
+                "downstream": [{"queue": 14, "turn_ratio": 1.0}],
+            },
+            {"phase_id": "EW", "flow": 400.0, "saturation_flow": 1800.0, "queue": 4},
+        ],
+    }
+
+    response = client_with_db.post("/control/recommend", json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["data"]["mode"] == "max_pressure"
+    assert body["data"]["next_phase"] == "EW"
 
 
 def test_endpoint_rejects_non_positive_saturation_flow(client_with_db):

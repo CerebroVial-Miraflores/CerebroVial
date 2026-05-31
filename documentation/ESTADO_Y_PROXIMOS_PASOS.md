@@ -1,4 +1,4 @@
-# Estado de la tesis CerebroVial — actualizado 2026-05-25
+# Estado de la tesis CerebroVial — actualizado 2026-05-30
 
 ## Dónde estoy
 Ciclo SDD (Spec Kit v0.8.11, brownfield) cerrado y sellado. 6/6 artefactos poblados y verificados:
@@ -10,6 +10,33 @@ Orden comprometido (19 SP, de tasks.md): TTH-01 (Auth JWT+bcrypt) → HU-01 (RBA
 TTH-10 (cierre Motor) → HU-05 (ControlView pasiva) → TTH-03 (cierre CI).
 Comando de arranque: /speckit-implement sobre TTH-01.
 Autoridad del alcance del sprint: tasks.md (NO los 32 elementos del inventario; solo estos 5).
+
+## Corredor Larco / IE05 (validación SUMO) — Etapa 2 (2026-05-30)
+**IE05 (RD% ≥ 15%): ALCANZADO EN LA MEDIA con adaptación local (cumplimiento marginal)** (track
+paralelo al Sprint 4).
+- **Número final: RD% RED = +15.7% ± 8.1 (10 semillas, 9/10 positivas)** con métrica de demora
+  **puerta-a-puerta robusta a censura** (cuenta espera para entrar + autos abandonados en la cola,
+  no solo los que completan dentro de la red). Sistema = **MP per-node de ciclo variable**.
+  Cumplimiento **ajustado** (media−SD = +7.6%); mejora robusta y significativa, dispersión
+  reportada. Beneficio físico: **−67% de espera para entrar**, adentro casi igual.
+- **El "empate" previo (+1.0% ± 7.5) era artefacto de medición** (la métrica vieja no contaba a los
+  autos que el fijo deja sin insertar: 68 vs 23). Mecanismo Benavides→Schell 10/10 intacto. Detalle
+  y framing honesto en `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
+- **Onda verde (offsets) y ciclo común fijo: explorados y DESCARTADOS** (offset=0 óptimo; ciclo
+  fijo no mejora al variable, no generaliza).
+- **Mirar-al-vecino (MP de red, downstream del link interno): EJECUTADO y DESCARTADO (2026-05-30).**
+  Se extendió el motor con término downstream opcional (Etapa 1, retrocompat bit-a-bit) y se corrió
+  pareado 42–51 (Etapa 2). **Refutado:** MP-red **empeora** la demora RED vs per-node — Δ pareado
+  **+35.07 s**, IC **[+21.59, +48.55] excluye 0**, Wilcoxon **p=0.002**, **0/10** favorables; MP-red
+  **−9.2% vs fijo**. Mecanismo (capacidad-limitado): alivia el link interno (benSch mean −22%) pero
+  relocaliza la cola a la entrada (larcoS 144.6→172.2 m) y cuadruplica la espera para entrar (w_wait
+  12.2→48.2 s). **Barrido τ (0/0.5/0.75/1.0) ejecutado:** eje monótono +15.6% → +2.5% → −2.6% → −9.2%
+  vs fijo; ningún τ supera al per-node (IC pareado excluye 0 en los tres τ>0). **Sistema adoptado: MP
+  per-node (τ=0), óptimo del eje.** Detalle: `etapa-2-cierre-mp-red.md`; síntesis legible (benchmark,
+  glosario, supuestos, configs): `sintesis-corredor-larco.md` (ambos en `documentation/handoffs/corredor-larco/`).
+- **Runtime:** `:8001` corre ahora `feature/corredor-larco-mp-red` (Etapa-1 deployada vía rebuild del
+  contenedor `core_management_api`); ruta sin-downstream byte-idéntica al per-node, **sin migración**,
+  **sin mergear a master**.
 
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue

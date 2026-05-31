@@ -10,12 +10,29 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class DownstreamLink(BaseModel):
+    """Un movimiento de salida de una fase (Max Pressure de red, Varaiya).
+
+    La presión de la fase resta ``Σ turn_ratio · queue`` sobre sus links de
+    salida: ``P(φ) = saturation_flow · (queue − Σ τ · queue_down)``.
+    """
+    queue: int = Field(..., ge=0, description="Cola del link downstream al que descarga la fase, en vehículos.")
+    turn_ratio: float = Field(1.0, gt=0, le=1.0, description="Fracción del flujo de la fase que descarga a este link (τ).")
+
+
 class PhaseFlow(BaseModel):
     phase_id: str = Field(..., min_length=1)
     flow: float = Field(..., ge=0, description="Demand flow in veh/h.")
     saturation_flow: float = Field(..., gt=0, description="Saturation flow in veh/h.")
     queue: int = Field(0, ge=0, description="Current queue length in vehicles.")
     has_pedestrian: bool = Field(False, description="Whether this phase serves a pedestrian movement.")
+    downstream: Optional[list[DownstreamLink]] = Field(
+        None,
+        description=(
+            "Movimientos de salida de la fase (Varaiya). Ausente/None ⇒ término "
+            "downstream = 0 ⇒ P = s·q (retrocompat per-node / IE05)."
+        ),
+    )
 
 
 class PredictedDemand(BaseModel):

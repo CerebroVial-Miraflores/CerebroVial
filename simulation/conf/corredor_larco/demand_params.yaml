@@ -1,0 +1,59 @@
+# Demanda peak S→N — corredor Larco (ETAPA 2, primer baseline).
+#
+# Flujos OD EXPLÍCITOS: cada par OD es una ruta con lista de edges completa y un
+# vehsPerHour fijo. Determinista (la única estocasticidad es la semilla de sumo
+# al despachar; el .rou.xml es determinístico). Los `vehsPerHour` derivan de los
+# turn ratios documentados abajo — editar acá para calibrar.
+#
+# Intensidad de ARRANQUE = ALTA (extremo alto de los rangos del diseño) para
+# forzar spillback en la primera corrida:
+#   Larco S→N   1800 veh/h   (rango 1500–2000)
+#   Benavides    800 veh/h   (rango  600–900;  500 Este + 300 Oeste)
+#   Schell       500 veh/h   (rango  400–600;  solo entrada Este)
+# NO sagrados — a calibrar observando el baseline.
+#
+# Topología verificada contra la tabla <connection> de corredor_larco.net.xml.
+# El carril 0 de todo el eje Larco es bus/bici (allow="bus bicycle"); el tráfico
+# general (passenger) descarga en los carriles 1 y 2 → 2 carriles efectivos.
+
+duration_s: 1800          # 30 min simulados (warmup 600 s + 1200 s de peak medido)
+
+vtype:
+  id: car
+  accel: 2.6
+  decel: 4.5
+  sigma: 0.5
+  length: 5.0
+  maxSpeed: 13.89         # 50 km/h, igual a TTH-07
+
+# Rutas OD (id → edges). Verificadas movimiento por movimiento contra <connection>.
+routes:
+  larco_S_N:      "129466113#0 279893875#1 279893875#2 279893875#4 279893875#5"
+  larco_S_benE:   "129466113#0 406008845#1"
+  larco_S_benW:   "129466113#0 279893831#2 1152291911"
+  larco_S_schW:   "129466113#0 279893875#1 279893875#2 436771522#0"
+  larco_S_dcE:    "129466113#0 279893875#1 279893875#2 279893875#4 511823826"
+  benE_W:         "344159559#2 279893831#2 1152291911"
+  benE_larcoN:    "344159559#2 279893875#1 279893875#2 279893875#4 279893875#5"
+  benW_E:         "406007411 406007422#0 406008845#1"
+  benW_larcoN:    "406007411 406007422#0 279893875#1 279893875#2 279893875#4 279893875#5"
+  schE_W:         "430180649 436771522#0"
+  schE_larcoN:    "430180649 279893875#4 279893875#5"
+
+# Volúmenes por flujo OD (veh/h). Comentario = turn ratio respecto a su fuente.
+flows_vph:
+  # Larco Sur (fuente 129466113#0) = 1800 total
+  larco_S_N:     1440    # 80% sigue recto S→N por todo el corredor
+  larco_S_benE:   140    #  8% gira al Este en Benavides
+  larco_S_benW:   130    #  7% gira al Oeste en Benavides
+  larco_S_schW:    50    #  3% sigue hasta Schell y gira al Oeste
+  larco_S_dcE:     40    #  2% sigue hasta Diez Canseco y gira al Este
+  # Benavides Este (fuente 344159559#2) = 500 total
+  benE_W:         380    # 76% recto Este→Oeste
+  benE_larcoN:    120    # 24% gira al Norte sobre Larco
+  # Benavides Oeste (fuente 406007411) = 300 total
+  benW_E:         230    # 77% recto Oeste→Este
+  benW_larcoN:     70    # 23% gira al Norte sobre Larco
+  # Schell Este (fuente 430180649) = 500 total
+  schE_W:         380    # 76% recto Este→Oeste
+  schE_larcoN:    120    # 24% gira al Norte sobre Larco

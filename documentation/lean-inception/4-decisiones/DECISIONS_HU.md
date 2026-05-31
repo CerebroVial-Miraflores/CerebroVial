@@ -7,7 +7,7 @@
 > **Relación con `DECISIONS.md`:** El documento `DECISIONS.md` registra decisiones técnicas del producto (arquitectura, modelo, datos). Este documento registra decisiones metodológicas sobre cómo se redacta el backlog. Los códigos no se solapan: `D-xxx` para técnicas, `DHU-xxx` para HUs.
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-05-28 (**DHU-026 agregada: persistencia en el worker del `AsyncAggregator` para Fase 5 de TTH-08 (paso 0 de 5b); §11 supersede a §4.4 Cambio 2 en async-only MVP1; save y output-queue como paths independientes; reabre Fase 3 únicamente para corregir el docstring del Protocol `AsyncAggregator` + nota cruzada en §4.4 del documento de diseño. DHU-025 agregada en el mismo turno previo: extensión de `ZoneVehicleCount` con `occupancy: float` + formalización del cómputo geométrico de `mean_occupancy`; reabre Fase 3 (entity) y Fase 4a (zone_counter) bajo control DHU.** Previa: 2026-05-27, **DHU-023 y DHU-024 agregadas (misma fecha, sesiones de encuadre distintas).** **DHU-023: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. **DHU-024: encuadre cerrado de TTH-08 (refactor del módulo de visión computacional).** Congela el alcance del refactor (11 CTs operativos, no solo demostrables — el sprint se dimensiona realistamente en 11-13 SP), arquitectura objetivo (DDD completo con capas espejo de `core_management_api`), limpieza vía migración Alembic de las tablas legacy `vision_tracks`/`vision_flows`, preservación del modelo YOLO + ROI calibrada (`conf/vision/javier_prado.yaml`) + assets de demo, contrato técnico de `vision_aggregates` LISTO sin cableado real a `ia_prediction_service/` (esa integración queda como F41 explícitamente fuera de scope), resolución embebida de C7.6 (deuda CUDA→CPU) al reescribir `requirements.txt` desde cero, y planificación del levantamiento formal de la regla CLAUDE.md sobre `edge_device/src/vision/` en el primer commit del sprint (la regla sigue activa hasta entonces). Decisión cerrada al momento de colocarse; consume y preserva D-007 sin reversarlo. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
+> **Última actualización:** 2026-05-29 (**DHU-027 agregada: la validación cuantitativa del motor (IE05) pasa de intersección aislada a RED/corredor coordinado.** Decisión de sprint con asesor y PO. Motivo estructural: la ventaja de Max Pressure proviene del término *downstream* `x_down`, que en nodo aislado es ≈0 y vuelve a MP indistinguible de un control fijo bien sintonizado; solo en corredor `x_down` deja de ser trivial. Escenario: corredor Av. José Larco, Miraflores (3 cruces consecutivos: Diez Canseco, Schell, Benavides). IE05 se reformula a *demora promedio de red* conservando el umbral RD% ≥ 15%. La red base se construye con geometría **REAL** desde OpenStreetMap (`netconvert --osm-files`) en `simulation/conf/corredor_larco/`, un camino de build paralelo que **no reemplaza** la topología genérica sintética de TTH-07. Frontera real-vs-supuesto explícita: geometría REAL; tiempos fijos por semáforo y matriz OD SUPUESTOS (Webster por nodo + demanda sintética) con plan de reemplazo cuando la Subgerencia de Movilidad provea tiempos 2014 reales y conteos. Sustento de magnitud desde fuentes web públicas (NO municipales): Larco ~16 km/h en punta, 47 intersecciones en tiempo fijo de 2014, piloto Av. Arequipa ~21% de reducción. CONTROL.md §validación recibe nota-puntero a este DHU. No toca el motor. Previa: 2026-05-28, **DHU-026 agregada: persistencia en el worker del `AsyncAggregator` para Fase 5 de TTH-08 (paso 0 de 5b); §11 supersede a §4.4 Cambio 2 en async-only MVP1; save y output-queue como paths independientes; reabre Fase 3 únicamente para corregir el docstring del Protocol `AsyncAggregator` + nota cruzada en §4.4 del documento de diseño. DHU-025 agregada en el mismo turno previo: extensión de `ZoneVehicleCount` con `occupancy: float` + formalización del cómputo geométrico de `mean_occupancy`; reabre Fase 3 (entity) y Fase 4a (zone_counter) bajo control DHU.** Previa: 2026-05-27, **DHU-023 y DHU-024 agregadas (misma fecha, sesiones de encuadre distintas).** **DHU-023: semántica temporal del estado vigente (CANDIDATA — a resolver en encuadre de HU-07).** Decisión de modelo de dominio detectada durante la verificación manual de HU-05 (cerrada): la separación de dos tiempos `decided_at` vs `activated_at` declarada por DHU-021 #13 es insuficiente para el lazo del motor que HU-07 construirá. Faltan modelar dos casos: el "heartbeat" del motor (ratificación sin cambio, crítica para CA-05.4 / DHU-005 Caso B porque el panel hoy no puede distinguir "motor confirmó hace 1 min" de "motor caído hace 2 min") y el caso "misma estrategia, decisión distinta" (la misma Webster recalculada con `cycle_seconds`/`phase_timings` diferentes — el operador percibe un cambio aunque `strategy_mode` no cambie). DHU-023 documenta ambos huecos como pregunta abierta; su resolución corresponde al encuadre de HU-07, no a HU-05. **DHU-024: encuadre cerrado de TTH-08 (refactor del módulo de visión computacional).** Congela el alcance del refactor (11 CTs operativos, no solo demostrables — el sprint se dimensiona realistamente en 11-13 SP), arquitectura objetivo (DDD completo con capas espejo de `core_management_api`), limpieza vía migración Alembic de las tablas legacy `vision_tracks`/`vision_flows`, preservación del modelo YOLO + ROI calibrada (`conf/vision/javier_prado.yaml`) + assets de demo, contrato técnico de `vision_aggregates` LISTO sin cableado real a `ia_prediction_service/` (esa integración queda como F41 explícitamente fuera de scope), resolución embebida de C7.6 (deuda CUDA→CPU) al reescribir `requirements.txt` desde cero, y planificación del levantamiento formal de la regla CLAUDE.md sobre `edge_device/src/vision/` en el primer commit del sprint (la regla sigue activa hasta entonces). Decisión cerrada al momento de colocarse; consume y preserva D-007 sin reversarlo. Última previa: 2026-05-20, DHU-021 y DHU-022 (DHU-021 consolida las decisiones metodológicas de redacción del SDD: 17 de redacción más 4 ajustes derivados de la verificación del documento contra el repositorio vivo (`node_id` como FK a `graph_nodes` resuelto en el write-path; conservación de `flow_total`/`y_load_factor`/`inputs_snapshot` capturados del cálculo interno del motor; ratificación de que el sistema no opera en lazo cerrado autónomo; exclusión de la integración Gemini de la arquitectura objetivo con remoción diferida como saneamiento). DHU-022 cierra Delta-02 fijando `operator/manager/admin` como claims técnicos canónicos con mapeo a labels en español en el frontend. Ambas son del 2026-05-20. Última previa: DHU-020 (**DHU-020 agregada: semántica de ControlView, cierre de Delta-08.** Resuelve el riesgo R1 de la planificación del Sprint 4. Cierra cinco subsecciones: la semántica pasiva de HU-05 prevalece y la HU se mantiene sin enmiendas (se descarta legitimar el playground); el playground interactivo actual se preserva como herramienta de Administrador/validación en lugar de eliminarse, conservando su valor docente para la tesis; se declara pendiente un elemento de backlog propio que cubra ese playground; Delta-07, Delta-08 y Delta-09 se abordan en un único refactor en bloque por tocar los mismos archivos; y se reconoce explícitamente que construir la persistencia de "estado vigente del motor" es un cambio estructural autorizado deliberadamente conforme a la guardia de CLAUDE.md. Decisión de alineación especificación↔código; no modifica HUs, TTH ni decisiones técnicas. Última previa: 2026-05-18, DHU-019 (**DHU-019 agregada: decisiones metodológicas para la redacción del documento de Requisitos Funcionales y No Funcionales (RF/RNF).** Ejecuta la sesión dedicada que DHU-007 declaró pendiente. Cierra en un acto único nueve subsecciones de decisiones: adopción de ISO/IEC 25010:2023 como taxonomía formal (9 características), reasignación masiva de las categorías heterogéneas declaradas en DHU-007 a las características formales del estándar, resolución normativa de siete inconsistencias detectadas en los Candidatos a RNF de las 21 HUs, plantilla unificada de RF y RNF, política de derivación de RF desde CAs por composición transversal, política de prioridades MoSCoW sugeridas, política aditiva no destructiva sobre las HUs (los CAs preservan su redacción literal y los Candidatos a RNF reciben pasada aditiva con referencias `→ RNF-XXX-NN`), nota terminológica RF vs RNF-FUN y modelo de dos documentos (denso normativo + lite de lectura humana). Cambio metodológico sin alterar contenido sustantivo de HUs ni TTH. Última previa: 2026-05-17, DHU-018 (patrón "Resumen ejecutivo" retroactivo).
 
 ---
 
@@ -41,6 +41,7 @@
 | DHU-024 | Encuadre de TTH-08: refactor del módulo de visión computacional (alcance operativo completo 11 CTs, DDD completo, borrado Alembic de vision_tracks/vision_flows, C7.6 resuelta dentro del refactor, levantamiento planificado de la regla CLAUDE.md, F41 fuera de scope) | 2026-05-27 | Cerrada |
 | DHU-025 | Extensión de `ZoneVehicleCount` con `occupancy: float` y formalización del cómputo geométrico de `mean_occupancy` (Fase 5 TTH-08): elección de interpretación-unión sobre §5.4, approach geométrico canvas-del-bbox del polígono, reapertura formal de Fase 3 (entity) y Fase 4a (zone_counter) | 2026-05-28 | Cerrada |
 | DHU-026 | Persistencia en el worker del `AsyncAggregator`: §11 supersede de §4.4 Cambio 2 en async-only MVP1 (Fase 5 TTH-08, paso 0 de 5b). Save y output-queue como paths independientes; `flush()` retorna lo computado, no lo persistido. Reabre Fase 3 únicamente para corregir docstring del Protocol + nota cruzada en §4.4 | 2026-05-28 | Cerrada |
+| DHU-027 | La validación de Max Pressure pasa de nodo único a red/corredor (Av. Larco: Diez Canseco, Schell, Benavides); IE05 se reformula a métrica de RED (demora promedio de red, RD% ≥ 15% conservado); red base con geometría REAL (OSM) en camino paralelo a la topología genérica de TTH-07; tiempos fijos y matriz OD supuestos con plan de reemplazo municipal | 2026-05-29 | Cerrada |
 
 ---
 
@@ -2916,6 +2917,139 @@ buscar mientras dos fuentes oficiales dicen lo opuesto.
 - DHU-024 — encuadre TTH-08.
 - DHU-025 — precedente del patrón "abrir DHU cuando un contrato necesita
   cambiar bajo Fase posterior".
+
+---
+
+## DHU-027 — La validación de Max Pressure pasa de nodo único a red/corredor (Av. Larco); IE05 se reformula a métrica de red (CERRADA)
+
+**Fecha:** 2026-05-29.
+**Estado:** Cerrada.
+**TTH afectada:** TTH-07 (módulo de simulación SUMO). No toca el motor (`core_management_api/`).
+**Decisiones relacionadas:** consume y preserva la topología genérica de TTH-07 (no la
+reemplaza); reformula el criterio de validación IE05 documentado en `CONTROL.md`.
+
+### Contexto
+
+La validación cuantitativa del motor adaptativo (IE05) estaba planteada sobre **una sola
+intersección** simulada en SUMO (ver `CONTROL.md` §"¿Cómo se valida que el motor mejora
+frente a tiempos fijos?", y el alcance de "nodo único" en `DECISIONS.md` D-… / `TAREAS_TECNICAS_HABILITADORAS.md`).
+Decisión de sprint tomada con asesor y PO: **extender la validación de un nodo único a una
+RED (corredor coordinado)**.
+
+El motivo es **estructural**, no de conveniencia. La ventaja de Max Pressure (Varaiya 2013)
+proviene del término *downstream* `x_down` de su fórmula de presión por movimiento. En una
+intersección **aislada** `x_down ≈ 0` (no hay cola aguas abajo que retroalimente la presión),
+de modo que MP colapsa a una política que un buen control fijo bien sintonizado (Webster
+calibrado) iguala — y la tesis no podría mostrar la diferencia que justifica el algoritmo.
+Solo en un **corredor** con cruces consecutivos `x_down` deja de ser trivial y MP puede
+exhibir su ventaja (evita bloquear movimientos cuyo destino ya está saturado). Validar MP en
+nodo aislado es, por construcción, un test que no puede distinguir la hipótesis.
+
+### Escenario elegido
+
+Corredor real **Av. José Larco, Miraflores** — 3 cruces semaforizados consecutivos:
+
+| Cruce | Latitud | Longitud |
+|---|---|---|
+| Larco × Diez Canseco | -12.12242 | -77.02911 |
+| Larco × Schell | -12.12297 | -77.02917 |
+| Larco × Benavides | -12.12454 | -77.02933 |
+
+### Sustento (fuentes PÚBLICAS / web abiertas — NO municipales)
+
+Las cifras siguientes provienen de **fuentes web abiertas**, no de la Municipalidad de
+Miraflores ni de su Subgerencia de Movilidad. Se usan como referencia de magnitud y plausibilidad,
+**no** como dato oficial calibrado:
+
+- Av. Larco opera con **7 cruces semaforizados** y velocidad de **~16 km/h en hora punta**.
+- Las **47 intersecciones de Miraflores** funcionan con **planes de tiempo fijo de 2014 sin
+  actualizar** — esto constituye el **baseline real** contra el que el motor adaptativo se compara.
+- El piloto en **Av. Arequipa** logró **~21% de reducción de tiempo de viaje** — referencia de
+  magnitud que hace el umbral **RD% ≥ 15%** realista y no arbitrario.
+- Existe un **Plan de Movilidad Urbana de Miraflores con conteos 2017**, candidato a fuente de
+  calibración futura.
+
+### Real vs supuesto (frontera explícita)
+
+- **Geometría = REAL.** La red base se construye desde **OpenStreetMap** (descarga por bounding
+  box + `netconvert --osm-files`). Es un camino de build **distinto y deliberado** frente a la
+  topología genérica sintética de TTH-07 (`scripts/build_network.py`, sin OSM), que se **preserva
+  sin reemplazar**: el corredor vive en `simulation/conf/corredor_larco/`, aislado del 4-vías genérico.
+- **Tiempos fijos por semáforo y matriz OD = SUPUESTOS por ahora.** El baseline de tiempos fijos
+  se sintetiza con **Webster calibrado por nodo**, y la demanda con una **matriz OD sintética**.
+- **Plan de reemplazo:** cuando la **Subgerencia de Movilidad** provea los **tiempos fijos 2014
+  reales** y los **conteos** (Plan de Movilidad 2017 u otros), se sustituyen los supuestos por los
+  datos oficiales. La geometría real ya queda congelada desde esta etapa (snapshot OSM versionado).
+
+### Decisión
+
+1. **La unidad de validación pasa de intersección aislada a RED / corredor coordinado.**
+2. **IE05 se reformula a métrica de RED:** el KPI principal pasa de "demora promedio por vehículo
+   en una intersección" a **demora promedio de red** (promediada sobre el corredor completo). Se
+   **conserva el umbral RD% ≥ 15%** frente al baseline de tiempos fijos.
+3. **Se adopta el corredor Av. Larco (Diez Canseco, Schell, Benavides) como escenario** de validación.
+4. **La red base usa geometría OSM real** vía `netconvert --osm-files` — giro deliberado frente a
+   la topología genérica de TTH-07, que se preserva.
+
+### Consecuencias / Documentos relacionados
+
+- `documentation/docs/CONTROL.md` §"¿Cómo se valida que el motor mejora frente a tiempos fijos?"
+  (definición de IE05): recibe una **nota** que la marca como superada por este DHU (reformulación
+  a métrica de red). La definición vieja se conserva, anotada.
+- `simulation/conf/corredor_larco/` — red base de esta etapa (OSM crudo + `.net.xml` + README de
+  reproducibilidad + `scripts/build_corredor_larco.sh`). La topología genérica de TTH-07
+  (`simulation/conf/network/`) **no se modifica**.
+- **Trabajo de etapas posteriores (fuera de alcance aquí):** generación de demanda (`.rou.xml`),
+  baseline Webster por nodo del corredor, integración con el motor, y el mapeo de cada cruce a su
+  `intersection_id` en el seed del core. El seed hoy ya incluye `larco_schell` y `larco_benavides`;
+  **falta `larco_diezcanseco`** (o equivalente), que deberá registrarse cuando la etapa de motor lo requiera.
+- TTH-07 — patrón de módulo de simulación reusado (estructura `conf/`/`scripts/`/README); su
+  decisión lockeada de "topología genérica, no OSM" **sigue vigente para el 4-vías**, y este DHU no
+  la reabre: introduce un camino OSM **paralelo** para el corredor.
+
+### Estado de ejecución de IE05 (Etapa 2, corredor Larco)
+
+**IE05 (RD% ≥ 15%, validación de red vía SUMO): ALCANZADO EN LA MEDIA con adaptación local
+(cumplimiento marginal).**
+
+- **Número final: RD% RED = +15.7% ± 8.1 (SD), 10 semillas pareadas, 9/10 positivas**, con la
+  métrica de demora **puerta-a-puerta robusta a censura** (tiempo total en el sistema vía Little's
+  law: cuenta espera para entrar + autos abandonados en la cola de inserción, no solo los que
+  completan dentro de la red). Sistema = **MP per-node de ciclo variable**. Cumplimiento
+  **ajustado** del umbral 15% (media−SD = +7.6%; el 15% cae dentro de la dispersión); mejora
+  robusta y significativa, con dispersión reportada. Beneficio físico: **−67% de espera para
+  entrar**, tiempo adentro casi igual (tapón relocalizado).
+- **El "empate" previo (+1.0% ± 7.5) era artefacto de medición:** la métrica vieja (timeLoss
+  dentro de la red, solo completados) no contaba a los autos que el control fijo deja sin insertar
+  (68 vs 23 del adaptativo, media) → sesgo a favor del que abandona más autos. Corregida la métrica,
+  la adaptación local **sí** alcanza el umbral. Mecanismo de acoplamiento Benavides→Schell 10/10
+  intacto. Detalle en `documentation/handoffs/corredor-larco/etapa-2-cierre-ie05.md`.
+- **Fase 2 (onda verde / ciclo común fijo): EXPLORADA y DESCARTADA.** Offset óptimo = 0 (coordinar
+  perjudica en régimen sobresaturado, deja autos sin insertar); ciclo fijo no mejora al ciclo
+  variable (vs MP variable −5.3% ± 18.8, no generaliza).
+- **Mirar-al-vecino (MP de red, downstream del link interno): EXPLORADO y DESCARTADO.** Se extendió el
+  motor con un término downstream opcional `P(φ)=s·(x_local − Στ·x_down)` (Benavides lee la cola del
+  link interno `279893875#1`, τ=1.0) y se corrió pareado 42–51. **Refutado:** MP-red **empeora** la
+  demora RED vs per-node — Δ pareado **+35.07 s ± 18.85**, IC 95% **[+21.59, +48.55] (excluye 0)**,
+  Wilcoxon **p=0.0020**, **0/10** semillas favorables; MP-red queda en **−9.2% vs fijo** (vs +15.7% del
+  per-node). Mecanismo medido: régimen **capacidad-limitado** (Schell es el binding constraint) — retener
+  en Benavides alivia el link interno (benSch mean −22%) **pero relocaliza la cola a la entrada** (larcoS
+  144.6→172.2 m) y **cuadruplica la espera para entrar** (w_wait 12.2→48.2 s); el neto puerta-a-puerta
+  es peor. **Sistema adoptado = per-node (τ=0).** El término queda en el motor, opcional y desactivado
+  (retrocompat bit-a-bit, probada por no-regresión semilla a semilla exacta). Matiz declarado: x_down(#1)
+  es un downstream **compartido** (~11% del inflow son giros de TRANSV, ~89% LARCO-recta) → mis-atribución
+  ≤~11%, acota el null como capacidad-limitado y no como artefacto. **Barrido τ (eje de acoplamiento):
+  ejecutado, confirma la conclusión.** RD% vs fijo a lo largo del eje es **monótono**: τ=0 (per-node)
+  +15.6% → τ=0.5 +2.5% → τ=0.75 −2.6% → τ=1.0 −9.2%. Cada τ>0 da Δ pareado peor que per-node con IC que
+  excluye 0 (τ0.5 +18.6s p=0.004; τ0.75 +25.7s p=0.002; τ1.0 +35.1s p=0.002), 0/10 favorables en los tres.
+  **Ningún τ supera al per-node → per-node (τ=0) es el óptimo del eje**; el problema no es la sintonía de
+  τ sino la idea en este régimen. **Future work:** término por-movimiento (Varaiya riguroso, ponderar
+  también los giros de TRANSV); no imprescindible. Detalle en
+  `documentation/handoffs/corredor-larco/etapa-2-cierre-mp-red.md` y síntesis legible en
+  `documentation/handoffs/corredor-larco/sintesis-corredor-larco.md`.
+
+(La fila DHU-027 de la tabla resumen queda **Cerrada** porque refiere a la *decisión* de reformular
+IE05; el *indicador* IE05 queda **alcanzado en la media con adaptación local**.)
 
 ---
 
