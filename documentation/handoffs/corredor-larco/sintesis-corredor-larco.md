@@ -121,6 +121,66 @@ per-node, sin mirar al vecino). El eje es **monótono**: cuanto más se mira al 
 supera al per-node (todos los intervalos de confianza dan peor, excluyen el cero). Confirma que el
 problema no es la sintonía de τ sino la idea misma en este régimen.
 
+**4.6 Barrido de capacidad — cuánto de la demora es arreglable por temporizado y cuánto es irreducible.**
+Los experimentos anteriores comparan estrategias a **una** demanda (la pico, scale = 1.0). Para situar
+ese punto y separar lo que el control **puede** arreglar de lo que impone la **capacidad** física del
+corredor, se barrió la demanda en ocho niveles (×0.6 a ×2.0, escalando todos los flujos en proporción,
+preservando los turn ratios), con los dos brazos —**fijo** y **per-node**— pareados por semilla
+(42–46, cinco réplicas; basta para la forma de la curva, cuyo techo es casi determinista). No es un
+"controlador perfecto" (contestable): es la demanda la que revela el techo. La compuerta de integridad
+(per-node a scale = 1.0 reproduce IE05 **exacto al dígito**, semilla a semilla) pasó antes de aceptar
+la curva. Figura: `simulation/data/corredor_larco/capacity_sweep/capacity_sweep.png`; tabla:
+`capacity_sweep_summary.csv`.
+
+Dos lecturas, una por panel:
+
+- **El techo de capacidad (panel B).** Se mide el **flujo de descarga por Schell** —los autos que
+  cruzan la línea de pare de Schell hacia el norte, contados con el detector del link Schell→Diez
+  Canseco, no derivados de un ratio de completados (que se sesga al cierre de ventana). Sube con la
+  demanda hasta scale = 1.0 y **ahí se aplana**: μ̂ ≈ **1740 veh/h** para el per-node, plano de 1.0 a
+  2.0. Ese es el techo: por más demanda que entre, no descargan más autos por Schell. Confirma —desde
+  otro ángulo y de forma cuantitativa— el cuello estructural de Etapa 1 (~1650–1700 veh/h clavados).
+  La demanda del corredor ofrecida a scale = 1.0 (λ_corr ≈ 1790 veh/h) ya **iguala** ese techo: **el
+  punto de operación de IE05 está justo en la rodilla de capacidad** (s* = 1.0).
+
+- **La demora y su descomposición (panel A).** Por debajo de capacidad (≤0.8) la espera-para-entrar
+  (w_wait) es **cero** y la demora es modesta y sensible al temporizado: el per-node gana (a 0.6,
+  36.9 s vs 40.9 s). En la rodilla (1.0) aparece el número de IE05: per-node 124 s vs fijo 142 s,
+  −13 % — y **todo ese ahorro vive en w_wait** (el per-node vacía la entrada mejor: 14 s vs 38 s),
+  no en el tiempo adentro (≈igual, ~105–110 s). Pasada la capacidad, w_wait **explota**: 38 → 182 →
+  822 s a medida que la demanda supera el techo, y **domina** la demora total (el tiempo adentro
+  queda acotado, ~110–148 s en todo el rango). Esa explosión es la parte **irreducible por
+  capacidad**: es el exceso (λ − μ̂) que se acumula en la cola de ingreso, ~lineal en la demanda, y
+  **ningún temporizado la evita** —fijo y per-node la siguen casi pegados (dentro de ~10 %)—. La línea
+  punteada de la figura es el piso teórico determinístico de sobre-saturación (λ−μ̂)·T/2λ; ambos
+  brazos quedan **por encima** (el corredor real tiene varias colas acopladas), pero acotados por el
+  mismo muro.
+
+**Honestidad del techo.** SUMO podría inflar el techo teletransportando autos atascados (los saca del
+tapón y los manda río abajo), lo que subiría el throughput y bajaría la demora justo en las escalas
+altas. No pasó: **teleports = 0 en todas las escalas, ambos brazos**. La sobre-saturación se manifestó
+como **backlog de ingreso** (autos que nunca entran: 0 → 1080 a scale 2.0), que la métrica cuenta
+honestamente dentro de w_wait. El techo medido no es un artefacto.
+
+**El cruce en sobre-saturación profunda — honesto y consistente.** Hay un cruce cerca de scale ≈ 1.1:
+por debajo, el per-node gana (régimen de IE05); por encima (≥1.2), el **fijo** queda algo mejor en
+demora (a 2.0: 891 s vs 970 s) porque sostiene un poco más de descarga por Schell (1964 vs 1740 a
+2.0). Es esperable: el per-node de Etapa 1 (sin término de aguas abajo) balancea presión **local**, y
+cuando el link interno se satura no prioriza la descarga del recto de Larco tan agresivamente como el
+plan fijo. Es exactamente el modo de falla de alta demanda que el término "mirar al vecino" (MP de red,
+§4.4) apuntaba a corregir —y que §4.4/§4.5 **refutaron** como net-negativo, porque retener arriba mueve
+la cola a la entrada—. Importa leer la escala: ese cruce vive en el régimen sobre-saturado profundo,
+donde la demora ya se multiplicó por ~8 por puro exceso de demanda; la diferencia entre controles
+(±10 %) es **de segundo orden** frente al muro de capacidad. En el punto de operación y por debajo, el
+per-node es el óptimo.
+
+**El número titular de la caracterización.** En el corredor Larco, a la demanda pico, lo **arreglable
+por temporizado** es la fracción de demora que el mejor control quita en o por debajo de la capacidad:
+~13–16 % (el per-node, todo vía la espera de ingreso). Lo **irreducible por capacidad** es el resto y,
+pasada la rodilla, **casi todo**: la descarga por Schell está topada en ~1740 veh/h y el per-node ya
+está en ese techo desde scale = 1.0. No hay temporizado que pase más autos por Schell —eso es
+capacidad, no control—.
+
 ---
 
 ## 5. Benchmark (números reales, 10 semillas pareadas)
@@ -230,7 +290,10 @@ agregados de la tabla da +15.6 %; es la misma señal, distinta forma de promedia
 τ)— **no mejora o empeora**. La razón es estructural: el cuello es Schell; cualquier estrategia que
 retenga o sincronice aguas arriba termina **moviendo la cola a la entrada**, donde el conductor espera
 más. La lección general: en un corredor capacidad-limitado con un cuello claro, la gestión local de
-cola le gana a la coordinación.
+cola le gana a la coordinación. El **barrido de capacidad** (§4.6) lo cierra con número: la descarga
+por Schell está topada en ~1740 veh/h, el punto de operación cae justo en esa rodilla, y el per-node ya
+entrega ese techo — lo arreglable por temporizado (~13–16 %) ya está arreglado; lo que queda, pasada la
+capacidad, es irreducible y ningún control lo evita.
 
 **Por qué el resultado es confiable.** Comparación pareada por semilla; el control de referencia
 reproduce su número histórico **exacto al dígito** (el flujo de autos es idéntico entre brazos); el MP
