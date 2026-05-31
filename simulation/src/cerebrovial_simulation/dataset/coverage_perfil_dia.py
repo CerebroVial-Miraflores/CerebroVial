@@ -33,6 +33,8 @@ vive la firma de congestión del perfil; el secundario E-W es ruido de rojo por 
 from __future__ import annotations
 
 import sys
+import xml.etree.ElementTree as ET
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -40,11 +42,11 @@ from typing import Optional
 import yaml
 
 from ..coverage_check import (
+    DET_BY_DIR,
     SPILLBACK_THRESHOLD,
     VMAX_MPS,
     _max_run_length,
     _parse_edgedata,
-    _parse_lanearea,
     run_sumo_for_coverage,
 )
 from ..jam_level import sumo_to_jam_level
@@ -91,6 +93,29 @@ def _in_window(bucket_t: float, windows_h: list[list[float]]) -> bool:
     return False
 
 
+def _max_queue_per_lane(lanearea_path: Path) -> dict[str, float]:
+    """Cola máxima POR LANE (detector) agregada a la dirección como su lane peor.
+
+    Spillback es un fenómeno POR LANE: un aproche tiene spillback cuando la cola de
+    ALGÚN carril alcanza el final del aproche. ``coverage_check._parse_lanearea`` SUMA
+    ``maxJamLengthInMeters`` sobre los lanes de la dirección (cola total agregada), lo
+    que mezcla unidades con ``APPROACH_LEN_M`` (largo de UN aproche) y dispararía el
+    umbral a ~30% de ocupación por lane en un aproche de 3 carriles. Acá tomamos el
+    máximo por detector (= por lane) y reportamos, por dirección, el lane peor — la
+    comparación correcta contra el 90% del aproche.
+    """
+    root = ET.parse(lanearea_path).getroot()
+    det_max: dict[str, float] = defaultdict(float)
+    for interval in root.findall("interval"):
+        det_id = interval.attrib["id"]
+        v = float(interval.attrib.get("maxJamLengthInMeters", "0"))
+        det_max[det_id] = max(det_max[det_id], v)
+    per_dir: dict[str, float] = {}
+    for d, dets in DET_BY_DIR.items():
+        per_dir[d] = max((det_max[det] for det in dets), default=0.0)
+    return per_dir
+
+
 def check_coverage(
     pattern: str,
     seed: int,
@@ -100,7 +125,7 @@ def check_coverage(
 ) -> PerfilDiaCoverageReport:
     edgedata, lanearea = run_sumo_for_coverage(pattern, seed, out_dir, end_s=end_s)
     speeds = _parse_edgedata(edgedata)
-    queues = _parse_lanearea(lanearea)
+    queue_per_lane = _max_queue_per_lane(lanearea)
 
     # jam_level por dirección por bucket: [(bucket_t, jam), ...].
     jam_by_dir: dict[str, list[tuple[float, int]]] = {}
@@ -112,12 +137,12 @@ def check_coverage(
         max_jam_per_dir[d] = max((j for _, j in jams), default=0)
         sustained_ge3[d] = _max_run_length([j for _, j in jams], lambda x: x >= 3)
 
-    # Colas / spillback.
+    # Colas / spillback — POR LANE (ver _max_queue_per_lane): spillback real es cuando
+    # la cola de algún carril alcanza el 90% del aproche, no la suma de los 3 carriles.
     max_queue_per_dir_m: dict[str, float] = {}
     spillback_per_dir: dict[str, bool] = {}
-    for d, buckets in queues.items():
-        values = [v for _, v in buckets]
-        max_v = max(values, default=0.0)
+    for d in DIRECTIONS:
+        max_v = queue_per_lane.get(d, 0.0)
         max_queue_per_dir_m[d] = max_v
         spillback_per_dir[d] = max_v > SPILLBACK_THRESHOLD[d]
 
