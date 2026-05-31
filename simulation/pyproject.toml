@@ -20,6 +20,8 @@ dependencies = [
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
+    # Ploteo de la caracterización demanda↔capacidad (barrido de capacidad). Solo análisis, no runtime.
+    "matplotlib>=3.8",
 ]
 
 [build-system]
