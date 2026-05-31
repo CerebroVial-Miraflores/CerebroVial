@@ -189,12 +189,14 @@ Las particiones de entrenamiento y validación son **escenarios SUMO distintos**
 
 | Nivel | Significado | Umbral de ratio velocidad/free-flow |
 |---|---|---|
-| 0 | Flujo libre | ratio ≥ 90% |
-| 1 | Bajo | 70% ≤ ratio < 90% |
-| 2 | Medio | 50% ≤ ratio < 70% |
-| 3 | Alto | 30% ≤ ratio < 50% |
-| 4 | Muy alto | 0 < ratio < 30% |
+| 0 | Flujo libre | ratio ≥ 80% |
+| 1 | Bajo | 60% ≤ ratio < 80% |
+| 2 | Medio | 40% ≤ ratio < 60% |
+| 3 | Alto | 20% ≤ ratio < 40% |
+| 4 | Muy alto | 0 < ratio < 20% |
 | 5 | Vía cerrada | velocidad = 0 |
+
+> **Nota 2026-05-31 — Alineación a la escala Waze.** Los cortes de jam_level se alinearon a las anclas oficiales de la escala de congestión de Waze (jam 1 = 80% de velocidad libre, jam 4 = 20%), reemplazando los cortes previos (90/70/50/30). Motivo: el modelo predictivo (TTH-09) consume jam_level real de Waze; el dataset de entrenamiento debe usar la misma escala que la fuente de producción para evitar un sesgo sistemático de sobre-reporte de congestión (~1 nivel). Referencia: Waze define jam level 0-5 donde 1 = bajo (80% free-flow) y 4 = muy alto (20% free-flow). Los conteos de cobertura publicados en handoffs de TTH-07 (p. ej. `sustained jam ≥3`) se calcularon con la escala previa y no se recalculan (sprint cerrado); ver nota de reenvío en `documentation/handoffs/tth-07/tth-07-fase2-handoff.md`.
 
 donde `ratio = velocidad_promedio / velocidad_flujo_libre`.
 
@@ -204,7 +206,7 @@ donde `ratio = velocidad_promedio / velocidad_flujo_libre`.
 
 El paper cita textualmente: *"a jam with level 4 (20% of free-flow speed), while the light orange line represents a jam with level 1 (80% of free-flow speed)"*.
 
-Los umbrales 70%, 50%, 30% (niveles 1, 2 y 3) se obtienen por **interpolación lineal** de 20 puntos porcentuales entre los anclajes documentados. Es la interpretación natural y se declara explícitamente como tal. Los umbrales pueden ajustarse contra datos reales de Waze cuando se obtenga acceso vía el asesor de Miraflores; el principio del constructo no cambia.
+A partir de la realineación del 2026-05-31 (ver nota arriba) las anclas oficiales se adoptan como **bordes de banda directos**: 80% es la frontera flujo-libre/jam 1 y 20% la frontera jam 3/jam 4. Los umbrales intermedios 60% y 40% (fronteras de los niveles 2 y 3) se obtienen por **interpolación lineal** de 20 puntos porcentuales entre las anclas. Es la interpretación natural y se declara explícitamente como tal. Los umbrales pueden ajustarse contra datos reales de Waze cuando se obtenga acceso vía el asesor de Miraflores; el principio del constructo no cambia.
 
 **Mapeo SUMO → jam_level:**
 
@@ -214,10 +216,10 @@ def sumo_to_jam_level(mean_speed_mps, max_speed_mps):
     if mean_speed_mps == 0:
         return 5
     ratio = mean_speed_mps / max_speed_mps
-    if ratio >= 0.90: return 0
-    if ratio >= 0.70: return 1
-    if ratio >= 0.50: return 2
-    if ratio >= 0.30: return 3
+    if ratio >= 0.80: return 0
+    if ratio >= 0.60: return 1
+    if ratio >= 0.40: return 2
+    if ratio >= 0.20: return 3
     return 4
 ```
 
