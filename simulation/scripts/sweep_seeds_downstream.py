@@ -119,7 +119,6 @@ def _wilcoxon_signed_rank_exact(d: list[float]):
             ranks[order[k]] = avg
         i = j + 1
     w_obs = sum(ranks[i] for i in range(m) if nz[i] > 0)
-    total = sum(ranks)
     # distribución exacta de W+ bajo H0 (cada signo ±, equiprobable)
     from itertools import product
     dist = {}
@@ -230,7 +229,7 @@ def main(seeds: list[int]) -> int:
     print(f"  tapón interno  benSch max : {_mean('benSch_pn'):6.1f}m → {_mean('benSch_rd'):6.1f}m "
           f"(mean {_mean('benSchMean_pn'):.1f}→{_mean('benSchMean_rd'):.1f})")
     print(f"  entrada Benav. larcoS mean: {_mean('larcoS_pn'):6.1f}m → {_mean('larcoS_rd'):6.1f}m")
-    print(f"  (benSch: si max≫mean en MP-red → cola burstea/oscila; si max≈mean → saturación sostenida)")
+    print("  (benSch: si max≫mean en MP-red → cola burstea/oscila; si max≈mean → saturación sostenida)")
     print("=" * W)
     return 2 if nonreg_fail else 0
 

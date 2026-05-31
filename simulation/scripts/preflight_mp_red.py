@@ -118,7 +118,7 @@ def main(seed: int) -> int:
     w_pn = _w_red(pernode_dir)
 
     a0_ok = w_hist is not None and abs(w_pn - w_hist) < 1e-9
-    print(f"\n[A0] no-regresión per-node (W_RED door2door):")
+    print("\n[A0] no-regresión per-node (W_RED door2door):")
     print(f"     histórico IE05 = {w_hist if w_hist is not None else 'FALTA dir histórico'}")
     print(f"     per-node fresco = {w_pn}")
     print(f"     → {'OK exacto al dígito' if a0_ok else 'MISMATCH — el harness derivó, PARAR'}")
@@ -136,7 +136,7 @@ def main(seed: int) -> int:
     n_positive = sum(1 for q in down_q if q is not None and q > 0)
     max_q = max((q for q in down_q if q is not None), default=None)
     a1_ok = n_present == len(down_q) and n_positive >= 1
-    print(f"\n[A1] payload downstream de Benavides-LARCO (cola de #1 vía TraCI):")
+    print("\n[A1] payload downstream de Benavides-LARCO (cola de #1 vía TraCI):")
     print(f"     ciclos con clave downstream: {n_present}/{len(down_q)}  | con queue>0: {n_positive}  | max queue={max_q}")
     print(f"     → {'OK payload fiel (no None, #1 con cola real)' if a1_ok else 'NO-OP: payload vacío/None → cable no enchufa'}")
 
@@ -150,7 +150,7 @@ def main(seed: int) -> int:
     n = min(len(dec_pn), len(dec_on))
     n_diff = sum(1 for i in range(n) if dec_pn[i] != dec_on[i])
     a2_ok = n_diff >= 1 or dec_pn != dec_on
-    print(f"\n[A2] decisiones de Benavides per-node vs downstream-ON:")
+    print("\n[A2] decisiones de Benavides per-node vs downstream-ON:")
     print(f"     ciclos comparados={n}  difieren={n_diff}  (len pn={len(dec_pn)}, on={len(dec_on)})")
     print(f"     → {'OK el término operó (≥1 decisión cambió)' if a2_ok else 'NO-OP: #1 satura pero NINGUNA decisión cambió'}")
 
