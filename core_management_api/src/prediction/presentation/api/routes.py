@@ -1,84 +1,95 @@
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime, timezone
 from typing import Optional
 
-from ...application.predictor import CongestionPredictor
-from .schemas import PredictionInput, PredictionResponse, HistoryResponse
+from fastapi import APIRouter, Depends, HTTPException
 
-# Pydantic Schemas for API Response Wrapper
-# Note: PredictionResponse is defined in schemas but we might need a wrapper for alerts as per legacy
+from ...application.gru_predictor import GruInferenceService, GruModelUnavailableError
+from ...application.predictor import CongestionPredictor
+from .gru_schemas import GruPredictRequest, GruPredictResponse
+from .schemas import HistoryResponse
 
 # Router definition
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 
-# Dependency Injection Placeholder
+# --- DI: RandomForest baseline (PRESERVADO) ----------------------------------------
+# Sirve GET /predictions/history y queda invocable por TTH-04 como respaldo Nivel 2.
+# Su shape viejo dejó de exponerse en POST /predict (reemplazo total, contrato §1).
 _predictor_instance: Optional[CongestionPredictor] = None
+
 
 def get_predictor() -> CongestionPredictor:
     if _predictor_instance is None:
         raise HTTPException(status_code=503, detail="Predictor service not initialized")
     return _predictor_instance
 
+
 def init_predictor(predictor: CongestionPredictor):
     global _predictor_instance
     _predictor_instance = predictor
 
-@router.post("/predict", response_model=PredictionResponse)
-async def predict_traffic(input_data: PredictionInput, predictor: CongestionPredictor = Depends(get_predictor)):
+
+# --- DI: GRU (producción, TTH-09 Fase 3b) ------------------------------------------
+# Espejo del patrón del RF: singleton in-process inicializado desde main.py.
+_gru_service_instance: Optional[GruInferenceService] = None
+
+
+def get_gru_service() -> GruInferenceService:
+    if _gru_service_instance is None:
+        raise HTTPException(
+            status_code=503, detail="GRU prediction service not initialized"
+        )
+    return _gru_service_instance
+
+
+def init_gru_service(service: GruInferenceService):
+    global _gru_service_instance
+    _gru_service_instance = service
+
+
+@router.post("/predict", response_model=GruPredictResponse)
+async def predict_traffic(
+    request: GruPredictRequest,
+    gru_service: GruInferenceService = Depends(get_gru_service),
+):
+    """Predicción GRU por intersección (contrato TTH-09 §2-§3, Fase 3b).
+
+    Reemplazo TOTAL del shape RF viejo en este path (contrato §1): per-intersección,
+    4 direcciones (N/S/E/W), 30 pasos de horizonte, ``level`` + ``probs`` por paso.
+    Expone ÚNICAMENTE el GRU principal; ante caída emite 5xx (CT-09.8) y delega la
+    cascada al RandomForest (Nivel 2) a TTH-04 — el fallback NO se cablea en este módulo.
+
+    DEPENDENCIA HU-03 / Delta-01 (ruptura conocida, NO silenciosa): el frontend
+    (``frontend_ui/src/services/predictionService.ts`` -> ``CameraDetailView.tsx``)
+    todavía consume el shape RF viejo de este path y queda ROTO hasta que HU-03 migre el
+    cliente al shape de §2-§3. Registrado en
+    ``documentation/handoffs/tth-09/tth-09-fase3b-handoff.md``.
     """
-    Get congestion prediction based on input features.
-    """
+    generated_at = datetime.now(timezone.utc).isoformat()
     try:
-        result = predictor.predict_congestion(input_data)
-        
-        # Logic for notification/alert (Ported from legacy)
-        severity = {"Normal": 0, "High": 1, "Heavy": 2}
-        
-        current_sev = severity.get(result.current_congestion_level, 0)
-        future_sev_15 = severity.get(result.predicted_congestion_15min, 0)
-        future_sev_30 = severity.get(result.predicted_congestion_30min, 0)
-        
-        alert = False
-        msg = "Traffic situation is stable."
-        
-        if future_sev_15 > current_sev:
-            alert = True
-            msg = f"Warning: Traffic expected to worsen to {result.predicted_congestion_15min} in 15 mins."
-        elif future_sev_30 > current_sev:
-            alert = True
-            msg = f"Caution: Traffic expected to worsen to {result.predicted_congestion_30min} in 30 mins."
-        elif current_sev == 2 and future_sev_15 == 2:
-            alert = True
-            msg = "Alert: Heavy traffic persisting."
-            
-        # We need a schema for this wrapper or define it inline/schemas
-        # Using a dict for now compatible with Pydantic if defined properly or return JSON
-        return {
-            "data": result,
-            "alert": alert,
-            "message": msg
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return gru_service.predict(request, generated_at=generated_at)
+    except GruModelUnavailableError as e:
+        # 503: GRU no disponible (modelo no cargado). Body descriptivo para que TTH-04
+        # distinga "no disponible" de "falló inferencia" en la cascada (CT-09.8).
+        raise HTTPException(status_code=503, detail=f"GRU model unavailable: {e}")
+    except Exception as e:  # noqa: BLE001
+        # 500: modelo cargado pero la inferencia falló. Body descriptivo (≠ 503).
+        raise HTTPException(status_code=500, detail=f"GRU inference failed: {e}")
+
 
 @router.get("/history/{camera_id}", response_model=HistoryResponse)
 async def get_history(
-    camera_id: str, 
-    interval: int = 5, 
-    predictor: CongestionPredictor = Depends(get_predictor)
+    camera_id: str,
+    interval: int = 5,
+    predictor: CongestionPredictor = Depends(get_predictor),
 ):
-    """
-    Get historical data and a future prediction based on the last log.
-    Interval can be specified in minutes (1, 2, 5, 10, 15).
-    """
+    """Histórico + predicción del último log (RF baseline preservado, sin cambios)."""
     try:
         history = predictor.get_traffic_history(camera_id, interval=interval)
         prediction = predictor.predict_future_from_last_log(camera_id)
-        
         return HistoryResponse(
-            camera_id=camera_id, 
-            history=history, 
-            prediction=prediction
+            camera_id=camera_id,
+            history=history,
+            prediction=prediction,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
