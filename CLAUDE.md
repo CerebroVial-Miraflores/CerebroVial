@@ -166,12 +166,20 @@ Migraciones:
   `documentation/lean-inception/4-decisiones/DECISIONS_HU.md` § DHU-024 decisión 8.
 
 ### Deuda técnica a respetar
-- **No instalar `torch` ni `ultralytics` en `core_management_api`**. El endpoint
-  vivo de predicción usa RandomForest baseline; el GRU vive en
-  `ia_prediction_service/` (entrenamiento off-line), no en el backend. La
-  visión YOLO vive en `edge_device/`. Esta regla aplica anti-regresión —
-  cualquier HU futura que necesite torch en el core debe revisarse primero.
+- **No instalar `torch` ni `ultralytics` en `core_management_api` por defecto.**
+  La visión YOLO vive en `edge_device/`; el entrenamiento del GRU vive en
+  `ia_prediction_service/` (off-line) — el core no entrena. Esta regla sigue
+  vigente como **guardia anti-regresión general**: cualquier HU futura que quiera
+  meter una dependencia pesada en el core (o torch para algo distinto de la
+  excepción de abajo) debe revisarse primero.
   *(Deuda C7.5 / SAN-01 cerrada 2026-05-26 en rama `san-06`.)*
+  - **Excepción registrada (D-010, 2026-05-31):** se admite **`torch` CPU-only**
+    en el core **exclusivamente para servir el predictor GRU de TTH-09**
+    (inferencia in-process; la clase `GRUMultiOutput` se vendoriza en el core).
+    No habilita entrenamiento en el core, ni torch en `cerebrovial_shared`, ni
+    CUDA, ni `ultralytics`. El RandomForest baseline se preserva como respaldo
+    Nivel 2. Justificación completa en
+    `documentation/lean-inception/4-decisiones/DECISIONS.md` § D-010.
 - No migrar el pipeline de visión a `vision_tracks` / `vision_flows`
   (ver D-006/D-007 en "Decisiones tomadas" arriba).
 

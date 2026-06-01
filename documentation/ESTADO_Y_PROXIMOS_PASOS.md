@@ -77,7 +77,12 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   (no se relajó la regla CLAUDE.md). Se eliminaron 6 archivos STGCN muertos de
   `core_management_api/src/prediction/` y la línea `torch` de `core_management_api/requirements.txt`.
   El runtime vivo (`predictor.py → engine.py`) usa RandomForest + joblib, sin torch. La regla
-  CLAUDE.md "No instalar torch en core_management_api" permanece como guardia anti-regresión.
+  CLAUDE.md "No instalar torch en core_management_api" permanece como guardia anti-regresión
+  **general**, CON la excepción registrada en **D-010** (2026-05-31): se admite `torch` CPU-only
+  en el core **exclusivamente para servir el predictor GRU de TTH-09** (inferencia in-process,
+  clase `GRUMultiOutput` vendorizada). D-010 no des-cierra esta SAN-01 (aquí se purgó torch
+  *muerto*); revisa la regla para reintroducir torch *vivo y justificado*. Ver
+  `lean-inception/4-decisiones/DECISIONS.md` § D-010.
   Cierra simultáneamente C7.5 (TODO.md).
 - SAN-02: decidir destino de componentes Gemini huérfanos (Art. 21 los declara fuera de arquitectura).
 - SAN-03: crear tabla vision_aggregates + cableado (Delta-05). Es Trabajo Futuro, no Sprint 4. (Absorbido por TTH-08 / DHU-024.)
