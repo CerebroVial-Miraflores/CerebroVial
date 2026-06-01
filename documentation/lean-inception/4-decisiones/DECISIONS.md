@@ -16,6 +16,7 @@
 | D-008 | Cerrada | 2026-05-11 | SUMO end-to-end: datos sintéticos para entrenamiento y validación |
 | D-009 | Cerrada | 2026-05-13 | Variable de estado predicha: jam level (constructo Waze) |
 | D-010 | Cerrada | 2026-05-31 | Revisión de SAN-01: torch CPU-only en el core para servir el GRU |
+| D-011 | Cerrada | 2026-06-01 | Reapertura de D-006: predictor espacio-temporal sobre grafo (STGNN) acotado al corredor de la Av. Larco |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -328,6 +329,40 @@ El diseño actual permite esta extensión **sin cambios al modelo predictivo**, 
 - **Precedente del patrón CPU-only:** `DECISIONS_HU.md` DHU-024 §7; `documentation/docs/TODO.md` C7.6/F9.z.
 - **Precedente acotado:** `documentation/handoffs/tth-07/tth-07-fase0-handoff.md` (principio "dependencia pesada fuera del core", sigue vigente).
 - **TTH-09 Fase 3:** implementación del serving del GRU.
+
+---
+
+## D-011 — Reapertura de D-006: predictor espacio-temporal sobre grafo (STGNN) acotado al corredor de la Av. Larco
+**Fecha:** 2026-06-01 · **Estado:** Cerrada · **Revisa:** D-006 · **Notifica:** asesor (Paucar) · **Track:** investigación paralela, no toca producción
+
+**Decisión:** Se reabre D-006 con fundamento empírico. Se autoriza un track de investigación paralelo que migra el predictor de 4 GRUs univariados independientes a un modelo espacio-temporal sobre grafo (STGNN, arquitectura Time-then-Space), **acotado al corredor de la Av. Larco** (3 cruces semaforizados encadenados S→N: Diez Canseco, Schell, Benavides). El track es de investigación: **no modifica el predictor de producción, el core, ni D-010** hasta que una decisión de integración posterior (Fase 5) lo justifique con números. Ambas salidas del track —integrar la STGNN o conservar el GRU— son resultados válidos.
+
+**Qué cambió desde D-006 (por qué se reabre):**
+
+1. **Límite empírico del univariado.** Los 4 GRUs univariados (`gru_N/S/E/W.pt`, TTH-09/PR #38) predicen `jam_level` 0–5 por dirección sin acoplamiento espacial. Las direcciones N/S/E/W son un artefacto del dataset sintético (`miraflores_4way`), no aristas reales. El modelo no captura la propagación de congestión entre tramos, que es la dinámica que el dominio requiere.
+2. **El corredor ya es simulable.** Existe `simulation/conf/corredor_larco/corredor_larco.net.xml` (red SUMO real OSM/UTM, 3 cruces encadenados), ya usada para validar Max Pressure (IE05). La premisa #1 de D-006 ("se valida sobre una sola intersección, una arquitectura espacio-temporal no aplica") ya no se sostiene: hay una red multi-nodo real y simulable.
+3. **Abstracción de dominio correcta.** La predicción de `jam_level` por arista dirigida (`source→target`, escala 0–5, alineada con cómo Waze modela congestión por segmento) corresponde a `graph_edges`, que ya existe. El univariado por dirección no es esa abstracción.
+4. **Riesgo acotado y reuso disponible.** `time_then_space.py` (encoder lineal + RNN/GRU temporal + DiffConv espacial + MLPDecoder) sigue en el repo, funcional como referencia. El GRU actual es reusable como bloque temporal de la STGNN (la arquitectura Time-then-Space es agnóstica a qué representa la serie). Candidata técnica: `tsl` (Torch Spatiotemporal, sobre PyTorch Geometric).
+
+**Condición de éxito (explícita, medible):** La STGNN se adopta **solo si supera al baseline GRU univariado reentrenado sobre el dataset del corredor, en el mismo split de evaluación**, por un margen que justifique su complejidad e integración. Si no lo supera, se conserva el GRU y se documenta el hallazgo. No se asume mejora; se mide.
+
+**Alcance — qué NO toca este track:**
+
+- **No modifica D-010.** `torch` CPU-only permanece en el core justificado exactamente como D-010 lo dejó: para servir el GRU univariado de producción de TTH-09. La STGNN vive **fuera del core**, en el track de investigación. D-010 no se reabre ni se debilita.
+- **No toca `core_management_api`, el predictor de producción (`gru_multioutput.py` vendorizado), ni el endpoint `POST /predictions/predict`.**
+- La extensión a la red completa de Miraflores (`miraflores.net.xml`, 47 semáforos) queda como trabajo futuro, fuera de este track.
+
+**Riesgos y limitaciones documentados (no resueltos):**
+
+- Red pequeña (3 nodos): no está garantizado que la STGNN supere al GRU. De ahí la condición de éxito medida contra baseline.
+- Datos sintéticos sin calibración real: riesgo de sobreajuste, a documentar como limitación de la tesis.
+- `tsl`/PyTorch Lightning es la zona de mayor riesgo de tiempo (ya señalado al cerrar D-006).
+
+**Nota de estado sobre la ejecución de D-006 (hallazgos de auditoría 2026-06-01, no resueltos aquí):** El "Impacto" de D-006 quedó parcialmente sin ejecutar: `time_then_space.py` nunca se movió a `legacy/` (el directorio no existe), el checkpoint `epoch=79-step=30800.ckpt` sigue en `notebooks/logs/`, y el artefacto nominal `gru_model.py` nunca se creó con ese nombre (el real es `gru_multioutput.py`). Además, `TAREAS_TECNICAS_HABILITADORAS.md:580` y `HU_BLOQUE_E.md:105` afirman como hecho un movimiento a `legacy/` que no ocurrió. Estas inconsistencias se corrigen como deuda de saneamiento aparte (SAN nuevo a registrar), **no en esta enmienda**. D-011 las deja registradas para no heredarlas como verdad falsa.
+
+**Plan del track (cada fase con stage gate y aprobación explícita):** Fase 1 constructor de grafo desde `corredor_larco.net.xml` + `graph_edges` → `edge_index`; Fase 2 dataset por-arista (tiempo×nodos×canales, escala 0–5); Fase 3 baseline GRU reentrenado sobre el dataset del corredor; Fase 4 STGNN Time-then-Space, métricas en el mismo split; Fase 5 decisión de integración.
+
+**Pendiente:** Notificar a Paucar (asesor actual) la reapertura de D-006 — notificación, no solicitud de permiso. La condición original "Sujeta a confirmación con asesor" de D-006 quedó en suspenso bajo un asesor anterior; D-011 la cierra como track autorizado bajo el asesor actual.
 
 ---
 
