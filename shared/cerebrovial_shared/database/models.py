@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column,
@@ -202,3 +202,47 @@ class EngineActiveStateDB(Base):
     )
     activated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     activated_by = Column(String, nullable=True)
+
+
+# --- GRU prediction persistence (TTH-09 Fase 5, CT-09.5) ---
+
+class PredictionDB(Base):
+    """Append-only registry of every GRU prediction (CT-09.5).
+
+    One row per (inference x direction x step): a single ``/predictions/predict``
+    call yields 4 directions x 30 steps = 120 rows. The model is a multi-output
+    CLASSIFIER (D-009, jam level 0-5): we store the discrete ``level`` (argmax of
+    ``probs``) and the 6-float ``probs`` vector -- NOT a continuous ratio (obsolete;
+    see ``prediction_contract.md`` 6/8, Nota D-005). Source of data for HU-14; the
+    predicted-vs-observed join, the real observation and the 24h window are HU-14
+    scope, NOT TTH-09. ``intersection_id`` is the opaque request id (no FK to
+    graph_nodes, contract 8). Best-effort write-path: a persistence failure must
+    not break the response. Exposes no update/delete (append-only invariant).
+    """
+    __tablename__ = "predictions"
+
+    prediction_id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
+    intersection_id = Column(String, nullable=False)  # opaque request id; no FK (contract 8)
+    direction = Column(String, nullable=False)  # "N" | "S" | "E" | "W"
+    step = Column(Integer, nullable=False)  # 1..30 (t+1 ... t+30)
+    level = Column(Integer, nullable=False)  # 0..5 (argmax of probs, D-009)
+    probs = Column(JsonType, nullable=False)  # list[float], 6 softmax
+    model_version = Column(String, nullable=False)
+    generated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_predictions_intersection_id_generated_at",
+            "intersection_id",
+            "generated_at",
+        ),
+    )

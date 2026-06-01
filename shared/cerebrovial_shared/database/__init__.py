@@ -5,6 +5,7 @@ from .models import (
     VisionAggregateDB,
     UserDB,
     MotorDecisionDB, EngineActiveStateDB,
+    PredictionDB,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "VisionAggregateDB",
     "UserDB",
     "MotorDecisionDB", "EngineActiveStateDB",
+    "PredictionDB",
 ]

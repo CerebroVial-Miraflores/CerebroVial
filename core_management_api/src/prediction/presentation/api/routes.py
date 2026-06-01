@@ -1,12 +1,19 @@
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from cerebrovial_shared.database import get_db
 
 from ...application.gru_predictor import GruInferenceService, GruModelUnavailableError
 from ...application.predictor import CongestionPredictor
+from ...infrastructure.repositories import PredictionsRepo
 from .gru_schemas import GruPredictRequest, GruPredictResponse
 from .schemas import HistoryResponse
+
+logger = logging.getLogger(__name__)
 
 # Router definition
 router = APIRouter(prefix="/predictions", tags=["predictions"])
@@ -50,6 +57,7 @@ def init_gru_service(service: GruInferenceService):
 async def predict_traffic(
     request: GruPredictRequest,
     gru_service: GruInferenceService = Depends(get_gru_service),
+    db: Session = Depends(get_db),
 ):
     """Predicción GRU por intersección (contrato TTH-09 §2-§3, Fase 3b).
 
@@ -57,6 +65,9 @@ async def predict_traffic(
     4 direcciones (N/S/E/W), 30 pasos de horizonte, ``level`` + ``probs`` por paso.
     Expone ÚNICAMENTE el GRU principal; ante caída emite 5xx (CT-09.8) y delega la
     cascada al RandomForest (Nivel 2) a TTH-04 — el fallback NO se cablea en este módulo.
+
+    Tras inferir, persiste las 120 filas (4 dirs × 30 pasos) de forma best-effort
+    (CT-09.5, contrato §8): si la DB falla, se loguea y la predicción se devuelve igual.
 
     DEPENDENCIA HU-03 / Delta-01 (ruptura conocida, NO silenciosa): el frontend
     (``frontend_ui/src/services/predictionService.ts`` -> ``CameraDetailView.tsx``)
@@ -66,7 +77,7 @@ async def predict_traffic(
     """
     generated_at = datetime.now(timezone.utc).isoformat()
     try:
-        return gru_service.predict(request, generated_at=generated_at)
+        response = gru_service.predict(request, generated_at=generated_at)
     except GruModelUnavailableError as e:
         # 503: GRU no disponible (modelo no cargado). Body descriptivo para que TTH-04
         # distinga "no disponible" de "falló inferencia" en la cascada (CT-09.8).
@@ -74,6 +85,26 @@ async def predict_traffic(
     except Exception as e:  # noqa: BLE001
         # 500: modelo cargado pero la inferencia falló. Body descriptivo (≠ 503).
         raise HTTPException(status_code=500, detail=f"GRU inference failed: {e}")
+
+    # CT-09.5 — persistencia best-effort, NO bloqueante (contrato §8): la predicción es
+    # el producto principal; si la DB falla se loguea pero la respuesta se devuelve igual.
+    # NO se re-lanza, de modo que un fallo de persistencia nunca se convierte en 5xx.
+    try:
+        n = PredictionsRepo(db).insert_batch(response)
+        db.commit()
+        logger.debug(
+            "Persisted %d GRU prediction rows (%s)", n, response.intersection_id
+        )
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        logger.warning(
+            "Best-effort persistence of GRU predictions failed for %s; "
+            "returning prediction anyway",
+            request.intersection_id,
+            exc_info=True,
+        )
+
+    return response
 
 
 @router.get("/history/{camera_id}", response_model=HistoryResponse)
