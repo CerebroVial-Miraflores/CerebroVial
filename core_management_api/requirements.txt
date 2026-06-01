@@ -14,3 +14,15 @@ scikit-learn
 sqlalchemy
 sse-starlette
 uvicorn
+
+# TTH-09 D-010: torch CPU-only para SERVIR el predictor GRU (inferencia in-process).
+# Excepción registrada en CLAUDE.md (no entrenamiento, no CUDA, no ultralytics, no
+# torch en shared). Versión 2.9.1 = la del entorno que entrenó los .pt
+# (homebrew python3.10, torch 2.9.1, cuda None). Pin CPU obligatorio: torch "pelado"
+# bajaría la build CUDA (~2.5 GB) en CI/Linux. El índice CPU de PyTorch publica el
+# wheel con tag local '+cpu' en Linux/Windows, pero en macOS el wheel ya es CPU-only
+# sin ese tag -> markers por plataforma para que resuelva en el gate (macOS) y en
+# docker (Linux).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.9.1 ; sys_platform == "darwin"
+torch==2.9.1+cpu ; sys_platform != "darwin"
