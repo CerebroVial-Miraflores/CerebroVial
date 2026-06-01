@@ -5,8 +5,10 @@ from cerebrovial_shared.database.database import get_db
 from cerebrovial_shared.database.models import CameraDB
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.prediction.presentation.api.routes import router as prediction_router, init_predictor
+from src.prediction.presentation.api.routes import router as prediction_router, init_predictor, init_gru_service
 from src.prediction.application.predictor import CongestionPredictor
+from src.prediction.application.gru_predictor import GruInferenceService
+from src.prediction.infrastructure.gru_engine import GRUModelEngine
 from src.control.presentation.api.routes import router as control_router, init_engine
 from src.control.application.adaptive_engine import AdaptiveEngine
 from src.control.application.webster import WebsterCalculator
@@ -32,6 +34,14 @@ os.makedirs("models", exist_ok=True)
 os.makedirs("data/traffic_logs", exist_ok=True)
 _predictor = CongestionPredictor(model_dir="models", data_dir="data/traffic_logs")
 init_predictor(_predictor)
+
+# TTH-09 Fase 3b: wiring del GRU (producción) AL LADO del RF baseline, sin tocarlo.
+# Carga eager los 4 gru_<dir>.pt (tolerante a faltantes, Fase 3a). El RF queda como
+# respaldo Nivel 2 invocable por TTH-04. Si el GRU no puede servir, POST /predictions/predict
+# emite 5xx (CT-09.8); el core bootea igual y GET /predictions/history (RF) sigue operativo.
+_gru_engine = GRUModelEngine()
+_gru_engine.load_models()
+init_gru_service(GruInferenceService(_gru_engine))
 
 _control_settings = ControlSettings()
 _control_engine = AdaptiveEngine(

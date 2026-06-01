@@ -1,0 +1,115 @@
+{
+  "version": "tth09-fase1-b1",
+  "seed": 0,
+  "device": "mps",
+  "quick": false,
+  "hyperparams": {
+    "hidden": 64,
+    "lr": 0.001,
+    "batch": 512,
+    "epochs": 12,
+    "lookback_min": 30,
+    "horizonte_min": 30,
+    "n_classes": 6,
+    "input_norm": "/5.0",
+    "weight_strategy": "sqrt"
+  },
+  "directions": {
+    "N": {
+      "n_seq": 110480,
+      "class_counts": [
+        55228,
+        1568716,
+        1109116,
+        24655,
+        556685,
+        0
+      ],
+      "class_weights": [
+        7.746808172748191,
+        1.4535510764449209,
+        1.7286774823183437,
+        11.594444784817465,
+        2.440044239822502,
+        0.0
+      ],
+      "zero_weight_classes": {
+        "5": "jam5-estructural"
+      },
+      "train_time_s": 18.7,
+      "checkpoint": "gru_N.pt"
+    },
+    "S": {
+      "n_seq": 110480,
+      "class_counts": [
+        57487,
+        1568321,
+        1106892,
+        25590,
+        556110,
+        0
+      ],
+      "class_weights": [
+        7.59307408911866,
+        1.4537341118464682,
+        1.7304132657091902,
+        11.380656549318768,
+        2.4413053778656817,
+        0.0
+      ],
+      "zero_weight_classes": {
+        "5": "jam5-estructural"
+      },
+      "train_time_s": 19.6,
+      "checkpoint": "gru_S.pt"
+    },
+    "E": {
+      "n_seq": 110480,
+      "class_counts": [
+        522207,
+        262734,
+        2026318,
+        408853,
+        94288,
+        0
+      ],
+      "class_weights": [
+        2.5193071289311746,
+        3.551765801249626,
+        1.2789355486903762,
+        2.847205839755603,
+        5.92890167788757,
+        0.0
+      ],
+      "zero_weight_classes": {
+        "5": "jam5-estructural"
+      },
+      "train_time_s": 19.8,
+      "checkpoint": "gru_E.pt"
+    },
+    "W": {
+      "n_seq": 110480,
+      "class_counts": [
+        523882,
+        259950,
+        2027215,
+        408596,
+        94757,
+        0
+      ],
+      "class_weights": [
+        2.515276433229464,
+        3.5707344144463127,
+        1.2786525663429684,
+        2.8481011212503184,
+        5.914210920778381,
+        0.0
+      ],
+      "zero_weight_classes": {
+        "5": "jam5-estructural"
+      },
+      "train_time_s": 18.9,
+      "checkpoint": "gru_W.pt"
+    }
+  }
+}

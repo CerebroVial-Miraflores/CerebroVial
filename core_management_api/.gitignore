@@ -9,6 +9,9 @@ venv/
 outputs/
 *.pt
 *.pth
+# Excepción TTH-09 Fase 3c: los checkpoints GRU servidos por el core se versionan
+# por Git LFS (horneados a la imagen vía COPY del Dockerfile). Ver models/gru/README.md.
+!models/gru/*.pt
 .idea/
 .vscode/
 data/

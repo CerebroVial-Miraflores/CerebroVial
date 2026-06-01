@@ -47,37 +47,44 @@ _DEV_COMPOSE = "-f docker-compose.yml -f docker-compose.dev.yml"
 @task
 def check_lfs(c):
     """Verifica que los binarios LFS sean reales y no pointers de texto."""
-    sentinel = "core_management_api/models/traffic_rf_class_current.joblib"
-    if not os.path.exists(sentinel):
-        _print_box("ERROR: archivo de modelo no encontrado", [
-            f"Path esperado: {sentinel}",
-            "",
-            "Probablemente el clone fue parcial o git-lfs no está activo.",
-            "Solución:",
-            "  1. Instalá git-lfs:",
-            "       macOS:  brew install git-lfs",
-            "       Linux:  apt install git-lfs",
-            "       Windows: https://git-lfs.com (descargar instalador)",
-            "  2. git lfs install",
-            "  3. git lfs pull",
-        ])
-        sys.exit(1)
+    # Un sentinela por familia de modelo: el RandomForest baseline (.joblib) y el
+    # GRU servido por el core (.pt, TTH-09 Fase 3c). Si cualquiera está ausente o
+    # quedó como puntero LFS sin materializar, abortamos antes de levantar.
+    sentinels = [
+        "core_management_api/models/traffic_rf_class_current.joblib",
+        "core_management_api/models/gru/gru_N.pt",
+    ]
+    for sentinel in sentinels:
+        if not os.path.exists(sentinel):
+            _print_box("ERROR: archivo de modelo no encontrado", [
+                f"Path esperado: {sentinel}",
+                "",
+                "Probablemente el clone fue parcial o git-lfs no está activo.",
+                "Solución:",
+                "  1. Instalá git-lfs:",
+                "       macOS:  brew install git-lfs",
+                "       Linux:  apt install git-lfs",
+                "       Windows: https://git-lfs.com (descargar instalador)",
+                "  2. git lfs install",
+                "  3. git lfs pull",
+            ])
+            sys.exit(1)
 
-    with open(sentinel, "rb") as f:
-        head = f.read(64)
-    if head.startswith(b"version https://git-lfs"):
-        _print_box("ERROR: archivos LFS son pointers, no binarios reales", [
-            "Los modelos .joblib y .pt están como punteros de texto.",
-            "Esto significa que git-lfs no descargó los binarios.",
-            "",
-            "Solución:",
-            "  1. Instalá git-lfs (ver instrucciones en README.md).",
-            "  2. git lfs install",
-            "  3. git lfs pull",
-            "",
-            "Después de pullear, volvé a correr este comando.",
-        ])
-        sys.exit(1)
+        with open(sentinel, "rb") as f:
+            head = f.read(64)
+        if head.startswith(b"version https://git-lfs"):
+            _print_box("ERROR: archivos LFS son pointers, no binarios reales", [
+                f"El modelo {sentinel} está como puntero de texto.",
+                "Esto significa que git-lfs no descargó los binarios.",
+                "",
+                "Solución:",
+                "  1. Instalá git-lfs (ver instrucciones en README.md).",
+                "  2. git lfs install",
+                "  3. git lfs pull",
+                "",
+                "Después de pullear, volvé a correr este comando.",
+            ])
+            sys.exit(1)
 
     print("✓ LFS OK — binarios presentes y reales")
 

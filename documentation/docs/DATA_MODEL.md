@@ -264,6 +264,47 @@ E19) recibe los mismos `TrafficData` que hoy van a CSV.
 **Quién la lee:** dashboard del frontend (KPIs de visión por cámara),
 demos de defensa.
 
+### `predictions` — Registro de predicciones GRU (CT-09.5)
+
+> Tabla creada por la migración
+> `core_management_api/alembic/versions/f2c9d7a4b6e1_add_predictions_table.py`
+> (TTH-09 Fase 5). **Append-only**, grano fila-por-paso: una fila por
+> (inferencia × dirección × paso); una llamada a `/predictions/predict`
+> produce 4 direcciones × 30 pasos = **120 filas**. Tabla relacional simple
+> (NO hypertable).
+
+El modelo es un **clasificador** (D-009, jam level 0-5): se persiste el `level`
+discreto (`argmax`) y el vector `probs`, **no** un ratio continuo (obsoleto; ver
+`documentation/contracts/prediction_contract.md` §6/§8, Nota D-005).
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `prediction_id` | string(36) PK, default uuid4 | indexado |
+| `intersection_id` | string | Opaco del request; **sin FK** al grafo (contrato §8) |
+| `direction` | string | `"N"` / `"S"` / `"E"` / `"W"` |
+| `step` | int | Paso de horizonte 1..30 (t+1 … t+30) |
+| `level` | int | Nivel discreto 0..5 (`argmax` de `probs`) |
+| `probs` | JSONB/JSON | `list[float]` de 6 probabilidades softmax |
+| `model_version` | string | Versión del modelo; discrimina principal vs respaldo (HU-20) |
+| `generated_at` | datetime tz-aware | ≡ `generated_at` de la response (contrato §8) |
+
+Índice compuesto `ix_predictions_intersection_id_generated_at` sobre
+`(intersection_id, generated_at)` para la consulta por intersección dentro de
+una ventana temporal (HU-14).
+
+**Quién la llena:** el handler `POST /predictions/predict`
+(`PredictionsRepo.insert_batch`), de forma **best-effort** — si la DB falla, se
+loguea y la predicción se devuelve igual (la persistencia no bloquea la respuesta).
+
+**Quién la lee:** HU-14 (métricas del modelo). El join predicho-vs-real, la
+observación real y la ventana de 24h son scope de HU-14, no de TTH-09.
+
+> ⚠️ **Gap preexistente (no resuelto en esta pasada):** las tablas
+> `motor_decisions`, `engine_active_state` (migración `b1f7c4d2a890`) y `users`
+> (migración `99319147948b`) tampoco están documentadas en este archivo; el doc
+> quedó desactualizado tras esas migraciones. Fuera del scope de TTH-09 Fase 5;
+> se deja anotado para una pasada futura de sincronización del schema canónico.
+
 ## Hypertables (TimescaleDB)
 
 En E3 se convierten las siguientes tablas en hypertables (chunk

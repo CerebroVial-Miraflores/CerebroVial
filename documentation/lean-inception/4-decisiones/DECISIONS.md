@@ -15,6 +15,7 @@
 | D-007 | Cerrada | 2026-05-11 | Módulo de visión: componente demostrable, no en loop de validación |
 | D-008 | Cerrada | 2026-05-11 | SUMO end-to-end: datos sintéticos para entrenamiento y validación |
 | D-009 | Cerrada | 2026-05-13 | Variable de estado predicha: jam level (constructo Waze) |
+| D-010 | Cerrada | 2026-05-31 | Revisión de SAN-01: torch CPU-only en el core para servir el GRU |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -285,6 +286,48 @@ El diseño actual permite esta extensión **sin cambios al modelo predictivo**, 
 - D-008 — SUMO genera dataset de entrenamiento y escenarios de validación.
 - `HU_BLOQUE_B.md`, HU-02 y HU-03 — primeras HUs operativas que consumen este constructo.
 - `EVOLUCION_TESIS.md` — sección de trabajo futuro, donde se declara la integración con Waze.
+
+---
+
+## D-010 — Revisión de SAN-01: torch CPU-only en el core para servir el GRU
+**Fecha:** 2026-05-31 · **Estado:** Cerrada · **Revisa:** SAN-01 / C7.5 (regla CLAUDE.md "no torch en core") · **Habilita:** TTH-09 Fase 3
+
+**Decisión:** Se **revisa SAN-01**. Se admite **`torch` CPU-only** como dependencia de `core_management_api`, **exclusivamente para servir el predictor GRU de TTH-09** (inferencia in-process). La clase `GRUMultiOutput` se **vendoriza en el core** (copia de la definición `nn.Module`, no import desde `ia_prediction_service`). El núcleo carga los 4 `.pt` (state_dicts) al arranque y corre la inferencia síncrona dentro del proceso FastAPI. Esto es una **revisión deliberada y acotada** de la regla, no su borrado: la guardia anti-regresión sigue vigente para todo lo demás (ver "Alcance / límite").
+
+**Contexto / por qué:** TTH-09 necesita servir el GRU desde el endpoint `POST /predictions/predict` (ver `documentation/contracts/prediction_contract.md`). Se evaluaron tres caminos:
+
+1. **Opción A — microservicio HTTP** (`ia_prediction_service` como servicio FastAPI+torch, consumido por red desde el core). **Descartada:** rompe el monolito modular (D-001); no hay precedente en el repo de cliente HTTP inter-servicio ni de patrón de fallback por red (la comunicación entre módulos es in-process + BD compartida). Agregaría orquestación (servicio nuevo en docker-compose, health checks, timeouts, manejo de caída remota) sin valor para un proyecto de tesis con un equipo de dos.
+2. **Opción B — torch CPU-only in-process en el core + clase vendorizada.** **Elegida.** Servir el GRU síncrono dentro del proceso es lo más simple y lo más coherente con el monolito modular (D-001): el core ya sirve el baseline RandomForest in-process por el mismo path; el GRU lo sustituye sin cambiar el modelo de despliegue.
+3. **Opción C — exportar a ONNX** (servir el GRU vía `onnxruntime`, sin torch en el core). **Descartada:** agrega complejidad de export/validación de paridad ONNX↔PyTorch para **evitar un `torch` que, en su variante CPU-only, ya se acepta**. El costo que motivó la evasión (peso de torch) se neutraliza directamente (ver abajo), así que el rodeo ONNX no se justifica.
+
+**Mitigación del costo que originó SAN-01:** el disparador real de SAN-01 / C7.5 fue el **peso de la imagen** — `torch` con CUDA agrega ~1.5 GB innecesarios al core (documentado en `documentation/docs/DISCOVERY_2026-05-10.md` §9.7). Ese costo **no aplica a la inferencia**: no se necesita GPU. Se neutraliza instalando **torch CPU-only** vía `--index-url https://download.pytorch.org/whl/cpu` (~200-300 MB instalado, vs ~2.5 GB de la variante CUDA). El modelo es trivial para CPU: `GRUMultiOutput` es 1 capa GRU `hidden=64` + 1 `Linear(64, 180)`, ~25k parámetros, forward sobre series de 30 pasos; 4 modelos (N/S/E/W) corren en microsegundos. El código de evaluación de `ia_prediction_service` ya carga con `map_location="cpu"`, confirmando que el camino CPU es el natural.
+
+**Lo que SE preserva del principio de SAN-01:** la **separación de responsabilidades** que la regla codificaba se mantiene intacta:
+- **Visión** sigue en `edge_device` (YOLO/ultralytics fuera del core).
+- **Entrenamiento del GRU** sigue **off-line en `ia_prediction_service`** — el core **no entrena**, solo carga state_dicts y sirve inferencia.
+- El **RandomForest baseline se preserva como respaldo Nivel 2** (CT-09.8): una caída del GRU degrada, no tumba, la predicción.
+- **`torch` NO entra a `cerebrovial_shared`.** Queda contenido como dependencia del core; el paquete transversal no se acopla a torch (la clase vendorizada vive en el core, no en `shared`).
+
+**Alcance / límite:** esta revisión habilita `torch` en el core **SOLO para inferencia del GRU**. **No** habilita: entrenamiento en el core, `torch` en `cerebrovial_shared`, `torch` con CUDA, ni `ultralytics`/otras dependencias pesadas. La guardia anti-regresión de CLAUDE.md **se mantiene para todo lo demás**: cualquier HU futura que quiera meter otra dependencia pesada (o torch para algo distinto de servir el GRU) debe revisarse igual que antes. D-010 es una excepción nominada y trazable, no un levantamiento general de la regla.
+
+**Relación con precedentes existentes:**
+- **Precedente que D-010 ACOTA (no reescribe):** el handoff `documentation/handoffs/tth-07/tth-07-fase0-handoff.md` usó SAN-01 como precedente del **principio general "dependencia pesada ⇒ módulo fuera del core"**, para mantener `simulation/` (SUMO) fuera del núcleo. **Ese principio general SIGUE VIGENTE.** D-010 revisa SAN-01 **únicamente** para el caso torch-CPU-only-inferencia-del-GRU; **no** abre la puerta a meter otras dependencias pesadas en el core, y en particular **no** afecta la decisión de mantener `simulation/`/SUMO fuera del núcleo. El handoff de tth-07 es histórico y **no se edita**; D-010 solo acota explícitamente el alcance de aquel precedente.
+- **Precedente del mecanismo CPU-only (refuerza, no inventa):** el patrón `--index-url https://download.pytorch.org/whl/cpu` (~200 MB vs ~2 GB CUDA) **ya está documentado en el repo** para `edge_device`: `DECISIONS_HU.md` (DHU-024 §7) y `documentation/docs/TODO.md` (C7.6, reabierta como F9.z). El método CPU-only que adopta D-010 **no es nuevo** — es un patrón ya reconocido en el proyecto, lo que fortalece la viabilidad de la decisión.
+- **SAN-01 sigue "resuelta", no se des-cierra:** `documentation/sdd/SPECKIT_MAPPING.md` marca SAN-01 como resuelto (purga de torch muerto, 2026-05-26). D-010 **no reabre** esa deuda: aquella purga eliminó torch como dependencia *muerta* (código STGNN residual); D-010 reintroduce torch como dependencia *viva y justificada* (servir el GRU). Son eventos distintos sobre la misma regla.
+
+**Impacto:**
+- `core_management_api/requirements.txt` sumará `torch` (variante CPU-only, vía `--index-url`/`--extra-index-url`) al implementar TTH-09 Fase 3. Sería la primera dep del core con directiva de índice.
+- La clase `GRUMultiOutput` se vendoriza en el core; debe ser **byte-compatible** con el state_dict guardado por `ia_prediction_service` (mismo `nn.Module`), verificada por un **test de paridad** (Fase 3a) — ver `prediction_contract.md` §4.
+- CLAUDE.md (regla "no torch en core") y `documentation/ESTADO_Y_PROXIMOS_PASOS.md` (afirmación de guardia anti-regresión) se actualizan para apuntar a D-010 como la excepción registrada.
+- CI (ubuntu) y el Docker del core (`python:3.11-slim`, Debian glibc) admiten el wheel CPU-only de torch; el entorno Windows del equipo también tiene wheel CPU-only. Mecanismo de llegada de los `.pt` al contenedor: a resolver al implementar TTH-09 Fase 3 (los `.pt` hoy están gitignored; pesan ~101 KB c/u).
+
+**Referencias:**
+- **SAN-01 / C7.5:** CLAUDE.md §"Deuda técnica a respetar"; `documentation/docs/TODO.md` C7.5; `documentation/ESTADO_Y_PROXIMOS_PASOS.md`; `documentation/docs/DISCOVERY_2026-05-10.md` §9.7 (peso de torch en el core).
+- **Contrato de predicción:** `documentation/contracts/prediction_contract.md` §4 (mecanismo de carga del GRU) y §7 (RF como respaldo Nivel 2).
+- **Decisiones relacionadas:** D-001 (monolito modular), D-006 (GRU univariado por dirección).
+- **Precedente del patrón CPU-only:** `DECISIONS_HU.md` DHU-024 §7; `documentation/docs/TODO.md` C7.6/F9.z.
+- **Precedente acotado:** `documentation/handoffs/tth-07/tth-07-fase0-handoff.md` (principio "dependencia pesada fuera del core", sigue vigente).
+- **TTH-09 Fase 3:** implementación del serving del GRU.
 
 ---
 
