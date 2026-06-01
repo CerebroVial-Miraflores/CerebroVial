@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Meandata por edge del corredor Larco (buckets de 60s). Fuente de `speed` por
+     edge para derivar jam_level en el dataset builder del STGNN.
+
+     Cubre TODOS los edges de la red (sin filtro): los 6 nodos instrumentados del
+     grafo, el nodo terminal Diez Canseco (279893875#5) y sus salidas. El builder
+     filtra a los 6 nodos vía corridor_graph_mapping.json.
+
+     excludeEmpty="false": un edge sin tráfico se emite igual, con sampledSeconds="0.00"
+     y SIN atributo speed. El builder usa sampledSeconds como señal de presencia para
+     tratar el bucket vacío como flujo libre (jam 0), en vez de mapear speed ausente→0
+     a jam 5 (ambigüedad vacío-por-flujo-libre vs. vacío-por-bloqueo: ver builder). -->
+<additional>
+  <edgeData id="aggE" freq="60" file="edgedata.xml" excludeEmpty="false"/>
+</additional>
