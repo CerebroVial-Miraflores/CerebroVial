@@ -166,6 +166,14 @@ def test_failfast_missing_seed(tmp_path):
         build_miraflores_dataset(pdir, mp, seeds=(42, 43, 99))
 
 
+def test_failfast_missing_feature_column(tmp_path):
+    # Pedir una feature inexistente → ValueError claro (no traceback crudo de pyarrow),
+    # validado contra el schema antes del read.
+    mp, pdir = _build_small(tmp_path, seeds=(42,))
+    with pytest.raises(ValueError, match="columna_inexistente"):
+        build_miraflores_dataset(pdir, mp, seeds=(42,), feature_columns=["columna_inexistente"])
+
+
 # ------------------------------------------------------------- determinismo --------
 def test_determinism(tmp_path):
     mp, pdir = _build_small(tmp_path, seeds=(42, 43))

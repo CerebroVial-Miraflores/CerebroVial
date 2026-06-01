@@ -51,6 +51,7 @@ from typing import Sequence
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 # Raíz del repo: este archivo vive en ia_prediction_service/src/data/.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -141,11 +142,16 @@ def build_miraflores_dataset(
         path = _parquet_path(parquet_dir, seed)
         if not path.exists():
             raise ValueError(f"seed {seed} faltante: no existe el Parquet {path}")
-        df = pd.read_parquet(path, columns=read_cols)
 
-        missing_cols = [c for c in read_cols if c not in df.columns]
+        # Validar el schema ANTES del read restringido: pd.read_parquet(columns=...)
+        # lanzaría un error crudo de pyarrow si una columna-feature no existe; este
+        # chequeo da un ValueError claro nombrando la columna y el seed.
+        available = set(pq.read_schema(path).names)
+        missing_cols = [c for c in read_cols if c not in available]
         if missing_cols:
             raise ValueError(f"seed {seed}: columnas ausentes en {path.name}: {missing_cols}")
+
+        df = pd.read_parquet(path, columns=read_cols)
 
         present = set(df["edge_id"].astype("string").unique())
         missing_edges = [e for e in node_order if e not in present]
