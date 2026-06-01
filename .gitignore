@@ -18,3 +18,6 @@ __pycache__/
 **/.DS_Store
 compose-*.log
 videos/
+# Debris descartable (corridas SUMO, datasets crudos, calibración). Cuelga de repo-root.
+# Lo versionable se promueve fuera de scratch/ (p.ej. simulation/data/datasets/).
+scratch/

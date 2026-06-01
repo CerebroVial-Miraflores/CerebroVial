@@ -97,6 +97,21 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   `documentation/docs/PLAN.md` se preservan intencionalmente como testimonios fechados; el
   linaje queda documentado en la cabecera del archivo legacy.
 
+**Deuda del track STGNN / generación de demanda Miraflores (registrada 2026-06-01):**
+- **Perfiles de día sin calibrar.** Solo el perfil **laborable** está calibrado para Miraflores
+  (`scale=0.20`, validado sobre la 24h **continua** contra el colapso por carryover). Los perfiles
+  finde/feriado/especial **NO** están calibrados — su scale podría diferir, y el "especial" (meseta
+  alta) tiene alto riesgo de gridlock. Pendiente: calibrar cada uno con su propio barrido sobre la
+  24h **continua** (NO ventanas aisladas — son ciegas al carryover, lección del fallo a `scale=0.35`).
+  A cerrar cuando el pipeline esté completo, antes de armar un dataset multi-perfil realista en
+  proporción de calendario.
+- **Artefactos `corridor_*` obsoletos.** Los 4 archivos `corridor_*` + el handoff de Fase 1 quedaron
+  atados al escenario Larco descartado (ya anotado en **D-012**). Migrar/reemplazar al reconstruir
+  Fase 1 sobre Miraflores.
+- **Dataset actual = solo laborable.** El dataset multi-día en generación es homogéneo (60 días
+  laborables, variación por seed). Suficiente para construir/validar el pipeline end-to-end; **NO**
+  representa finde/feriado. Enriquecer con otros perfiles tras cerrar el pipeline (depende del punto 1).
+
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
 - Estado del SDD: documentation/sdd/SPECKIT_MAPPING.md.

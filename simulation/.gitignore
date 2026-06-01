@@ -11,6 +11,11 @@ data/_e2e/
 data/corredor_larco/
 .env
 *.parquet
+# Datasets versionados: el .parquet ya lo ignora la regla global de arriba.
+# Ignorar XML de muestra crudos (pesan cientos de MB), pero trackear el README
+# para que la carpeta sea visible en git.
+data/datasets/**/*.xml
+!data/datasets/miraflores_laborable_60d/README.md
 # Intermediarios de build_network.py (regenerables desde el YAML).
 conf/network/_generated_*.xml
 # Outputs SUMO en conf/network/ (generados accidentalmente por corridas
