@@ -18,6 +18,7 @@
 | D-010 | Cerrada | 2026-05-31 | Revisión de SAN-01: torch CPU-only en el core para servir el GRU |
 | D-011 | Cerrada | 2026-06-01 | Reapertura de D-006: predictor espacio-temporal sobre grafo (STGNN) acotado al corredor de la Av. Larco |
 | D-012 | Cerrada | 2026-06-01 | Enmienda a D-011: escenario del track STGNN de corredor Larco a Miraflores completo |
+| D-013 | Cerrada | 2026-06-01 | Target del track STGNN: meanTimeLoss/demora (enmienda a D-011, cierre de deuda diferida por D-012) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -363,6 +364,8 @@ El diseño actual permite esta extensión **sin cambios al modelo predictivo**, 
 
 **Plan del track (cada fase con stage gate y aprobación explícita):** Fase 1 constructor de grafo desde `corredor_larco.net.xml` + `graph_edges` → `edge_index`; Fase 2 dataset por-arista (tiempo×nodos×canales, escala 0–5); Fase 3 baseline GRU reentrenado sobre el dataset del corredor; Fase 4 STGNN Time-then-Space, métricas en el mismo split; Fase 5 decisión de integración.
 
+> **Enmienda 2026-06-01 (D-013) — target.** El target "escala 0–5" que esta línea fija para Fase 2 y baseline en adelante quedó **enmendado por D-013**: el target del track pasa a demora continua (`meanTimeLoss`); la escala 0–5 queda como capa de presentación derivada de la demora predicha, no como target de entrenamiento. El texto histórico de D-011 se conserva sin cambios; D-013 lo corrige desde afuera.
+
 **Pendiente:** Notificar a Paucar (asesor actual) la reapertura de D-006 — notificación, no solicitud de permiso. La condición original "Sujeta a confirmación con asesor" de D-006 quedó en suspenso bajo un asesor anterior; D-011 la cierra como track autorizado bajo el asesor actual.
 
 ---
@@ -401,7 +404,7 @@ Esta enmienda **deja sin efecto** la frase de D-011 en su sección "Alcance — 
 **Trabajo futuro / deuda:**
 
 - **(a) Artefactos de Fase 1 atados a escenario obsoleto.** Los 4 archivos `corridor_*` y el handoff de cierre de Fase 1 quedan referidos al escenario Larco, ahora descartado; deberán migrarse o reemplazarse al reconstruir Fase 1 sobre Miraflores (**deuda de Fase 1 → Fase 1.5**).
-- **(b) Cambio de target diferido.** El reemplazo `jam_level` → demora/`meanTimeLoss` queda **pendiente de decisión formal en Fase 2** (generación de dataset), a evaluar contra D-009 (que fija jam_level como variable de estado). No se resuelve en esta enmienda.
+- **(b) Cambio de target diferido.** El reemplazo `jam_level` → demora/`meanTimeLoss` queda **pendiente de decisión formal en Fase 2** (generación de dataset), a evaluar contra D-009 (que fija jam_level como variable de estado). No se resuelve en esta enmienda. **→ CERRADA por D-013 (2026-06-01):** la decisión formal se tomó — el target del track pasa a demora/`meanTimeLoss` continua; D-009 permanece vigente y sin enmienda para producción (D-013 es excepción acotada del track). Ver § D-013.
 - **(c) Decisiones ausentes de la Constitución.** D-010, D-011 y D-012 siguen sin reflejarse en `.specify/memory/constitution.md` (deuda preexistente; **no se resuelve aquí**).
 
 **Pendiente:** Notificar a Paucar (asesor) el cambio de escenario del track —notificación, no solicitud de permiso, en línea con D-011.
@@ -421,9 +424,44 @@ D-012 difirió la elección del subgrafo de la STGNN a "una decisión a posterio
 - **Recorte por topología, no por señal.** El grafo completo tiene 2 componentes conexas: una principal de 375 nodos y una islita de 6 edges interconectados (grados 1-3) desconectada del cuerpo vía `<connection>`. Esos 6 edges son además de muy bajo tráfico (todos vacíos en ≥1 de los 8 días auditados). Como están topológicamente desconectados, no comparten señal espacial con el cuerpo principal por construcción y un STGNN no puede propagar contexto hacia/desde ellos. Se excluyen. Este recorte NO contradice la decisión de "no recortar por señal": saca 6 nodos que por definición topológica no tienen señal espacial compartida, no edges de baja densidad dentro de la componente conexa.
 - **Lo que se conserva dentro del grafo de 375:** los edges de bajo tráfico o sin señal que estén conectados a la componente principal — incluidos 2 edges estructuralmente vacíos (sin tráfico en los 8 días: `111898821`, `438009517`) que son vecinos topológicos válidos y podrían activarse bajo perfiles de demanda aún no calibrados (finde/feriado/especial). Su vacío se trata como deuda de modelado, no como criterio de recorte.
 - **Deuda registrada para Fase 2/3 (esparsidad):** a scale 0.20 la red es muy esparsa — `speedRelative` es NaN (edge vacío, sin vehículos que promediar) en ~82% de las celdas; la mediana de edge está vacía el 91% del día. El NaN es estructural (estado vacío), no dato faltante. El discriminador robusto de vacío es la regla de 3 estados (`density==0 AND speed.isna()`), NO `density==0` sola (esta última invierte el ~0.3-0.6% de celdas que son atascos-parpadeo). El tratamiento del estado vacío en el dataset por-arista y en el loss del modelo queda como decisión de diseño de Fase 2/3 — no se resuelve aquí.
-- **Sin relación con el target diferido:** toda la medición se hizo sobre `speedRelative`/`density`, variables neutrales. El cambio de target `jam_level`→`meanTimeLoss` sigue diferido a Fase 2 por D-012; esta nota no lo toca.
+- **Sin relación con el target diferido:** toda la medición se hizo sobre `speedRelative`/`density`, variables neutrales. El cambio de target `jam_level`→`meanTimeLoss` sigue diferido a Fase 2 por D-012; esta nota no lo toca. **→ Cerrado por D-013 (2026-06-01):** el cambio de target quedó decidido — target del track = demora continua (`meanTimeLoss`). Ver § D-013.
 
 **Artefactos:** el grafo de 375 (componente principal) es el canónico de modelado. El grafo completo de 381 se conserva versionado como evidencia del análisis de componentes. Ambos mappings JSON versionados como insumo cross-sesión. Respaldo crudo de los Bloques 0/1 en `documentation/handoffs/stgnn-fase1/REPORTE_CRUDO_BLOQUES_0_1.md`.
+
+---
+
+## D-013 — Target del track STGNN: meanTimeLoss/demora (enmienda a D-011, cierre de deuda diferida por D-012)
+**Estado:** Cerrada · 2026-06-01
+
+**Contexto.** D-011 abrió el track STGNN especificando el target como jam_level escala 0–5 (heredado de D-009, derivado del ratio de velocidad). D-012 y su anexo difirieron explícitamente a la Fase 2 la decisión de reemplazar ese target por demora/meanTimeLoss, dejándola como deuda abierta (deuda (b) de D-012; anexo de cierre de Fase 1). Esta decisión cierra esa deuda.
+
+**Decisión.** El target del track STGNN pasa de jam_level (ratio de velocidad) a meanTimeLoss/demora continua. El modelo entrena sobre la demora continua (regresión); la discretización a escala 0–5 estilo Waze queda como capa de presentación —derivada de la demora predicha—, no como target de entrenamiento.
+
+**Fundamento (empírico).** El jam_level derivado de velocidad-media está contaminado por el estado del semáforo: un edge con el semáforo en rojo registra velocidad baja que aparenta congestión alta (jam 4–5) cuando en realidad es el ciclo normal del semáforo, no congestión. La demora (meanTimeLoss) no tiene ese sesgo. Dos verificaciones lo respaldan: (1) la verificación de variables candidatas (cola / demora / velocidad) sobre corrida existente del corredor, que mostró que la demora exhibe estructura espacial limpia y la velocidad no; (2) el bloque exploratorio de Fase 2 sobre los 375 nodos de Miraflores, que reconfirmó señal espacial monótona decreciente en timeLoss (contraste vecinos-1-salto vs no-vecinos +0.14 sobre tráfico real, decaimiento v1>v2>no-vec) y mostró que el timeLoss==0 está 99.8% ocupado por celdas vacías (sin vehículos), confirmando que la señal de demora vive en las celdas con tráfico, no en el cero.
+
+**Alcance — aplica SOLO al track STGNN** (investigación, D-011). D-009 sigue vigente y sin enmienda para el sistema de producción: el predictor GRU de producción (TTH-09) y sus consumidores siguen usando jam_level por ratio de velocidad. Esta decisión NO toca producción, ni el GRU de TTH-09, ni los archivos que consumen jam_level. Es una excepción acotada del track de investigación, justificada porque el track mide demora (lo que el sistema realmente quiere reducir) sin el ruido del semáforo.
+
+**Tratamiento del estado vacío.** Las celdas vacías (regla de 3 estados: density==0 AND speed.isna(), que reproduce exacto el predicado de generación sampledSeconds==0) NO se mapean a demora 0 —eso confundiría "sin tráfico" con "sin congestión"—. Se tratan como ausencia de señal (NaN + máscara de validez), y el modelo las ignora vía máscara. Decisión de modelado heredada a Fase 2/3.
+
+**Baseline de comparación (Fase 3).** El baseline contra el que se evalúa el STGNN en Fase 5 es una GRU univariada nueva, entrenada sobre demora continua sobre el mismo dataset y split que el STGNN — NO el GRU de producción de TTH-09 (que predice otro target sobre otro dataset). La comparación STGNN-vs-baseline aísla la contribución de la componente espacial: ambos comparten target (demora), features y split; el STGNN agrega solo la vecindad del grafo.
+
+**Enmienda.** Corrige D-011 (donde especificaba "escala 0–5" para Fase 2 y baseline) y cierra la deuda (b) de D-012 y el anexo de cierre de Fase 1 (que dejaban el cambio diferido). El plan de fases del track se lee ahora con target = demora continua de Fase 2 en adelante.
+
+**Deuda registrada.** (i) La calibración del dataset (scale=0.20) se ancló pensando en jam_level-velocidad; reverificar que sigue siendo apropiada para demora como target. (ii) Los cortes de discretización 0–5 para demora (capa de presentación) no existen aún; se calibrarán contra datos de Waze reales cuando estén disponibles, no se inventan desde SUMO. (iii) Enriquecimiento de features de entrada (density, flow, speedRelative además de la propia serie de demora) diferido como posible mejora del modelo tras la comparación baseline-vs-STGNN.
+
+**Enmienda 2026-06-01 — corrección del target: timeLoss total, no meanTimeLoss por-vehículo**
+
+D-013 fijó el target del track en "meanTimeLoss/demora". Una verificación read-only sobre el dataset (los 375 nodos del LCC, day_seed042 + cross-check contra el edgeData crudo) mostró que la columna timeLoss del Parquet es el timeLoss TOTAL agregado por arista por intervalo (sumado sobre vehículos), no el promedio por vehículo, y que derivar el promedio por vehículo es inviable e indeseable:
+
+**El promedio por-vehículo está indefinido en el régimen de máxima congestión.** En celdas de atasco (cola estática, entered≈0, nadie completa la traversía), timeLoss_total / n_veh diverge — valores de hasta 3.240.000 s por división por casi-cero. El conteo exacto (entered) también es 0 en esas celdas, así que el problema es intrínseco al per-vehicle, no un artefacto del denominador estimado. El target debe ser máximo en el atasco, no indefinido.
+
+**El total es estable y preserva el orden.** Es finito y monótono en toda la cola (máx 1253 s). Su correlación de Spearman con el promedio por-vehículo es 0.94, y el volumen es bajo en el grueso de las celdas (mediana 1 vehículo/bin, 86% ≤2 vehículos), así que el promedio y el total casi coinciden donde hay poco tráfico y el total se comporta mejor donde hay atasco.
+
+**Regenerar no es opción gratis ni resuelve el problema.** El edgeData crudo se descartó para 59 de los 60 días (solo sobrevive una muestra), así que obtener el promedio "exacto" exigiría re-correr las 60 simulaciones SUMO — y aun así el entered=0 en atascos reproduciría la misma indefinición.
+
+**Corrección.** El target del track es timeLoss total por arista por intervalo de 60 s (la columna timeLoss del Parquet, ya disponible). Sin regeneración, sin recompactado, sin derivación per-vehículo. Todo lo demás de D-013 se mantiene: el target sigue siendo demora (no velocidad/jam_level, evitando la contaminación del semáforo que motivó D-013), continuo, con discretización 0–5 solo en presentación, alcance solo-track, producción intacta.
+
+**Deuda registrada.** El timeLoss total mezcla intensidad de congestión con volumen de tráfico (confounding acotado: Spearman 0.94 con el per-vehículo indica reordenamiento moderado, concentrado en celdas de alto volumen). Es un sesgo medible y documentado, preferible a la indefinición catastrófica del per-vehículo en el atasco. Si una fase futura quisiera un target per-vehículo, requeriría regeneración + una política de regularización para las colas estáticas — no resuelto aquí.
 
 ---
 

@@ -64,6 +64,12 @@ distribuida (269/381 edges), recorte por **topología**, no por densidad. Espars
 a modelado Fase 2/3. Decisión fundamentada anexada a **D-012**; respaldo crudo en
 `documentation/handoffs/stgnn-fase1/REPORTE_CRUDO_BLOQUES_0_1.md`.
 
+**Target del track — cerrado (D-013, 2026-06-01):** el reemplazo `jam_level` (ratio de velocidad)
+→ **demora continua (`meanTimeLoss`)** quedó decidido, cerrando la deuda que D-012 y su anexo dejaban
+diferida a Fase 2. El modelo entrena sobre demora continua; la escala 0–5 estilo Waze pasa a ser capa
+de presentación, no target. **D-009 sigue vigente y sin enmienda para producción** — el GRU de TTH-09
+y sus consumidores siguen usando jam_level; D-013 es excepción acotada del track de investigación.
+
 **Nota de convención:** los handoffs del track Miraflores se siembran bajo
 `documentation/handoffs/stgnn-fase1/` (las fases siguientes heredarán `stgnn-fase2/`, etc.),
 separados del histórico `corredor-larco/` (escenario Larco descartado por D-012).
