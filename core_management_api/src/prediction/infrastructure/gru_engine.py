@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 
 import torch
 from cerebrovial_shared.lfs_check import assert_real_binary
@@ -27,15 +26,14 @@ from src.prediction.infrastructure.gru_model import GRUMultiOutput
 
 logger = logging.getLogger(__name__)
 
-# Path por defecto de los .pt. HONESTO: hoy los checkpoints viven en el módulo de
-# entrenamiento (``ia_prediction_service/models/``), que no es runtime del core. Este
-# default repo-relativo apunta a esa ubicación real para que 3a/local cargue de
-# verdad; el deploy de los .pt al runtime del core (path en contenedor) es deuda
-# explícita de Fase 3c. Override en runtime con la env var ``GRU_MODEL_DIR``.
-#   gru_engine.py -> infrastructure[0] -> prediction[1] -> src[2]
-#                 -> core_management_api[3] -> <repo root>[4]
-_REPO_ROOT = Path(__file__).resolve().parents[4]
-_DEFAULT_GRU_MODEL_DIR = str(_REPO_ROOT / "ia_prediction_service" / "models")
+# Path por defecto de los .pt: ``models/gru`` relativo al CWD (TTH-09 Fase 3c). Espeja
+# al RandomForest (``engine.py`` usa ``model_dir="models"`` relativo al CWD): los
+# checkpoints se hornean a la imagen del core vía el ``COPY core_management_api/ .`` del
+# Dockerfile, así que resuelve en contenedor (CWD ``/app`` -> ``/app/models/gru``) y en
+# local (corriendo desde ``core_management_api/`` -> ``core_management_api/models/gru``).
+# El sync de los .pt desde el entrenamiento es copia+commit manual (ver
+# ``models/gru/README.md``). Override en runtime con la env var ``GRU_MODEL_DIR``.
+_DEFAULT_GRU_MODEL_DIR = "models/gru"
 
 
 class GRUModelEngine:
