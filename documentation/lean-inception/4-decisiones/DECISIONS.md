@@ -17,6 +17,7 @@
 | D-009 | Cerrada | 2026-05-13 | Variable de estado predicha: jam level (constructo Waze) |
 | D-010 | Cerrada | 2026-05-31 | Revisión de SAN-01: torch CPU-only en el core para servir el GRU |
 | D-011 | Cerrada | 2026-06-01 | Reapertura de D-006: predictor espacio-temporal sobre grafo (STGNN) acotado al corredor de la Av. Larco |
+| D-012 | Cerrada | 2026-06-01 | Enmienda a D-011: escenario del track STGNN de corredor Larco a Miraflores completo |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -363,6 +364,47 @@ El diseño actual permite esta extensión **sin cambios al modelo predictivo**, 
 **Plan del track (cada fase con stage gate y aprobación explícita):** Fase 1 constructor de grafo desde `corredor_larco.net.xml` + `graph_edges` → `edge_index`; Fase 2 dataset por-arista (tiempo×nodos×canales, escala 0–5); Fase 3 baseline GRU reentrenado sobre el dataset del corredor; Fase 4 STGNN Time-then-Space, métricas en el mismo split; Fase 5 decisión de integración.
 
 **Pendiente:** Notificar a Paucar (asesor actual) la reapertura de D-006 — notificación, no solicitud de permiso. La condición original "Sujeta a confirmación con asesor" de D-006 quedó en suspenso bajo un asesor anterior; D-011 la cierra como track autorizado bajo el asesor actual.
+
+---
+
+## D-012 — Enmienda a D-011: escenario del track STGNN de corredor Larco a Miraflores completo
+**Fecha:** 2026-06-01 · **Estado:** Cerrada · **Revisa:** D-011 · **Notifica:** asesor (Paucar) · **Track:** investigación paralela, no toca producción
+
+**Decisión:** Se enmienda el **escenario** del track STGNN abierto por D-011: deja de ser el corredor de la Av. Larco (3 cruces encadenados S→N: Diez Canseco, Schell, Benavides) y pasa a ser **Miraflores completo** (`miraflores.net.xml`, 47 cruces semaforizados, ~590 edges vehiculares). La estrategia es **simular la red completa de Miraflores una sola vez** —sin recortarla, para no degradar los `tlLogic` ni perder el tráfico de contexto que entra y sale del subgrafo— y **elegir el subgrafo de análisis de la STGNN sobre los datos a posteriori**, no antes de simular. Todo lo demás que fijó D-011 (track de investigación paralelo; no toca producción ni D-010; ambas salidas —integrar STGNN o conservar GRU— válidas; decisión de integración diferida a la fase final con números) se mantiene sin cambios.
+
+> **Nota 2026-06-01 — Corrección de conteo de edges.** El conteo "~590 edges vehiculares" de la Decisión es incorrecto. Auditoría de la red (`miraflores.net.xml`) establece **381 edges vehiculares** (lanes que permiten `passenger`); la cifra de ~1044 edges "con nombre" incluía 663 edges peatonales/ciclovía. El escenario y la decisión no cambian; solo se corrige la magnitud. Fuente: auditoría read-only de `simulation/conf/network/miraflores.net.xml`, 2026-06-01.
+
+**Qué cambió desde D-011 (por qué se enmienda):**
+
+1. **El corredor Larco no tiene señal espacial empírica explotable.** El corredor es una cadena de 3 cruces; el co-movimiento observado entre ellos proviene de **demanda compartida**, no de una estructura espacial que una STGNN pueda explotar como información de vecindad. Una corrida de prueba de 24 h lo confirmó: no hay señal espacial empírica que justifique el modelo sobre 3 nodos encadenados. La premisa de D-011 ("el corredor ya es simulable, multi-nodo real") era cierta pero insuficiente: simulable ≠ portador de señal espacial aprovechable.
+2. **Miraflores completo da topología real con vecindad de grado >1.** 47 cruces y ~590 edges vehiculares ofrecen un grafo con suficiente conectividad para que el contexto de vecinos pueda, en principio, mejorar la predicción por arista. La elección del subgrafo concreto de análisis se hace **después** de ver los datos simulados, no por diseño previo.
+3. **Simular completo y recortar después, no recortar antes.** Recortar la red antes de simular degradaría los `tlLogic` de los cruces de borde y eliminaría el tráfico de contexto (rutas que atraviesan el subgrafo). Se simula Miraflores entero una vez y el subgrafo de la STGNN se selecciona sobre el dataset resultante.
+
+Esta enmienda **deja sin efecto** la frase de D-011 en su sección "Alcance — qué NO toca": *"La extensión a la red completa de Miraflores (`miraflores.net.xml`, 47 semáforos) queda como trabajo futuro, fuera de este track."* Lo que D-011 declaró trabajo futuro **es ahora el escenario activo y único** del track. El corredor Larco se descarta como escenario del STGNN (su uso como red de validación de Max Pressure / IE05 no se ve afectado).
+
+**Condición de éxito (actualizada):** Se mantiene el criterio de D-011 —la STGNN se adopta **solo si supera al baseline GRU univariado reentrenado sobre el mismo split de evaluación**, por un margen que justifique su complejidad e integración; si no lo supera, se conserva el GRU y se documenta el hallazgo— **ahora medido sobre el dataset de Miraflores completo y el subgrafo de análisis elegido a posteriori**, no sobre el corredor Larco. El criterio que se evalúa es **correlación espacial** —que el contexto de los vecinos mejore la predicción por arista, al estilo de los benchmarks METR-LA / PEMS-BAY— **no** propagación física de congestión con lag temporal medible entre tramos. No se asume mejora; se mide.
+
+**Alcance — qué NO toca esta enmienda:**
+
+- **No modifica D-010.** `torch` CPU-only permanece en el core justificado exactamente como D-010 lo dejó (servir el GRU univariado de producción de TTH-09). La STGNN sigue **fuera del core**, en el track de investigación.
+- **No toca el predictor de producción ni el core:** ni `core_management_api`, ni la clase vendorizada `gru_multioutput.py`, ni el endpoint `POST /predictions/predict`.
+- **No resuelve el cambio de target de predicción.** El reemplazo de `jam_level`/ratio por demora/`meanTimeLoss` **NO se decide aquí**; queda **diferido a la Fase 2** del track (generación de dataset) como enmienda de fondo a evaluar contra D-009. Esta entrada cambia **solo el escenario**, no la variable objetivo.
+- **No reabre ni reescribe D-011 in-place:** D-011 queda intacta; esta entrada la revisa desde afuera.
+
+**Riesgos documentados (no resueltos):**
+
+- Aun con 47 nodos, no está garantizado que exista señal espacial aprovechable en datos sintéticos sin calibración real; de ahí la condición de éxito medida contra baseline.
+- La simulación de Miraflores completo es más pesada (590 edges, 47 `tlLogic`) que el corredor: mayor costo de cómputo y de almacenamiento del dataset.
+- La selección de subgrafo a posteriori introduce un grado de libertad metodológico: el criterio de selección debe documentarse para no inducir cherry-picking del subgrafo más favorable.
+- `tsl`/PyTorch Lightning sigue siendo la zona de mayor riesgo de tiempo (heredado de D-006/D-011).
+
+**Trabajo futuro / deuda:**
+
+- **(a) Artefactos de Fase 1 atados a escenario obsoleto.** Los 4 archivos `corridor_*` y el handoff de cierre de Fase 1 quedan referidos al escenario Larco, ahora descartado; deberán migrarse o reemplazarse al reconstruir Fase 1 sobre Miraflores (**deuda de Fase 1 → Fase 1.5**).
+- **(b) Cambio de target diferido.** El reemplazo `jam_level` → demora/`meanTimeLoss` queda **pendiente de decisión formal en Fase 2** (generación de dataset), a evaluar contra D-009 (que fija jam_level como variable de estado). No se resuelve en esta enmienda.
+- **(c) Decisiones ausentes de la Constitución.** D-010, D-011 y D-012 siguen sin reflejarse en `.specify/memory/constitution.md` (deuda preexistente; **no se resuelve aquí**).
+
+**Pendiente:** Notificar a Paucar (asesor) el cambio de escenario del track —notificación, no solicitud de permiso, en línea con D-011.
 
 ---
 
