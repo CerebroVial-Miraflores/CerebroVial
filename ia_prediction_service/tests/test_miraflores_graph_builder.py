@@ -10,10 +10,12 @@ comportamiento (lanza / no lanza, conteos del mapping), no sobre logs.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from collections import deque
 
 import pytest
 import torch
 
+from src.data import miraflores_graph_builder as mgb
 from src.data.miraflores_graph_builder import (
     DEFAULT_NET_XML,
     EXPECTED_GHOST_EDGES,
@@ -21,6 +23,21 @@ from src.data.miraflores_graph_builder import (
 )
 
 EXPECTED_NODES = 381
+
+# Componente conexa principal (LCC): la red tiene 2 componentes de tamaños [375, 6].
+EXPECTED_LCC_NODES = 375
+EXPECTED_COMPONENT_SIZES = (375, 6)
+
+# Los 6 sumo_edge de la islita desconectada (componente menor). NO deben aparecer en
+# el grafo de 375.
+ISLET = {
+    "11985865#0",
+    "11985865#1",
+    "1364346888",
+    "1364346889",
+    "24252389",
+    "24252402",
+}
 
 # Pares fantasma conocidos (sumo_edge → sumo_edge): comparten junction pero NO tienen
 # <connection> real. Deben quedar fuera del edge_index del grafo completo.
@@ -104,3 +121,90 @@ def test_subset_param():
     # edge_id inexistente entre los 381 lanza ValueError.
     with pytest.raises(ValueError):
         build_miraflores_graph(edge_ids=["__no_existe__"], mapping_out=None)
+
+
+# --------------------------------------------------------------------------- #
+# Modo componente-grande (LCC): recorte por conectividad topológica.
+# --------------------------------------------------------------------------- #
+def _lcc():
+    # No escribe artefacto JSON durante el test.
+    return build_miraflores_graph(largest_component_only=True, mapping_out=None)
+
+
+def test_largest_component_375():
+    # El grafo de la componente principal tiene 375 nodos y reporta procedencia.
+    _ei, _ew, mapping = _lcc()
+    assert mapping["counts"]["nodes"] == EXPECTED_LCC_NODES
+    assert len(mapping["nodes"]) == EXPECTED_LCC_NODES
+    assert mapping["derived_from"] == "largest connected component of full 381-node graph"
+    assert mapping["full_graph_nodes"] == EXPECTED_NODES
+    assert mapping["dropped_component_nodes"] == len(ISLET)
+    assert set(mapping["dropped_edges"]) == ISLET
+
+
+def test_component_gate():
+    # Tamaños correctos no lanzan; tamaños incorrectos lanzan ValueError.
+    build_miraflores_graph(
+        largest_component_only=True,
+        expected_component_sizes=EXPECTED_COMPONENT_SIZES,
+        mapping_out=None,
+    )
+    with pytest.raises(ValueError):
+        build_miraflores_graph(
+            largest_component_only=True,
+            expected_component_sizes=(380, 1),
+            mapping_out=None,
+        )
+
+
+def test_mutual_exclusion():
+    # edge_ids + largest_component_only son mutuamente excluyentes.
+    _ei, _ew, full = build_miraflores_graph(mapping_out=None)
+    some = [n["sumo_edge"] for n in full["nodes"][:5]]
+    with pytest.raises(ValueError):
+        build_miraflores_graph(
+            edge_ids=some, largest_component_only=True, mapping_out=None
+        )
+
+
+def test_lcc_is_connected():
+    # El grafo de 375 es una sola componente conexa (no quedó ninguna islita).
+    edge_index, _ew, mapping = _lcc()
+    n = len(mapping["nodes"])
+    adj = {i: set() for i in range(n)}
+    for s, t in zip(edge_index[0].tolist(), edge_index[1].tolist()):
+        adj[s].add(t)
+        adj[t].add(s)  # no-dirigido: conectividad
+    seen = {0}
+    queue = deque([0])
+    while queue:
+        node = queue.popleft()
+        for nb in adj[node]:
+            if nb not in seen:
+                seen.add(nb)
+                queue.append(nb)
+    assert len(seen) == n == EXPECTED_LCC_NODES
+
+
+def test_islet_excluded():
+    # Los 6 sumo_edge de la islita NO están entre los nodos del grafo de 375.
+    _ei, _ew, mapping = _lcc()
+    present = {n["sumo_edge"] for n in mapping["nodes"]}
+    assert ISLET.isdisjoint(present)
+
+
+def test_lcc_determinism():
+    # Dos construcciones LCC → mismo mapping (orden de nodos) y mismo edge_index.
+    ei1, _w1, m1 = _lcc()
+    ei2, _w2, m2 = _lcc()
+    assert [n["sumo_edge"] for n in m1["nodes"]] == [n["sumo_edge"] for n in m2["nodes"]]
+    assert m1["dropped_edges"] == m2["dropped_edges"]
+    assert torch.equal(ei1, ei2)
+
+
+def test_ghost_gate_runs_under_lcc(monkeypatch):
+    # El gate de 12 fantasmas del grafo COMPLETO sigue corriendo en modo LCC: si el
+    # invariante se rompe, lanza antes de recortar (no se saltea).
+    monkeypatch.setattr(mgb, "EXPECTED_GHOST_EDGES", EXPECTED_GHOST_EDGES + 1)
+    with pytest.raises(ValueError):
+        build_miraflores_graph(largest_component_only=True, mapping_out=None)

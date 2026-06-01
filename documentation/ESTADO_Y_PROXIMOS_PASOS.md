@@ -1,4 +1,4 @@
-# Estado de la tesis CerebroVial — actualizado 2026-05-30
+# Estado de la tesis CerebroVial — actualizado 2026-06-01
 
 ## Dónde estoy
 Ciclo SDD (Spec Kit v0.8.11, brownfield) cerrado y sellado. 6/6 artefactos poblados y verificados:
@@ -37,6 +37,36 @@ paralelo al Sprint 4).
 - **Runtime:** `:8001` corre ahora `feature/corredor-larco-mp-red` (Etapa-1 deployada vía rebuild del
   contenedor `core_management_api`); ruta sin-downstream byte-idéntica al per-node, **sin migración**,
   **sin mergear a master**.
+
+## STGNN Fase 1 — cierre (grafo LCC 375) (2026-06-01)
+**Cierre de Fase 1 del track STGNN Miraflores (D-011/D-012, investigación paralela, fuera de
+producción).** Decisión a posteriori del subgrafo de modelado cerrada con evidencia empírica.
+
+Entregado en esta sesión (rama `feature/stgnn-corredor-larco`, **sin push/PR/merge**):
+- **`ia_prediction_service/src/data/miraflores_graph_builder.py`** — modo componente-grande:
+  parámetros `largest_component_only` + `expected_component_sizes`. Siempre construye y valida
+  primero el grafo completo de 381 (descubrimiento, regla `<connection>`, gate de 12 fantasmas —que
+  NO se saltea—); luego computa componentes conexas, recorta a la mayor (375 de 381), re-ordena
+  lexicográfico y reasigna `node_index` 0..N-1. Gate de componentes opt-in; mutua exclusión con
+  `edge_ids`. Default (381) intacto.
+- **Dos mappings JSON versionados** en `ia_prediction_service/src/data/artifacts/`:
+  `miraflores_graph_mapping.json` (381, evidencia del análisis de componentes) y
+  `miraflores_graph_lcc_mapping.json` (375, canónico de modelado, con procedencia `derived_from` /
+  `full_graph_nodes` / `dropped_component_nodes` / `dropped_edges`).
+- **`tests/test_miraflores_graph_builder.py`** — 13 tests verdes (6 previos + 7 nuevos: LCC 375,
+  gate de componentes, mutua exclusión, conexidad, islita excluida, determinismo, gate de fantasmas
+  bajo LCC).
+
+**Topología resultante:** 375 nodos / 504 aristas dirigidas, 1 sola componente conexa. Islita de
+6 edges desconectada excluida. **Señal espacial confirmada** (mediana corr vecinos-1 `speedRelative`
+0.46 vs no-vecinos 0.01; decaimiento monótono 0.46→0.17→0.01; replicado en `density` +0.38),
+distribuida (269/381 edges), recorte por **topología**, no por densidad. Esparsidad ~82% diferida
+a modelado Fase 2/3. Decisión fundamentada anexada a **D-012**; respaldo crudo en
+`documentation/handoffs/stgnn-fase1/REPORTE_CRUDO_BLOQUES_0_1.md`.
+
+**Nota de convención:** los handoffs del track Miraflores se siembran bajo
+`documentation/handoffs/stgnn-fase1/` (las fases siguientes heredarán `stgnn-fase2/`, etc.),
+separados del histórico `corredor-larco/` (escenario Larco descartado por D-012).
 
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue

@@ -408,6 +408,25 @@ Esta enmienda **deja sin efecto** la frase de D-011 en su sección "Alcance — 
 
 ---
 
+### Anexo — Cierre del scope del grafo STGNN: decisión a posteriori sobre los datos (2026-06-01)
+
+D-012 difirió la elección del subgrafo de la STGNN a "una decisión a posteriori sobre los datos, no por diseño previo". Esta nota cierra esa decisión con la evidencia de dos auditorías exploratorias read-only sobre el dataset `miraflores_laborable_60d/` y el grafo edge-as-node de Miraflores.
+
+**Decisión:** el grafo de modelado es la componente conexa principal de la red vehicular — **375 nodos (de 381)**. Recorte por conectividad topológica, no por densidad de señal.
+
+**Evidencia que la fundamenta:**
+
+- **Señal espacial confirmada.** Correlación de congestión entre pares de edges, contrastando vecinos-en-el-grafo contra no-vecinos (control). Sobre `speedRelative` (variable primaria, neutral respecto al target diferido): mediana de correlación vecinos-1-salto = 0.46 vs no-vecinos = 0.01 (contraste +0.46). Decaimiento monótono con la distancia de grafo: 1-salto 0.46 → 2-saltos 0.17 → no-vecinos 0.01. Replicado sobre `density` (sin NaN, n comparable entre grupos): contraste +0.38, mismo decaimiento. La concordancia de las dos variables descarta que el resultado sea artefacto del n desigual entre grupos. Conclusión: existe señal espacial local, decreciente con la distancia de grafo — la firma que D-011 fijó como criterio (correlación espacial estilo METR-LA/PEMS-BAY, no propagación física con lag). El track tiene fundamento empírico para un STGNN.
+- **Señal distribuida, no concentrada.** Los pares vecinos de alta correlación (>0.5) involucran 269 de 381 edges, sin hubs (reparto plano ~1.5 pares/edge). La señal espacial vive en casi toda la red, no en una zona. Consecuencia: un subgrafo por densidad de señal —recortar a los ~42 edges de alto tráfico— descartaría la mayor parte de la estructura espacial. Esa opción se refuta: sacrificaría el fenómeno que el track quiere medir a cambio de comodidad de datos.
+- **Recorte por topología, no por señal.** El grafo completo tiene 2 componentes conexas: una principal de 375 nodos y una islita de 6 edges interconectados (grados 1-3) desconectada del cuerpo vía `<connection>`. Esos 6 edges son además de muy bajo tráfico (todos vacíos en ≥1 de los 8 días auditados). Como están topológicamente desconectados, no comparten señal espacial con el cuerpo principal por construcción y un STGNN no puede propagar contexto hacia/desde ellos. Se excluyen. Este recorte NO contradice la decisión de "no recortar por señal": saca 6 nodos que por definición topológica no tienen señal espacial compartida, no edges de baja densidad dentro de la componente conexa.
+- **Lo que se conserva dentro del grafo de 375:** los edges de bajo tráfico o sin señal que estén conectados a la componente principal — incluidos 2 edges estructuralmente vacíos (sin tráfico en los 8 días: `111898821`, `438009517`) que son vecinos topológicos válidos y podrían activarse bajo perfiles de demanda aún no calibrados (finde/feriado/especial). Su vacío se trata como deuda de modelado, no como criterio de recorte.
+- **Deuda registrada para Fase 2/3 (esparsidad):** a scale 0.20 la red es muy esparsa — `speedRelative` es NaN (edge vacío, sin vehículos que promediar) en ~82% de las celdas; la mediana de edge está vacía el 91% del día. El NaN es estructural (estado vacío), no dato faltante. El discriminador robusto de vacío es la regla de 3 estados (`density==0 AND speed.isna()`), NO `density==0` sola (esta última invierte el ~0.3-0.6% de celdas que son atascos-parpadeo). El tratamiento del estado vacío en el dataset por-arista y en el loss del modelo queda como decisión de diseño de Fase 2/3 — no se resuelve aquí.
+- **Sin relación con el target diferido:** toda la medición se hizo sobre `speedRelative`/`density`, variables neutrales. El cambio de target `jam_level`→`meanTimeLoss` sigue diferido a Fase 2 por D-012; esta nota no lo toca.
+
+**Artefactos:** el grafo de 375 (componente principal) es el canónico de modelado. El grafo completo de 381 se conserva versionado como evidencia del análisis de componentes. Ambos mappings JSON versionados como insumo cross-sesión. Respaldo crudo de los Bloques 0/1 en `documentation/handoffs/stgnn-fase1/REPORTE_CRUDO_BLOQUES_0_1.md`.
+
+---
+
 ## D-PENDING-001 — Modelo: reutilizar `time_then_space.py` o GRU desde cero
 **Estado:** **Resuelta por D-006** (2026-05-11)
 
