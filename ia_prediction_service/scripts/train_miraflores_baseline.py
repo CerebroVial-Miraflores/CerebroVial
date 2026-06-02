@@ -222,7 +222,7 @@ def main() -> None:
     best_epoch = 0
     epochs_no_improve = 0
     history: list[dict] = []
-    print(f"[baseline] entrenando (MSE enmascarado, espacio estandarizado)…")
+    print("[baseline] entrenando (MSE enmascarado, espacio estandarizado)…")
     for epoch in range(1, max_epochs + 1):
         t0 = time.time()
         train_loss = run_epoch(model, opt, timeloss, mask, train_index, mean, std, batch, train=True)

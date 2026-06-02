@@ -11,7 +11,9 @@ Flags de colapso (umbrales con amplio margen vs el sano ~30 km/h / jam ~3% / NaN
   COLAPSO si  maxrun(mean_kmh<12, 07-23h) >= 4   o   pico nan_pres >= 0.30
               o   maxrun(jam_frac>0.20, 07-23h) >= 4
 """
-import sys, glob, os
+import sys
+import glob
+import os
 import numpy as np
 import pandas as pd
 
@@ -41,10 +43,13 @@ def day_metrics(df):
 def main():
     files = sorted(glob.glob(os.path.join(DSDIR, "day_seed*.parquet")))
     print(f"# {len(files)} días en {DSDIR}\n")
-    sp_sum = np.zeros(24); jam_sum = np.zeros(24); n = 0
+    sp_sum = np.zeros(24)
+    jam_sum = np.zeros(24)
+    n = 0
     hdr = (f"{'seed':>4} | {'filas':>7} | {'edg':>3} | {'ts':>4} | {'km/h glob':>9} | "
            f"{'min km/h':>8} | {'jam% pico':>9} | {'NaN%p pico':>10} | flag")
-    print(hdr); print("-"*len(hdr))
+    print(hdr)
+    print("-"*len(hdr))
     bad = []
     for f in files:
         seed = os.path.basename(f)[8:11]
@@ -57,12 +62,18 @@ def main():
         # jam_frac (speedRelative<0.3) tiene piso de ruido ~15% en valle: NO sirve de
         # flag absoluto; se reporta solo como evidencia de FORMA bimodal.
         flags = []
-        if not shape_ok: flags.append("FORMA")
-        if np.nanmin(mean_kmh) < 12 or maxrun(mean_kmh < 15) >= 4: flags.append("COLAPSO-vel")
-        if np.nanmax(nanp[7:23]) >= 0.30: flags.append("COLAPSO-NaN")
+        if not shape_ok:
+            flags.append("FORMA")
+        if np.nanmin(mean_kmh) < 12 or maxrun(mean_kmh < 15) >= 4:
+            flags.append("COLAPSO-vel")
+        if np.nanmax(nanp[7:23]) >= 0.30:
+            flags.append("COLAPSO-NaN")
         fl = ",".join(flags) if flags else "ok"
-        if flags: bad.append((seed, fl))
-        sp_sum += np.nan_to_num(mean_kmh); jam_sum += np.nan_to_num(jam); n += 1
+        if flags:
+            bad.append((seed, fl))
+        sp_sum += np.nan_to_num(mean_kmh)
+        jam_sum += np.nan_to_num(jam)
+        n += 1
         print(f"{seed:>4} | {len(df):>7} | {ne:>3} | {nt:>4} | {np.nanmean(mean_kmh):>9.1f} | "
               f"{np.nanmin(mean_kmh):>8.1f} | {np.nanmax(jam[7:23])*100:>8.1f}% | "
               f"{np.nanmax(nanp[7:23])*100:>9.1f}% | {fl}")

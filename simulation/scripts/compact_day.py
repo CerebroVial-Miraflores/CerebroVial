@@ -37,7 +37,8 @@ ARTERIAL_TYPES = {
 
 
 def lane_allows_passenger(lane):
-    allow = lane.get("allow"); dis = lane.get("disallow")
+    allow = lane.get("allow")
+    dis = lane.get("disallow")
     if allow is not None:
         return "passenger" in allow.split()
     if dis is not None:
@@ -58,7 +59,8 @@ def vehicular_edges(net_path):
 
 def compact(xml_path, out_path, net_path):
     keep = vehicular_edges(net_path)
-    edge_ids = []; ts = []
+    edge_ids = []
+    ts = []
     cols = {m: [] for m in METRICS}
     cur_begin = 0
     ctx = ET.iterparse(xml_path, events=("start", "end"))
@@ -68,7 +70,8 @@ def compact(xml_path, out_path, net_path):
         elif ev == "end" and el.tag == "edge":
             eid = el.get("id")
             if eid in keep:
-                edge_ids.append(eid); ts.append(cur_begin)
+                edge_ids.append(eid)
+                ts.append(cur_begin)
                 empty = float(el.get("sampledSeconds", "0") or 0) == 0.0
                 for m in METRICS:
                     v = el.get(m)
@@ -89,7 +92,8 @@ def compact(xml_path, out_path, net_path):
 if __name__ == "__main__":
     xml_path, out_path, net_path = sys.argv[1], sys.argv[2], sys.argv[3]
     df = compact(xml_path, out_path, net_path)
-    n_edges = df["edge_id"].nunique(); n_ts = df["timestep"].nunique()
+    n_edges = df["edge_id"].nunique()
+    n_ts = df["timestep"].nunique()
     print(f"OK {out_path}")
     print(f"  filas={len(df)}  edges={n_edges}  timesteps={n_ts}  (esperado {n_edges*n_ts})")
     print(f"  columnas={list(df.columns)}")
