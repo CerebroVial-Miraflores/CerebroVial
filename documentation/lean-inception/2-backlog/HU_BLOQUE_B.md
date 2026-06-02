@@ -2,7 +2,7 @@
 
 > Segunda entrega del Product Backlog del proyecto CerebroVial.
 >
-> **Estado:** Bloque B cerrado y aprobado. Bloques A, C, D, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 21 HUs operativas (HU-01 a HU-21) + 11 TTH (TTH-01 a TTH-11).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1. HU-09 fue redactada en este bloque como única HU MVP2 anticipada bajo la antigua semántica "fuera del sprint", suavizada por DHU-012 a "candidata a construcción condicional a holgura del cronograma"; HU-09 conserva su ubicación en este documento sin trasladarse a `HU_MVP2.md`, conforme a DHU-017 subsección B.
+> **Estado:** Bloque B cerrado y aprobado. Bloques A, C, D, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) + 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1. HU-09 fue redactada en este bloque como única HU MVP2 anticipada bajo la antigua semántica "fuera del sprint", suavizada por DHU-012 a "candidata a construcción condicional a holgura del cronograma"; HU-09 conserva su ubicación en este documento sin trasladarse a `HU_MVP2.md`, conforme a DHU-017 subsección B.
 >
 > **Fecha de cierre:** 2026-05-13
 > **Fecha de actualización v2:** 2026-05-17 (DHU-018 aplicada retroactivamente: Resumen ejecutivo en HU-02 a HU-09)
@@ -657,7 +657,7 @@ Durante la redacción del Bloque B se cerraron las siguientes decisiones formale
 
 ## Próximos pasos
 
-Esta sesión cerró el Bloque B. A la fecha actual, los Bloques C, D, E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 21 HUs operativas (HU-01 a HU-21) y 11 TTH (TTH-01 a TTH-11).** Los siguientes pasos del proyecto, en sesiones futuras:
+Esta sesión cerró el Bloque B. A la fecha actual, los Bloques C, D, E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) y 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Los siguientes pasos del proyecto, en sesiones futuras:
 
 1. **Bloque C — Operador, operación degradada** (F22, F23, F24, F25, F26, F27 → 3 HUs operativas + 2 TTH; ya cerrado con HU-10, HU-11, HU-12, TTH-04, TTH-05). Ver `HU_BLOQUE_C.md`.
 2. **Bloque D — Administrador, soporte técnico** (F17, F18, F20 → 3 HUs operativas; ya cerrado con HU-13, HU-14, HU-15). Ver `HU_BLOQUE_D.md`. F21 fue reclasificado a Trabajos Futuros por DHU-012.
