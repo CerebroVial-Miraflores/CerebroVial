@@ -1,10 +1,13 @@
 // HU-01 / CA-01.1-.3 / RNF-INT-07: mapas y helpers de rol.
 import type { Role } from './types';
 
-export type Tab = 'dashboard' | 'analytics' | 'alerts' | 'admin' | 'control';
+export type Tab = 'dashboard' | 'analytics' | 'alerts' | 'admin' | 'control' | 'congestion';
 
 export const TABS_BY_ROLE: Record<Role, readonly Tab[]> = {
-  operator: ['dashboard', 'control', 'alerts'],
+  // HU-22 / CA-22.1: el Operador gana el tab 'congestion' (mapa de congestión
+  // en tiempo real). Operator-only: HU-01/CA-01.2 excluye al Gerente de vistas
+  // operativas y el require_role(ADMIN) del endpoint es acceso de API, no UI.
+  operator: ['dashboard', 'control', 'alerts', 'congestion'],
   manager: ['analytics'],
   // HU-05 / DHU-020: admin recupera el tab 'control' para acceder al
   // playground interactivo (ControlPlayground). El render condicional por

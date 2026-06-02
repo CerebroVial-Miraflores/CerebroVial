@@ -28,11 +28,13 @@ describe('Sidebar — segregación de tabs por rol (CA-01.1/.2/.3, RNF-INT-07)',
   beforeEach(() => useSessionMock.mockReset());
 
   describe('rol operator', () => {
-    it('muestra Monitoreo, Motor Adaptativo y Alertas; oculta Analítica y Administración', () => {
+    // HU-22 / CA-22.1: el Operador también ve "Mapa de congestión".
+    it('muestra Monitoreo, Motor Adaptativo, Alertas y Mapa de congestión; oculta Analítica y Administración', () => {
       renderSidebar('operator');
       expect(screen.getByRole('button', { name: /monitoreo/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /motor adaptativo/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /alertas/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /mapa de congesti[oó]n/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /anal[ií]tica/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /administraci[oó]n/i })).toBeNull();
     });
@@ -50,6 +52,8 @@ describe('Sidebar — segregación de tabs por rol (CA-01.1/.2/.3, RNF-INT-07)',
       expect(screen.queryByRole('button', { name: /motor adaptativo/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /alertas/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /administraci[oó]n/i })).toBeNull();
+      // HU-22: el Gerente NO ve el mapa de congestión (operator-only).
+      expect(screen.queryByRole('button', { name: /mapa de congesti[oó]n/i })).toBeNull();
     });
     it('el footer muestra el label "Gerente"', () => {
       renderSidebar('manager');
@@ -68,6 +72,8 @@ describe('Sidebar — segregación de tabs por rol (CA-01.1/.2/.3, RNF-INT-07)',
       expect(screen.queryByRole('button', { name: /monitoreo/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /alertas/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /anal[ií]tica/i })).toBeNull();
+      // HU-22: el Administrador NO ve el mapa de congestión (operator-only).
+      expect(screen.queryByRole('button', { name: /mapa de congesti[oó]n/i })).toBeNull();
     });
     it('el footer muestra el label "Administrador"', () => {
       renderSidebar('admin');
