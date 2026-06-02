@@ -5,6 +5,7 @@ import {
     AlertTriangle,
     Settings,
     SlidersHorizontal,
+    Network,
     Cpu,
     FileText,
     LogOut,
@@ -32,6 +33,7 @@ const TAB_DESCRIPTORS: readonly TabDescriptor[] = [
     { id: 'alerts', label: 'Alertas', icon: AlertTriangle, badge: '3' },
     { id: 'admin', label: 'Administración', icon: Settings },
     { id: 'control', label: 'Motor Adaptativo', icon: SlidersHorizontal },
+    { id: 'congestion', label: 'Mapa de congestión', icon: Network },
 ];
 
 export const Sidebar = ({ activeTab, setActiveTab, setShowThesis }: SidebarProps) => {

@@ -8,6 +8,7 @@ import { AnalyticsView } from './components/views/AnalyticsView';
 import { AlertsView } from './components/views/AlertsView';
 import { AdminView } from './components/views/AdminView';
 import { ControlView } from './components/views/control/ControlView';
+import { CongestionMapView } from './components/views/CongestionMapView';
 import { ThesisModal } from './components/modals/ThesisModal';
 
 import { useSession } from './auth/SessionContext';
@@ -85,6 +86,11 @@ const CerebroVialApp = () => {
 
         <RoleGate allowed={['admin']}>
           {activeTab === ('admin' as Tab) && <AdminView />}
+        </RoleGate>
+
+        {/* HU-22: el mapa de congestión en tiempo real es operator-only. */}
+        <RoleGate allowed={['operator']}>
+          {activeTab === 'congestion' && <CongestionMapView />}
         </RoleGate>
       </main>
 

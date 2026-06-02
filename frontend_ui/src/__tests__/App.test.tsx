@@ -20,6 +20,7 @@ vi.mock('../components/layout/Sidebar', () => ({
       <button data-testid="goto-alerts" onClick={() => setActiveTab('alerts')}>al</button>
       <button data-testid="goto-admin" onClick={() => setActiveTab('admin')}>ad</button>
       <button data-testid="goto-control" onClick={() => setActiveTab('control')}>c</button>
+      <button data-testid="goto-congestion" onClick={() => setActiveTab('congestion')}>cg</button>
     </div>
   ),
 }));
@@ -45,6 +46,9 @@ vi.mock('../components/views/AdminView', () => ({
 }));
 vi.mock('../components/views/control/ControlView', () => ({
   ControlView: () => <div data-testid="view-control" />,
+}));
+vi.mock('../components/views/CongestionMapView', () => ({
+  CongestionMapView: () => <div data-testid="view-congestion" />,
 }));
 vi.mock('../components/modals/ThesisModal', () => ({
   ThesisModal: () => <div data-testid="thesis-modal" />,
@@ -87,6 +91,15 @@ describe('App — vista por defecto por rol y guard de setActiveTab (HU-01)', ()
       expect(screen.getByTestId('active-tab').textContent).toBe('dashboard');
       expect(screen.queryByTestId('view-admin')).toBeNull();
     });
+
+    // HU-22 / CA-22.1: el Operador puede abrir el mapa de congestión.
+    it('puede cambiar a la vista "congestion" (HU-22 — mapa de congestión)', () => {
+      render(<App />);
+      fireEvent.click(screen.getByTestId('goto-congestion'));
+      expect(screen.getByTestId('active-tab').textContent).toBe('congestion');
+      expect(screen.getByTestId('view-congestion')).toBeInTheDocument();
+      expect(screen.queryByTestId('view-dashboard')).toBeNull();
+    });
   });
 
   describe('rol manager', () => {
@@ -105,6 +118,15 @@ describe('App — vista por defecto por rol y guard de setActiveTab (HU-01)', ()
       fireEvent.click(screen.getByTestId('goto-dashboard'));
       expect(screen.getByTestId('active-tab').textContent).toBe('analytics');
       expect(screen.queryByTestId('view-dashboard')).toBeNull();
+      expect(screen.getByTestId('view-analytics')).toBeInTheDocument();
+    });
+
+    // HU-22: 'congestion' es operator-only; forzarlo redirige al default del Gerente.
+    it('forzar la vista "congestion" redirige al default del Gerente', () => {
+      render(<App />);
+      fireEvent.click(screen.getByTestId('goto-congestion'));
+      expect(screen.getByTestId('active-tab').textContent).toBe('analytics');
+      expect(screen.queryByTestId('view-congestion')).toBeNull();
       expect(screen.getByTestId('view-analytics')).toBeInTheDocument();
     });
   });
@@ -129,6 +151,15 @@ describe('App — vista por defecto por rol y guard de setActiveTab (HU-01)', ()
       expect(screen.getByTestId('active-tab').textContent).toBe('control');
       expect(screen.getByTestId('view-control')).toBeInTheDocument();
       expect(screen.queryByTestId('view-admin')).toBeNull();
+    });
+
+    // HU-22: 'congestion' es operator-only; forzarlo redirige al default del Administrador.
+    it('forzar la vista "congestion" redirige al default del Administrador', () => {
+      render(<App />);
+      fireEvent.click(screen.getByTestId('goto-congestion'));
+      expect(screen.getByTestId('active-tab').textContent).toBe('admin');
+      expect(screen.queryByTestId('view-congestion')).toBeNull();
+      expect(screen.getByTestId('view-admin')).toBeInTheDocument();
     });
   });
 });
