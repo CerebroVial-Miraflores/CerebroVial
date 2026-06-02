@@ -142,7 +142,7 @@ def main() -> None:
     no_len = sorted(e for e in universe if edges[e]["length"] is None)
     if no_len:
         raise SpikeStop(f"{len(no_len)} edges sin length (distance_m NOT NULL): {no_len[:10]}")
-    print(f"[2] 375 edges resueltos en el .net.xml (shape + length + lanes)")
+    print("[2] 375 edges resueltos en el .net.xml (shape + length + lanes)")
 
     # --- PASO 3: subgrafo de nodos (junctions) ---
     node_ids: set[str] = set()
