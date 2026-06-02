@@ -2,7 +2,7 @@
 
 > Tercera entrega del Product Backlog del proyecto CerebroVial.
 >
-> **Estado:** Bloque C cerrado y aprobado. Bloques A, B, D, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) + 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1.
+> **Estado:** Bloque C cerrado y aprobado. Bloques A, B, D, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 23 HU operativas (HU-01 a HU-23) y 13 TTH (TTH-01 a TTH-13), tras las ampliaciones DHU-028 (HU-22 + TTH-12) y DHU-029 (HU-23 + TTH-13).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1.
 >
 > **Fecha de cierre:** 2026-05-13
 > **Fecha de actualización v2:** 2026-05-17 (DHU-018 aplicada retroactivamente: Resumen ejecutivo en HU-10, HU-11, HU-12)
@@ -329,7 +329,7 @@ Durante la redacción del Bloque C se cerraron las siguientes decisiones formale
 
 ## Próximos pasos
 
-Esta sesión cerró el Bloque C. A la fecha actual, los Bloques D, E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) y 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** HU-21 (escalamiento del Operador al Administrador) consume directamente HU-10 y HU-12 de este bloque como puntos de invocación del botón "Escalar al Administrador". Los siguientes pasos del proyecto, en sesiones futuras:
+Esta sesión cerró el Bloque C. A la fecha actual, los Bloques D, E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 23 HU operativas (HU-01 a HU-23) y 13 TTH (TTH-01 a TTH-13), tras las ampliaciones DHU-028 (HU-22 + TTH-12) y DHU-029 (HU-23 + TTH-13).** HU-21 (escalamiento del Operador al Administrador) consume directamente HU-10 y HU-12 de este bloque como puntos de invocación del botón "Escalar al Administrador". Los siguientes pasos del proyecto, en sesiones futuras:
 
 1. **Bloque D — Administrador, soporte técnico** (F17, F18, F20 → 3 HUs operativas; ya cerrado con HU-13, HU-14, HU-15). Ver `HU_BLOQUE_D.md`. F21 fue reclasificado a Trabajos Futuros por DHU-012.
 2. **Bloque E — Componentes centrales del sistema** (F32, F33, F34, F35 → 0 HUs operativas + 5 TTH: TTH-07 a TTH-11; ya cerrado el 2026-05-15 por DHU-015). Ver `HU_BLOQUE_E.md`.

@@ -5,7 +5,7 @@
 > **Fundamento metodológico:** Ver `DECISIONS_HU.md`, decisiones DHU-001, DHU-003, DHU-004 (Bloque A), DHU-010 (Bloque C), DHU-013 (clasificación HU/TTH del Bloque D), DHU-014 (decisiones de redacción del Bloque D) y DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH).
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-06-02 (**TTH-12 agregada (DHU-028): ampliación del catálogo a 12 TTH (TTH-01 a TTH-12)** — infraestructura de datos de congestión por arista que habilita HU-22 (vista panorámica de congestión de la red). Es un cambio sustantivo (TTH nueva), no de metadata; las 11 TTH previas no se modifican. Previa: 2026-05-18 (**DHU-019 aplicada documentalmente al backlog:** rango DHU referenciado actualizado a "DHU-001 a DHU-019" en cabecera y "Documentos relacionados". El cambio es exclusivamente de metadata documental; las 11 TTH no reciben modificaciones sustantivas con DHU-019. DHU-019 es decisión metodológica sobre la redacción del documento `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` recién creado; las TTH se referencian desde la matriz de trazabilidad de ese documento (sección 4.2) en lugar de modificarse. La pasada aditiva sobre las HUs (subsección G de DHU-019 que agregaría referencias `→ RNF-XXX-NN` a sus secciones "Candidatos a RNF") queda como tarea separada pendiente; las TTH no son destinatarias de esa pasada porque no tienen sección "Candidatos a RNF". Última previa: 2026-05-17, DHU-018 aplicada retroactivamente al backlog: rango DHU referenciado actualizado a "DHU-001 a DHU-018" en cabecera y "Documentos relacionados". El cambio fue exclusivamente de metadata documental; las 11 TTH no recibieron Resumen ejecutivo (las TTH no son HUs y su sección Descripción + Criterios técnicos de terminado ya sirven la función de orientación de lectura). Previa a esa: 2026-05-16, cierre del MVP2 (DHU-017): rango DHU actualizado a "DHU-001 a DHU-017" en cabeceras y "Documentos relacionados". Sin cambios sustantivos al contenido de las 11 TTH: el MVP2 no introduce TTH nuevas (las 4 HUs del MVP2 ingloban su sustrato técnico como CAs conforme a DHU-017 subsección H). HU-20 del MVP2 consume CT-09.5 de TTH-09 extendido inglobadamente con persistencia paralela del modelo de respaldo; HU-21 del MVP2 consume CT-04.4 y CT-04.5 de TTH-04 para captura automática del contexto operativo al disparar escalamientos. Previa a esa: 2026-05-15, cierre del Bloque E, DHU-015. Y previa: 2026-05-14, cierre del Bloque D, DHU-013 y DHU-014.)
+> **Última actualización:** 2026-06-02 (**TTH-13 agregada (DHU-029): ampliación del catálogo a 13 TTH (TTH-01 a TTH-13)** — infraestructura de consulta histórica de congestión por arista (estado por instante arbitrario + reporte de rango temporal disponible) que habilita HU-23 (recorrido temporal de la congestión de la red). Reutiliza la geometría y la persistencia en `waze_jams` de TTH-12 sin alterar sus contratos (CT-13.5). Es un cambio sustantivo (TTH nueva), no de metadata; las 12 TTH previas no se modifican. Previa: 2026-06-02 (**TTH-12 agregada (DHU-028): ampliación del catálogo a 12 TTH (TTH-01 a TTH-12)** — infraestructura de datos de congestión por arista que habilita HU-22 (vista panorámica de congestión de la red). Es un cambio sustantivo (TTH nueva), no de metadata; las 11 TTH previas no se modifican. Previa: 2026-05-18 (**DHU-019 aplicada documentalmente al backlog:** rango DHU referenciado actualizado a "DHU-001 a DHU-019" en cabecera y "Documentos relacionados". El cambio es exclusivamente de metadata documental; las 11 TTH no reciben modificaciones sustantivas con DHU-019. DHU-019 es decisión metodológica sobre la redacción del documento `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` recién creado; las TTH se referencian desde la matriz de trazabilidad de ese documento (sección 4.2) en lugar de modificarse. La pasada aditiva sobre las HUs (subsección G de DHU-019 que agregaría referencias `→ RNF-XXX-NN` a sus secciones "Candidatos a RNF") queda como tarea separada pendiente; las TTH no son destinatarias de esa pasada porque no tienen sección "Candidatos a RNF". Última previa: 2026-05-17, DHU-018 aplicada retroactivamente al backlog: rango DHU referenciado actualizado a "DHU-001 a DHU-018" en cabecera y "Documentos relacionados". El cambio fue exclusivamente de metadata documental; las 11 TTH no recibieron Resumen ejecutivo (las TTH no son HUs y su sección Descripción + Criterios técnicos de terminado ya sirven la función de orientación de lectura). Previa a esa: 2026-05-16, cierre del MVP2 (DHU-017): rango DHU actualizado a "DHU-001 a DHU-017" en cabeceras y "Documentos relacionados". Sin cambios sustantivos al contenido de las 11 TTH: el MVP2 no introduce TTH nuevas (las 4 HUs del MVP2 ingloban su sustrato técnico como CAs conforme a DHU-017 subsección H). HU-20 del MVP2 consume CT-09.5 de TTH-09 extendido inglobadamente con persistencia paralela del modelo de respaldo; HU-21 del MVP2 consume CT-04.4 y CT-04.5 de TTH-04 para captura automática del contexto operativo al disparar escalamientos. Previa a esa: 2026-05-15, cierre del Bloque E, DHU-015. Y previa: 2026-05-14, cierre del Bloque D, DHU-013 y DHU-014.)
 
 ---
 
@@ -42,6 +42,7 @@ Las TTH son entregables del proyecto y son evaluables, pero su naturaleza es dis
 | TTH-10 | Motor adaptativo de control semafórico | E (consumida por HU-05, HU-06, HU-07, HU-08, HU-15) | MVP1 | Construido, integración pendiente |
 | TTH-11 | Spike de calibración de hiperparámetros temporales del modelo predictivo | E (prerrequisito documental de TTH-09) | MVP1 | Pendiente |
 | TTH-12 | Infraestructura de datos de congestión por arista para la vista de mapa de red | B (habilita HU-22; ampliación, DHU-028) | MVP1 — ampliación | Pendiente |
+| TTH-13 | Infraestructura de consulta histórica de congestión por arista (estado por instante + rango temporal disponible) | B (habilita HU-23; ampliación, DHU-029) | MVP1 — ampliación | Pendiente |
 
 ---
 
@@ -868,6 +869,72 @@ El estado del repositorio al momento de redactar esta TTH (auditoría 2026-06-02
 
 ---
 
+## TTH-13 — Infraestructura de consulta histórica de congestión por arista
+
+**Origen:** Habilitador de HU-23 (barrido temporal de la congestión de la red). Identificado durante el análisis de evolución de HU-22 (2026-06-02), al constatar que el recorrido temporal del mapa requiere consultar el estado de congestión por arista en un instante arbitrario del día, capacidad que TTH-12 no provee (su endpoint de estado está cableado al snapshot más reciente). Ver DHU-029 en `DECISIONS_HU.md`.
+
+**Habilita a:** HU-23 (recorrido temporal de la congestión de la red por tramo de vía). Sin esta TTH cerrada, HU-23 no puede pintar el mapa en un instante seleccionado por el control temporal ni acotar el rango recorrible.
+
+**Clasificación:** MVP1 — ampliación (barrido temporal de la vista panorámica de red).
+
+**Estado actual:** Pendiente.
+
+**Naturaleza (DHU-004):** cumple los cuatro criterios de TTH — no tiene Persona beneficiaria directa (su efecto se ve en HU-23), su valor es instrumental (habilita el recorrido temporal), su comportamiento es técnico estándar (consulta de persistencia por timestamp + reporte de rango), y no entrega valor visible al usuario en aislamiento. Conforme a DHU-006, esta TTH sí nombra tecnologías concretas (`waze_jams`, TimescaleDB, endpoint REST) por su naturaleza técnica.
+
+### Contexto y alcance
+
+HU-23 requiere recorrer la congestión de la red sobre el mapa a lo largo del día. Para ello necesita dos capacidades que la infraestructura de TTH-12 no expone hoy:
+
+1. **Estado de congestión por arista en un instante arbitrario.** El endpoint de estado de TTH-12 (`GET /congestion/state`, en `routes.py`) devuelve únicamente el snapshot más reciente por arista (`latest_per_edge()` en el repositorio de `waze_jams`, agrupado por `func.max(snapshot_timestamp)`). No acepta parámetro temporal. HU-23 necesita el estado por arista correspondiente a un instante `t` elegido por el control temporal.
+
+2. **Rango temporal disponible para un día.** Para acotar el control temporal (y bloquearlo en el día en curso cuando los datos solo cubren hasta cierta hora), el frontend necesita saber qué rango de instantes hay efectivamente persistido para el día seleccionado. Hoy no existe forma de consultarlo.
+
+El estado del repositorio al momento de redactar esta TTH (auditoría 2026-06-02):
+
+- La tabla `waze_jams` está poblada y es hypertable TimescaleDB (chunk de 1 día sobre `snapshot_timestamp`), con índices simples sobre `event_uuid` y sobre `snapshot_timestamp`, y PK compuesta `(event_uuid, snapshot_timestamp)`. **No existe índice compuesto `(edge_id, snapshot_timestamp)`**, óptimo para "estado de todas las aristas en el instante `t`".
+- El repositorio de `waze_jams` expone `latest_per_edge()` (más reciente por arista) pero **no existe un método de lectura por instante arbitrario** (`at_timestamp(ts)`).
+- La geometría de las aristas (CT-12.1/12.2) y la persistencia del feed (CT-12.5) ya existen y se reutilizan sin cambios.
+
+**Alcance de esta TTH (V1):** consulta de **estado histórico y actual** por arista en un instante arbitrario, y reporte del rango temporal disponible por día. La consulta de estado **predicho** a futuro queda fuera de alcance (depende de la extensión predictiva por arista, ver DHU-029).
+
+**Semántica temporal:** la consulta por instante devuelve, por cada arista, el snapshot más reciente cuyo `snapshot_timestamp` sea **menor o igual** al instante solicitado (espejo de `latest_per_edge`, acotado por `<= t`). Esto evita huecos cuando el instante solicitado cae entre dos pasos persistidos y mantiene la coherencia con la semántica de "último estado conocido".
+
+### Criterios técnicos de terminado
+
+- **CT-13.1 (lectura por instante en el repositorio):** Existe un método en el repositorio de `waze_jams` que devuelve, para un instante `t` dado, el estado de congestión por arista vigente en `t` (el snapshot más reciente por `edge_id` con `snapshot_timestamp <= t`). El método es el espejo de `latest_per_edge()` acotado temporalmente y reutiliza su forma de agrupación por arista. El shape de retorno es idéntico al de la lectura de estado actual (mismo DTO por arista: `edge_id`, `congestion_level`, marca de tiempo), de modo que el consumidor no distingue la estructura entre estado actual y estado por instante.
+
+- **CT-13.2 (endpoint de estado por instante):** Existe un endpoint REST que sirve el estado de congestión por arista en un instante arbitrario, parametrizado por el instante solicitado (p. ej. `GET /congestion/state?at=<ISO8601>`). Cuando el parámetro temporal está ausente, el endpoint conserva el comportamiento actual de TTH-12 (estado más reciente), sin romper a los consumidores existentes (HU-22). El endpoint está protegido con `require_role(OPERATOR, ADMIN)` conforme al patrón de autorización del proyecto (TTH-01). La respuesta usa el mismo formato que el endpoint de estado de TTH-12.
+
+- **CT-13.3 (endpoint de rango temporal disponible):** Existe un endpoint REST que reporta, para un día solicitado, el rango temporal de congestión efectivamente disponible en `waze_jams` (instante mínimo y máximo con datos para ese día). Permite al frontend acotar y bloquear el control temporal sin asumir cobertura. Protegido con `require_role(OPERATOR, ADMIN)`. Cuando el día solicitado no tiene datos, el endpoint responde explícitamente la ausencia de rango (no error), de modo que el frontend pueda deshabilitar el control.
+
+- **CT-13.4 (índice de soporte a la consulta por instante):** Existe una migración versionada que crea el índice compuesto `(edge_id, snapshot_timestamp)` sobre `waze_jams`, de modo que la consulta de estado por instante (CT-13.1) sea eficiente sobre el volumen de un día completo por arista. La migración es reejecutable de forma segura y coherente con el esquema de hypertable TimescaleDB existente. Nota de honestidad: si por medición la consulta resulta suficientemente eficiente con los índices existentes sobre el volumen real, este CT se documenta como cumplido con justificación; el índice no se agrega "por las dudas" sino porque la consulta por instante sobre todas las aristas lo motiva.
+
+- **CT-13.5 (no alteración de los contratos de TTH-12):** Los endpoints y el repositorio de TTH-12 (estado actual `latest_per_edge`, geometría, feed SSE-wake) permanecen funcionalmente intactos. La extensión de `routes.py` con el parámetro temporal y los métodos/endpoints nuevos no modifica el comportamiento observable de los consumidores actuales (HU-22). Existe verificación (test) de que el estado actual sin parámetro temporal sigue devolviendo el snapshot más reciente como antes.
+
+- **CT-13.6 (robustez y coherencia con DHU-005):** La consulta por instante y el reporte de rango no producen error ante instantes fuera de rango (anteriores al primer dato o posteriores al último): devuelven el estado conocido más cercano según la semántica `<= t`, o la ausencia explícita de datos, sin excepción no controlada. La marca de tiempo de cada arista en la respuesta permite al frontend mostrar la antigüedad del dato recorrido, coherente con el patrón de TTH-12 (CT-12.7).
+
+- **CT-13.7 (tests automatizados):** Existen tests que cubren: (a) la lectura por instante devuelve, para un `t` conocido, el estado por arista esperado (snapshot `<= t`); (b) el endpoint de estado por instante responde con el shape esperado, protegido por rol, y conserva el comportamiento de estado actual sin parámetro; (c) el endpoint de rango reporta correctamente min/max para un día con datos y la ausencia para un día sin datos; (d) los instantes fuera de rango se manejan según CT-13.6 sin excepción; (e) la consulta de estado actual de TTH-12 sigue funcionando sin cambios (CT-13.5).
+
+---
+
+### Relación con HU y otras TTH / decisiones
+
+| Depende de / se relaciona con | Cómo |
+|---|---|
+| HU-23 | Esta TTH la habilita: sin CT-13.2 (estado por instante) y CT-13.3 (rango disponible), HU-23 no tiene cómo pintar el mapa en el instante del control temporal ni cómo acotar/bloquear el control. Orden de implementación: TTH-13 primero, HU-23 después. |
+| TTH-12 | Reutiliza por completo la geometría (CT-12.1/12.2), la persistencia en `waze_jams` (CT-12.5) y el patrón de autorización. TTH-13 agrega solo la lectura por instante y el reporte de rango; no altera los contratos de TTH-12 (CT-13.5). |
+| TTH-01 (autenticación) | Los endpoints nuevos se protegen con el RBAC de TTH-01 (`require_role(OPERATOR, ADMIN)`). |
+| D-009 (jam level 0-5) | El estado por instante usa la misma escala 0-5 por arista de TTH-12; TTH-13 no introduce nueva derivación de nivel, solo lee lo persistido. |
+| DHU-005 (robustez ante interrupción, Caso A) | CT-13.6 conserva la marca de tiempo por arista que la vista usa para mostrar antigüedad del dato recorrido. |
+| DHU-029 | Registra la ampliación del backlog (HU-23 + TTH-13) y el alcance temporal histórico/actual de la vista de recorrido. |
+
+### Extensiones futuras (fuera de alcance de esta TTH)
+
+- **Consulta de estado predicho por arista:** servir el estado de congestión **proyectado a futuro** por arista (p. ej. próximos 30 min) para alimentar la extensión del eje temporal de HU-23 hacia el futuro. Requiere la capa de predicción por arista en escala 0-5, que hoy no existe servida (ver dimensionamiento en DHU-029: hay grafo edge-as-node y modelos por arista offline, pero predicen `timeLoss`, no 0-5). Requiere decidir y servir el predictor por arista correspondiente.
+- **Agregación histórica para el Gerente:** una consulta histórica agregada por periodos prolongados (no instante a instante) que alimente una eventual vista de análisis geográfico del Gerente, distinta del recorrido operativo del Operador de HU-23. Es una necesidad de otra Persona y se redactaría como su propia HU si se aborda.
+
+---
+
 ## Relación con el Plan de Ejecución
 
 Las TTH **no se estiman con Planning Poker** ni se priorizan con MoSCoW (ambas técnicas son para HUs con valor de negocio). Las TTH se planifican como trabajo técnico directo en el cronograma del proyecto, con estimaciones en horas/días.
@@ -889,7 +956,7 @@ Por tanto, las TTH se ejecutan en la primera fase del proyecto, antes o en paral
 
 - `DECISIONS_HU.md` — Decisiones metodológicas (DHU-001 a DHU-022) que fundamentan la creación y clasificación de cada TTH.
 - `HU_BLOQUE_A.md` — Bloque A del Product Backlog tras la reestructuración.
-- `HU_BLOQUE_B.md` — Bloque B del Product Backlog (HU-02 a HU-09, HU-22).
+- `HU_BLOQUE_B.md` — Bloque B del Product Backlog (HU-02 a HU-09, HU-22, HU-23).
 - `HU_BLOQUE_C.md` — Bloque C del Product Backlog (HU-10 a HU-12).
 - `HU_BLOQUE_D.md` — Bloque D del Product Backlog (HU-13, HU-14, HU-15).
 - `HU_BLOQUE_E.md` — Bloque E del Product Backlog (0 HUs operativas; mapeo a TTH-07 a TTH-11).

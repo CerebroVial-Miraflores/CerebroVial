@@ -2,7 +2,7 @@
 
 > Segunda entrega del Product Backlog del proyecto CerebroVial.
 >
-> **Estado:** Bloque B cerrado y aprobado. Bloques A, C, D, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) + 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1. HU-09 fue redactada en este bloque como única HU MVP2 anticipada bajo la antigua semántica "fuera del sprint", suavizada por DHU-012 a "candidata a construcción condicional a holgura del cronograma"; HU-09 conserva su ubicación en este documento sin trasladarse a `HU_MVP2.md`, conforme a DHU-017 subsección B.
+> **Estado:** Bloque B cerrado y aprobado. Bloques A, C, D, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 23 HU operativas (HU-01 a HU-23) y 13 TTH (TTH-01 a TTH-13), tras las ampliaciones DHU-028 (HU-22 + TTH-12) y DHU-029 (HU-23 + TTH-13).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1. HU-09 fue redactada en este bloque como única HU MVP2 anticipada bajo la antigua semántica "fuera del sprint", suavizada por DHU-012 a "candidata a construcción condicional a holgura del cronograma"; HU-09 conserva su ubicación en este documento sin trasladarse a `HU_MVP2.md`, conforme a DHU-017 subsección B.
 >
 > **Fecha de cierre:** 2026-05-13
 > **Fecha de actualización v2:** 2026-05-17 (DHU-018 aplicada retroactivamente: Resumen ejecutivo en HU-02 a HU-09)
@@ -622,6 +622,112 @@ La fuente de los datos de congestión es externa a esta vista y la HU es agnóst
 
 ---
 
+## HU-23 — Recorrido temporal de la congestión de la red
+
+> Ampliación del Product Backlog del proyecto CerebroVial, posterior a la ampliación de la vista panorámica de red (HU-22 + TTH-12, DHU-028).
+>
+> **Estado:** Redactada. Pendiente de implementación.
+> **Fecha de redacción:** 2026-06-02
+> **Bloque:** B — Operador, núcleo de monitoreo (ampliación).
+> **Fundamento de la ampliación:** ver DHU-029 en `DECISIONS_HU.md` (registro de por qué la vista panorámica recibe un eje temporal de recorrido como HU separada del Operador, distinta de las HU de análisis del Gerente y complementaria a la voz "actual/en vivo" de HU-22).
+
+### Contexto
+
+Esta HU se redacta en el formato del documento de referencia académica (`Desarrollo_Agil.pdf`, Tablas 9 y 13): "Como X, quiero Y, para Z" con criterios de aceptación Given-When-Then, y sigue las reglas metodológicas vigentes:
+
+- **DHU-003** (sujetos válidos): el sujeto es el Operador de Tráfico Municipal, una de las tres Personas del producto.
+- **DHU-006** (HUs agnósticas a la implementación): la HU describe el qué observable, no el cómo. No nombra tecnologías ni fuentes concretas de datos. La única excepción de vocabulario técnico permitida es la escala ordinal de nivel de congestión 0-5 (ya autónoma del sistema, estándar de la industria).
+- **DHU-007** (RNF declarados): los requisitos no funcionales se declaran al final como "Candidatos a RNF".
+- **DHU-018** (resumen ejecutivo): la HU abre con un resumen ejecutivo para uniformidad de lectura.
+- **DHU-029** (esta ampliación): registra la incorporación de HU-23 y el alcance temporal histórico/actual del recorrido.
+
+**Relación con HU-22 (vista panorámica en vivo):** HU-22 entrega la congestión **actual** de la red, actualizándose en vivo, para "intervenir ahora". HU-23 entrega el **recorrido temporal** de esa misma congestión a lo largo del día, para entender cómo se formó la situación actual **antes** de intervenir. Son complementarias: HU-22 es la foto del ahora; HU-23 es la película del día sobre el mismo mapa. HU-23 no reemplaza a HU-22 ni modifica su comportamiento en vivo.
+
+**Relación con las HU del Gerente (HU-16/17/18):** las vistas del Gerente analizan periodos prolongados (semana/mes), comparan periodos y hacen drill-down de KPIs agregados de desempeño, sobre el dashboard. HU-23 es del Operador, su unidad es el tramo de vía sobre el mapa geográfico, y su horizonte es el día como contexto operativo inmediato, no el análisis de planificación. No hay solape de Persona, unidad ni medio.
+
+| Campo | Contenido |
+|---|---|
+| **Como** | Operador de Tráfico Municipal |
+| **Quiero** | recorrer sobre el mapa de la red vial la evolución del nivel de congestión de cada tramo de vía a lo largo del día, mediante un control temporal que avanza desde el inicio del día hasta el momento actual |
+| **Para** | entender cómo se formó la congestión que observo en el presente —si viene creciendo o disipándose— y disponer de ese contexto reciente antes de decidir dónde y cómo intervenir |
+
+**Tipo:** HU de Persona (Operador).
+**Feature(s) origen:** ampliación (recorrido temporal de la vista panorámica de red; ver DHU-029). Relacionada con la familia funcional de monitoreo operativo del Operador.
+
+### Resumen ejecutivo
+
+**Qué entrega:** sobre el mismo mapa geográfico de la red de HU-22, un control temporal que el Operador desplaza para recorrer la evolución de la congestión por tramo de vía a lo largo del día seleccionado. Al mover el control, el mapa repinta el nivel de congestión 0-5 de cada tramo correspondiente al instante elegido. Permite al Operador leer la trayectoria reciente de la congestión, no solo su estado actual.
+
+**CAs críticos:** CA-23.1 (recorrido temporal que repinta el mapa por instante), CA-23.2 (control limitado al rango con datos, bloqueado más allá), CA-23.4 (rótulo honesto de la naturaleza del dato recorrido), CA-23.6 (coexistencia con el modo en vivo de HU-22), CA-23.8 (redirección al login).
+
+**Dependencias:** consume el estado de congestión por tramo en un instante arbitrario y el rango temporal disponible, de forma agnóstica a la fuente. Habilitada por TTH-13 (consulta histórica de congestión por arista: estado por instante + rango disponible), que a su vez reutiliza la geometría y la persistencia de TTH-12. Reutiliza el mapa y la codificación visual de HU-22. Sin TTH-13 cerrada, no hay estado por instante que pintar.
+
+**Notas clave:** la escala 0-5 es el constructo de D-009, idéntico a HU-22. El recorrido cubre el estado **histórico y actual** del día; la proyección a futuro (predicción) sobre el mismo eje es extensión posterior fuera de alcance (ver "Alcance y extensiones futuras"). La HU es agnóstica a qué llena la fuente; en la versión demostrable, el recorrido es sobre un día de replay simulado, lo que la vista rotula explícitamente.
+
+### Descripción
+
+El Operador, antes de intervenir sobre la congestión que observa en vivo (HU-22), necesita el contexto de cómo llegó la red a ese estado: una congestión que viene creciendo desde hace una hora exige una respuesta distinta de una que ya se está disipando. HU-22 le da la foto del presente, pero no la trayectoria.
+
+Esta HU agrega al mapa de la red un control temporal —un deslizador sobre el eje del día— que el Operador desplaza para recorrer la evolución de la congestión. Cada posición del control corresponde a un instante del día; al moverlo, el mapa repinta el nivel de congestión 0-5 de cada tramo de vía correspondiente a ese instante, usando la misma codificación visual de calor de HU-22. El recorrido va desde el inicio del día hasta el momento con datos más reciente.
+
+El control se ofrece sobre la misma vista de mapa de HU-22, de modo que el Operador alterna entre observar la red en vivo (HU-22) y recorrer su evolución del día (HU-23) sin cambiar de pantalla. La unidad de análisis es el **tramo de vía**, idéntica a HU-22.
+
+La fuente de los datos de congestión es externa a esta vista y la HU es agnóstica a ella: la vista consume un nivel de congestión por tramo para un instante dado y lo representa, sin depender de cómo se produjo ni de qué día concreto se recorre.
+
+### Criterios de aceptación
+
+- **CA-23.1:** Dado que el Operador ha iniciado sesión y tiene la vista de mapa de la red abierta, cuando activa el recorrido temporal y desplaza el control a una posición del día, entonces el sistema repinta el indicador de calor de cada tramo de vía con el nivel de congestión 0-5 correspondiente al instante seleccionado, de manera que el Operador pueda leer el estado de toda la red en ese momento del día.
+
+- **CA-23.2:** Dado que el Operador recorre un día cuyos datos solo cubren hasta cierto instante (por ejemplo, el día en curso con datos hasta la hora actual), cuando intenta desplazar el control más allá del último instante con datos disponibles, entonces el sistema impide el desplazamiento más allá de ese punto (el control queda limitado al rango con datos), de manera que el Operador nunca recorra un tramo del día sin información en lugar de mostrarse vacío o engañoso.
+
+- **CA-23.3:** Dado que el Operador desplaza el control temporal, cuando el mapa repinta para el instante seleccionado, entonces el sistema indica de forma visible a qué momento del día corresponde la representación mostrada, de manera que el Operador sepa en todo momento qué instante está observando.
+
+- **CA-23.4:** Dado que el Operador recorre la evolución de la congestión, cuando observa el mapa en modo de recorrido temporal, entonces el sistema indica explícitamente la naturaleza del dato que se está recorriendo (por ejemplo, que corresponde a un día de muestra o registro reproducido), de manera que el recorrido no se interprete como un registro operativo en tiempo real distinto del que ofrece la vista en vivo.
+
+- **CA-23.5:** Dado que el Operador observa el mapa en un instante del recorrido, cuando consulta un tramo de vía concreto, entonces el sistema le permite identificar de qué tramo se trata y su nivel de congestión en el instante seleccionado (por ejemplo, al señalarlo o seleccionarlo), de manera que la lectura panorámica del recorrido pueda complementarse con el dato puntual de un tramo de interés.
+
+- **CA-23.6:** Dado que la vista de mapa ofrece tanto la observación en vivo (HU-22) como el recorrido temporal (esta HU), cuando el Operador activa el recorrido temporal, entonces el sistema deja de actualizar el mapa con la llegada de nueva información en vivo mientras dura el recorrido, y cuando el Operador vuelve al modo en vivo, entonces el sistema retoma la actualización automática del estado actual, de manera que el instante que el Operador está examinando no se vea alterado por actualizaciones en vivo y ambos modos no entren en conflicto.
+
+- **CA-23.7:** Dado que el Operador selecciona el día a recorrer, cuando el día seleccionado no dispone de información de congestión, entonces el sistema comunica explícitamente la ausencia de datos para ese día y deshabilita el control temporal, en lugar de presentar un mapa vacío sin explicación.
+
+- **CA-23.8:** Dado que el Operador no ha iniciado sesión, cuando intenta acceder a la vista de mapa de congestión de la red, entonces el sistema lo redirige a la pantalla de login.
+
+### Notas técnicas
+
+- **Composición sobre HU-22 y TTH-13:** esta vista no produce datos ni geometría nueva; reutiliza el mapa, la geometría de la red y la codificación visual de HU-22, y consume de TTH-13 el estado de congestión por tramo en un instante arbitrario y el rango temporal disponible por día. La integración es a nivel de presentación.
+
+- **Control temporal como deslizador:** la elección de un deslizador sobre el eje del día (en lugar de la selección de una hora exacta) es una decisión de usabilidad: el recorrido continuo es más ágil que ingresar instantes puntuales. La granularidad efectiva del recorrido (cada cuántos minutos repinta) y el diseño visual concreto del control se cierran mediante prototipado antes de codear; no son parte de la HU.
+
+- **Selección del día:** el día a recorrer lo determina el frontend; el rango temporal disponible dentro de ese día lo reporta el backend (TTH-13), de modo que el control se acote y bloquee según los datos reales y no según una suposición de cobertura.
+
+- **Coherencia visual con HU-22:** el recorrido usa la misma paleta y codificación de calor 0-5 de HU-22 (CA-22.3, diferenciación no dependiente exclusivamente del color), para que el Operador lea ambos modos con el mismo lenguaje visual.
+
+- **Unidad de análisis:** el "tramo de vía" de esta HU es el mismo de HU-22 (segmento dirigido de calle / arista del grafo vial).
+
+### Alcance y extensiones futuras
+
+- **En alcance de esta versión:** recorrido del **estado de congestión histórico y actual** por tramo de vía a lo largo del día (0 a 24 h), sobre el mapa, con el control limitado y bloqueado al rango con datos disponibles.
+
+- **Fuera de alcance (extensión futura):** la **proyección de la congestión predicha** a futuro sobre el mismo eje temporal (por ejemplo, extender el control más allá del instante actual para mostrar los próximos 30 minutos de congestión proyectada por tramo). El control temporal de esta HU se diseña de modo que su rango pueda extenderse hacia el futuro cuando exista la capa de predicción por tramo en escala 0-5; esa capa no existe servida hoy y se aborda como extensión predictiva con su propia HU y su propia TTH de predicción por arista (ver DHU-029).
+
+- **Fuera de alcance (extensión futura):** una vista de análisis histórico geográfico para el Gerente (recorrido o agregación sobre periodos prolongados sobre el mapa), que sería una necesidad de otra Persona con su propia HU.
+
+### Candidatos a RNF
+
+> Conforme a DHU-007, los siguientes son candidatos a requisitos no funcionales derivados de esta HU. Se consolidan en el documento RF/RNF (`REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md`) con su ID `RNF-XXX-NN` cuando este se actualice; aquí se declaran como candidatos.
+
+- **Candidato a RNF de usabilidad (recorrido ágil):** el desplazamiento del control temporal repinta el mapa con una latencia suficientemente baja para que el recorrido se perciba como fluido y no como una sucesión de cargas (CA-23.1). → candidato a RNF-USA-NN.
+
+- **Candidato a RNF de integridad de la representación (no recorrer vacío):** el control nunca permite recorrer instantes sin datos; se limita y bloquea al rango disponible reportado por la fuente (CA-23.2, CA-23.7). → candidato a RNF-FUN-NN.
+
+- **Candidato a RNF de honestidad de la fuente:** la vista comunica la naturaleza del dato recorrido de modo que no se confunda un registro reproducido con un registro operativo en tiempo real (CA-23.4). → candidato a RNF-COM-NN.
+
+- **Candidato a RNF de accesibilidad:** la diferenciación de niveles en el recorrido no depende exclusivamente del color, coherente con HU-22 (CA-22.3) y RNF-INT-02. → candidato a RNF-INT-02.
+
+- **Candidato a RNF de seguridad:** el acceso a la vista y a los datos del recorrido está restringido por rol, coherente con HU-22 (CA-23.8) y el patrón de autorización del proyecto. → candidato a RNF-SEC-NN.
+
+---
+
 ## Resumen del Bloque B
 
 | HU | Título | Sujeto | Tipo | Feature(s) origen | Clasif. MVP |
@@ -635,8 +741,9 @@ La fuente de los datos de congestión es externa a esta vista y la HU es agnóst
 | HU-08 | Consulta del historial de decisiones del motor | Operador (+ Admin) | Persona | F10 (+ F31 inglobada) | MVP1 |
 | HU-09 | Registro de notas e incidencias del turno | Operador | Persona | F11 | MVP2 |
 | HU-22 | Mapa de congestión de la red | Operador | Persona | ampliación (DHU-028) | MVP1 — ampliación |
+| HU-23 | Recorrido temporal de la congestión de la red | Operador | Persona | ampliación (DHU-029) | MVP1 — ampliación |
 
-**Total Bloque B: 9 HUs** (7 MVP1 + 1 MVP2 + 1 ampliación: HU-22, habilitada por TTH-12).
+**Total Bloque B: 10 HUs** (7 MVP1 + 1 MVP2 + 2 ampliaciones: HU-22 habilitada por TTH-12, HU-23 habilitada por TTH-13).
 
 F02 (Dashboard principal) queda cubierto por la composición visual de las HUs anteriores en una vista única, sin generar HU propia.
 
@@ -657,7 +764,7 @@ Durante la redacción del Bloque B se cerraron las siguientes decisiones formale
 
 ## Próximos pasos
 
-Esta sesión cerró el Bloque B. A la fecha actual, los Bloques C, D, E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) y 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Los siguientes pasos del proyecto, en sesiones futuras:
+Esta sesión cerró el Bloque B. A la fecha actual, los Bloques C, D, E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 23 HU operativas (HU-01 a HU-23) y 13 TTH (TTH-01 a TTH-13), tras las ampliaciones DHU-028 (HU-22 + TTH-12) y DHU-029 (HU-23 + TTH-13).** Los siguientes pasos del proyecto, en sesiones futuras:
 
 1. **Bloque C — Operador, operación degradada** (F22, F23, F24, F25, F26, F27 → 3 HUs operativas + 2 TTH; ya cerrado con HU-10, HU-11, HU-12, TTH-04, TTH-05). Ver `HU_BLOQUE_C.md`.
 2. **Bloque D — Administrador, soporte técnico** (F17, F18, F20 → 3 HUs operativas; ya cerrado con HU-13, HU-14, HU-15). Ver `HU_BLOQUE_D.md`. F21 fue reclasificado a Trabajos Futuros por DHU-012.
