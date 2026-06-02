@@ -148,6 +148,23 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   laborables, variación por seed). Suficiente para construir/validar el pipeline end-to-end; **NO**
   representa finde/feriado. Enriquecer con otros perfiles tras cerrar el pipeline (depende del punto 1).
 
+**Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01):**
+- **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl
+  (`torch-spatiotemporal`) + PyG instalan limpio en Apple Silicon contra **torch 2.9.1** —wheels
+  `universal2` del índice pyg, **sin compilación desde fuente** (incluido `torch-scatter`/
+  `torch-sparse`), sin downgrade de torch. Decisión del track: la **Fase 4 (STGNN) usará tsl**; el
+  **baseline de Fase 3 se construye en torch puro** (no requiere tsl).
+- **Salvedad — pin de numpy.** tsl pineó **numpy a 1.26.4** (vía `tables`/`blosc2`), lo que viola la
+  restricción de `opencv-python-headless` (módulo de visión, `edge_device`), que requiere **numpy≥2**.
+  Hoy es **inerte** (visión y entrenamiento son módulos distintos del monolito y no comparten uso de
+  arrays), pero es **frágil**.
+- **Disparador de resolución.** Antes de que la Fase 4 ponga tsl en el loop de entrenamiento
+  **productivo**, separar el venv de **entrenamiento** (tsl / numpy 1.x, `ia_prediction_service`) del
+  venv de **visión** (opencv / numpy 2.x, `edge_device`).
+- **Referencia.** Snapshots del venv pre/post-tsl en `/tmp/venv_pre_tsl.txt` y `/tmp/venv_post_tsl.txt`
+  (efímeros, no versionados — se pierden al reiniciar; valen solo como referencia inmediata, no como
+  respaldo durable).
+
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
 - Estado del SDD: documentation/sdd/SPECKIT_MAPPING.md.
