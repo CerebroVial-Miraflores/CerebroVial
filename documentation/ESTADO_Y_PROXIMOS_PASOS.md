@@ -1,4 +1,4 @@
-# Estado de la tesis CerebroVial — actualizado 2026-06-01
+# Estado de la tesis CerebroVial — actualizado 2026-06-02
 
 ## Dónde estoy
 Ciclo SDD (Spec Kit v0.8.11, brownfield) cerrado y sellado. 6/6 artefactos poblados y verificados:
@@ -73,6 +73,60 @@ y sus consumidores siguen usando jam_level; D-013 es excepción acotada del trac
 **Nota de convención:** los handoffs del track Miraflores se siembran bajo
 `documentation/handoffs/stgnn-fase1/` (las fases siguientes heredarán `stgnn-fase2/`, etc.),
 separados del histórico `corredor-larco/` (escenario Larco descartado por D-012).
+
+## STGNN Fase 5 — cierre del track: GRU se mantiene, STGNN no adoptado (D-011) (2026-06-02)
+**Veredicto del track STGNN Miraflores (investigación paralela, fuera de producción).** Tras entrenar
+el STGNN Time-then-Space en serio (modo completo, CPU, espejo byte-a-byte del baseline GRU de Fase 3) y
+correr un multi-seed de robustez, la decisión es **no adoptar el STGNN; se mantiene el GRU baseline**
+(D-011). El STGNN **gana en régimen normal y en el agregado**, pero **pierde de forma robusta en
+congestión máxima (día 081)** — que es justamente el régimen que más importa para control de tráfico.
+
+**Evidencia — corrida seed-0 (Fase 5), MAE@30 des-estandarizado (segundos):**
+
+| split | STGNN seed-0 | baseline GRU |
+|---|---|---|
+| test_all | 10.84 | 11.77 |
+| test_081 (congestión máx.) | 24.54 | **23.20** |
+| test_normal | 9.22 | 10.42 |
+
+(STGNN seed-0: 17 épocas, best_epoch 11, best_val MSE-std 0.053483, device cpu. Scaler train-only
+18.886/120.929, idéntico al baseline.)
+
+**Evidencia — multi-seed (5 seeds 0–4, misma config, solo cambia la seed), MAE@30:**
+
+| split | STGNN media ± desv (n=5) | baseline |
+|---|---|---|
+| test_all | 10.66 ± 0.17 | 11.77 |
+| test_081 | **24.02 ± 0.66** | **23.20** |
+| test_normal | 9.08 ± 0.16 | 10.42 |
+
+En 081 la media del STGNN (24.02) queda **por encima** del baseline (23.20), con el baseline **por debajo
+del borde inferior de ±1σ** (banda [23.36, 24.68]); rango crudo por seed [23.01, 24.63] — 1 de 5 seeds
+(seed 3) quedó por debajo del baseline, las otras 4 por encima. La desventaja en congestión es **robusta
+a la inicialización**, no ruido de una sola corrida. Las 5 seeds recomputaron el mismo scaler
+(18.885616/120.928734) → sin no-determinismo en el dato.
+
+**Exploración futura (NO perseguida ahora) — multi-perfil.** El veredicto está acotado al **dataset
+laborable de 60 días** (único perfil calibrado). Si más adelante se decide ampliar el alcance del
+dataset, una vía abierta es **generar perfiles distintos al laborable** (finde/feriado/especial),
+armar un dataset multi-perfil realista y **reentrenar baseline + STGNN sobre la data ampliada** —
+la componente espacial podría comportarse distinto bajo mezcla de regímenes. **Disparador:** "si se
+decide ampliar el alcance del dataset". Eso **enmendaría D-012**. No bloquea nada; queda registrado
+como camino, no como pendiente.
+
+**Observación de robustez del scaler (verificada-en-runtime, NO garantizada-por-construcción).** El
+STGNN **recomputa** el scaler train-only en cada corrida (`compute_timeloss_scaler`); el baseline lo
+tiene **congelado en JSON**. Hoy coinciden byte-a-byte porque comparten split y dataset, y cada corrida
+lo verificó (gate). Pero la paridad depende del **determinismo del cálculo**, no de leer el mismo número
+literal: si el dataset o el split cambiaran (p.ej. multi-perfil), el scaler recomputado del STGNN se
+movería con ellos mientras el del baseline quedaría congelado → divergirían. Es nota de robustez, no
+problema activo.
+
+**Artefactos versionados (resultado de Fase 5, seed-0):** `ia_prediction_service/scripts/miraflores_stgnn_metrics.json`
+y `…/miraflores_stgnn_metadata.json`. El checkpoint `ia_prediction_service/models/miraflores_stgnn.pt`
+queda **gitignored** (`models/.gitignore` ignora `*.pt`). Los artefactos del baseline GRU
+(`scripts/miraflores_baseline_*.json`, `models/miraflores_gru_baseline.pt`) **no fueron tocados**
+(guardia anti-pisado activa en el trainer + SHA-256 idénticos pre/post).
 
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue
@@ -190,6 +244,11 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   que la metadata lo permita). **Disparador:** querer reunificar los venvs.
 - **Referencia.** Snapshot del `.venv` raíz pre-separación en `/tmp/venv_root_pre_separacion.txt`
   (efímero, no versionado).
+- **Deuda pytest — ubicación de los tests del módulo de predicción (registrada 2026-06-01).** Los
+  tests de `ia_prediction_service` que son numpy-puro corren en el venv raíz (donde vive pytest); el
+  venv de training no tiene pytest. Grieta: si un test del módulo llega a depender de tsl, pasaría en
+  el raíz (sin tsl) mientras el código corre en el venv de training. Disparador: cuando un test del
+  módulo dependa de tsl, instalar pytest en el venv de training y mover ese test ahí.
 
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
