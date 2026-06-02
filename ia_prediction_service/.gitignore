@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Datos del módulo (datasets/binarios voluminosos, regenerables o de referencia).
+# Incluye los MetrLA pre-D-008 (metr_la.h5, metr_la_dist.npy) que NO se versionan.
+# Anclado con '/' para que aplique SOLO a ia_prediction_service/data/ y NO a
+# src/data/ (donde viven módulos como miraflores_split.py / miraflores_windower.py).
+/data/

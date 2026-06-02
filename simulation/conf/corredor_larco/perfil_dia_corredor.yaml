@@ -1,0 +1,54 @@
+# Perfil-día del corredor Larco (STGNN) — demanda variable 24h por FASES.
+#
+# A diferencia de demand_params.yaml (un vehsPerHour fijo por OD para el baseline
+# peak de 30 min), acá la demanda escala en el tiempo: cada fase aplica un `scale`
+# multiplicativo a los flows_vph BASE de demand_params.yaml. El generador
+# (generate_corredor_perfil_dia.py) lee las 11 rutas/turn-ratios de allí y emite,
+# por fase, vehsPerHour = round(base_vph_OD × scale_fase). Los turn ratios se
+# preservan (todos los OD de una fuente escalan por el mismo factor).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# CALIBRACIÓN — anclada al capacity_sweep del corredor (sweep_demand.py).
+# Es TENTATIVA: a falsar con la corrida de prueba del Tramo 2 (este YAML define
+# los scale; recién la corrida dirá si los jam_level objetivo se cumplen).
+#
+# El sweep mostró un CLIFF (no gradiente) alrededor de scale ≈ 1.0:
+#   - rodilla scale 1.0  → ~142 s de demora media / ~69 veh never_inserted
+#   - scale 1.2          → ~280 s de demora / ~245 veh never_inserted (saturación)
+# Por debajo del cliff el corredor drena cada ciclo (jam ≤ 2); al cruzarlo la cola
+# crece sin acotar y el estado salta a jam 3-4. jam 3 vive sobre todo en el
+# transitorio de las rampas (no como meseta sostenida).
+#
+# scale → jam objetivo por fase (base = 1800 veh/h Larco S→N):
+#   scale 0.30 → jam 0   (valle nocturno, corredor casi vacío)
+#   scale 0.45 → jam 1   (valle noche)
+#   scale 0.50 → jam 1   (amanecer)
+#   scale 0.60 → jam 1   (bajada noche)
+#   scale 0.70 → jam 2   (rampa AM)
+#   scale 0.75 → jam 2   (meseta media diurna)
+#   scale 0.80 → jam 2   (bajada post-AM)
+#   scale 0.90 → jam 2-3 (rampa PM, se acerca al cliff)
+#   scale 1.05 → jam 3-4 (pico AM, cruza el cliff)
+#   scale 1.20 → jam 4   (pico PM, saturación profunda)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Convención: begin_h/end_h en horas; el generador las pasa a segundos (h*3600).
+# Las rampas entre mesetas son fases EXPLÍCITAS (staircase auditable) para que el
+# predictor aprenda la dinámica de subida/bajada (spike lookback×horizonte).
+
+period_s: 86400          # 24h simuladas por corrida (buckets de 60s = 1440/corrida).
+
+profiles:
+  laborable:
+    description: "Día laborable — doble spike (AM 07-09h, PM 18-20h) que cruza el cliff, meseta media diurna (jam 2), valles nocturnos."
+    phases:
+      - {begin_h: 0,  end_h: 4,  scale: 0.30}   # valle nocturno      → jam 0
+      - {begin_h: 4,  end_h: 6,  scale: 0.50}   # amanecer            → jam 1
+      - {begin_h: 6,  end_h: 7,  scale: 0.70}   # rampa AM            → jam 2
+      - {begin_h: 7,  end_h: 9,  scale: 1.05}   # pico AM             → jam 3-4 (cruza cliff)
+      - {begin_h: 9,  end_h: 10, scale: 0.80}   # bajada post-AM      → jam 2
+      - {begin_h: 10, end_h: 17, scale: 0.75}   # meseta media        → jam 2
+      - {begin_h: 17, end_h: 18, scale: 0.90}   # rampa PM            → jam 2-3
+      - {begin_h: 18, end_h: 20, scale: 1.20}   # pico PM             → jam 4
+      - {begin_h: 20, end_h: 22, scale: 0.60}   # bajada noche        → jam 1
+      - {begin_h: 22, end_h: 24, scale: 0.45}   # valle noche         → jam 1

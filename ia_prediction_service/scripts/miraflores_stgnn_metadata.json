@@ -1,0 +1,209 @@
+{
+  "version": "stgnn-fase4-timethenspace-b1",
+  "model": "TimeThenSpaceModel",
+  "base": "B (solo capas tsl)",
+  "arch": {
+    "input_size": 2,
+    "output_size": 1,
+    "hidden": 64,
+    "emb": 10,
+    "gnn_kernel": 2,
+    "rnn_layers": 1,
+    "horizonte": 30,
+    "n_nodes": 375
+  },
+  "scaler": {
+    "mean": 18.885616302490234,
+    "std": 120.9287338256836
+  },
+  "hyperparams": {
+    "lr": 0.001,
+    "batch": 64,
+    "max_epochs": 60,
+    "patience": 6,
+    "epochs_run": 17,
+    "best_epoch": 11,
+    "train_stride": 12,
+    "eval_stride": 12,
+    "lookback": 30,
+    "horizonte": 30
+  },
+  "split": {
+    "train": [
+      42,
+      43,
+      44,
+      46,
+      47,
+      49,
+      50,
+      52,
+      53,
+      55,
+      56,
+      58,
+      59,
+      62,
+      64,
+      65,
+      68,
+      70,
+      71,
+      72,
+      73,
+      74,
+      76,
+      77,
+      79,
+      80,
+      82,
+      83,
+      85,
+      86,
+      87,
+      88,
+      89,
+      91,
+      92,
+      94,
+      95,
+      97,
+      98,
+      99,
+      100,
+      101
+    ],
+    "val": [
+      48,
+      54,
+      60,
+      66,
+      78,
+      84,
+      90,
+      96
+    ],
+    "test": [
+      45,
+      51,
+      57,
+      61,
+      63,
+      67,
+      69,
+      75,
+      81,
+      93
+    ]
+  },
+  "seed": 0,
+  "device": "cpu",
+  "target_authority": "D-013 + enmienda 2026-06-01: target = timeLoss TOTAL por arista por intervalo de 60 s (columna timeLoss del Parquet, sin derivación per-vehículo).",
+  "best_val_mse_std": 0.053483,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse_std": 0.323189,
+      "val_mse_std": 0.090487,
+      "secs": 37.0
+    },
+    {
+      "epoch": 2,
+      "train_mse_std": 0.074161,
+      "val_mse_std": 0.068837,
+      "secs": 36.0
+    },
+    {
+      "epoch": 3,
+      "train_mse_std": 0.066726,
+      "val_mse_std": 0.067113,
+      "secs": 35.7
+    },
+    {
+      "epoch": 4,
+      "train_mse_std": 0.064741,
+      "val_mse_std": 0.062763,
+      "secs": 35.5
+    },
+    {
+      "epoch": 5,
+      "train_mse_std": 0.062807,
+      "val_mse_std": 0.061163,
+      "secs": 34.1
+    },
+    {
+      "epoch": 6,
+      "train_mse_std": 0.061225,
+      "val_mse_std": 0.060358,
+      "secs": 34.2
+    },
+    {
+      "epoch": 7,
+      "train_mse_std": 0.058563,
+      "val_mse_std": 0.058235,
+      "secs": 35.1
+    },
+    {
+      "epoch": 8,
+      "train_mse_std": 0.057698,
+      "val_mse_std": 0.060649,
+      "secs": 35.8
+    },
+    {
+      "epoch": 9,
+      "train_mse_std": 0.056305,
+      "val_mse_std": 0.056165,
+      "secs": 33.1
+    },
+    {
+      "epoch": 10,
+      "train_mse_std": 0.055697,
+      "val_mse_std": 0.054228,
+      "secs": 34.1
+    },
+    {
+      "epoch": 11,
+      "train_mse_std": 0.054779,
+      "val_mse_std": 0.053483,
+      "secs": 34.7
+    },
+    {
+      "epoch": 12,
+      "train_mse_std": 0.054219,
+      "val_mse_std": 0.054638,
+      "secs": 35.5
+    },
+    {
+      "epoch": 13,
+      "train_mse_std": 0.053876,
+      "val_mse_std": 0.058814,
+      "secs": 33.7
+    },
+    {
+      "epoch": 14,
+      "train_mse_std": 0.052597,
+      "val_mse_std": 0.057089,
+      "secs": 32.3
+    },
+    {
+      "epoch": 15,
+      "train_mse_std": 0.054009,
+      "val_mse_std": 0.054118,
+      "secs": 35.9
+    },
+    {
+      "epoch": 16,
+      "train_mse_std": 0.052945,
+      "val_mse_std": 0.056655,
+      "secs": 32.1
+    },
+    {
+      "epoch": 17,
+      "train_mse_std": 0.053346,
+      "val_mse_std": 0.054313,
+      "secs": 31.7
+    }
+  ],
+  "checkpoint": "miraflores_stgnn.pt",
+  "quick": false
+}

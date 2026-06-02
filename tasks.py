@@ -351,22 +351,78 @@ def rebuild_clean(c):
 
 @task
 def setup_dev(c):
-    """Crear venv local con todas las dependencias de desarrollo."""
+    """Crear venv local CORE+VISIÓN (.venv) con deps de dev (numpy>=2, sin tsl).
+
+    El entrenamiento del GRU (tsl, numpy 1.x) vive en un venv APARTE: ver
+    `invoke setup-train`. Los dos venvs están separados a propósito — tsl ancla
+    numpy<2 y choca con opencv/visión (ver documentation/ESTADO_Y_PROXIMOS_PASOS.md).
+    """
     is_windows = platform.system() == "Windows"
     venv_python = ".venv\\Scripts\\python.exe" if is_windows else ".venv/bin/python"
 
-    print("Creando venv en .venv/ ...")
+    print("Creando venv core+visión en .venv/ ...")
     c.run("python -m venv .venv" if is_windows else "python3.11 -m venv .venv", pty=False)
     c.run(f"{venv_python} -m pip install --upgrade pip", pty=False)
-    c.run(f"{venv_python} -m pip install -e ./shared", pty=False)
-    c.run(f"{venv_python} -m pip install -r core_management_api/requirements.txt", pty=False)
-    c.run(f"{venv_python} -m pip install -r edge_device/requirements.txt", pty=False)
-    c.run(f"{venv_python} -m pip install -r requirements-dev.txt", pty=False)
+    # Instalación COMBINADA en UNA sola resolución de pip: así el pin torch==2.9.1 del
+    # core (excepción D-010) compone con los deps de visión (edge) en vez de ser pisado
+    # por una invocación separada (ultralytics/torchvision arrastrarían un torch más nuevo).
+    # Se corre desde core_management_api/ para que los `-e ../shared` de los requirements
+    # resuelvan a ./shared (pip resuelve los paths relativos de un requirements contra el CWD).
+    abs_python = os.path.abspath(venv_python)
+    with c.cd("core_management_api"):
+        c.run(
+            f'"{abs_python}" -m pip install -e ../shared '
+            f"-r requirements.txt -r ../edge_device/requirements.txt -r ../requirements-dev.txt",
+            pty=False,
+        )
 
     activate = ".venv\\Scripts\\activate" if is_windows else "source .venv/bin/activate"
-    _print_box("✓ Venv creado en .venv/", [
+    _print_box("✓ Venv core+visión creado en .venv/", [
         f"Activalo con: {activate}",
         "Después podés correr: invoke test, invoke seed, alembic, etc.",
+        "Para entrenar el GRU: invoke setup-train (venv aparte).",
+    ])
+
+
+@task
+def setup_train(c):
+    """Crear venv de ENTRENAMIENTO en ia_prediction_service/.venv (tsl + numpy 1.x).
+
+    Aislado del .venv core+visión: tsl exige numpy<2 (Requires-Dist: numpy<2,>1.20.3)
+    y este venv NO debe tener opencv/cv2. Usalo para los dataset builders y scripts de
+    train de ia_prediction_service.
+    """
+    is_windows = platform.system() == "Windows"
+    venv_python = (
+        "ia_prediction_service\\.venv\\Scripts\\python.exe"
+        if is_windows
+        else "ia_prediction_service/.venv/bin/python"
+    )
+
+    print("Creando venv de training en ia_prediction_service/.venv/ ...")
+    c.run(
+        "python -m venv ia_prediction_service/.venv"
+        if is_windows
+        else "python3.11 -m venv ia_prediction_service/.venv",
+        pty=False,
+    )
+    c.run(f"{venv_python} -m pip install --upgrade pip", pty=False)
+    # Correr desde ia_prediction_service/ para que el `-e ../shared` del requirements
+    # resuelva a ./shared (pip resuelve los paths relativos contra el CWD).
+    abs_python = os.path.abspath(venv_python)
+    with c.cd("ia_prediction_service"):
+        c.run(f'"{abs_python}" -m pip install -r requirements.txt', pty=False)
+
+    activate = (
+        "ia_prediction_service\\.venv\\Scripts\\activate"
+        if is_windows
+        else "source ia_prediction_service/.venv/bin/activate"
+    )
+    _print_box("✓ Venv de training creado en ia_prediction_service/.venv/", [
+        f"Activalo con: {activate}",
+        "Corré los scripts de train/dataset con este python, p. ej.:",
+        "  ia_prediction_service/.venv/bin/python \\",
+        "    ia_prediction_service/scripts/train_miraflores_baseline.py --quick",
     ])
 
 

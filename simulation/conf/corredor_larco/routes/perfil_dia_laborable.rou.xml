@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- perfil-día laborable corredor Larco — demanda por fases×OD (STGNN). Generado desde demand_params.yaml + perfil_dia_corredor.yaml; NO editar a mano. -->
+<routes>
+  <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" maxSpeed="13.89"/>
+  <route id="larco_S_N" edges="129466113#0 279893875#1 279893875#2 279893875#4 279893875#5"/>
+  <route id="larco_S_benE" edges="129466113#0 406008845#1"/>
+  <route id="larco_S_benW" edges="129466113#0 279893831#2 1152291911"/>
+  <route id="larco_S_schW" edges="129466113#0 279893875#1 279893875#2 436771522#0"/>
+  <route id="larco_S_dcE" edges="129466113#0 279893875#1 279893875#2 279893875#4 511823826"/>
+  <route id="benE_W" edges="344159559#2 279893831#2 1152291911"/>
+  <route id="benE_larcoN" edges="344159559#2 279893875#1 279893875#2 279893875#4 279893875#5"/>
+  <route id="benW_E" edges="406007411 406007422#0 406008845#1"/>
+  <route id="benW_larcoN" edges="406007411 406007422#0 279893875#1 279893875#2 279893875#4 279893875#5"/>
+  <route id="schE_W" edges="430180649 436771522#0"/>
+  <route id="schE_larcoN" edges="430180649 279893875#4 279893875#5"/>
+  <flow id="f_larco_S_N_0" type="car" route="larco_S_N" begin="0" end="14400" vehsPerHour="432" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_0" type="car" route="larco_S_benE" begin="0" end="14400" vehsPerHour="42" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_0" type="car" route="larco_S_benW" begin="0" end="14400" vehsPerHour="39" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_0" type="car" route="larco_S_schW" begin="0" end="14400" vehsPerHour="15" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_0" type="car" route="larco_S_dcE" begin="0" end="14400" vehsPerHour="12" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_0" type="car" route="benE_W" begin="0" end="14400" vehsPerHour="114" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_0" type="car" route="benE_larcoN" begin="0" end="14400" vehsPerHour="36" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_0" type="car" route="benW_E" begin="0" end="14400" vehsPerHour="69" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_0" type="car" route="benW_larcoN" begin="0" end="14400" vehsPerHour="21" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_0" type="car" route="schE_W" begin="0" end="14400" vehsPerHour="114" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_0" type="car" route="schE_larcoN" begin="0" end="14400" vehsPerHour="36" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_1" type="car" route="larco_S_N" begin="14400" end="21600" vehsPerHour="720" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_1" type="car" route="larco_S_benE" begin="14400" end="21600" vehsPerHour="70" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_1" type="car" route="larco_S_benW" begin="14400" end="21600" vehsPerHour="65" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_1" type="car" route="larco_S_schW" begin="14400" end="21600" vehsPerHour="25" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_1" type="car" route="larco_S_dcE" begin="14400" end="21600" vehsPerHour="20" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_1" type="car" route="benE_W" begin="14400" end="21600" vehsPerHour="190" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_1" type="car" route="benE_larcoN" begin="14400" end="21600" vehsPerHour="60" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_1" type="car" route="benW_E" begin="14400" end="21600" vehsPerHour="115" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_1" type="car" route="benW_larcoN" begin="14400" end="21600" vehsPerHour="35" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_1" type="car" route="schE_W" begin="14400" end="21600" vehsPerHour="190" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_1" type="car" route="schE_larcoN" begin="14400" end="21600" vehsPerHour="60" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_2" type="car" route="larco_S_N" begin="21600" end="25200" vehsPerHour="1008" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_2" type="car" route="larco_S_benE" begin="21600" end="25200" vehsPerHour="98" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_2" type="car" route="larco_S_benW" begin="21600" end="25200" vehsPerHour="91" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_2" type="car" route="larco_S_schW" begin="21600" end="25200" vehsPerHour="35" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_2" type="car" route="larco_S_dcE" begin="21600" end="25200" vehsPerHour="28" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_2" type="car" route="benE_W" begin="21600" end="25200" vehsPerHour="266" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_2" type="car" route="benE_larcoN" begin="21600" end="25200" vehsPerHour="84" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_2" type="car" route="benW_E" begin="21600" end="25200" vehsPerHour="161" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_2" type="car" route="benW_larcoN" begin="21600" end="25200" vehsPerHour="49" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_2" type="car" route="schE_W" begin="21600" end="25200" vehsPerHour="266" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_2" type="car" route="schE_larcoN" begin="21600" end="25200" vehsPerHour="84" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_3" type="car" route="larco_S_N" begin="25200" end="32400" vehsPerHour="1512" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_3" type="car" route="larco_S_benE" begin="25200" end="32400" vehsPerHour="147" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_3" type="car" route="larco_S_benW" begin="25200" end="32400" vehsPerHour="136" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_3" type="car" route="larco_S_schW" begin="25200" end="32400" vehsPerHour="52" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_3" type="car" route="larco_S_dcE" begin="25200" end="32400" vehsPerHour="42" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_3" type="car" route="benE_W" begin="25200" end="32400" vehsPerHour="399" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_3" type="car" route="benE_larcoN" begin="25200" end="32400" vehsPerHour="126" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_3" type="car" route="benW_E" begin="25200" end="32400" vehsPerHour="242" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_3" type="car" route="benW_larcoN" begin="25200" end="32400" vehsPerHour="74" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_3" type="car" route="schE_W" begin="25200" end="32400" vehsPerHour="399" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_3" type="car" route="schE_larcoN" begin="25200" end="32400" vehsPerHour="126" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_4" type="car" route="larco_S_N" begin="32400" end="36000" vehsPerHour="1152" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_4" type="car" route="larco_S_benE" begin="32400" end="36000" vehsPerHour="112" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_4" type="car" route="larco_S_benW" begin="32400" end="36000" vehsPerHour="104" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_4" type="car" route="larco_S_schW" begin="32400" end="36000" vehsPerHour="40" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_4" type="car" route="larco_S_dcE" begin="32400" end="36000" vehsPerHour="32" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_4" type="car" route="benE_W" begin="32400" end="36000" vehsPerHour="304" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_4" type="car" route="benE_larcoN" begin="32400" end="36000" vehsPerHour="96" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_4" type="car" route="benW_E" begin="32400" end="36000" vehsPerHour="184" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_4" type="car" route="benW_larcoN" begin="32400" end="36000" vehsPerHour="56" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_4" type="car" route="schE_W" begin="32400" end="36000" vehsPerHour="304" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_4" type="car" route="schE_larcoN" begin="32400" end="36000" vehsPerHour="96" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_5" type="car" route="larco_S_N" begin="36000" end="61200" vehsPerHour="1080" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_5" type="car" route="larco_S_benE" begin="36000" end="61200" vehsPerHour="105" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_5" type="car" route="larco_S_benW" begin="36000" end="61200" vehsPerHour="98" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_5" type="car" route="larco_S_schW" begin="36000" end="61200" vehsPerHour="38" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_5" type="car" route="larco_S_dcE" begin="36000" end="61200" vehsPerHour="30" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_5" type="car" route="benE_W" begin="36000" end="61200" vehsPerHour="285" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_5" type="car" route="benE_larcoN" begin="36000" end="61200" vehsPerHour="90" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_5" type="car" route="benW_E" begin="36000" end="61200" vehsPerHour="172" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_5" type="car" route="benW_larcoN" begin="36000" end="61200" vehsPerHour="52" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_5" type="car" route="schE_W" begin="36000" end="61200" vehsPerHour="285" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_5" type="car" route="schE_larcoN" begin="36000" end="61200" vehsPerHour="90" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_6" type="car" route="larco_S_N" begin="61200" end="64800" vehsPerHour="1296" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_6" type="car" route="larco_S_benE" begin="61200" end="64800" vehsPerHour="126" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_6" type="car" route="larco_S_benW" begin="61200" end="64800" vehsPerHour="117" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_6" type="car" route="larco_S_schW" begin="61200" end="64800" vehsPerHour="45" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_6" type="car" route="larco_S_dcE" begin="61200" end="64800" vehsPerHour="36" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_6" type="car" route="benE_W" begin="61200" end="64800" vehsPerHour="342" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_6" type="car" route="benE_larcoN" begin="61200" end="64800" vehsPerHour="108" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_6" type="car" route="benW_E" begin="61200" end="64800" vehsPerHour="207" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_6" type="car" route="benW_larcoN" begin="61200" end="64800" vehsPerHour="63" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_6" type="car" route="schE_W" begin="61200" end="64800" vehsPerHour="342" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_6" type="car" route="schE_larcoN" begin="61200" end="64800" vehsPerHour="108" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_7" type="car" route="larco_S_N" begin="64800" end="72000" vehsPerHour="1728" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_7" type="car" route="larco_S_benE" begin="64800" end="72000" vehsPerHour="168" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_7" type="car" route="larco_S_benW" begin="64800" end="72000" vehsPerHour="156" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_7" type="car" route="larco_S_schW" begin="64800" end="72000" vehsPerHour="60" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_7" type="car" route="larco_S_dcE" begin="64800" end="72000" vehsPerHour="48" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_7" type="car" route="benE_W" begin="64800" end="72000" vehsPerHour="456" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_7" type="car" route="benE_larcoN" begin="64800" end="72000" vehsPerHour="144" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_7" type="car" route="benW_E" begin="64800" end="72000" vehsPerHour="276" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_7" type="car" route="benW_larcoN" begin="64800" end="72000" vehsPerHour="84" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_7" type="car" route="schE_W" begin="64800" end="72000" vehsPerHour="456" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_7" type="car" route="schE_larcoN" begin="64800" end="72000" vehsPerHour="144" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_8" type="car" route="larco_S_N" begin="72000" end="79200" vehsPerHour="864" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_8" type="car" route="larco_S_benE" begin="72000" end="79200" vehsPerHour="84" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_8" type="car" route="larco_S_benW" begin="72000" end="79200" vehsPerHour="78" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_8" type="car" route="larco_S_schW" begin="72000" end="79200" vehsPerHour="30" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_8" type="car" route="larco_S_dcE" begin="72000" end="79200" vehsPerHour="24" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_8" type="car" route="benE_W" begin="72000" end="79200" vehsPerHour="228" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_8" type="car" route="benE_larcoN" begin="72000" end="79200" vehsPerHour="72" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_8" type="car" route="benW_E" begin="72000" end="79200" vehsPerHour="138" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_8" type="car" route="benW_larcoN" begin="72000" end="79200" vehsPerHour="42" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_8" type="car" route="schE_W" begin="72000" end="79200" vehsPerHour="228" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_8" type="car" route="schE_larcoN" begin="72000" end="79200" vehsPerHour="72" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_N_9" type="car" route="larco_S_N" begin="79200" end="86400" vehsPerHour="648" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benE_9" type="car" route="larco_S_benE" begin="79200" end="86400" vehsPerHour="63" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_benW_9" type="car" route="larco_S_benW" begin="79200" end="86400" vehsPerHour="58" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_schW_9" type="car" route="larco_S_schW" begin="79200" end="86400" vehsPerHour="22" departLane="best" departSpeed="max"/>
+  <flow id="f_larco_S_dcE_9" type="car" route="larco_S_dcE" begin="79200" end="86400" vehsPerHour="18" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_W_9" type="car" route="benE_W" begin="79200" end="86400" vehsPerHour="171" departLane="best" departSpeed="max"/>
+  <flow id="f_benE_larcoN_9" type="car" route="benE_larcoN" begin="79200" end="86400" vehsPerHour="54" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_E_9" type="car" route="benW_E" begin="79200" end="86400" vehsPerHour="104" departLane="best" departSpeed="max"/>
+  <flow id="f_benW_larcoN_9" type="car" route="benW_larcoN" begin="79200" end="86400" vehsPerHour="32" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_W_9" type="car" route="schE_W" begin="79200" end="86400" vehsPerHour="171" departLane="best" departSpeed="max"/>
+  <flow id="f_schE_larcoN_9" type="car" route="schE_larcoN" begin="79200" end="86400" vehsPerHour="54" departLane="best" departSpeed="max"/>
+</routes>

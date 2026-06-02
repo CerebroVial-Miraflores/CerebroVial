@@ -9,8 +9,8 @@ es solo el CLI: arma sys.path, llama ``evaluate(...)``, escribe el JSON e imprim
 resumen por dirección. Determinista, CPU, sin MLOps.
 
 Uso (correr desde la raíz del repo):
-  .venv/bin/python ia_prediction_service/scripts/tth09_evaluate.py
-  .venv/bin/python ia_prediction_service/scripts/tth09_evaluate.py --out /tmp/eval.json
+  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/tth09_evaluate.py
+  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/tth09_evaluate.py --out /tmp/eval.json
 """
 
 from __future__ import annotations

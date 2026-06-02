@@ -22,8 +22,8 @@ train/valid), así que el F1 del ganador puede ser ligeramente OPTIMISTA por sel
 de modelo. Queda registrado en ``meta.selection_note`` del JSON de salida.
 
 Uso (correr desde la raíz del repo):
-  .venv/bin/python ia_prediction_service/scripts/tth09_weight_sweep.py
-  .venv/bin/python ia_prediction_service/scripts/tth09_weight_sweep.py --keep-models
+  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/tth09_weight_sweep.py
+  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/tth09_weight_sweep.py --keep-models
 """
 
 from __future__ import annotations

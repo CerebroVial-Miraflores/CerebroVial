@@ -1,0 +1,305 @@
+{
+  "version": "stgnn-fase3-baseline-b1",
+  "model": "MirafloresGRUBaseline",
+  "arch": {
+    "input_size": 2,
+    "hidden": 64,
+    "horizonte": 30
+  },
+  "scaler": {
+    "mean": 18.885616302490234,
+    "std": 120.9287338256836
+  },
+  "hyperparams": {
+    "lr": 0.001,
+    "batch": 512,
+    "max_epochs": 60,
+    "patience": 6,
+    "epochs_run": 34,
+    "best_epoch": 28,
+    "train_stride": 12,
+    "eval_stride": 12,
+    "lookback": 30,
+    "horizonte": 30
+  },
+  "split": {
+    "train": [
+      42,
+      43,
+      44,
+      46,
+      47,
+      49,
+      50,
+      52,
+      53,
+      55,
+      56,
+      58,
+      59,
+      62,
+      64,
+      65,
+      68,
+      70,
+      71,
+      72,
+      73,
+      74,
+      76,
+      77,
+      79,
+      80,
+      82,
+      83,
+      85,
+      86,
+      87,
+      88,
+      89,
+      91,
+      92,
+      94,
+      95,
+      97,
+      98,
+      99,
+      100,
+      101
+    ],
+    "val": [
+      48,
+      54,
+      60,
+      66,
+      78,
+      84,
+      90,
+      96
+    ],
+    "test": [
+      45,
+      51,
+      57,
+      61,
+      63,
+      67,
+      69,
+      75,
+      81,
+      93
+    ]
+  },
+  "seed": 0,
+  "device": "mps",
+  "target_authority": "D-013 + enmienda 2026-06-01: target = timeLoss TOTAL por arista por intervalo de 60 s (columna timeLoss del Parquet, sin derivación per-vehículo).",
+  "best_val_mse_std": 0.06606,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse_std": 0.107064,
+      "val_mse_std": 0.077947,
+      "secs": 40.1
+    },
+    {
+      "epoch": 2,
+      "train_mse_std": 0.073452,
+      "val_mse_std": 0.072628,
+      "secs": 40.0
+    },
+    {
+      "epoch": 3,
+      "train_mse_std": 0.072776,
+      "val_mse_std": 0.07073,
+      "secs": 40.0
+    },
+    {
+      "epoch": 4,
+      "train_mse_std": 0.07207,
+      "val_mse_std": 0.073255,
+      "secs": 40.1
+    },
+    {
+      "epoch": 5,
+      "train_mse_std": 0.071213,
+      "val_mse_std": 0.070014,
+      "secs": 39.8
+    },
+    {
+      "epoch": 6,
+      "train_mse_std": 0.070656,
+      "val_mse_std": 0.069781,
+      "secs": 39.8
+    },
+    {
+      "epoch": 7,
+      "train_mse_std": 0.070244,
+      "val_mse_std": 0.070312,
+      "secs": 39.7
+    },
+    {
+      "epoch": 8,
+      "train_mse_std": 0.070153,
+      "val_mse_std": 0.069016,
+      "secs": 39.9
+    },
+    {
+      "epoch": 9,
+      "train_mse_std": 0.069934,
+      "val_mse_std": 0.069797,
+      "secs": 39.9
+    },
+    {
+      "epoch": 10,
+      "train_mse_std": 0.069942,
+      "val_mse_std": 0.069714,
+      "secs": 40.3
+    },
+    {
+      "epoch": 11,
+      "train_mse_std": 0.069181,
+      "val_mse_std": 0.069101,
+      "secs": 40.9
+    },
+    {
+      "epoch": 12,
+      "train_mse_std": 0.068868,
+      "val_mse_std": 0.068516,
+      "secs": 39.7
+    },
+    {
+      "epoch": 13,
+      "train_mse_std": 0.068486,
+      "val_mse_std": 0.072773,
+      "secs": 40.3
+    },
+    {
+      "epoch": 14,
+      "train_mse_std": 0.068481,
+      "val_mse_std": 0.068287,
+      "secs": 40.0
+    },
+    {
+      "epoch": 15,
+      "train_mse_std": 0.068219,
+      "val_mse_std": 0.072738,
+      "secs": 39.7
+    },
+    {
+      "epoch": 16,
+      "train_mse_std": 0.067857,
+      "val_mse_std": 0.068399,
+      "secs": 40.0
+    },
+    {
+      "epoch": 17,
+      "train_mse_std": 0.067584,
+      "val_mse_std": 0.067392,
+      "secs": 40.2
+    },
+    {
+      "epoch": 18,
+      "train_mse_std": 0.06719,
+      "val_mse_std": 0.067688,
+      "secs": 40.7
+    },
+    {
+      "epoch": 19,
+      "train_mse_std": 0.066771,
+      "val_mse_std": 0.067728,
+      "secs": 40.1
+    },
+    {
+      "epoch": 20,
+      "train_mse_std": 0.066644,
+      "val_mse_std": 0.067795,
+      "secs": 42.0
+    },
+    {
+      "epoch": 21,
+      "train_mse_std": 0.066089,
+      "val_mse_std": 0.067151,
+      "secs": 40.2
+    },
+    {
+      "epoch": 22,
+      "train_mse_std": 0.066082,
+      "val_mse_std": 0.06638,
+      "secs": 40.0
+    },
+    {
+      "epoch": 23,
+      "train_mse_std": 0.066273,
+      "val_mse_std": 0.066278,
+      "secs": 39.9
+    },
+    {
+      "epoch": 24,
+      "train_mse_std": 0.065292,
+      "val_mse_std": 0.066878,
+      "secs": 40.3
+    },
+    {
+      "epoch": 25,
+      "train_mse_std": 0.065329,
+      "val_mse_std": 0.066347,
+      "secs": 41.2
+    },
+    {
+      "epoch": 26,
+      "train_mse_std": 0.064879,
+      "val_mse_std": 0.067814,
+      "secs": 40.9
+    },
+    {
+      "epoch": 27,
+      "train_mse_std": 0.064743,
+      "val_mse_std": 0.067503,
+      "secs": 40.2
+    },
+    {
+      "epoch": 28,
+      "train_mse_std": 0.064628,
+      "val_mse_std": 0.06606,
+      "secs": 40.1
+    },
+    {
+      "epoch": 29,
+      "train_mse_std": 0.064178,
+      "val_mse_std": 0.068602,
+      "secs": 40.7
+    },
+    {
+      "epoch": 30,
+      "train_mse_std": 0.064028,
+      "val_mse_std": 0.067836,
+      "secs": 39.6
+    },
+    {
+      "epoch": 31,
+      "train_mse_std": 0.063975,
+      "val_mse_std": 0.067888,
+      "secs": 40.2
+    },
+    {
+      "epoch": 32,
+      "train_mse_std": 0.063794,
+      "val_mse_std": 0.068157,
+      "secs": 40.1
+    },
+    {
+      "epoch": 33,
+      "train_mse_std": 0.063357,
+      "val_mse_std": 0.068772,
+      "secs": 40.1
+    },
+    {
+      "epoch": 34,
+      "train_mse_std": 0.063516,
+      "val_mse_std": 0.066735,
+      "secs": 39.8
+    }
+  ],
+  "checkpoint": "miraflores_gru_baseline.pt",
+  "npz": "simulation/data/datasets/miraflores_laborable_60d/tensors/miraflores_laborable_60d.npz"
+}
