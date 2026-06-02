@@ -16,6 +16,8 @@ from src.control.application.max_pressure import MaxPressureController
 from src.control.application.mtc_constraints import MTCConstants, MTCRestrictionApplier
 from src.control.config import ControlSettings
 from src.control.infrastructure import init_broadcaster
+from src.congestion.presentation.api.routes import router as congestion_router
+from src.congestion.infrastructure import init_congestion_broadcaster
 from src.auth.domain import Role
 from src.auth.presentation.api.dependencies import require_role
 from src.auth.presentation.api.routes import auth_router
@@ -71,10 +73,15 @@ init_engine(_control_engine)
 # singleton in-memory per-proceso (DHU-021); single-worker uvicorn cubre el
 # alcance del MVP.
 init_broadcaster()
+# TTH-12: broadcaster propio del dominio de congestión (canal de RED, in-memory
+# per-proceso). Sin esto, Depends(get_congestion_broadcaster) en
+# GET /congestion/state/stream lanza RuntimeError → 500.
+init_congestion_broadcaster()
 
 app.include_router(prediction_router)
 app.include_router(control_router)
 app.include_router(auth_router)
+app.include_router(congestion_router)
 
 
 @app.get("/api/intersections")

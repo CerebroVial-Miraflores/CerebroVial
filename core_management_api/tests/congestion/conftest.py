@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Iterator
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -61,3 +63,32 @@ def congestion_session() -> Iterator[Session]:
     finally:
         session.close()
         eng.dispose()
+
+
+class _CongestionClient(TestClient):
+    """TestClient con helpers para simular el rol del usuario autenticado."""
+
+    def as_role(self, role: str) -> None:
+        from cerebrovial_shared.database.models import UserDB
+        from src.auth.presentation.api.dependencies import get_current_user
+        self.app.dependency_overrides[get_current_user] = (
+            lambda: UserDB(id="u", email="u@x", password_hash="h", role=role)
+        )
+
+    def no_auth(self) -> None:
+        from src.auth.presentation.api.dependencies import get_current_user
+        self.app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def congestion_client(congestion_session) -> Iterator[_CongestionClient]:
+    """App FastAPI con solo el router de congestión, get_db → SQLite de la fixture."""
+    from cerebrovial_shared.database import get_db
+    from src.congestion.presentation.api.routes import router as congestion_router
+
+    app = FastAPI()
+    app.include_router(congestion_router)
+    app.dependency_overrides[get_db] = lambda: congestion_session
+    client = _CongestionClient(app)
+    client.session = congestion_session  # acceso directo para sembrar
+    yield client

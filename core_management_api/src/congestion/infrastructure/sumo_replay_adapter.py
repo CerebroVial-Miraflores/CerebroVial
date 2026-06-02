@@ -29,7 +29,7 @@ import time
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 from ..application.feed import CongestionFeed, EdgeCongestion
 from .repositories import WazeJamRow, WazeJamsRepo
@@ -195,14 +195,18 @@ class SumoReplayAdapter(CongestionFeed):
 
     def live_replay(
         self, repo: WazeJamsRepo, *, speedup: float = 1.0, commit_each_step: bool = True,
-        max_steps: int | None = None,
+        max_steps: int | None = None, wake: "Callable[[], None] | None" = None,
     ) -> int:
         """Modo REPLAY EN VIVO: gotea los snapshots paso a paso a cadencia configurable.
 
         Comparte TODA la derivación con ``preseed``; difiere solo en el ritmo de
         escritura: tras cada paso duerme ``60 / speedup`` segundos (60 s simulados por
-        paso). ``speedup`` > 1 acelera; ``speedup`` real-time = 1. La integración con
-        el broadcaster SSE (wake-up) es Fase 3 — aquí solo deja el escritor goteando.
+        paso). ``speedup`` > 1 acelera; ``speedup`` real-time = 1.
+
+        ``wake`` (CT-12.6): callback invocado tras escribir+commitear cada paso —
+        ahí se publica el wake-up del broadcaster SSE de red. Se inyecta para NO
+        acoplar el adaptador al broadcaster (el wiring lo hace quien orquesta el
+        replay in-process). La pre-siembra NO emite wakes (es carga batch).
         Devuelve el nº de pasos emitidos.
         """
         steps = self.timesteps()
@@ -217,6 +221,8 @@ class SumoReplayAdapter(CongestionFeed):
             repo.populate_geom_from_edges()
             if commit_each_step:
                 repo.session.commit()
+            if wake is not None:
+                wake()  # CT-12.6: dispara el wake-up de red tras escribir el paso
             if period and n < len(steps) - 1:
                 time.sleep(period)
         return len(steps)

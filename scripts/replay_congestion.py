@@ -70,8 +70,21 @@ def main() -> None:
             print(f"PRE-SIEMBRA ok: {metrics}")
             print(f"count(waze_jams) = {repo.count()}")
         else:
-            n = adapter.live_replay(repo, speedup=args.speedup, max_steps=args.max_steps)
-            print(f"REPLAY VIVO: {n} pasos emitidos (día {args.day}, speedup {args.speedup}).")
+            # CT-12.6: el replay en vivo dispara un wake por paso. Corriendo IN-PROCESS
+            # dentro de la API, este callback publicaría en el NetworkCongestionBroadcaster
+            # (que el cliente despierta para re-leer GET /congestion/state). Como CLI
+            # (proceso aparte del uvicorn) el wake solo se registra; el broadcaster vive
+            # en el proceso de la API.
+            steps_done = {"n": 0}
+
+            def _wake() -> None:
+                steps_done["n"] += 1
+
+            n = adapter.live_replay(
+                repo, speedup=args.speedup, max_steps=args.max_steps, wake=_wake
+            )
+            print(f"REPLAY VIVO: {n} pasos emitidos, {steps_done['n']} wakes "
+                  f"(día {args.day}, speedup {args.speedup}).")
 
 
 if __name__ == "__main__":

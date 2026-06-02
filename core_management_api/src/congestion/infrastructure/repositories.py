@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterable
 
+import json
+
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
 
@@ -166,3 +168,40 @@ class WazeJamsRepo:
                            snapshot_timestamp=r.snapshot_timestamp)
             for r in self.session.execute(q)
         ]
+
+
+class NetworkGeometryRepo:
+    """Lectura de la geometría de la red desde ``graph_edges`` (CT-12.2).
+
+    Sirve las 375 aristas como features GeoJSON (geometry LineString en 4326,
+    orden [lon, lat]). Usa ``ST_AsGeoJSON`` de PostGIS — solo PostgreSQL/PostGIS.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def network_features(self) -> list[dict]:
+        """Devuelve una lista de Features GeoJSON, una por arista.
+
+        ``geometry`` ya viene como dict GeoJSON (ST_AsGeoJSON → json). Las
+        propiedades llevan ``edge_id`` + metadatos de la arista.
+        """
+        rows = self.session.execute(text(
+            "SELECT edge_id, source_node, target_node, distance_m, lanes, "
+            "ST_AsGeoJSON(geom) AS geojson "
+            "FROM graph_edges WHERE geom IS NOT NULL ORDER BY edge_id"
+        ))
+        features = []
+        for r in rows:
+            features.append({
+                "type": "Feature",
+                "geometry": json.loads(r.geojson),
+                "properties": {
+                    "edge_id": r.edge_id,
+                    "source_node": r.source_node,
+                    "target_node": r.target_node,
+                    "distance_m": r.distance_m,
+                    "lanes": r.lanes,
+                },
+            })
+        return features
