@@ -150,6 +150,7 @@ Esta escala unificada permite que el sistema sea agnóstico a la fuente de datos
 - **Granularidad temporal:** el sistema entrega la predicción como una proyección en el horizonte (puntos a intervalos o valor agregado del horizonte; decisión a cerrar en el sprint).
 - **Horizonte configurable:** parámetro de configuración del sistema; valor por defecto a cerrar en el sprint.
 - **Umbral de congestión:** configurable en la HU del Bloque D dedicada a configuración del motor; valor por defecto nivel ≥ 3.
+- **Relación con la vista panorámica de red (HU-22):** esta HU es la **vista de detalle de intersección** (predicción de congestión por acceso de una intersección concreta). La **vista panorámica de red** (HU-22, ampliación posterior — DHU-028) es complementaria: muestra la congestión de toda la red por tramo de vía sobre un mapa geográfico. Son dos niveles de zoom del mismo sistema de monitoreo, no sustitutos. HU-22 usa la unidad "tramo de vía/arista" en lugar del "acceso", precisamente para permitir la representación geográfica continua de la red (ver DHU-028).
 
 ### Candidatos a RNF (para futuro documento RF/RNF)
 
@@ -208,6 +209,7 @@ La HU define el qué (las dos fuentes de información integradas y comparables) 
 - **Composición sobre HU-02 y HU-03:** Esta vista reutiliza los componentes de monitoreo y predicción. No duplica fuentes de datos; consume las mismas APIs que las HUs anteriores. La integración es a nivel de presentación.
 - **Coherencia de escalas:** Si el diseño elegido alinea "ahora" y "futuro" en una serie temporal, la unidad de tiempo en el eje debe ser consistente. Si usa visualizaciones independientes (paneles lado a lado), las métricas mostradas pueden ser distintas (flujo y cola observados vs jam level predicho) pero la asociación visual entre ambos debe ser clara para el mismo acceso.
 - **Detección de discrepancia (CA-04.2):** La lógica que define "estado actual dentro de la normalidad" se basa en los mismos umbrales de cola usados en HU-02 (verde/amarillo/rojo). Si la cola está en verde o amarillo pero la predicción está en nivel ≥ 3, hay discrepancia y se resalta. La regla exacta se afina en el sprint, pero el principio queda anclado en la HU.
+- **Relación con la vista panorámica de red (HU-22):** esta HU es la **vista de detalle de intersección** (estado actual + predicción integrados por acceso de una intersección concreta). La **vista panorámica de red** (HU-22, ampliación posterior — DHU-028) es complementaria: muestra la congestión de toda la red por tramo de vía sobre un mapa geográfico. Son dos niveles de zoom del mismo sistema de monitoreo, no sustitutos. HU-22 usa la unidad "tramo de vía/arista" en lugar del "acceso", para permitir la representación geográfica continua de la red (ver DHU-028).
 
 ### Candidatos a RNF (para futuro documento RF/RNF)
 
@@ -524,6 +526,102 @@ La HU provee un módulo simple de registro de notas asociadas a un momento. Cada
 
 ---
 
+## HU-22 — Mapa de congestión de la red
+
+> Ampliación del Product Backlog del proyecto CerebroVial, posterior al cierre del componente funcional (HU-01 a HU-21 + TTH-01 a TTH-11, cerrado 2026-05-16, DHU-017).
+>
+> **Estado:** Redactada. Pendiente de implementación.
+> **Fecha de redacción:** 2026-06-02
+> **Bloque:** B — Operador, núcleo de monitoreo (ampliación).
+> **Fundamento de la ampliación:** ver DHU-028 en `DECISIONS_HU.md` (registro de por qué el backlog declarado completo recibe una HU adicional, y de la transición de la unidad de análisis de "acceso de intersección" a "tramo de vía / arista" para la vista de red).
+
+### Contexto
+
+Esta HU se redacta en el formato del documento de referencia académica (`Desarrollo_Agil.pdf`, Tablas 9 y 13): "Como X, quiero Y, para Z" con criterios de aceptación Given-When-Then, y sigue las reglas metodológicas vigentes:
+
+- **DHU-003** (sujetos válidos): el sujeto es el Operador de Tráfico Municipal, una de las tres Personas del producto.
+- **DHU-006** (HUs agnósticas a la implementación): la HU describe el qué observable, no el cómo. No nombra tecnologías ni fuentes concretas de datos. La única excepción de vocabulario técnico permitida es la escala ordinal de nivel de congestión 0-5 (ya autónoma del sistema, estándar de la industria).
+- **DHU-007** (RNF declarados): los requisitos no funcionales se declaran al final como "Candidatos a RNF", referenciados por ID cuando el documento RF/RNF los consolide.
+- **DHU-018** (resumen ejecutivo): la HU abre con un resumen ejecutivo para uniformidad de lectura.
+- **DHU-028** (esta ampliación): registra la incorporación de HU-22 y la unidad de análisis "tramo de vía" para la vista panorámica de red.
+
+**Relación con HU-03 y HU-04 (vista de detalle de intersección):** HU-03 (predicción de congestión por acceso) y HU-04 (vista combinada estado+predicción por acceso) describen la **vista de detalle** de una intersección individual — el nivel de zoom donde el Operador examina una intersección concreta y sus accesos. HU-22 describe la **vista panorámica de red** — el nivel de zoom donde el Operador observa la congestión de toda la red sobre un mapa geográfico. Son dos niveles de zoom complementarios del mismo sistema de monitoreo, no sustitutos. HU-22 no reemplaza a HU-03/HU-04; se redacta primero por su valor de visión general.
+
+| Campo | Contenido |
+|---|---|
+| **Como** | Operador de Tráfico Municipal |
+| **Quiero** | ver sobre un mapa de la red vial un indicador de calor que muestre el nivel de congestión actual de cada tramo de vía, actualizándose en vivo |
+| **Para** | identificar de un vistazo dónde se está formando congestión en la red y priorizar dónde intervenir, sin tener que revisar intersección por intersección |
+
+**Tipo:** HU de Persona (Operador).
+**Feature(s) origen:** ampliación (vista panorámica de red; ver DHU-028). Relacionada con la familia funcional de monitoreo operativo en tiempo real.
+
+### Resumen ejecutivo
+
+**Qué entrega:** una vista de mapa geográfico de la red vial donde cada tramo de vía se colorea según su nivel de congestión actual (escala 0-5), actualizándose automáticamente en vivo. Permite al Operador una lectura panorámica e inmediata de dónde está la congestión en toda la red.
+
+**CAs críticos:** CA-22.1 (mapa con tramos coloreados por nivel 0-5), CA-22.2 (actualización en vivo ≤ 5 s sin recarga), CA-22.4 (robustez ante interrupción de la fuente de congestión — DHU-005 Caso A), CA-22.6 (redirección al login).
+
+**Dependencias:** consume la fuente de datos de congestión por tramo de vía de forma agnóstica (la HU no nombra la fuente). Habilitada por TTH-12 (infraestructura de datos de congestión por tramo de vía: geometría de la red + feed de estado por tramo persistido). Sin TTH-12 cerrada, no hay datos que pintar. Aplica DHU-005 Caso A (fuente externa de medición → "desactualizado" con antigüedad), DHU-006.
+
+**Notas clave:** la escala 0-5 es el constructo de nivel de congestión adoptado en D-009 — permite intercambiabilidad de la fuente de datos sin alterar la vista. La HU es agnóstica a qué llena esa fuente. El alcance de esta HU cubre el **estado actual** de congestión; la proyección futura (predicción) sobre el mismo mapa es una extensión posterior fuera del alcance de esta versión (ver "Alcance y extensiones futuras").
+
+### Descripción
+
+El Operador necesita una lectura panorámica del estado de la red, no solo de intersecciones individuales. HU-02 le da el estado de una intersección y HU-03/HU-04 le dan estado y predicción por acceso de una intersección concreta; pero ninguna de esas vistas le permite ver, de un vistazo, dónde está la congestión a lo largo de toda la red vial.
+
+Esta HU entrega una vista de mapa geográfico donde la red vial se representa como un conjunto de tramos de vía, y cada tramo se colorea según su nivel de congestión actual en una escala ordinal de 0 (flujo libre) a 5 (vía cerrada), siguiendo el estándar documentado en D-009. El mapa se actualiza automáticamente conforme llega nueva información de congestión, de modo que el Operador ve la evolución del estado de la red en vivo.
+
+La unidad de análisis de esta vista es el **tramo de vía** (cada segmento dirigido de calle de la red), no el acceso de una intersección individual. Esto permite representar la congestión de manera continua sobre la geografía de la red, que es lo que un mapa de calor requiere.
+
+La fuente de los datos de congestión es externa a esta vista y la HU es agnóstica a ella: la vista consume un indicador de nivel de congestión por tramo y lo representa, sin depender de cómo se produjo ese indicador. Esto permite intercambiar la fuente sin alterar la vista.
+
+### Criterios de aceptación
+
+- **CA-22.1:** Dado que el Operador ha iniciado sesión, cuando ingresa a la vista de mapa de congestión de la red, entonces el sistema muestra un mapa geográfico de la red vial donde cada tramo de vía se representa con un indicador visual de calor correspondiente a su nivel de congestión actual en escala 0-5, de manera que el Operador pueda leer el estado de toda la red de un vistazo.
+
+- **CA-22.2:** Dado que el Operador tiene la vista de mapa abierta, cuando llega nueva información de congestión, entonces los tramos afectados actualizan su indicador de calor automáticamente sin necesidad de recargar la página, con una latencia máxima de 5 segundos desde que la información de congestión se genera.
+
+- **CA-22.3:** Dado que el Operador observa el mapa, cuando para algún tramo el nivel de congestión actual supera el umbral configurado (por defecto, nivel ≥ 3), entonces ese tramo se distingue visualmente con suficiente claridad para que el Operador identifique los puntos críticos de la red sin ambigüedad, con una diferenciación que no dependa exclusivamente del color.
+
+- **CA-22.4:** Dado que el sistema deja temporalmente de recibir información de congestión, cuando el Operador observa el mapa, entonces el sistema indica visualmente que la información de congestión está desactualizada e informa el tiempo transcurrido desde la última actualización conocida, manteniendo visibles los últimos niveles conocidos marcados como "desactualizados" (DHU-005 Caso A).
+
+- **CA-22.5:** Dado que el Operador observa el mapa de la red, cuando consulta un tramo de vía concreto, entonces el sistema le permite identificar de qué tramo se trata y su nivel de congestión actual (por ejemplo, al señalarlo o seleccionarlo), de manera que la lectura panorámica pueda complementarse con el dato puntual de un tramo de interés.
+
+- **CA-22.6:** Dado que el Operador no ha iniciado sesión, cuando intenta acceder a la vista de mapa de congestión de la red, entonces el sistema lo redirige a la pantalla de login.
+
+### Notas técnicas
+
+- **Decisión de diseño visual:** la codificación visual concreta del calor (paleta de colores, intensidad, grosor de los tramos, leyenda) se cierra mediante prototipado antes de codear; no es parte de la HU. La HU es agnóstica al diseño concreto, salvo el requisito de CA-22.3 de que la diferenciación de niveles no dependa exclusivamente del color (coherente con accesibilidad, RNF-INT-02).
+
+- **Composición sobre la infraestructura de datos (TTH-12):** esta vista no produce datos; consume el feed de congestión por tramo y la geometría de la red que TTH-12 provee. La integración es a nivel de presentación.
+
+- **Unidad de análisis:** el "tramo de vía" de esta HU corresponde al segmento dirigido de calle de la red (la arista del grafo vial). La elección de esta unidad, en lugar del "acceso de intersección" usado por HU-03/HU-04, está registrada en DHU-028 y es lo que permite la representación geográfica continua del mapa de calor.
+
+### Alcance y extensiones futuras
+
+- **En alcance de esta versión:** representación del **estado de congestión actual** por tramo de vía sobre el mapa, en vivo.
+
+- **Fuera de alcance (extensión futura):** la proyección de la congestión **predicha** a un horizonte futuro sobre el mismo mapa (análoga a lo que HU-03 hace por acceso, pero por tramo y geográfica). Esta extensión, cuando se redacte, reutilizará la infraestructura de esta HU y la capa de predicción por tramo, y se documentará como ampliación con su propia decisión registrada.
+
+- **Fuera de alcance (extensión futura):** la integración con la vista de detalle de intersección (HU-03/HU-04) mediante zoom — pasar de la vista panorámica de red al detalle de una intersección concreta. Es la convergencia natural de los dos niveles de zoom; se redacta cuando ambas vistas estén implementadas.
+
+### Candidatos a RNF
+
+> Conforme a DHU-007, los siguientes son candidatos a requisitos no funcionales derivados de esta HU. Se consolidan en el documento RF/RNF (`REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md`) con su ID `RNF-XXX-NN` cuando este se actualice; aquí se declaran como candidatos.
+
+- **Candidato a RNF de performance (actualización en tiempo real):** la actualización del calor de los tramos en el mapa ocurre con latencia máxima de 5 segundos desde que la información de congestión se genera (CA-22.2). Consolidable con el RNF transversal de tiempo real ≤ 5 s (RNF-PERF de actualización de tiempo real, DHU-019 subsección C.1), que ya agrupa diez HUs con el mismo umbral. → candidato a `RNF-PERF` (actualización de tiempo real).
+
+- **Candidato a RNF de robustez ante interrupción (DHU-005 Caso A):** ante interrupción de la fuente de congestión, la vista marca los datos como desactualizados con su antigüedad en lugar de mostrarlos como vigentes (CA-22.4). Consolidable con el RNF transversal de robustez ante interrupción (DHU-019 subsección C.2). → candidato a `RNF-REL` (robustez ante interrupción, Caso A).
+
+- **Candidato a RNF de usabilidad (legibilidad panorámica):** el Operador identifica los puntos críticos de la red de un vistazo, con diferenciación de niveles que no depende exclusivamente del color (CA-22.3). Probablemente se valida con prueba de usuario midiendo el tiempo de identificación de los tramos congestionados; validación cualitativa por revisión del diseño cuando una prueba formal no sea factible en el alcance académico. → candidato a `RNF-INT` (usabilidad / legibilidad operativa).
+
+- **Candidato a RNF de accesibilidad (WCAG 2.1 AA):** la distinción de niveles de congestión no depende exclusivamente del color; se acompaña de al menos un código visual redundante (intensidad, patrón, etiqueta, grosor de línea), conforme a RNF-INT-02. → candidato a `RNF-INT-02` (accesibilidad).
+
+- **Candidato a RNF de performance (carga del mapa):** la vista de mapa de la red completa se carga en un tiempo razonable para una vista de monitoreo de apertura (el umbral concreto se cierra en el documento RF/RNF; sugerido coherente con las vistas de apertura del Operador). → candidato a `RNF-PERF` (tiempo de apertura de vista).
+
+---
+
 ## Resumen del Bloque B
 
 | HU | Título | Sujeto | Tipo | Feature(s) origen | Clasif. MVP |
@@ -536,8 +634,9 @@ La HU provee un módulo simple de registro de notas asociadas a un momento. Cada
 | HU-07 | Notificación de cambios de estrategia del motor | Operador | Persona | F09 | MVP1 |
 | HU-08 | Consulta del historial de decisiones del motor | Operador (+ Admin) | Persona | F10 (+ F31 inglobada) | MVP1 |
 | HU-09 | Registro de notas e incidencias del turno | Operador | Persona | F11 | MVP2 |
+| HU-22 | Mapa de congestión de la red | Operador | Persona | ampliación (DHU-028) | MVP1 — ampliación |
 
-**Total Bloque B: 8 HUs** (7 MVP1 + 1 MVP2).
+**Total Bloque B: 9 HUs** (7 MVP1 + 1 MVP2 + 1 ampliación: HU-22, habilitada por TTH-12).
 
 F02 (Dashboard principal) queda cubierto por la composición visual de las HUs anteriores en una vista única, sin generar HU propia.
 
