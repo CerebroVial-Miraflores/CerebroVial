@@ -8,6 +8,8 @@
 
 **Input**: Product Backlog en `documentation/lean-inception/` (21 HU, 11 TTH, 22 RF, 53 RNF).
 
+> **Nota (2026-06-02, DHU-028):** el Product Backlog se amplió posteriormente a **22 HU + 12 TTH** (HU-22: mapa de congestión de la red; TTH-12: infraestructura de datos de congestión por arista). Esta especificación y su inventario de tareas (`tasks.md`) siguen reflejando el backlog de 21 HU + 11 TTH del que se derivaron y cuyos elementos están estimados en SP; la propagación de HU-22/TTH-12 a los artefactos Spec Kit, con su estimación, queda pendiente de una re-derivación.
+
 > **Adopción brownfield (DHU-021).** Esta especificación **mapea** el Product Backlog ya cerrado
 > (2026-05-16) al formato de Spec Kit; no se genera con `/speckit-specify`. Se conservan los IDs
 > nativos (`HU-xx`, `RF-xxx`, `RNF-XXX-NN`) para preservar la trazabilidad. **Los criterios de

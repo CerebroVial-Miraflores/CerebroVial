@@ -2,7 +2,7 @@
 
 > Séptima y última entrega de redacción del Product Backlog del proyecto CerebroVial. Cierre del MVP2.
 >
-> **Estado:** MVP2 cerrado y aprobado. Bloques A, B, C, D, E y F del MVP1 previamente cerrados. **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 21 HUs operativas (HU-01 a HU-21) y 11 TTH (TTH-01 a TTH-11).** Pendiente: documento de Requisitos Funcionales y No Funcionales (RF/RNF) consolidando los "Candidatos a RNF" de todas las HUs (DHU-007 pendiente), ceremonias de estimación (Planning Poker) y priorización (MoSCoW), e implementación SCRUM del MVP1.
+> **Estado:** MVP2 cerrado y aprobado. Bloques A, B, C, D, E y F del MVP1 previamente cerrados. **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) y 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Pendiente: documento de Requisitos Funcionales y No Funcionales (RF/RNF) consolidando los "Candidatos a RNF" de todas las HUs (DHU-007 pendiente), ceremonias de estimación (Planning Poker) y priorización (MoSCoW), e implementación SCRUM del MVP1.
 >
 > **Fecha de cierre:** 2026-05-16
 > **Fecha de actualización v2:** 2026-05-17 (DHU-018 aplicada retroactivamente: Resumen ejecutivo en HU-18, HU-19, HU-20, HU-21)
@@ -719,7 +719,7 @@ Durante la redacción del MVP2 se cerró la siguiente decisión formal (en `DECI
 
 - **DHU-017:** decisiones de redacción del MVP2 consolidadas en diez subsecciones (A a J). Cubre la verificación de clasificación HU/TTH de las 4 features MVP2 pendientes (las cuatro son HUs operativas, 0 TTH nuevas), la numeración compactada del MVP2 (HU-18 a HU-21 secuencial desde HU-17), la composición de F16 como HU única que cubre las cuatro combinaciones formato × vista, la fuente del baseline de F19 como registro paralelo inglobado conforme al patrón de HU-14, el alcance del baseline con RandomForest declarado y agnosticismo en la HU, la composición de F28 como HU única con Operador protagonista y Administrador destinatario, el alcance del escalamiento en MVP2 como flujo unidireccional con persistencia, el alcance del drill-down de F15 con tres carriles temporales integrados (tráfico, motor, estado operativo), la conexión F15 ↔ HU-16/HU-17 mediante estado compartido del selector con distinción entre navegación local y cambio global, la inglobación de sustrato técnico (sin TTH nuevas), la política de construcción MVP2 heredada de DHU-012, y la aplicación de DHU-005 Caso B con independencia por carril o por fuente según corresponda.
 
-Adicionalmente, el cierre del MVP2 implica el cierre formal del **Product Backlog en su componente funcional**: con HU-21 cerrada, las 21 HUs operativas (HU-01 a HU-21) y las 11 TTH (TTH-01 a TTH-11) están redactadas y aprobadas.
+Adicionalmente, el cierre del MVP2 implica el cierre formal del **Product Backlog en su componente funcional**: con HU-21 cerrada, las 22 HU operativas (HU-01 a HU-22) y las 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12) están redactadas y aprobadas.
 
 ---
 

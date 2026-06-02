@@ -5,7 +5,7 @@
 > **Fundamento metodológico:** Ver `DECISIONS_HU.md`, decisiones DHU-001, DHU-003, DHU-004 (Bloque A), DHU-010 (Bloque C), DHU-013 (clasificación HU/TTH del Bloque D), DHU-014 (decisiones de redacción del Bloque D) y DHU-015 (clasificación HU/TTH del Bloque E con ampliación 4 → 5 TTH).
 >
 > **Fecha de creación:** 2026-05-13
-> **Última actualización:** 2026-05-18 (**DHU-019 aplicada documentalmente al backlog:** rango DHU referenciado actualizado a "DHU-001 a DHU-019" en cabecera y "Documentos relacionados". El cambio es exclusivamente de metadata documental; las 11 TTH no reciben modificaciones sustantivas con DHU-019. DHU-019 es decisión metodológica sobre la redacción del documento `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` recién creado; las TTH se referencian desde la matriz de trazabilidad de ese documento (sección 4.2) en lugar de modificarse. La pasada aditiva sobre las HUs (subsección G de DHU-019 que agregaría referencias `→ RNF-XXX-NN` a sus secciones "Candidatos a RNF") queda como tarea separada pendiente; las TTH no son destinatarias de esa pasada porque no tienen sección "Candidatos a RNF". Última previa: 2026-05-17, DHU-018 aplicada retroactivamente al backlog: rango DHU referenciado actualizado a "DHU-001 a DHU-018" en cabecera y "Documentos relacionados". El cambio fue exclusivamente de metadata documental; las 11 TTH no recibieron Resumen ejecutivo (las TTH no son HUs y su sección Descripción + Criterios técnicos de terminado ya sirven la función de orientación de lectura). Previa a esa: 2026-05-16, cierre del MVP2 (DHU-017): rango DHU actualizado a "DHU-001 a DHU-017" en cabeceras y "Documentos relacionados". Sin cambios sustantivos al contenido de las 11 TTH: el MVP2 no introduce TTH nuevas (las 4 HUs del MVP2 ingloban su sustrato técnico como CAs conforme a DHU-017 subsección H). HU-20 del MVP2 consume CT-09.5 de TTH-09 extendido inglobadamente con persistencia paralela del modelo de respaldo; HU-21 del MVP2 consume CT-04.4 y CT-04.5 de TTH-04 para captura automática del contexto operativo al disparar escalamientos. Previa a esa: 2026-05-15, cierre del Bloque E, DHU-015. Y previa: 2026-05-14, cierre del Bloque D, DHU-013 y DHU-014.)
+> **Última actualización:** 2026-06-02 (**TTH-12 agregada (DHU-028): ampliación del catálogo a 12 TTH (TTH-01 a TTH-12)** — infraestructura de datos de congestión por arista que habilita HU-22 (vista panorámica de congestión de la red). Es un cambio sustantivo (TTH nueva), no de metadata; las 11 TTH previas no se modifican. Previa: 2026-05-18 (**DHU-019 aplicada documentalmente al backlog:** rango DHU referenciado actualizado a "DHU-001 a DHU-019" en cabecera y "Documentos relacionados". El cambio es exclusivamente de metadata documental; las 11 TTH no reciben modificaciones sustantivas con DHU-019. DHU-019 es decisión metodológica sobre la redacción del documento `REQUISITOS_FUNCIONALES_Y_NO_FUNCIONALES.md` recién creado; las TTH se referencian desde la matriz de trazabilidad de ese documento (sección 4.2) en lugar de modificarse. La pasada aditiva sobre las HUs (subsección G de DHU-019 que agregaría referencias `→ RNF-XXX-NN` a sus secciones "Candidatos a RNF") queda como tarea separada pendiente; las TTH no son destinatarias de esa pasada porque no tienen sección "Candidatos a RNF". Última previa: 2026-05-17, DHU-018 aplicada retroactivamente al backlog: rango DHU referenciado actualizado a "DHU-001 a DHU-018" en cabecera y "Documentos relacionados". El cambio fue exclusivamente de metadata documental; las 11 TTH no recibieron Resumen ejecutivo (las TTH no son HUs y su sección Descripción + Criterios técnicos de terminado ya sirven la función de orientación de lectura). Previa a esa: 2026-05-16, cierre del MVP2 (DHU-017): rango DHU actualizado a "DHU-001 a DHU-017" en cabeceras y "Documentos relacionados". Sin cambios sustantivos al contenido de las 11 TTH: el MVP2 no introduce TTH nuevas (las 4 HUs del MVP2 ingloban su sustrato técnico como CAs conforme a DHU-017 subsección H). HU-20 del MVP2 consume CT-09.5 de TTH-09 extendido inglobadamente con persistencia paralela del modelo de respaldo; HU-21 del MVP2 consume CT-04.4 y CT-04.5 de TTH-04 para captura automática del contexto operativo al disparar escalamientos. Previa a esa: 2026-05-15, cierre del Bloque E, DHU-015. Y previa: 2026-05-14, cierre del Bloque D, DHU-013 y DHU-014.)
 
 ---
 
@@ -41,6 +41,7 @@ Las TTH son entregables del proyecto y son evaluables, pero su naturaleza es dis
 | TTH-09 | Modelo predictivo GRU servido vía API | E (consumida por HU-03, HU-04, HU-14 y TTH-10) | MVP1 | Pendiente |
 | TTH-10 | Motor adaptativo de control semafórico | E (consumida por HU-05, HU-06, HU-07, HU-08, HU-15) | MVP1 | Construido, integración pendiente |
 | TTH-11 | Spike de calibración de hiperparámetros temporales del modelo predictivo | E (prerrequisito documental de TTH-09) | MVP1 | Pendiente |
+| TTH-12 | Infraestructura de datos de congestión por arista para la vista de mapa de red | B (habilita HU-22; ampliación, DHU-028) | MVP1 — ampliación | Pendiente |
 
 ---
 
@@ -791,6 +792,82 @@ El spike sigue el patrón estándar de "Enabler Story de tipo Exploration" (SAFe
 
 ---
 
+## TTH-12 — Infraestructura de datos de congestión por arista para la vista de mapa de red
+
+**Origen:** Habilitador de HU-22 (mapa de congestión de la red). Identificado durante el análisis de implementación del mapa de calor (2026-06-02), al constatar que la vista panorámica de red requiere datos de congestión por arista que el sistema no produce hoy. Ver DHU-028 en `DECISIONS_HU.md`.
+
+**Habilita a:** HU-22 (vista de mapa de congestión de la red por tramo de vía). Sin esta TTH cerrada, HU-22 no tiene geometría que pintar ni feed de congestión que leer.
+
+**Clasificación:** MVP1 — ampliación (vista panorámica de red).
+
+**Estado actual:** Pendiente.
+
+**Naturaleza (DHU-004):** cumple los cuatro criterios de TTH — no tiene Persona beneficiaria directa (su efecto se ve en HU-22), su valor es instrumental (habilita la vista), su comportamiento es técnico estándar (provisión de datos geoespaciales + feed en streaming + persistencia), y no entrega valor visible al usuario en aislamiento. Conforme a DHU-006, esta TTH sí nombra tecnologías concretas (SUMO, TraCI, PostGIS, `waze_jams`, SSE) por su naturaleza técnica.
+
+---
+
+### Contexto y alcance
+
+HU-22 requiere, para cada tramo de vía (arista del grafo vial), dos cosas que hoy no existen como datos disponibles para el frontend:
+
+1. **La geometría de la arista** (su trazado geográfico) para poder dibujarla en el mapa.
+2. **Un nivel de congestión por arista, actualizándose en vivo**, para poder colorearla.
+
+El estado del repositorio al momento de redactar esta TTH (auditoría 2026-06-02):
+
+- La tabla `graph_edges` está modelada y migrada con columna `geom` (LINESTRING 4326), pero el seed carga solo 6 aristas de prueba — las ~375 aristas reales de la red de Miraflores **no están pobladas** en la base. La geometría real existe en `conf/network/miraflores.net.xml` y debe extraerse.
+- La tabla `waze_jams` está modelada, migrada y convertida en hypertable TimescaleDB (`edge_id`, `congestion_level` 0-5, `speed_mps`, `geom`), pero está **huérfana**: sin repositorio, sin endpoint, sin ingestor.
+- El nivel de congestión 0-5 por arista es derivable desde la velocidad de SUMO mediante `sumo_to_jam_level()` (ya implementada y testeada en `simulation/`).
+- En producción, la fuente de este feed sería un ingestor de Waze (modelado pero fuera de alcance). Para la demostración, **SUMO actúa como stand-in del feed de Waze**, detrás de una interfaz de feed de congestión por arista que mantiene la tubería idéntica a la de producción (el día que se conecte Waze, solo cambia quién escribe en `waze_jams`).
+
+**Alcance de esta TTH (V1):** estado de congestión **actual** por arista, persistido en `waze_jams` y servido al frontend en vivo. La capa de **predicción** por arista (servir un modelo predictivo por arista) queda fuera de alcance de esta TTH y se aborda en una TTH posterior cuando se implemente la extensión predictiva de HU-22.
+
+**Decisión de fuente (V1):** se inicia con **replay de un dataset SUMO pre-generado** reproducido en streaming (opción B del análisis del 2026-06-02). El adaptador de fuente se diseña detrás de una interfaz que permite sustituir el replay por **SUMO en vivo vía TraCI** (opción A) como upgrade posterior sin alterar el resto de la tubería; la viabilidad de SUMO en vivo está confirmada por medición (real-time factor ~41× leyendo todas las aristas por paso). El upgrade a SUMO en vivo es una extensión registrada, no parte de la V1.
+
+---
+
+### Criterios técnicos de terminado
+
+- **CT-12.1 (geometría poblada):** Las ~375 aristas de la red vial de Miraflores (las del componente conexo del grafo, alineadas con el mapping canónico `ia_prediction_service/src/data/artifacts/miraflores_graph_lcc_mapping.json`) están pobladas en la tabla `graph_edges` con su geometría real (`geom` LINESTRING 4326) extraída de `conf/network/miraflores.net.xml`. Existe un script de seed/ingesta idempotente, versionado, que realiza esta carga y es reejecutable sin duplicar. Los `edge_id` cargados coinciden exactamente con los `sumo_edge` del mapping canónico, de modo que el feed de congestión (que usa esos mismos IDs) alinea con la geometría sin traducción.
+
+- **CT-12.2 (endpoint de geometría):** Existe un endpoint REST que sirve al frontend la geometría de las aristas de la red (identificador de arista + LINESTRING en un formato consumible por el mapa, p. ej. GeoJSON), protegido con `require_role(OPERATOR, ADMIN)` conforme al patrón de autorización del proyecto (TTH-01). El endpoint responde la red completa en un tiempo razonable para una carga de apertura de vista.
+
+- **CT-12.3 (interfaz de feed de congestión por arista):** Existe una interfaz/contrato bien definido de "feed de congestión por arista" — el punto de desacople de la fuente. La interfaz expone, por `edge_id`, un `congestion_level` 0-5 con marca de tiempo. La implementación de la fuente (replay SUMO en V1) está detrás de esta interfaz, de modo que sustituirla (SUMO en vivo, o Waze real en producción) no requiere cambios en los consumidores. La derivación del nivel 0-5 usa `sumo_to_jam_level()` / `ratio_to_jam_level()` ya existentes.
+
+- **CT-12.4 (adaptador de fuente — replay SUMO):** Existe un adaptador que reproduce en streaming un día de dataset SUMO pre-generado (Parquet por arista con `speed`/`speedRelative`, granularidad 60 s, 1440 pasos/día), emitiendo el nivel de congestión por arista a través de la interfaz de CT-12.3, a una cadencia configurable (tiempo real o acelerado para demostración). El día reproducido es seleccionable (p. ej. un día de congestión marcada para que el mapa muestre la transición de niveles). El adaptador NO requiere un proceso SUMO corriendo en tiempo de demostración (reproduce datos ya generados). Nota de robustez: el dataset Parquet está gitignored (regenerable); la TTH documenta la receta de regeneración y/o versiona el día concreto usado para la demostración como insumo reproducible.
+
+- **CT-12.5 (persistencia en `waze_jams`):** El feed de congestión por arista se persiste en la tabla `waze_jams` (hypertable TimescaleDB): cada actualización de nivel por arista se escribe como una fila (`edge_id`, `congestion_level`, `timestamp`, y los campos disponibles). Existe un repositorio que encapsula la escritura y la lectura de `waze_jams`. Esto mantiene la tubería idéntica a la de producción: el día que un ingestor de Waze real reemplace al adaptador de replay, solo cambia el escritor de `waze_jams`; el resto de la tubería (lectura, endpoint, vista) permanece igual.
+
+- **CT-12.6 (endpoint del feed + canal de tiempo real):** Existe el camino por el que el frontend obtiene el estado de congestión por arista en vivo, siguiendo el patrón establecido del proyecto (DHU-021 #15): un canal SSE que emite la señal de "hay nueva información de congestión" (wake-up) y un endpoint REST que el frontend re-lee para obtener el estado actual de congestión por arista desde `waze_jams`. El patrón pub/sub existente (`ActiveStateBroadcaster`, hoy keyed por `node_id`) se extiende o se replica para emitir por el dominio de aristas/red. Ambos endpoints protegidos con `require_role(OPERATOR, ADMIN)`. La latencia end-to-end (escritura del feed → disponibilidad para el frontend) es coherente con el umbral de tiempo real ≤ 5 s que HU-22 declara (CA-22.2).
+
+- **CT-12.7 (robustez ante interrupción — soporte a DHU-005 Caso A):** El feed expone la marca de tiempo de la última actualización de congestión, de modo que la vista (HU-22, CA-22.4) pueda determinar y mostrar la antigüedad del dato y marcarlo como desactualizado si la fuente se interrumpe. La interrupción de la fuente (adaptador detenido) no produce error en el endpoint de lectura: este sigue devolviendo el último estado conocido con su marca de tiempo.
+
+- **CT-12.8 (alineación de IDs end-to-end):** Se verifica explícitamente que los `edge_id` son consistentes a lo largo de toda la cadena: mapping canónico → geometría en `graph_edges` (CT-12.1) → feed de congestión (CT-12.3/12.4) → persistencia en `waze_jams` (CT-12.5) → consumo en el frontend (HU-22). Una arista coloreada en el mapa corresponde inequívocamente a la misma arista en el grafo, la geometría y el feed. Existe una verificación (test o script) que confirma que el conjunto de `edge_id` de la geometría poblada y el conjunto de `edge_id` que el feed puede emitir coinciden.
+
+- **CT-12.9 (tests automatizados):** Existen tests que cubren: (a) la extracción/carga de geometría desde el `.net.xml` produce el número esperado de aristas con geometría válida; (b) el endpoint de geometría responde con el shape esperado y protegido por rol; (c) la derivación de nivel 0-5 desde el dato SUMO es correcta (reusa/extiende los tests existentes de `sumo_to_jam_level`); (d) el adaptador de replay emite por la interfaz la secuencia esperada para un día conocido; (e) la persistencia en `waze_jams` escribe y lee correctamente; (f) el endpoint del feed devuelve el estado por arista con su marca de tiempo; (g) la alineación de `edge_id` end-to-end (CT-12.8).
+
+---
+
+### Relación con HU y otras TTH / decisiones
+
+| Depende de / se relaciona con | Cómo |
+|---|---|
+| HU-22 | Esta TTH la habilita por completo: sin CT-12.1 (geometría) y CT-12.5/12.6 (feed persistido y servido), HU-22 no tiene qué pintar ni qué actualizar. Orden de implementación: TTH-12 primero, HU-22 después. |
+| TTH-01 (autenticación) | Los endpoints de geometría y de feed se protegen con el RBAC de TTH-01 (`require_role`). |
+| TTH-07 (SUMO) | Reutiliza el dataset SUMO y la derivación de nivel de congestión producidos en el contexto de TTH-07; el adaptador de replay lee de ese dataset. |
+| D-009 (jam level 0-5) | El nivel de congestión por arista usa la escala 0-5 de D-009. La derivación es por velocidad (`sumo_to_jam_level`), no por timeLoss. |
+| DHU-005 (robustez ante interrupción, Caso A) | CT-12.7 provee la marca de tiempo que HU-22 (CA-22.4) usa para marcar datos desactualizados. |
+| DHU-021 (#15, patrón SSE-wake/REST-read) | CT-12.6 sigue este patrón: SSE solo señaliza, el dato se re-lee por REST. |
+| DHU-028 | Registra la ampliación del backlog (HU-22 + TTH-12) y la unidad de análisis "arista" para la vista de red. |
+
+### Extensiones futuras (fuera de alcance de esta TTH)
+
+- **SUMO en vivo (upgrade del adaptador de fuente):** sustituir el replay por un loop TraCI en vivo sobre la red completa de Miraflores, detrás de la misma interfaz de CT-12.3. Viabilidad confirmada por medición (RTF ~41×, cruce de procesos `simulation`↔`core` por HTTP localhost ya probado). Requiere un loop TraCI sobre la red completa (hoy solo existe sobre la red de una intersección) y el sentido inverso del puente de procesos.
+- **Ingestor de Waze real:** reemplazar el adaptador de fuente por un ingestor que llene `waze_jams` desde la API de Waze. Es el destino de producción; la tubería de esta TTH está diseñada para recibirlo sin cambios aguas abajo.
+- **Feed de congestión predicha por arista:** servir un modelo predictivo por arista para alimentar la capa de predicción de la extensión futura de HU-22. Requiere decidir y servir el predictor por arista correspondiente.
+
+---
+
 ## Relación con el Plan de Ejecución
 
 Las TTH **no se estiman con Planning Poker** ni se priorizan con MoSCoW (ambas técnicas son para HUs con valor de negocio). Las TTH se planifican como trabajo técnico directo en el cronograma del proyecto, con estimaciones en horas/días.
@@ -812,7 +889,7 @@ Por tanto, las TTH se ejecutan en la primera fase del proyecto, antes o en paral
 
 - `DECISIONS_HU.md` — Decisiones metodológicas (DHU-001 a DHU-022) que fundamentan la creación y clasificación de cada TTH.
 - `HU_BLOQUE_A.md` — Bloque A del Product Backlog tras la reestructuración.
-- `HU_BLOQUE_B.md` — Bloque B del Product Backlog (HU-02 a HU-09).
+- `HU_BLOQUE_B.md` — Bloque B del Product Backlog (HU-02 a HU-09, HU-22).
 - `HU_BLOQUE_C.md` — Bloque C del Product Backlog (HU-10 a HU-12).
 - `HU_BLOQUE_D.md` — Bloque D del Product Backlog (HU-13, HU-14, HU-15).
 - `HU_BLOQUE_E.md` — Bloque E del Product Backlog (0 HUs operativas; mapeo a TTH-07 a TTH-11).

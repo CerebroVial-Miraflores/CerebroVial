@@ -31,9 +31,10 @@
 
 ## Mapa del Product Backlog
 
-**21 HUs operativas** (HU-01 a HU-21) + **11 Tareas Técnicas Habilitadoras** (TTH-01 a TTH-11).
+**22 HU operativas** (HU-01 a HU-22) + **12 Tareas Técnicas Habilitadoras** (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12: vista panorámica de congestión de la red).
 - **MVP1 cerrado:** 16 HUs (HU-01 a HU-08, HU-10 a HU-17) + 11 TTH.
 - **MVP2 cerrado:** 5 HUs adicionales (HU-09, HU-18 a HU-21) + 0 TTH nuevas.
+- **Ampliación posterior (DHU-028, 2026-06-02):** HU-22 (mapa de congestión de la red, Bloque B) + TTH-12 (infraestructura de datos de congestión por arista).
 - **5 features adicionales** declaradas como Trabajos Futuros (F36 a F41 + F21 reclasificada).
 
 ---
@@ -142,7 +143,7 @@ Según para qué lo necesites, abre uno u otro documento:
 
 ## Estado al cierre del Product Backlog
 
-El componente funcional del backlog está completo: las 21 HUs y las 11 TTH están redactadas y aprobadas. Quedan tres entregables del proyecto que dependen de este cierre:
+El componente funcional del backlog está completo: las 22 HU y las 12 TTH están redactadas y aprobadas (incluida la ampliación DHU-028: HU-22 + TTH-12, posterior al cierre del MVP2). Quedan tres entregables del proyecto que dependen de este cierre:
 
 1. **Documento de Requisitos Funcionales y No Funcionales (RF/RNF)** consolidando los candidatos a RNF de todas las HUs.
 2. **Ceremonias de estimación (Planning Poker) y priorización (MoSCoW)** sobre el backlog completo.

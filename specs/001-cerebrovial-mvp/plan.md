@@ -4,6 +4,8 @@
 
 **Input**: Arquitectura objetivo en `documentation/sdd/SDD_CEREBROVIAL.md` (SDD verificado contra el repo).
 
+> **Nota (2026-06-02, DHU-028):** el Product Backlog se amplió posteriormente a **22 HU + 12 TTH** (HU-22 + TTH-12: vista panorámica de congestión de la red por arista). Este plan y el inventario de `tasks.md` siguen reflejando el backlog de 21 HU + 11 TTH del que derivan; la incorporación de HU-22/TTH-12 a los artefactos Spec Kit queda pendiente de re-derivación.
+
 > **Adopción brownfield (DHU-021).** Este `plan.md` **mapea** el SDD existente al formato de
 > Spec Kit; no se regenera con `/speckit-plan`. El SDD es la fuente canónica de la
 > descomposición y del diseño; aquí se resume y se enlaza, evitando duplicar texto.

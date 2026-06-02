@@ -2,7 +2,7 @@
 
 > Cuarta entrega del Product Backlog del proyecto CerebroVial.
 >
-> **Estado:** Bloque D cerrado y aprobado. Bloques A, B, C, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 21 HUs operativas (HU-01 a HU-21) + 11 TTH (TTH-01 a TTH-11).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1. HU-14 (métricas del modelo principal) es ampliada por HU-20 del MVP2 mediante extensión inglobada del registro de predicciones (CA-14.1 extendida a persistir también predicciones del modelo de respaldo, conforme a DHU-017 subsección D); HU-13, HU-14 y HU-15 reciben el badge de incidentes pendientes de HU-21 en la navegación del Administrador.
+> **Estado:** Bloque D cerrado y aprobado. Bloques A, B, C, E y F del MVP1 cerrados, y MVP2 también cerrado el 2026-05-16 (DHU-017). **Con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) + 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** Pendiente: documento RF/RNF (DHU-007), Planning Poker, MoSCoW, implementación SCRUM del MVP1. HU-14 (métricas del modelo principal) es ampliada por HU-20 del MVP2 mediante extensión inglobada del registro de predicciones (CA-14.1 extendida a persistir también predicciones del modelo de respaldo, conforme a DHU-017 subsección D); HU-13, HU-14 y HU-15 reciben el badge de incidentes pendientes de HU-21 en la navegación del Administrador.
 >
 > **Fecha de cierre:** 2026-05-14
 > **Fecha de actualización v2:** 2026-05-17 (DHU-018 aplicada retroactivamente: Resumen ejecutivo en HU-13, HU-14, HU-15)
@@ -390,7 +390,7 @@ DHU-013 (clasificación HU/TTH del Bloque D) había sido cerrada antes del inici
 
 ## Próximos pasos
 
-Esta sesión cerró el Bloque D. A la fecha actual, los Bloques E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 21 HUs operativas (HU-01 a HU-21) y 11 TTH (TTH-01 a TTH-11).** HU-20 (comparativa vs modelo de respaldo) extiende HU-14 mediante persistencia paralela inglobada. Los siguientes pasos del proyecto, en sesiones futuras:
+Esta sesión cerró el Bloque D. A la fecha actual, los Bloques E y F del MVP1 están cerrados y el MVP2 también está cerrado (DHU-017, 2026-05-16); **con el cierre del MVP2, la redacción del Product Backlog del proyecto queda completa en su componente funcional: 22 HU operativas (HU-01 a HU-22) y 12 TTH (TTH-01 a TTH-12), tras la ampliación DHU-028 (HU-22 + TTH-12).** HU-20 (comparativa vs modelo de respaldo) extiende HU-14 mediante persistencia paralela inglobada. Los siguientes pasos del proyecto, en sesiones futuras:
 
 1. **Bloque E — Componentes centrales del sistema** (F32 SUMO, F33 visión, F34 predictor, F35 motor adaptativo → 0 HUs operativas + 5 TTH: TTH-07 a TTH-11; ya cerrado el 2026-05-15 por DHU-015). Ver `HU_BLOQUE_E.md`.
 

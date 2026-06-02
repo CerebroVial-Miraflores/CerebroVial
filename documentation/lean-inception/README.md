@@ -4,7 +4,7 @@ Esta carpeta contiene el cuerpo documental del producto CerebroVial: contexto me
 
 ## Punto de entrada
 
-**[`BACKLOG_OVERVIEW.md`](BACKLOG_OVERVIEW.md)** — visión de conjunto del producto en 10 minutos (4 Personas, 4 Objetivos, mapa de 21 HUs + 11 TTH, navegación al detalle).
+**[`BACKLOG_OVERVIEW.md`](BACKLOG_OVERVIEW.md)** — visión de conjunto del producto en 10 minutos (4 Personas, 4 Objetivos, mapa de 22 HU + 12 TTH, navegación al detalle).
 
 ## Estructura de carpetas
 
@@ -26,7 +26,7 @@ Esta carpeta contiene el cuerpo documental del producto CerebroVial: contexto me
 |---|---|---|
 | 0 | `BACKLOG_OVERVIEW.md` | Primer contacto con el proyecto. |
 | 1 | `1-contexto/` | Entender el origen, la fundamentación metodológica y la narrativa del proyecto en sus 4 fases. |
-| 2 | `2-backlog/` | Detalle implementable: 21 HUs operativas organizadas en bloques A-F + 5 MVP2 + 11 TTH + 41 features. |
+| 2 | `2-backlog/` | Detalle implementable: 22 HU operativas organizadas en bloques A-F + 5 MVP2 (incluida la ampliación HU-22, DHU-028) + 12 TTH + 41 features. |
 | 3 | `3-requisitos/` | Catálogo formal de 22 RF + 53 RNF según ISO 25010, derivado del backlog. |
 | 4 | `4-decisiones/` | Trazabilidad de decisiones técnicas (D-001 a D-009) y metodológicas (DHU-001 a DHU-024). |
 | 5 | `planificacion/` | Ceremonias SCRUM ejecutadas (MoSCoW, Planning Poker, Distribución de sprints) y planificación del sprint 4. |
