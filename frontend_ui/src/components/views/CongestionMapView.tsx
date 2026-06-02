@@ -229,8 +229,8 @@ export const CongestionMapView = () => {
   };
 
   return (
-    <div className="relative w-full h-full min-h-[600px] flex flex-col">
-      <div className="relative flex-1 min-h-[600px] rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
+    <div className="relative w-full h-[calc(100vh-7rem)] min-h-[600px] flex flex-col">
+      <div className="relative flex-1 rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
         {loading && <LoadingOverlay message="Cargando mapa de congestión..." />}
         {error && (
           <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center bg-slate-900/90 text-white p-6 text-center">
