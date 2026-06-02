@@ -44,7 +44,7 @@ Las 10 features del Bloque B (F02 a F11) se mapearon a 8 HUs según el siguiente
 | HU-08 | Consulta del historial de decisiones del motor | F10 (+ F31 inglobada como CA) |
 | HU-09 | Registro de notas e incidencias del turno | F11 (MVP2) |
 
-**Total Bloque B:** 8 HUs (7 MVP1 + 1 MVP2). F02 (Dashboard principal) queda cubierto por la composición visual de HU-02, HU-03, HU-04, HU-05 y HU-06 en una vista única, sin generar HU propia (es contenedor, no funcionalidad independiente).
+**Total Bloque B:** 10 HUs (7 MVP1 + 1 MVP2 + 2 ampliaciones: HU-22 habilitada por TTH-12, HU-23 habilitada por TTH-13). F02 (Dashboard principal) queda cubierto por la composición visual de HU-02, HU-03, HU-04, HU-05 y HU-06 en una vista única, sin generar HU propia (es contenedor, no funcionalidad independiente).
 
 ---
 
