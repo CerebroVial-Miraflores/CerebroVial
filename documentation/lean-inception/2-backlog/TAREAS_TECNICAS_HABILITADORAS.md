@@ -871,49 +871,96 @@ El estado del repositorio al momento de redactar esta TTH (auditoría 2026-06-02
 
 ## TTH-13 — Infraestructura de consulta histórica de congestión por arista
 
-**Origen:** Habilitador de HU-23 (barrido temporal de la congestión de la red). Identificado durante el análisis de evolución de HU-22 (2026-06-02), al constatar que el recorrido temporal del mapa requiere consultar el estado de congestión por arista en un instante arbitrario del día, capacidad que TTH-12 no provee (su endpoint de estado está cableado al snapshot más reciente). Ver DHU-029 en `DECISIONS_HU.md`.
+**Origen:** Habilitador de HU-23 (recorrido temporal de la congestión de la red). Identificado durante el análisis de evolución de HU-22 (2026-06-02), al constatar que el recorrido temporal del mapa requiere servir la serie de congestión por arista de un día completo para que el frontend la recorra con fluidez, capacidad que TTH-12 no provee (su endpoint de estado está cableado al snapshot más reciente). Ver DHU-029 en `DECISIONS_HU.md`.
 
-**Habilita a:** HU-23 (recorrido temporal de la congestión de la red por tramo de vía). Sin esta TTH cerrada, HU-23 no puede pintar el mapa en un instante seleccionado por el control temporal ni acotar el rango recorrible.
+**Habilita a:** HU-23 (recorrido temporal de la congestión de la red por tramo de vía). Sin esta TTH cerrada, HU-23 no tiene la serie del día que el control temporal recorre ni el tope de cobertura con el que se acota.
 
 **Clasificación:** MVP1 — ampliación (barrido temporal de la vista panorámica de red).
 
 **Estado actual:** Pendiente.
 
-**Naturaleza (DHU-004):** cumple los cuatro criterios de TTH — no tiene Persona beneficiaria directa (su efecto se ve en HU-23), su valor es instrumental (habilita el recorrido temporal), su comportamiento es técnico estándar (consulta de persistencia por timestamp + reporte de rango), y no entrega valor visible al usuario en aislamiento. Conforme a DHU-006, esta TTH sí nombra tecnologías concretas (`waze_jams`, TimescaleDB, endpoint REST) por su naturaleza técnica.
+**Naturaleza (DHU-004):** cumple los cuatro criterios de TTH — no tiene Persona beneficiaria directa (su efecto se ve en HU-23), su valor es instrumental (habilita el recorrido temporal), su comportamiento es técnico estándar (lectura de la serie temporal de un día desde la persistencia + serialización compacta), y no entrega valor visible al usuario en aislamiento. Conforme a DHU-006, esta TTH sí nombra tecnologías concretas (`waze_jams`, TimescaleDB, endpoint REST) por su naturaleza técnica.
 
 ### Contexto y alcance
 
-HU-23 requiere recorrer la congestión de la red sobre el mapa a lo largo del día. Para ello necesita dos capacidades que la infraestructura de TTH-12 no expone hoy:
+HU-23 requiere recorrer la congestión de la red sobre el mapa a lo largo del día. Para que el recorrido sea fluido (el Operador arrastra un control temporal y el mapa repinta sin latencia perceptible), la vista necesita la **serie completa de un día** —el nivel de congestión 0-5 de cada arista en cada instante de 60 s— disponible para indexar en memoria, en lugar de una consulta por cada instante. Esto exige una capacidad que la infraestructura de TTH-12 no expone hoy: servir, en una sola llamada, la serie temporal de niveles por arista de un día dado, en un formato compacto consumible por el frontend.
 
-1. **Estado de congestión por arista en un instante arbitrario.** El endpoint de estado de TTH-12 (`GET /congestion/state`, en `routes.py`) devuelve únicamente el snapshot más reciente por arista (`latest_per_edge()` en el repositorio de `waze_jams`, agrupado por `func.max(snapshot_timestamp)`). No acepta parámetro temporal. HU-23 necesita el estado por arista correspondiente a un instante `t` elegido por el control temporal.
-
-2. **Rango temporal disponible para un día.** Para acotar el control temporal (y bloquearlo en el día en curso cuando los datos solo cubren hasta cierta hora), el frontend necesita saber qué rango de instantes hay efectivamente persistido para el día seleccionado. Hoy no existe forma de consultarlo.
+El endpoint de estado de TTH-12 (`GET /congestion/state`) devuelve solo el snapshot más reciente por arista (`latest_per_edge()`) y se conserva intacto para HU-22 (vista en vivo). TTH-13 agrega un endpoint nuevo e independiente para la serie del día; no modifica el de estado actual.
 
 El estado del repositorio al momento de redactar esta TTH (auditoría 2026-06-02):
 
-- La tabla `waze_jams` está poblada y es hypertable TimescaleDB (chunk de 1 día sobre `snapshot_timestamp`), con índices simples sobre `event_uuid` y sobre `snapshot_timestamp`, y PK compuesta `(event_uuid, snapshot_timestamp)`. **No existe índice compuesto `(edge_id, snapshot_timestamp)`**, óptimo para "estado de todas las aristas en el instante `t`".
-- El repositorio de `waze_jams` expone `latest_per_edge()` (más reciente por arista) pero **no existe un método de lectura por instante arbitrario** (`at_timestamp(ts)`).
+- La tabla `waze_jams` está poblada y es hypertable TimescaleDB (chunk de 1 día sobre `snapshot_timestamp`), con índices simples sobre `event_uuid` y sobre `snapshot_timestamp`, y PK compuesta `(event_uuid, snapshot_timestamp)`. No existe índice compuesto `(edge_id, snapshot_timestamp)`, óptimo para leer la serie de un día ordenada por arista y tiempo.
+- El repositorio de `waze_jams` expone `latest_per_edge()` (más reciente por arista) pero no existe un método que lea la serie completa de un día por arista (todas las filas del día, ordenadas por `edge_id, snapshot_timestamp`).
 - La geometría de las aristas (CT-12.1/12.2) y la persistencia del feed (CT-12.5) ya existen y se reutilizan sin cambios.
 
-**Alcance de esta TTH (V1):** consulta de **estado histórico y actual** por arista en un instante arbitrario, y reporte del rango temporal disponible por día. La consulta de estado **predicho** a futuro queda fuera de alcance (depende de la extensión predictiva por arista, ver DHU-029).
+**Alcance de esta TTH (V1):** servir la serie de congestión histórica y actual por arista de un día completo en una sola llamada (nivel 0-5 por arista por instante de 60 s), en formato compacto, con el tope de cobertura del día embebido en la respuesta. Bajo el supuesto de día sin huecos internos (ver "Contexto y alcance"). La consulta de estado **predicho** a futuro queda fuera de alcance (depende de la extensión predictiva por arista, ver DHU-029).
 
-**Semántica temporal:** la consulta por instante devuelve, por cada arista, el snapshot más reciente cuyo `snapshot_timestamp` sea **menor o igual** al instante solicitado (espejo de `latest_per_edge`, acotado por `<= t`). Esto evita huecos cuando el instante solicitado cae entre dos pasos persistidos y mantiene la coherencia con la semántica de "último estado conocido".
+**Formato de la serie (decisión de diseño, verificada por medición):** la respuesta es compacta por arista — un objeto por `edge_id` con la metadata temporal del día (instante base `t0`, paso en segundos `step_s`) y un array ordenado de niveles `levels` (un entero 0-5 por instante del día). El frontend mapea la posición del control temporal a un índice del array (`levels[i]`) y repinta en O(1), sin nuevas llamadas. Medición sobre el día sembrado seed062 (540 000 filas): este formato compacto pesa ~1.58 MB crudo y ~55 KB bajo gzip de transporte, frente a ~50.8 MB de un formato de filas planas — servible en una sola llamada. No se aplica codificación adicional (RLE / sparse): la compresión gzip ya lleva el payload a ~55 KB (el 91 % de los niveles son 0), y un codec propio rompería el acceso O(1) por índice que el slider necesita, a cambio de una ganancia despreciable.
+
+**Supuesto de cobertura (V1): día sin huecos internos.** Se asume que un día tiene cobertura temporal continua desde su inicio hasta su último instante con datos (sin huecos internos). Verificado para el día sembrado seed062: grilla densa 375 × 1440, 0 huecos, cada instante con las 375 aristas presentes, cobertura 00:00→23:59. Bajo este supuesto, el "tope de cobertura" de un día es simplemente su último instante con datos, que la respuesta de la serie ya contiene (no requiere endpoint ni consulta aparte). El frontend usa ese tope para limitar el control temporal (ver CT-13.2 y HU-23 CA-23.2). El manejo de **huecos internos** (un día con tramos sin dato intercalados) —y la UX asociada de saltos del control o zonas grises sobre el eje— queda **fuera de alcance de V1 como extensión futura de UX** (ver "Extensiones futuras").
 
 ### Criterios técnicos de terminado
 
-- **CT-13.1 (lectura por instante en el repositorio):** Existe un método en el repositorio de `waze_jams` que devuelve, para un instante `t` dado, el estado de congestión por arista vigente en `t` (el snapshot más reciente por `edge_id` con `snapshot_timestamp <= t`). El método es el espejo de `latest_per_edge()` acotado temporalmente y reutiliza su forma de agrupación por arista. El shape de retorno es idéntico al de la lectura de estado actual (mismo DTO por arista: `edge_id`, `congestion_level`, marca de tiempo), de modo que el consumidor no distingue la estructura entre estado actual y estado por instante.
+- **CT-13.1 (lectura de la serie del día en el repositorio):** Existe un método en el
+  repositorio de `waze_jams` que devuelve, para un día dado, todas las filas de ese día
+  (`edge_id`, `snapshot_timestamp`, `congestion_level`) ordenadas por `edge_id,
+  snapshot_timestamp`. Es una query nueva e independiente de `latest_per_edge()` (no agrega
+  ni hace self-join: filtra por rango del día y ordena). El resultado, ya ordenado, se agrupa
+  por arista para construir la serie compacta (Formato B): por cada `edge_id`, un array de
+  niveles indexado por instante. La agrupación puede hacerse en Python iterando el resultado
+  ordenado (cambio de `edge_id` = nueva arista) o empujarse a la DB con agregación; la decisión
+  de implementación se justifica en el plan. Devuelve un DTO/estructura propia de la serie (no
+  `EdgeCongestion`, que es por-instante).
 
-- **CT-13.2 (endpoint de estado por instante):** Existe un endpoint REST que sirve el estado de congestión por arista en un instante arbitrario, parametrizado por el instante solicitado (p. ej. `GET /congestion/state?at=<ISO8601>`). Cuando el parámetro temporal está ausente, el endpoint conserva el comportamiento actual de TTH-12 (estado más reciente), sin romper a los consumidores existentes (HU-22). El endpoint está protegido con `require_role(OPERATOR, ADMIN)` conforme al patrón de autorización del proyecto (TTH-01). La respuesta usa el mismo formato que el endpoint de estado de TTH-12.
+- **CT-13.2 (endpoint de serie del día):** Existe un endpoint REST `GET /congestion/series`
+  que recibe el día como **query param requerido** (`day`, fecha ISO `YYYY-MM-DD`, parseada
+  como `date`) y devuelve, en una sola respuesta, la serie compacta del día: por cada arista,
+  su `edge_id`, el instante base `t0`, el paso `step_s` y el array `levels` de niveles 0-5; más
+  el tope de cobertura del día (el último instante con datos), que el frontend usa para limitar
+  el control temporal. La respuesta admite compresión gzip de transporte. El endpoint está
+  protegido con `require_role(OPERATOR, ADMIN)` conforme al patrón del proyecto (TTH-01), en el
+  mismo router del dominio congestion. Nota de convención: TTH-13 es el primer endpoint del
+  proyecto que recibe un selector temporal; se sigue la convención observada (selectores como
+  query param, identificadores como path param — único precedente: `interval` en
+  `/predictions/history`). Si el día solicitado no tiene datos, el endpoint responde
+  explícitamente la ausencia (serie vacía o señal equivalente, sin error), de modo que el
+  frontend pueda deshabilitar el control (HU-23 CA-23.7).
 
-- **CT-13.3 (endpoint de rango temporal disponible):** Existe un endpoint REST que reporta, para un día solicitado, el rango temporal de congestión efectivamente disponible en `waze_jams` (instante mínimo y máximo con datos para ese día). Permite al frontend acotar y bloquear el control temporal sin asumir cobertura. Protegido con `require_role(OPERATOR, ADMIN)`. Cuando el día solicitado no tiene datos, el endpoint responde explícitamente la ausencia de rango (no error), de modo que el frontend pueda deshabilitar el control.
+- **CT-13.3 (índice de soporte):** Existe una migración versionada que crea el índice compuesto
+  `(edge_id, snapshot_timestamp)` sobre `waze_jams`. Este orden de columnas es óptimo para la
+  query de CT-13.1 (`WHERE` por rango de día + `ORDER BY edge_id, snapshot_timestamp`): permite
+  un index scan que entrega las filas ya ordenadas, sin sort en memoria, con cada arista como un
+  rango contiguo. Se crea con `op.create_index` (patrón Alembic puro, calcando el índice
+  compuesto existente de la tabla `predictions`). La migración verifica el head actual de Alembic
+  antes de fijar su `down_revision`, e incluye `downgrade()` con `op.drop_index`. Hoy no existe
+  índice sobre `edge_id` (es FK nullable sin índice); el compuesto es nuevo y no redundante.
+  Nota de honestidad: `waze_jams` es hypertable TimescaleDB particionada por `snapshot_timestamp`;
+  el índice incluye esa columna (como segunda), lo que Timescale acepta. El comportamiento exacto
+  del `create_index` sobre la hypertable se verifica al ejecutar la migración (no antes).
 
-- **CT-13.4 (índice de soporte a la consulta por instante):** Existe una migración versionada que crea el índice compuesto `(edge_id, snapshot_timestamp)` sobre `waze_jams`, de modo que la consulta de estado por instante (CT-13.1) sea eficiente sobre el volumen de un día completo por arista. La migración es reejecutable de forma segura y coherente con el esquema de hypertable TimescaleDB existente. Nota de honestidad: si por medición la consulta resulta suficientemente eficiente con los índices existentes sobre el volumen real, este CT se documenta como cumplido con justificación; el índice no se agrega "por las dudas" sino porque la consulta por instante sobre todas las aristas lo motiva.
+- **CT-13.4 (no alteración de los contratos de TTH-12):** El endpoint `GET /congestion/state`
+  (snapshot más reciente, consumido por HU-22), `GET /congestion/geometry`, el feed SSE y el
+  repositorio (`latest_per_edge`, escritura) permanecen funcionalmente intactos. El endpoint de
+  serie y el método de repo nuevos no modifican el comportamiento observable de los consumidores
+  actuales. Existe verificación (test) de que `/congestion/state` sigue devolviendo el snapshot
+  más reciente como antes.
 
-- **CT-13.5 (no alteración de los contratos de TTH-12):** Los endpoints y el repositorio de TTH-12 (estado actual `latest_per_edge`, geometría, feed SSE-wake) permanecen funcionalmente intactos. La extensión de `routes.py` con el parámetro temporal y los métodos/endpoints nuevos no modifica el comportamiento observable de los consumidores actuales (HU-22). Existe verificación (test) de que el estado actual sin parámetro temporal sigue devolviendo el snapshot más reciente como antes.
+- **CT-13.5 (robustez y coherencia con DHU-005):** La consulta de serie no produce error ante un
+  día sin datos (devuelve serie vacía o señal de ausencia, no excepción). La respuesta incluye la
+  marca temporal (instante base + paso, y/o el tope de cobertura), de modo que el frontend pueda
+  derivar el rango recorrible y, coherente con TTH-12 (CT-12.7) y HU-23 (CA-23.4), comunicar la
+  naturaleza del dato.
 
-- **CT-13.6 (robustez y coherencia con DHU-005):** La consulta por instante y el reporte de rango no producen error ante instantes fuera de rango (anteriores al primer dato o posteriores al último): devuelven el estado conocido más cercano según la semántica `<= t`, o la ausencia explícita de datos, sin excepción no controlada. La marca de tiempo de cada arista en la respuesta permite al frontend mostrar la antigüedad del dato recorrido, coherente con el patrón de TTH-12 (CT-12.7).
-
-- **CT-13.7 (tests automatizados):** Existen tests que cubren: (a) la lectura por instante devuelve, para un `t` conocido, el estado por arista esperado (snapshot `<= t`); (b) el endpoint de estado por instante responde con el shape esperado, protegido por rol, y conserva el comportamiento de estado actual sin parámetro; (c) el endpoint de rango reporta correctamente min/max para un día con datos y la ausencia para un día sin datos; (d) los instantes fuera de rango se manejan según CT-13.6 sin excepción; (e) la consulta de estado actual de TTH-12 sigue funcionando sin cambios (CT-13.5).
+- **CT-13.6 (tests automatizados):** Existen tests que cubren: (a) el método de repo devuelve,
+  para un día conocido sembrado, la serie por arista esperada (orden y niveles correctos);
+  (b) el endpoint `GET /congestion/series?day=...` responde con el shape compacto esperado
+  (objeto por arista con `edge_id`/`t0`/`step_s`/`levels`), protegido por rol, con el tope de
+  cobertura; (c) un día sin datos responde la ausencia sin error (HU-23 CA-23.7); (d) test de RBAC
+  (rol no autorizado → 403); (e) `/congestion/state` sigue funcionando sin cambios (CT-13.4). Los
+  tests siguen el patrón del dominio (SQLite en memoria, helper de siembra de filas, `as_role`).
+  El índice compuesto (CT-13.3) NO es verificable en el SQLite de test (su DDL no lleva índices);
+  su verificación es manual/PostgreSQL, igual que `populate_geom_from_edges` — se declara así, sin
+  fingir cobertura.
 
 ---
 
@@ -921,17 +968,18 @@ El estado del repositorio al momento de redactar esta TTH (auditoría 2026-06-02
 
 | Depende de / se relaciona con | Cómo |
 |---|---|
-| HU-23 | Esta TTH la habilita: sin CT-13.2 (estado por instante) y CT-13.3 (rango disponible), HU-23 no tiene cómo pintar el mapa en el instante del control temporal ni cómo acotar/bloquear el control. Orden de implementación: TTH-13 primero, HU-23 después. |
-| TTH-12 | Reutiliza por completo la geometría (CT-12.1/12.2), la persistencia en `waze_jams` (CT-12.5) y el patrón de autorización. TTH-13 agrega solo la lectura por instante y el reporte de rango; no altera los contratos de TTH-12 (CT-13.5). |
+| HU-23 | Esta TTH la habilita: sin CT-13.2 (serie del día en una llamada, con su tope de cobertura) HU-23 no tiene cómo pintar el recorrido temporal ni cómo limitar el control. Orden de implementación: TTH-13 primero, HU-23 después. |
+| TTH-12 | Reutiliza por completo la geometría (CT-12.1/12.2), la persistencia en `waze_jams` (CT-12.5) y el patrón de autorización. TTH-13 agrega solo la lectura de la serie del día y su endpoint; no altera los contratos de TTH-12 (CT-13.4). |
 | TTH-01 (autenticación) | Los endpoints nuevos se protegen con el RBAC de TTH-01 (`require_role(OPERATOR, ADMIN)`). |
-| D-009 (jam level 0-5) | El estado por instante usa la misma escala 0-5 por arista de TTH-12; TTH-13 no introduce nueva derivación de nivel, solo lee lo persistido. |
-| DHU-005 (robustez ante interrupción, Caso A) | CT-13.6 conserva la marca de tiempo por arista que la vista usa para mostrar antigüedad del dato recorrido. |
+| D-009 (jam level 0-5) | La serie del día usa la misma escala 0-5 por arista de TTH-12; TTH-13 no introduce nueva derivación de nivel, solo lee lo persistido. |
+| DHU-005 (robustez ante interrupción, Caso A) | CT-13.5 conserva la marca de tiempo por arista que la vista usa para mostrar antigüedad del dato recorrido. |
 | DHU-029 | Registra la ampliación del backlog (HU-23 + TTH-13) y el alcance temporal histórico/actual de la vista de recorrido. |
 
 ### Extensiones futuras (fuera de alcance de esta TTH)
 
 - **Consulta de estado predicho por arista:** servir el estado de congestión **proyectado a futuro** por arista (p. ej. próximos 30 min) para alimentar la extensión del eje temporal de HU-23 hacia el futuro. Requiere la capa de predicción por arista en escala 0-5, que hoy no existe servida (ver dimensionamiento en DHU-029: hay grafo edge-as-node y modelos por arista offline, pero predicen `timeLoss`, no 0-5). Requiere decidir y servir el predictor por arista correspondiente.
 - **Agregación histórica para el Gerente:** una consulta histórica agregada por periodos prolongados (no instante a instante) que alimente una eventual vista de análisis geográfico del Gerente, distinta del recorrido operativo del Operador de HU-23. Es una necesidad de otra Persona y se redactaría como su propia HU si se aborda.
+- **Manejo de huecos internos de cobertura (UX del control temporal):** soportar días con tramos sin dato intercalados (no solo cobertura continua hasta un tope). La mejor UX —que el control salte los tramos vacíos o los muestre como zonas grises sobre el eje temporal— queda fuera de V1, que asume cobertura continua sin huecos (validado para el día sembrado). Cuando se incorpore una fuente con cobertura irregular (p. ej. el día en curso parcial, o Waze real con llegadas intermitentes), se redactará la UX de huecos como ampliación.
 
 ---
 
