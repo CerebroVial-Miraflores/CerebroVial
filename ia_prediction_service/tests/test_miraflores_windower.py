@@ -5,7 +5,7 @@ Verifica: las ventanas NO cruzan el borde entre días; el input tiene 2 canales
 correctos; el scaler train-only ignora celdas inválidas.
 
 Fixtures sintéticas en memoria (no tocan disco). Corre con el venv raíz:
-``cd ia_prediction_service && ../.venv/bin/python -m pytest tests/test_miraflores_windower.py``
+``cd ia_prediction_service && .venv/bin/python -m pytest tests/test_miraflores_windower.py``
 """
 from __future__ import annotations
 

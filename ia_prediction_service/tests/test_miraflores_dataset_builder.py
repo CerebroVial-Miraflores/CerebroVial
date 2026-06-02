@@ -10,7 +10,7 @@ Fixtures chicas en ``tmp_path``. Dos tests adicionales corren contra el dataset 
 se saltan si el dataset no está presente.
 
 Corre con el venv raíz:
-``cd ia_prediction_service && ../.venv/bin/python -m pytest tests/test_miraflores_dataset_builder.py``
+``cd ia_prediction_service && .venv/bin/python -m pytest tests/test_miraflores_dataset_builder.py``
 """
 from __future__ import annotations
 

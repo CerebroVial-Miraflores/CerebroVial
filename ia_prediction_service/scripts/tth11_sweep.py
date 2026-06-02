@@ -10,7 +10,7 @@ Adam lr=1e-3, batch 512, EPOCHS identicas para todos. 6 clases (escala Waze 0-5;
 jam5 fuera-de-soporte, no se remapea). SIN rebalanceo (el desbalance es dato para
 CT-11.6, no se corrige).
 
-Uso:  .venv/bin/python ia_prediction_service/scripts/tth11_sweep.py
+Uso:  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/tth11_sweep.py
 (correr desde la raiz del repo; usa simulation/data/{train,valid}).
 """
 

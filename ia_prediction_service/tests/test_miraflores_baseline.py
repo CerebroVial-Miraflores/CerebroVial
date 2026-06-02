@@ -6,7 +6,7 @@
 - Loss: MSE enmascarado ignora pasos de target inválidos.
 
 Corre con el venv raíz:
-``cd ia_prediction_service && ../.venv/bin/python -m pytest tests/test_miraflores_baseline.py``
+``cd ia_prediction_service && .venv/bin/python -m pytest tests/test_miraflores_baseline.py``
 """
 from __future__ import annotations
 

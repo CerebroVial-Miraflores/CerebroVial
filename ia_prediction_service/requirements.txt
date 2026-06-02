@@ -1,12 +1,24 @@
-torch>=2.3.0
+# Venv de ENTRENAMIENTO (ia_prediction_service/.venv) — AISLADO del venv raíz (core+visión).
+# tsl ancla numpy<2 (Requires-Dist: numpy<2,>1.20.3 en el ref 08473ed2), por eso este venv
+# vive en numpy 1.26.4 y NO debe tener opencv/cv2. Se crea con `invoke setup-train`.
+#
+# IMPORTANTE — instalar con el CWD en ia_prediction_service/ para que `-e ../shared`
+# resuelva a CerebroVial/shared:  cd ia_prediction_service && .venv/bin/python -m pip install -r requirements.txt
+#
+# torch_scatter/torch_sparse se toman del índice de wheels de PyG (SIN compilar de fuente);
+# el --find-links debe matchear la versión de torch pineada (2.9.1).
+--find-links https://data.pyg.org/whl/torch-2.9.1+cpu.html
+
+numpy==1.26.4            # pin directo: tsl exige numpy<2; 1.26.4 es la build validada
+torch==2.9.1             # pin: ABI de los wheels +pt29 de torch_scatter/torch_sparse
 pytorch-lightning>=2.0.0
 tensorboard>=2.13.0
 pandas>=2.0.0
-numpy>=1.24.0
 torch-geometric>=2.3.0
 torch-scatter
 torch-sparse
-git+https://github.com/TorchSpatiotemporal/tsl.git
+git+https://github.com/TorchSpatiotemporal/tsl.git@08473ed21984109c2d1a2c9cc755d0b8b57b3a99
 matplotlib>=3.7.0
 pyyaml>=6.0
 tqdm>=4.65.0
+-e ../shared

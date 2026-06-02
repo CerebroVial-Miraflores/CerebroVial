@@ -165,13 +165,24 @@ pip install invoke
 invoke setup-dev
 ```
 
-Esto crea `.venv/` con Python 3.11 e instala el paquete `cerebrovial_shared`
-en modo editable + las deps de los módulos backend + pytest. Necesario para:
-correr tests, correr `seed`, generar migraciones Alembic locales.
+Esto crea `.venv/` (core+visión, **numpy≥2**) con Python 3.11 e instala el paquete
+`cerebrovial_shared` en modo editable + las deps de los módulos backend/visión +
+pytest. Necesario para: correr tests, correr `seed`, generar migraciones Alembic locales.
 
 ```bash
 source .venv/bin/activate
 ```
+
+> **Dos venvs separados — cuál para qué.** El entrenamiento del GRU (`ia_prediction_service`)
+> usa **tsl**, que ancla `numpy<2` y choca con opencv/visión (que va a numpy≥2). Por eso
+> hay dos entornos aislados:
+> - **`.venv`** (raíz, `invoke setup-dev`) — core + visión, numpy≥2. Para correr el sistema,
+>   tests, seed, migraciones.
+> - **`ia_prediction_service/.venv`** (`invoke setup-train`) — entrenamiento, numpy 1.x + tsl.
+>   Para dataset builders y scripts de train. Ejecutar con
+>   `ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/…`.
+>
+> Detalle de la deuda y su resolución: `documentation/ESTADO_Y_PROXIMOS_PASOS.md`.
 
 ### 5. Levantar el sistema
 

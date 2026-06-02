@@ -39,7 +39,7 @@ Desacople: NO toca DB, NO toca producción, NO toca el grafo builder ni
 ``jam_level.py``. Lee Parquet + el LCC mapping; escribe ``.npz`` + metadata JSON +
 README de regeneración. Nada más.
 
-Uso CLI: ``cd ia_prediction_service && ../.venv/bin/python -m src.data.miraflores_dataset_builder``
+Uso CLI: ``cd ia_prediction_service && .venv/bin/python -m src.data.miraflores_dataset_builder``
 (usa los defaults). Ver ``build_miraflores_dataset`` / ``save_dataset``.
 """
 from __future__ import annotations
@@ -276,7 +276,7 @@ regeneración. Eje 0 = días separados por seed (nunca apilados como serie conti
 ## Cómo regenerar
 ```bash
 cd ia_prediction_service
-../.venv/bin/python -m src.data.miraflores_dataset_builder
+.venv/bin/python -m src.data.miraflores_dataset_builder
 ```
 Defaults: lee `simulation/data/datasets/miraflores_laborable_60d/day_seed0{42..101}.parquet`
 y `src/data/artifacts/miraflores_graph_lcc_mapping.json`; escribe acá

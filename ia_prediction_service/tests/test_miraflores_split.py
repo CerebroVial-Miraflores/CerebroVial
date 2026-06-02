@@ -4,7 +4,7 @@ Verifica: determinismo (dos llamadas → mismo split); seed-081 en test; folds s
 solapamiento; unión == 60 seeds (42..101); proporciones 42/8/10.
 
 Corre con el venv raíz:
-``cd ia_prediction_service && ../.venv/bin/python -m pytest tests/test_miraflores_split.py``
+``cd ia_prediction_service && .venv/bin/python -m pytest tests/test_miraflores_split.py``
 """
 from __future__ import annotations
 

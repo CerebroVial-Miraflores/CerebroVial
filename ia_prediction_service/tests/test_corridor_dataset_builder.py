@@ -2,7 +2,7 @@
 
 Verifica: free-flow aplicado POR ARISTA (nodo0 vs nodo4, no global), cap del vType,
 ratio/jam_level correctos para velocidades conocidas, y bucket vacío → jam 0.
-Corre con el venv raíz: `cd ia_prediction_service && ../.venv/bin/python -m pytest tests/...`.
+Corre con el venv de training: `cd ia_prediction_service && .venv/bin/python -m pytest tests/...`.
 """
 from __future__ import annotations
 

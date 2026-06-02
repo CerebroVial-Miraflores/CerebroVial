@@ -14,12 +14,25 @@ arranque del sistema entero.
 ## Cómo correrlo
 
 ### Opción A — Sin Docker (desarrollo local)
+El venv de **entrenamiento** vive en `ia_prediction_service/.venv` — AISLADO del venv
+core+visión de la raíz (`.venv`). Están separados a propósito: tsl ancla `numpy<2` y
+choca con opencv/visión (ver `documentation/ESTADO_Y_PROXIMOS_PASOS.md`).
+
+Lo más simple, desde la raíz del repo:
+```bash
+invoke setup-train
+```
+O a mano (equivalente):
 ```bash
 cd ia_prediction_service
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate  # Linux/Mac
-pip install -r requirements.txt
-python scripts/train.py
+pip install -r requirements.txt   # instalar desde acá para que `-e ../shared` resuelva
+```
+Después, desde la raíz del repo:
+```bash
+ia_prediction_service/.venv/bin/python \
+  ia_prediction_service/scripts/train_miraflores_baseline.py --quick
 ```
 
 ### Opción B — Con Docker (reproducible, recomendado para CI)

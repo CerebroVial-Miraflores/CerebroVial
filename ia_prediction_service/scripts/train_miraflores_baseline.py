@@ -22,8 +22,8 @@ se entrena/evalúa con un ``stride`` configurable (default 12 = 1 ventana cada 1
 queda REGISTRADO en metadata para que la Fase 4 use el idéntico (comparación justa).
 
 Uso (desde la raíz del repo, venv raíz):
-  ../.venv/bin/python ia_prediction_service/scripts/train_miraflores_baseline.py
-  ../.venv/bin/python ia_prediction_service/scripts/train_miraflores_baseline.py --quick
+  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/train_miraflores_baseline.py
+  ia_prediction_service/.venv/bin/python ia_prediction_service/scripts/train_miraflores_baseline.py --quick
 """
 from __future__ import annotations
 

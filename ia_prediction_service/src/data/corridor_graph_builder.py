@@ -19,8 +19,8 @@ Salida (formato PyG, sin dependencia de ``torch_geometric``):
 - ``mapping``     : dict serializable (puente nodo↔edge↔detectores para Fase 2).
 
 torch_geometric NO está instalado en el repo; no se necesita: el formato
-``[2, N]`` se construye con torch puro. Probado con el venv raíz
-(``.venv/bin/python``, torch 2.9.1).
+``[2, N]`` se construye con torch puro. Probado con el venv de training
+(``ia_prediction_service/.venv/bin/python``, torch 2.9.1).
 
 Dependencias: ``xml.etree`` (stdlib) + ``torch``. Sin red, sin DB, sin escritura
 a producción.

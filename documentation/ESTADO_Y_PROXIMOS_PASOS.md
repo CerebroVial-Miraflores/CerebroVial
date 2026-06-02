@@ -148,22 +148,36 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   laborables, variación por seed). Suficiente para construir/validar el pipeline end-to-end; **NO**
   representa finde/feriado. Enriquecer con otros perfiles tras cerrar el pipeline (depende del punto 1).
 
-**Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01):**
+**Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl
   (`torch-spatiotemporal`) + PyG instalan limpio en Apple Silicon contra **torch 2.9.1** —wheels
   `universal2` del índice pyg, **sin compilación desde fuente** (incluido `torch-scatter`/
   `torch-sparse`), sin downgrade de torch. Decisión del track: la **Fase 4 (STGNN) usará tsl**; el
   **baseline de Fase 3 se construye en torch puro** (no requiere tsl).
-- **Salvedad — pin de numpy.** tsl pineó **numpy a 1.26.4** (vía `tables`/`blosc2`), lo que viola la
-  restricción de `opencv-python-headless` (módulo de visión, `edge_device`), que requiere **numpy≥2**.
-  Hoy es **inerte** (visión y entrenamiento son módulos distintos del monolito y no comparten uso de
-  arrays), pero es **frágil**.
-- **Disparador de resolución.** Antes de que la Fase 4 ponga tsl en el loop de entrenamiento
-  **productivo**, separar el venv de **entrenamiento** (tsl / numpy 1.x, `ia_prediction_service`) del
-  venv de **visión** (opencv / numpy 2.x, `edge_device`).
-- **Referencia.** Snapshots del venv pre/post-tsl en `/tmp/venv_pre_tsl.txt` y `/tmp/venv_post_tsl.txt`
-  (efímeros, no versionados — se pierden al reiniciar; valen solo como referencia inmediata, no como
-  respaldo durable).
+- **Salvedad — pin de numpy (atribución corregida).** El pin `numpy<2` es **directo de tsl**
+  (`Requires-Dist: numpy<2,>1.20.3` en el `pyproject` del ref `08473ed2`), **no** transitivo vía
+  `tables`/`blosc2` —esas admiten numpy≥2 (`tables` pide `numpy>=1.20`, `blosc2` `numpy>=1.26`). tsl
+  ancla numpy a **1.26.4**, lo que choca con el módulo de visión (`edge_device`: opencv + ultralytics),
+  que va a **numpy≥2**.
+- **RESUELTO (2026-06-01) — separación de venvs.** Se separó el entorno en dos venvs aislados:
+  - `ia_prediction_service/.venv` — entrenamiento, **numpy 1.26.4** + tsl (`invoke setup-train`).
+  - `.venv` (raíz) — core + visión, **numpy≥2** (`invoke setup-dev`); `torch==2.9.1` se preserva
+    (excepción D-010) instalando core+edge+dev en **una sola resolución de pip** (si se instalara edge en
+    una invocación aparte, ultralytics/torchvision pisarían torch con una versión más nueva).
+  Smokes verdes: el venv de training importa tsl/PyG y corre `train --quick`; el venv core+visión importa
+  cv2/ultralytics sobre numpy≥2 (tsl ausente) y `invoke test` pasa (core 124 + edge 124). Pins en
+  `ia_prediction_service/requirements.txt` (tsl@08473ed2, numpy==1.26.4, `--find-links` PyG) y
+  `edge_device/requirements.txt` (opencv → headless).
+- **Asterisco honesto.** `opencv-python` (variante GUI) entra **transitivamente** por
+  `supervision`/`ultralytics` (ambos lo declaran como dep dura: `opencv-python>=…`), así que coexiste con
+  `opencv-python-headless` en el `.venv` raíz. No es bloqueante (cv2 importa, misma versión 4.13.0.92),
+  pero excluir del todo la variante GUI exigiría un constraints/override sobre esos paquetes — follow-up menor.
+- **Deuda nueva de seguimiento (reunificación de venvs).** Si un tsl posterior **relaja** `numpy<2`, se
+  puede revertir a un venv único. Antes de hacerlo, verificar: (a) que el `Requires-Dist` de tsl upstream
+  ya no pinee `numpy<2`, **y** (b) que el código de entrenamiento corra de verdad contra numpy 2 (no solo
+  que la metadata lo permita). **Disparador:** querer reunificar los venvs.
+- **Referencia.** Snapshot del `.venv` raíz pre-separación en `/tmp/venv_root_pre_separacion.txt`
+  (efímero, no versionado).
 
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
