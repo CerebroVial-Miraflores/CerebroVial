@@ -86,9 +86,13 @@ Migraciones:
 ## Decisiones tomadas
 - **Arquitectura**: monolito modular, NO microservicios. Las carpetas separadas 
   son herencia de cuando había 3 repos.
-- **Modelo predictivo**: GRU (RNN, alineado al documento de tesis). El STGNN 
-  explorado se descarta. El RandomForest actual es temporal hasta que el 
-  GRU esté servido.
+- **Modelo predictivo**: GRU (RNN, alineado al documento de tesis) como **baseline
+  solo-temporal** (Fase 3, 375 nodos colapsados en batch). El **STGNN Time-then-Space**
+  (DiffConv espacial sobre el grafo LCC de 375 nodos; **base B**: solo capas `tsl` —
+  `NodeEmbedding`/`RNN`/`DiffConv`/`MLPDecoder`, sin engine `Predictor` ni Lightning) es
+  **track activo de Fase 4**, comparado byte-a-byte contra el baseline GRU (mismo split,
+  scaler, índice de ventanas, loss y métricas). El RandomForest actual es temporal hasta que
+  el modelo neuronal esté servido.
 - **Deploy**: docker local únicamente. No Azure por ahora.
 - **Datos del GRU**: dataset generado por SUMO (D-008, 2026-05-11). Calibración
   contra Waze es trabajo futuro. `metr_la.h5` (LFS) se conserva sólo como
@@ -147,10 +151,6 @@ Migraciones:
 ## Reglas para Claude Code
 
 ### Zonas que NO se tocan sin pedirlo
-- `ia_prediction_service/src/models/time_then_space.py` — STGNN descartado, queda
-  como referencia hasta que el GRU esté funcional. En `notebooks/logs/` solo queda
-  `epoch=79-step=30800.ckpt` (LFS); los 4 intermedios se borraron en C9.
-  <!-- TODO: verificar con `git lfs ls-files | grep epoch=79` si el ckpt sigue presente -->
 - **ThesisModal + su botón en `Sidebar.tsx`** — documentación viva de la tesis
   (autores, objetivo, stack, KPIs). NO es parte de la arquitectura de control;
   NO marcar como componente huérfano ni proponer su remoción.
@@ -158,6 +158,14 @@ Migraciones:
   Gemini CLI del equipo. NO marcar como huérfano ni proponer remoción/`.gitignore`.
 
 ### Reglas levantadas (histórico)
+- ~~`ia_prediction_service/src/models/time_then_space.py` — STGNN descartado, queda
+  como referencia hasta que el GRU esté funcional.~~ **LEVANTADA (Fase 4, STGNN
+  Time-then-Space, 2026-06-01).** El archivo pasa a ser **código vivo**: reescrito in-place
+  como el STGNN base B (DiffConv espacial sobre el LCC de 375 nodos), comparado contra el
+  baseline GRU. Deja de ser zona protegida. (El clúster tutorial Lightning que lo rodea —
+  `src/training/predictor.py` + `scripts/train.py`/`predict.py`/`evaluate.py` — sigue muerto
+  y desconectado; su limpieza es deuda diferida en `documentation/ESTADO_Y_PROXIMOS_PASOS.md`,
+  disparador "limpieza del Dockerfile".)
 - ~~`edge_device/src/vision/` — subsistema mejor armado, con tests reales.~~
   **LEVANTADA (TTH-08 Fase 2, 2026-05-27).** Fue zona protegida hasta este punto;
   TTH-08 reescribe el módulo de visión desde cero (DDD), por lo que la guarda

@@ -23,6 +23,7 @@ que el trainer y la Fase 4 usen el idéntico scaler.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +38,11 @@ DEFAULT_NPZ = (
     / "miraflores_laborable_60d"
     / "tensors"
     / "miraflores_laborable_60d.npz"
+)
+
+# Grafo LCC canónico de modelado (375 nodos / 504 aristas dirigidas, Fase 1).
+DEFAULT_GRAPH_LCC = (
+    Path(__file__).resolve().parent / "artifacts" / "miraflores_graph_lcc_mapping.json"
 )
 
 LOOKBACK = 30  # pasos de 60 s (D-011/TTH-11: 30 min)
@@ -172,3 +178,106 @@ def compute_timeloss_scaler(
     if not np.isfinite(std) or std < 1e-6:
         std = 1.0
     return {"mean": mean, "std": std}
+
+
+# ---------------------------------------------------------------------------
+# Fase 4 — STGNN (Time-then-Space): gather de grafo + edge_index del LCC.
+#
+# Misma rejilla de ventanas que el baseline (mismos ``(day, start_t)``, mismo
+# conteo), pero los 375 nodos van en el eje N en vez de colapsarse en batch.
+# La única variable nueva frente al GRU es la componente espacial DiffConv; todo
+# lo demás (scaler fijo, índice, loss, métricas) se reusa byte-a-byte.
+# ---------------------------------------------------------------------------
+
+
+def build_graph_window_index(
+    seeds_array: np.ndarray,
+    fold_seeds,
+    *,
+    n_timesteps: int,
+    lookback: int = LOOKBACK,
+    horizon: int = HORIZON,
+    stride: int = 1,
+) -> np.ndarray:
+    """Índice ``[M, 2]`` int32 de snapshots de grafo ``(day_idx, start_t)`` del fold.
+
+    Idéntica rejilla de ``starts`` que :func:`build_window_index` (día → start_t),
+    pero SIN el eje nodo: cada fila es un snapshot de grafo de los ``n_nodes`` nodos.
+    Para el STGNN los nodos van en el eje N del tensor, no colapsados en batch ⇒ el
+    conteo de snapshots es el del baseline dividido por ``n_nodes`` (mismos starts).
+    """
+    days = fold_day_indices(seeds_array, fold_seeds)
+    last_start = n_timesteps - lookback - horizon  # inclusive
+    if last_start < 0:
+        return np.empty((0, 2), dtype=np.int32)
+    starts = np.arange(0, last_start + 1, stride, dtype=np.int32)
+    per_day = starts.shape[0]
+
+    rows = np.empty((days.shape[0] * per_day, 2), dtype=np.int32)
+    for k, di in enumerate(days):
+        sl = slice(k * per_day, (k + 1) * per_day)
+        rows[sl, 0] = di
+        rows[sl, 1] = starts
+    return rows
+
+
+def gather_graph_batch(
+    timeloss: np.ndarray,
+    mask: np.ndarray,
+    gindex_rows: np.ndarray,
+    *,
+    lookback: int = LOOKBACK,
+    horizon: int = HORIZON,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Arma un batch de grafo por *slicing*. Nodos en el eje N (no colapsados).
+
+    Misma semántica de canales que :func:`gather_batch`, con el eje N agregado.
+    Devuelve (crudo, en segundos):
+    - ``X`` ``[B, lookback, N, 2]`` float32 — canal 0 timeLoss (vacío→0), canal 1 validez.
+    - ``y`` ``[B, horizon, N]`` float32 — timeLoss objetivo (vacío→0).
+    - ``ymask`` ``[B, horizon, N]`` float32 — 1=válido, 0=inválido (para enmascarar loss).
+    """
+    rows = np.asarray(gindex_rows)
+    if rows.ndim != 2 or rows.shape[1] != 2:
+        raise ValueError(f"gindex_rows debe ser [M,2], got {rows.shape}")
+    n_nodes = timeloss.shape[2]
+    di = rows[:, 0].astype(np.int64)[:, None, None]   # [B,1,1]
+    t0 = rows[:, 1].astype(np.int64)[:, None]         # [B,1]
+
+    in_t = (t0 + np.arange(lookback, dtype=np.int64)[None, :])[:, :, None]            # [B, lookback, 1]
+    tg_t = (t0 + lookback + np.arange(horizon, dtype=np.int64)[None, :])[:, :, None]  # [B, horizon, 1]
+    nodes = np.arange(n_nodes, dtype=np.int64)[None, None, :]                          # [1, 1, N]
+
+    in_vals = timeloss[di, in_t, nodes]   # [B, lookback, N]
+    in_mask = mask[di, in_t, nodes]       # [B, lookback, N] bool
+    tg_vals = timeloss[di, tg_t, nodes]   # [B, horizon, N]
+    tg_mask = mask[di, tg_t, nodes]       # [B, horizon, N] bool
+
+    # Canal 0: timeLoss con celda vacía → 0 (y cualquier NaN residual → 0).
+    ch0 = np.where(in_mask, in_vals, 0.0).astype(np.float32)
+    ch0 = np.nan_to_num(ch0, copy=False)
+    ch1 = in_mask.astype(np.float32)
+    X = np.stack([ch0, ch1], axis=-1)  # [B, lookback, N, 2]
+
+    y = np.where(tg_mask, tg_vals, 0.0).astype(np.float32)  # vacío → 0
+    y = np.nan_to_num(y, copy=False)
+    ymask = tg_mask.astype(np.float32)
+    return X, y, ymask
+
+
+def load_lcc_edge_index(
+    path: Path | str = DEFAULT_GRAPH_LCC,
+) -> tuple[np.ndarray, np.ndarray]:
+    """``edge_index`` ``[2, E]`` int64 (0-based) y ``edge_weight`` ``[E]`` float32.
+
+    Lee el grafo LCC estático (375 nodos / 504 aristas dirigidas) desde el mapping
+    versionado y arma el ``edge_index`` con los pares ``source_index``/``target_index``.
+    Pesos uniformes 1.0 (grafo no ponderado en este arranque).
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    edges = data["edges"]
+    src = [int(e["source_index"]) for e in edges]
+    dst = [int(e["target_index"]) for e in edges]
+    edge_index = np.asarray([src, dst], dtype=np.int64)            # [2, E]
+    edge_weight = np.ones(edge_index.shape[1], dtype=np.float32)   # [E]
+    return edge_index, edge_weight

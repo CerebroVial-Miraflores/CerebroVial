@@ -147,6 +147,18 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
 - **Dataset actual = solo laborable.** El dataset multi-día en generación es homogéneo (60 días
   laborables, variación por seed). Suficiente para construir/validar el pipeline end-to-end; **NO**
   representa finde/feriado. Enriquecer con otros perfiles tras cerrar el pipeline (depende del punto 1).
+- **Clúster tutorial Lightning muerto (registrado Fase 4, 2026-06-01).**
+  `ia_prediction_service/src/training/predictor.py` (`tsl.engines.Predictor` + `MaskedMAE`) y los
+  scripts `scripts/train.py` / `predict.py` / `evaluate.py` (PyTorch-Lightning) son el pipeline STGNN
+  original del tutorial: **desconectado del flujo end-to-end y ya roto en ejecución** (`create_model`
+  llamaba a un `print_architecture` sin bindear → `AttributeError`). En Fase 4 se reescribió
+  `time_then_space.py` **preservando la firma de `create_model`** (`config, n_nodes=, input_size=`)
+  para no cambiar el modo de falla de esos scripts; siguen sin uso. **NO se borraron** (Opción A): borrar
+  solo `predictor.py` rompería los 3 imports, y el clúster está cableado en
+  `ia_prediction_service/Dockerfile:19` (`CMD ["python", "scripts/train.py"]`). El baseline (Fase 3) y
+  el STGNN (Fase 4) usan loop manual en `scripts/train_miraflores_*.py`, NO este clúster.
+  **Disparador de limpieza:** "limpieza del Dockerfile" — al tocar el Dockerfile, borrar el clúster
+  completo (predictor.py + los 3 scripts) y reapuntar/quitar el `CMD`.
 
 **Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl
