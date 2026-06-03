@@ -263,7 +263,7 @@ README **sí** se versionan.
 - `tensor` `[60, 1440, 1660, 1]` float32 — canal 0 = `timeLoss` TOTAL (s) por arista
   por intervalo de 60 s. Celdas vacías (sin tráfico) = `NaN`.
 - `mask` `[60, 1440, 1660]` bool — `True` = tráfico, `False` = vacío
-  (`density==0 AND speed.isna()`). ~82% de las celdas son vacías.
+  (`density==0 AND speed.isna()`). ~78.5% de las celdas son vacías.
 - `seeds` `[60]` int — seed por índice de día (eje 0). Día N ↔ seed 42+N.
 - `node_order`, `channels`, `timesteps` — alineación (orden = `node_index` del LCC).
 
@@ -275,8 +275,8 @@ regeneración. Eje 0 = días separados por seed (nunca apilados como serie conti
 
 ## Cómo regenerar
 ```bash
-cd ia_prediction_service
-.venv/bin/python -m src.data.miraflores_dataset_builder
+# desde la raíz del repo, con el root .venv (el de ia_prediction_service NO tiene pyarrow):
+cd ia_prediction_service && PYTHONPATH=. ../.venv/bin/python -m src.data.miraflores_dataset_builder
 ```
 Defaults: lee `simulation/data/datasets/miraflores_laborable_60d/day_seed0{42..101}.parquet`
 y `src/data/artifacts/miraflores_graph_lcc_mapping.json`; escribe acá

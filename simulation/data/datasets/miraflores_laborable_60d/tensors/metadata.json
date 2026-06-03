@@ -4,13 +4,13 @@
     "tensor": [
       60,
       1440,
-      375,
+      1660,
       1
     ],
     "mask": [
       60,
       1440,
-      375
+      1660
     ],
     "axes": [
       "dia/seed",
@@ -90,5 +90,5 @@
   "n_timesteps": 1440,
   "timestep_step_s": 60,
   "node_order_source": "miraflores_graph_lcc_mapping.json (clave 'nodes', orden node_index 0..N-1)",
-  "n_nodes": 375
+  "n_nodes": 1660
 }
