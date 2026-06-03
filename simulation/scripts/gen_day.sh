@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dataset laborable 60d — genera+rutea+simula+compacta UN día (perfil laborable,
-# scale=0.20). seed -> randomTrips, duarouter Y sumo (varía ruteo y dinámica).
+# scale=1.1). seed -> randomTrips, duarouter Y sumo (varía ruteo y dinámica).
 # Compacta a Parquet; persiste stats.xml (durable) + edgedata.xml crudo (efímero, insumo
 # del evaluador de drenaje D-014). DESCARTABLE/scratch. NO conf/. NO commits.
 # Uso: gen_day.sh <seed>
@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 DS="${B1_DS_OUT:-$REPO_ROOT/simulation/data/datasets/miraflores_laborable_60d}"
 NET="$REPO_ROOT/simulation/conf/network/miraflores.net.xml"
 VENV="$REPO_ROOT/.venv/bin/python"
-SCALE=0.20
+SCALE=1.1
 SEEDP=$(printf "%03d" "$SEED")
 WORK="$DS/_work_seed${SEEDP}"
 PARQUET="$DS/day_seed${SEEDP}.parquet"

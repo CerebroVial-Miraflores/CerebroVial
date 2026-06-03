@@ -6,10 +6,12 @@ dataset builder downstream (F3).
 Selección de columnas (8): edge_id, timestep, speed, timeLoss, traveltime,
 flow, density, speedRelative.
 
-Scope de edges: SOLO los 381 edges vehiculares (passenger) — el edgeData emite
-1044 (todos los no-internal, incl. peatonales/cruces), que para un dataset de
-congestión vehicular son ruido siempre-vacío. Se filtran por la misma lógica de
-clase vial que la generación de demanda.
+Scope de edges: los 1664 edges vehiculares (passenger) no-internal. En el net v2
+todos los no-internal resultan vehiculares (1664/1664), así que el filtro de clase
+vial no descarta nada hoy; se mantiene por robustez (en v1 separaba 381 vehiculares
+de 1044 no-internal que incluían peatonales/cruces, ruido siempre-vacío para un
+dataset de congestión). Se filtra por la misma lógica de clase vial que la
+generación de demanda.
 
 Convención de edge VACÍO en un intervalo (sampledSeconds=0 → SUMO no emite las
 métricas): flow=0, density=0, timeLoss=0 (exactos: sin vehículos no hay flujo,
