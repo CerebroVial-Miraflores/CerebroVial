@@ -8,6 +8,7 @@ import { httpClient } from './httpClient';
 import type {
   GeometryFeatureCollection,
   CongestionStateResponse,
+  CongestionSeriesResponse,
 } from '../types/congestion';
 
 export const congestionService = {
@@ -23,6 +24,15 @@ export const congestionService = {
   async getState(): Promise<CongestionStateResponse> {
     const res = await httpClient.get<CongestionStateResponse>(
       '/congestion/state',
+    );
+    return res.data;
+  },
+
+  /** Serie temporal de congestión de un día (recorrido HU-23). */
+  async getSeries(day: string): Promise<CongestionSeriesResponse> {
+    const res = await httpClient.get<CongestionSeriesResponse>(
+      '/congestion/series',
+      { params: { day } },
     );
     return res.data;
   },

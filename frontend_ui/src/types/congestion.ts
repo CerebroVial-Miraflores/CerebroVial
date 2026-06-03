@@ -56,3 +56,19 @@ export interface MergedCongestionFeature extends GeometryFeature {
     snapshot_timestamp: string | null;
   };
 }
+
+// --- GET /congestion/series?day= (serie temporal del día por arista, TTH-13) ---
+
+export interface EdgeCongestionSeries {
+  edge_id: string;
+  levels: number[]; // levels[i] = nivel 0-5 en t0 + i*step_s
+}
+
+export interface CongestionSeriesResponse {
+  day: string; // "YYYY-MM-DD"
+  t0: string | null; // ISO 8601, null si el día no tiene datos
+  step_s: number | null; // segundos entre muestras (null si día vacío)
+  coverage_end: string | null; // ISO 8601, null si día vacío
+  count: number;
+  edges: EdgeCongestionSeries[];
+}

@@ -10,6 +10,7 @@ import { httpClient } from '../httpClient';
 import type {
   GeometryFeatureCollection,
   CongestionStateResponse,
+  CongestionSeriesResponse,
 } from '../../types/congestion';
 
 vi.mock('../httpClient', () => ({
@@ -79,5 +80,35 @@ describe('congestionService.getState', () => {
     expect(getMock).toHaveBeenCalledWith('/congestion/state');
     expect(result).toEqual(payload);
     expect(result.edges[1].congestion_level).toBe(3);
+  });
+});
+
+describe('congestionService.getSeries', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+  });
+
+  it('hace GET a /congestion/series con el día y devuelve el CongestionSeriesResponse', async () => {
+    const payload: CongestionSeriesResponse = {
+      day: '2025-01-06',
+      t0: '2025-01-06T00:00:00',
+      step_s: 300,
+      coverage_end: '2025-01-06T23:59:00',
+      count: 2,
+      edges: [
+        { edge_id: '-129822384#0', levels: [0, 1, 2] },
+        { edge_id: '-129822384#1', levels: [3, 4, 5] },
+      ],
+    };
+    getMock.mockResolvedValue({ data: payload });
+
+    const result = await congestionService.getSeries('2025-01-06');
+
+    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(getMock).toHaveBeenCalledWith('/congestion/series', {
+      params: { day: '2025-01-06' },
+    });
+    expect(result).toEqual(payload);
+    expect(result.edges[0].levels).toEqual([0, 1, 2]);
   });
 });

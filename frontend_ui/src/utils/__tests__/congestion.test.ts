@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
     congestionStyle,
     mergeCongestion,
+    mergeCongestionAtIndex,
     elapsedSeconds,
     isStale,
 } from '../congestion';
@@ -16,6 +17,7 @@ import type {
     GeometryFeature,
     GeometryFeatureCollection,
     CongestionStateResponse,
+    CongestionSeriesResponse,
 } from '../../types/congestion';
 
 describe('congestionStyle', () => {
@@ -118,6 +120,77 @@ describe('mergeCongestion', () => {
         expect(merged[0].geometry).toEqual(geometry.features[0].geometry);
         expect(merged[0].properties.source_node).toBe('src_a');
         expect(merged.every((f) => f.properties.congestion_level === null)).toBe(true);
+    });
+});
+
+describe('mergeCongestionAtIndex', () => {
+    function seriesOf(
+        edges: { edge_id: string; levels: number[] }[],
+    ): CongestionSeriesResponse {
+        return {
+            day: '2025-01-06',
+            t0: '2025-01-06T00:00:00',
+            step_s: 300,
+            coverage_end: '2025-01-06T23:59:00',
+            count: edges.length,
+            edges,
+        };
+    }
+
+    it('adjunta el nivel del índice i por edge_id', () => {
+        const geometry = geometryOf('a', 'b');
+        const series = seriesOf([
+            { edge_id: 'a', levels: [0, 4, 2] },
+            { edge_id: 'b', levels: [5, 1, 3] },
+        ]);
+
+        const merged = mergeCongestionAtIndex(geometry, series, 1);
+
+        expect(merged).toHaveLength(2);
+        expect(merged[0].properties.edge_id).toBe('a');
+        expect(merged[0].properties.congestion_level).toBe(4);
+        expect(merged[1].properties.congestion_level).toBe(1);
+        // la serie no aporta timestamp por muestra
+        expect(merged[0].properties.snapshot_timestamp).toBeNull();
+    });
+
+    it('cae a nivel null (neutro) cuando el índice está fuera del rango de levels', () => {
+        const geometry = geometryOf('a');
+        const series = seriesOf([{ edge_id: 'a', levels: [0, 1] }]);
+
+        const merged = mergeCongestionAtIndex(geometry, series, 5);
+
+        expect(merged[0].properties.congestion_level).toBeNull();
+        expect(congestionStyle(merged[0].properties.congestion_level)).toEqual({
+            color: '#9E9E9E',
+            weight: 3,
+        });
+    });
+
+    it('es robusto a una arista sin entrada en la serie: nivel null, no lanza', () => {
+        const geometry = geometryOf('a', 'huerfana');
+        const series = seriesOf([{ edge_id: 'a', levels: [2, 3] }]);
+
+        const merged = mergeCongestionAtIndex(geometry, series, 0);
+
+        expect(merged[1].properties.edge_id).toBe('huerfana');
+        expect(merged[1].properties.congestion_level).toBeNull();
+        expect(merged[1].properties.snapshot_timestamp).toBeNull();
+    });
+
+    it('conserva el conteo 1:1 y la geometría original', () => {
+        const geometry = geometryOf('a', 'b', 'c');
+        const series = seriesOf([
+            { edge_id: 'a', levels: [1] },
+            { edge_id: 'b', levels: [2] },
+            { edge_id: 'c', levels: [3] },
+        ]);
+
+        const merged = mergeCongestionAtIndex(geometry, series, 0);
+
+        expect(merged).toHaveLength(3);
+        expect(merged[0].geometry).toEqual(geometry.features[0].geometry);
+        expect(merged[0].properties.source_node).toBe('src_a');
     });
 });
 
