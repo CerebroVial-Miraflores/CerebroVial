@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from cerebrovial_shared.database.database import get_db
 from cerebrovial_shared.database.models import CameraDB
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from src.prediction.presentation.api.routes import router as prediction_router, init_predictor, init_gru_service
 from src.prediction.application.predictor import CongestionPredictor
@@ -31,6 +32,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# TTH-13: compresión de transporte. La serie del día por arista
+# (GET /congestion/series) ronda ~1.58 MB crudos y comprime a ~55 KB gzip.
+# Aditivo y transparente para el resto de endpoints (sólo comprime sobre el umbral).
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 os.makedirs("models", exist_ok=True)
 os.makedirs("data/traffic_logs", exist_ok=True)

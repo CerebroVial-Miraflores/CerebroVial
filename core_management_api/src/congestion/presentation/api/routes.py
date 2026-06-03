@@ -16,8 +16,9 @@ de "desactualizado" es del consumidor (HU-22, CA-22.4), no de aquí.
 """
 import asyncio
 import json
+from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -33,7 +34,9 @@ from ...infrastructure import (
     get_congestion_broadcaster,
 )
 from .schemas import (
+    CongestionSeriesResponse,
     CongestionStateResponse,
+    EdgeCongestionSeries,
     EdgeCongestionState,
     GeometryFeatureCollection,
 )
@@ -74,6 +77,37 @@ def get_congestion_state(db: Session = Depends(get_db)) -> CongestionStateRespon
         for s in states
     ]
     return CongestionStateResponse(edges=edges, count=len(edges))
+
+
+@router.get(
+    "/series",
+    response_model=CongestionSeriesResponse,
+    dependencies=[Depends(require_role(Role.OPERATOR, Role.ADMIN))],
+)
+def get_congestion_series(
+    day: date = Query(..., description="Día a recorrer (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+) -> CongestionSeriesResponse:
+    """Serie de congestión del día por arista — Formato B compacto (CT-13.2).
+
+    Para cada arista, un array ``levels`` de niveles 0-5 muestreados a paso
+    ``step_s`` desde ``t0``; el consumidor (HU-23) indexa ``levels[i]`` en O(1) al
+    mover el slider. ``coverage_end`` acota el control temporal (CA-23.2). Día sin
+    datos → ``count: 0``, ``edges: []`` y campos temporales en ``null`` (CA-23.7),
+    sin error. La respuesta se sirve comprimida (GZipMiddleware global).
+    """
+    series = WazeJamsRepo(db).series_for_day(day)
+    return CongestionSeriesResponse(
+        day=series.day,
+        t0=series.t0,
+        step_s=series.step_s,
+        coverage_end=series.coverage_end,
+        count=len(series.edges),
+        edges=[
+            EdgeCongestionSeries(edge_id=e.edge_id, levels=e.levels)
+            for e in series.edges
+        ],
+    )
 
 
 @router.get(
