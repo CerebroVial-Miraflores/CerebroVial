@@ -1,7 +1,7 @@
 meta:
   fase: B1 — validación de cobertura PMU del net reconstruido (geométrica)
   fuente_pmu: Plan de Movilidad Urbana de Miraflores 2017-2020
-  red: conf/network/miraflores_v2.net.xml
+  red: conf/network/miraflores.net.xml
   proyeccion: +proj=utm +zone=18 +ellps=WGS84 +datum=WGS84 +units=m +no_defs
   tls_bbox_lonlat:
     lon_min: -77.038941

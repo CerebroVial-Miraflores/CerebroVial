@@ -10,6 +10,13 @@
 # nombre DISTINTO (miraflores_v2.net.xml) usando la receta "bien hecha" del repo, SIN tocar
 # el net viejo ni su cadena (dataset / tensor / mapping / congestión).
 #
+# DRIFT DE NOMBRES (B3.0): esta receta EMITE miraflores_v2.net.xml — su nombre de
+# nacimiento/construcción, que se preserva tal cual para no falsear la reproducibilidad
+# de B1 (por eso NET_FILE en L29 y el hint de validación en L97 siguen diciendo _v2 a
+# propósito). Desde B3.0 ese MISMO contenido vive en producción bajo el nombre canónico
+# miraflores.net.xml (promovido por rename puro, sin regeneración); el net viejo quedó
+# preservado y versionado como miraflores_v1.net.xml.
+#
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ El insumo OSM se CONSERVA (miraflores_completo.osm), no es efímero — para    │
 # │ no repetir el pecado del map.osm perdido. El script es reproducible: con     │
