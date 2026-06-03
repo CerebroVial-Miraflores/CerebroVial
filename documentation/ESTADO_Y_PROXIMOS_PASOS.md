@@ -227,6 +227,26 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   aprendiendo "este nodo siempre vale 0" no es informativo y puede diluir métricas. Pendiente en B4:
   caracterizar los nodos degenerados y evaluar **masking / tratamiento aparte** en entrenamiento. NO
   bloquea B3 (el N es el N y debe ser coherente con el net real); es deuda heredada por el entrenamiento.
+- **Recaracterización de la sección "Sanity agregado" del dataset v2 (registrada 2026-06-03 en B3.2.c;
+  asignada post-B3.2.c, p.ej. B3.2.d-bis o pre-B4).** El README del dataset
+  (`simulation/data/datasets/miraflores_laborable_60d/README.md`) tiene la sección Sanity reemplazada
+  por un **banner**: los números previos eran de scale 0.20/v1 y NO aplican al dataset v2 (scale 1.1,
+  N=1660). **Pendiente:** (1) corregir el hardcode `381`/`548640` de `simulation/scripts/aggregate_sanity.py:57`
+  (sobre data v2 marca todo día `FORMA`); (2) correrlo sobre la data nueva; (3) escribir la narrativa de
+  régimen desde la tabla del gate de drenaje (`calibracion/DRENAJE_GATE_60D_RESULTS.md`: 48/60 drenan,
+  12 de congestión severa de pico PM, gradiente continuo no-bimodal). **Consecuencia ya conocida para B4:**
+  el split train/val/test debe estratificarse por régimen de congestión (los 12 días severos
+  `53,55,58,60,62,63,71,83,85,90,97,99`), NO aleatorio.
+- **Fuga de `routes.rou.xml` a cwd desde randomTrips (registrada 2026-06-03 en B3.2.c; mitigada).**
+  `run_randomtrips` (`simulation/scripts/generate_b1_demand.py:97-108`) llama a randomTrips con
+  `-o <trips>` pero **sin output de ruta explícito** → randomTrips escribe su `.rou.xml` descartable
+  (documentado como throwaway en `generate_b1_demand.py:18`) al **cwd** con el nombre default
+  `routes.rou.xml`; corrido desde la raíz del repo, ensucia el working tree. Reproducible (cada corrida
+  de la cadena lo deja; último-escritor = último seed/fase). **Mitigación aplicada (B3.2.c):** patrón
+  `/routes.rou.xml` root-anchored en el `.gitignore` de la raíz. **Root-cause diferido (baja prioridad):**
+  pasar a randomTrips un output de ruta explícito hacia `$WORK`/outdir (o `cd` antes de invocarlo) para
+  que no escriba a cwd; requiere re-smoke de la cadena de generación, no urge (síntoma = un archivo de
+  ~323 KB ya ignorado).
 
 **Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl
