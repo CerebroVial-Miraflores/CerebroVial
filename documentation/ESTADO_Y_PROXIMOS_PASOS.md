@@ -214,19 +214,26 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   el STGNN (Fase 4) usan loop manual en `scripts/train_miraflores_*.py`, NO este clúster.
   **Disparador de limpieza:** "limpieza del Dockerfile" — al tocar el Dockerfile, borrar el clúster
   completo (predictor.py + los 3 scripts) y reapuntar/quitar el `CMD`.
-- **Nodos degenerados sub-métricos del net v2 (registrada 2026-06-03 en B3.1; asignada a B4).**
+- **Nodos sub-métricos del net v2 — CERRADA en B4 (2026-06-03): NO se enmascaran; la premisa de
+  masking era incorrecta.**
   B3.1 fijó el N autoritativo del LCC en **1660** sobre v2 **tolerando** 59 edges de longitud `<1m`
   (52 de ellos exactamente `0.200m`, artefactos de netconvert). No se excluyeron porque, bajo el
   criterio "longitud anómala **y** topológicamente prescindible", fallan la segunda condición: muchos
   son conectores intermedios de edges multi-parte (`337605614#12/#14`, `653645243/244/245/248`,
   `129822384#...`), donde el `0.2m` es el eslabón `A→stub→B` de una calle segmentada; removerlos parte
   la cadena salvo reconexión `A→B` (cirugía de topología, no exclusión de artefacto). Además el builder
-  es length-agnostic: excluir exigiría lógica nueva, fuera del alcance "fijar N" de B3. **Deuda B4:**
-  esos ~52 nodos de `0.2m` entran al tensor STGNN como nodos con señal de demora (`meanTimeLoss`) ~0
-  —no hay distancia donde acumular demora—, o sea ruido de baja varianza, no señal. Un STGNN
-  aprendiendo "este nodo siempre vale 0" no es informativo y puede diluir métricas. Pendiente en B4:
-  caracterizar los nodos degenerados y evaluar **masking / tratamiento aparte** en entrenamiento. NO
-  bloquea B3 (el N es el N y debe ser coherente con el net real); es deuda heredada por el entrenamiento.
+  es length-agnostic. **La nota original asignaba a B4 evaluar masking** sobre la premisa de que esos
+  nodos entran "con señal de demora ~0 —no hay distancia donde acumular demora—, ruido de baja
+  varianza". **Esa premisa es FALSA, verificado contra el tensor v2 en B4:** `timeLoss` es **demora de
+  encolamiento, no distancia** — un stub de 0.2m en una junction congestionada acumula el tiempo que
+  los vehículos esperan ahí, independiente de su longitud. Caracterización B4 (read-only, net.xml ∩ LCC
+  ∩ tensor): los 59 edges <1m (52 a `0.200m` + 7 entre `0.13` y `0.98m`) son **todos** conectores
+  `A→stub→B` con señal real — los 52 a `0.200m` tienen max timeLoss mediana 8.5s (hasta 225s), 52/52
+  con señal no-trivial; en **régimen severo** 23/59 superan 10s y 5/59 superan 60s. Enmascararlos
+  descartaría demora real de encolamiento, peor en el régimen que decide D-011. El argumento "diluyen
+  métricas" tampoco se sostiene (mean ~0.48s vs mediana global 0.98s — no son outliers de bajo nivel).
+  **Decisión B4: N_eval = 1660 completo en ambos modelos, sin masking.** Deuda cerrada sin masking,
+  con evidencia.
 - **Recaracterización de la sección "Sanity agregado" del dataset v2 (registrada 2026-06-03 en B3.2.c;
   asignada post-B3.2.c, p.ej. B3.2.d-bis o pre-B4).** El README del dataset
   (`simulation/data/datasets/miraflores_laborable_60d/README.md`) tiene la sección Sanity reemplazada
