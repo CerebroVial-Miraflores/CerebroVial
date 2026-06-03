@@ -12,16 +12,18 @@ Tres señales (D-014):
      contaminada por el ciclo de semáforo; manda ante señales en desacuerdo).
   2. **Δduración media** ``≤ +10 %`` — de ``stats.xml`` ``vehicleTripStatistics @duration``
      (media agregada de duración de viaje). Umbral **absoluto ≤ 280 s** (baseline ~254 s).
-  3. **Dip acotado** — la velocidad media de red **no** permanece **< 20 km/h por > 15 min
-     consecutivos** en ninguno de los dos picos (AM 07-09h / PM 18-20h). mean_kmh por intervalo de
-     60 s ponderado por ``sampledSeconds`` (igual que C3); racha consecutiva de intervalos sub-20.
+  3. **Dip acotado** — la **fracción de intervalos con mean_kmh < 20 km/h** no supera el **10 %**
+     en ninguna de las dos ventanas de pico (AM 07-09h / PM 18-20h). mean_kmh por intervalo de 60 s
+     ponderado por ``sampledSeconds`` (igual que C3). [Enmienda D-014 2026-06-03: era "racha > 15 min
+     consecutivos", inerte —el dip de v2 es intermitente-frecuente, no sostenido—; la separación vive
+     en la fracción-de-cola: s11 ~1.5 % vs s13 ~19 % @20 km/h, ~10×.]
 
 Regla de combinación (D-014): el día **falla** si ``teleports > 50`` **O** dispara cualquiera de
 las otras dos. El veredicto es el AND de las tres; ``teleports`` es la primaria al reportar.
 
 Importante (contrato que verifica el test de Fase 4): el dip se computa **solo sobre las ventanas
 de pico** ``[25200,32400)`` (AM) y ``[64800,72000)`` (PM). Cualquier intervalo fuera de esas
-ventanas — p. ej. el margen ±30 min de los fixtures C3 — **NO entra al cómputo de racha**. El
+ventanas — p. ej. el margen ±30 min de los fixtures C3 — **NO entra al cómputo de la fracción**. El
 evaluador acota a la ventana de pico explícitamente; el margen del fixture existe para testear
 justamente eso.
 
@@ -46,7 +48,7 @@ DEFAULT_SEEDS = tuple(range(42, 102))  # 42..101 = 60 días
 TELEPORTS_MAX = 50          # señal 1: drena si total ≤ 50
 DURATION_MAX_S = 280.0      # señal 2: drena si duración media ≤ 280 s (baseline ~254 s, +10%)
 DIP_SPEED_KMH = 20.0        # señal 3: umbral de velocidad de red
-DIP_MAX_RUN_MIN = 15        # señal 3: falla si racha sub-20 > 15 min consecutivos (intervalos de 60 s)
+DIP_FRAC_MAX = 0.10         # señal 3: falla si > 10% de intervalos de pico están sub-20 (enmienda D-014 2026-06-03)
 
 # Ventanas de PICO donde se evalúa el dip (begin en s). NO incluyen margen: el cómputo de racha
 # se acota a estos rangos exactos, así el margen de los fixtures queda fuera.
@@ -102,18 +104,16 @@ def _network_mean_kmh_in_peaks(edgedata_path: Path) -> dict[str, list[tuple[int,
     return series
 
 
-def _max_sub20_run(window_series: list[tuple[int, float | None]]) -> int:
-    """Racha máxima de intervalos consecutivos con mean_kmh < umbral. Un intervalo sin tráfico
-    (mean_kmh None) NO cuenta como sub-20 y corta la racha. Asume intervalos contiguos de 60 s
-    (SUMO emite todos), así posiciones consecutivas en la serie = minutos consecutivos."""
-    run = mx = 0
-    for _begin, mean_kmh in window_series:
-        if mean_kmh is not None and mean_kmh < DIP_SPEED_KMH:
-            run += 1
-            mx = max(mx, run)
-        else:
-            run = 0
-    return mx
+def _frac_sub20(window_series: list[tuple[int, float | None]]) -> tuple[int, int, float]:
+    """``(n_sub20, n_con_tráfico, fracción)`` en una ventana: cuántos intervalos tienen
+    mean_kmh < umbral sobre los que tienen tráfico. Los intervalos sin tráfico (mean_kmh None)
+    NO cuentan ni en el numerador ni en el denominador. La señal #3 (enmienda D-014 2026-06-03)
+    mide esta fracción-de-cola, no la racha consecutiva: el dip de v2 es intermitente-frecuente,
+    así que la extensión de la cola separa (s11 ~1.5 % vs s13 ~19 %) donde "consecutivo" no."""
+    vals = [m for _b, m in window_series if m is not None]
+    den = len(vals)
+    num = sum(1 for m in vals if m < DIP_SPEED_KMH)
+    return num, den, (num / den if den > 0 else 0.0)
 
 
 def _min_mean_kmh(window_series: list[tuple[int, float | None]]) -> float | None:
@@ -144,17 +144,19 @@ def evaluate_day(stats_path: Path | str, edgedata_path: Path | str) -> dict:
 
     dip_windows: dict[str, dict] = {}
     for name, (lo, hi) in DIP_WINDOWS.items():
-        run = _max_sub20_run(series[name])
+        n_sub20, n_traffic, frac = _frac_sub20(series[name])
         dip_windows[name] = {
             "begin": lo,
             "end": hi,
-            "max_sub20_run_min": run,
+            "n_sub20": n_sub20,
+            "n_con_trafico": n_traffic,
+            "frac_sub20": frac,
             "min_mean_kmh": _min_mean_kmh(series[name]),
         }
 
     teleports_ok = teleports <= TELEPORTS_MAX
     duration_ok = duration_s <= DURATION_MAX_S
-    dip_ok = all(w["max_sub20_run_min"] <= DIP_MAX_RUN_MIN for w in dip_windows.values())
+    dip_ok = all(w["frac_sub20"] <= DIP_FRAC_MAX for w in dip_windows.values())
     drains = teleports_ok and duration_ok and dip_ok
 
     reasons: list[str] = []
@@ -164,9 +166,9 @@ def evaluate_day(stats_path: Path | str, edgedata_path: Path | str) -> dict:
         reasons.append(f"duración media {duration_s:.1f}s > {DURATION_MAX_S:.0f}s")
     if not dip_ok:
         parts = [
-            f"{name} racha sub-20 {w['max_sub20_run_min']}min > {DIP_MAX_RUN_MIN}"
+            f"{name} frac sub-{DIP_SPEED_KMH:.0f} {w['frac_sub20'] * 100:.1f}% > {DIP_FRAC_MAX * 100:.0f}%"
             for name, w in dip_windows.items()
-            if w["max_sub20_run_min"] > DIP_MAX_RUN_MIN
+            if w["frac_sub20"] > DIP_FRAC_MAX
         ]
         reasons.append("dip: " + "; ".join(parts))
     if drains:
@@ -181,7 +183,7 @@ def evaluate_day(stats_path: Path | str, edgedata_path: Path | str) -> dict:
             "dip": {
                 "ok": dip_ok,
                 "threshold_kmh": DIP_SPEED_KMH,
-                "max_run_min": DIP_MAX_RUN_MIN,
+                "frac_max": DIP_FRAC_MAX,
                 "windows": dip_windows,
             },
         },
@@ -215,9 +217,12 @@ def evaluate_dataset(
             continue
         try:
             res = evaluate_day(stats, edge)
-        except Exception as exc:
-            # Insumo presente pero anómalo: bandera "ERROR" (distinto de "FALTA"), el batch sigue.
-            # NO se borra el edgedata del día que erró: se conserva como evidencia del problema.
+        except (ValueError, ET.ParseError) as exc:
+            # Anomalía de DATO esperable (ventana de pico vacía, XML corrupto, atributo numérico
+            # malformado → ValueError/ParseError): bandera "ERROR" (distinto de "FALTA"), el batch
+            # sigue. NO se borra el edgedata del día que erró: se conserva como evidencia. Cualquier
+            # OTRA excepción (KeyError/AttributeError/... = bug del evaluador) se PROPAGA y mata la
+            # corrida ruidosamente — no se disfraza de "día anómalo".
             results.append({"seed": seed, "verdict": "ERROR", "drains": False,
                             "reasons": [f"evaluación falló: {exc}"]})
             continue
@@ -230,14 +235,14 @@ def evaluate_dataset(
 
 def _format_table(results: list[dict]) -> str:
     """Presentación (separada del cómputo): tabla por-seed + resumen de banderas."""
-    hdr = (f"{'seed':>4} | {'tel':>4} | {'dur_s':>6} | {'AM run/min':>10} | "
-           f"{'PM run/min':>10} | veredicto")
+    hdr = (f"{'seed':>4} | {'tel':>4} | {'dur_s':>6} | {'AM frac/min':>12} | "
+           f"{'PM frac/min':>12} | veredicto")
     lines = [hdr, "-" * len(hdr)]
     flagged = []
     for r in results:
         if "signals" not in r:  # FALTA o ERROR: sin cómputo, fila placeholder
             lines.append(
-                f"{r['seed']:>4} | {'—':>4} | {'—':>6} | {'—':>10} | {'—':>10} | {r['verdict']}"
+                f"{r['seed']:>4} | {'—':>4} | {'—':>6} | {'—':>12} | {'—':>12} | {r['verdict']}"
             )
             flagged.append(r["seed"])
             continue
@@ -248,8 +253,8 @@ def _format_table(results: list[dict]) -> str:
         pm_min = f"{pm['min_mean_kmh']:.1f}" if pm["min_mean_kmh"] is not None else "—"
         lines.append(
             f"{r['seed']:>4} | {s['teleports']['value']:>4} | {s['duration_s']['value']:>6.1f} | "
-            f"{am['max_sub20_run_min']:>3}/{am_min:>6} | {pm['max_sub20_run_min']:>3}/{pm_min:>6} | "
-            f"{r['verdict']}"
+            f"{am['frac_sub20'] * 100:>4.1f}%/{am_min:>5} | "
+            f"{pm['frac_sub20'] * 100:>4.1f}%/{pm_min:>5} | {r['verdict']}"
         )
         if not r["drains"]:
             flagged.append(r["seed"])

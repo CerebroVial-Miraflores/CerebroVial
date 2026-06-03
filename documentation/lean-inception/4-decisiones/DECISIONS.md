@@ -502,6 +502,35 @@ D-013 fijó el target del track en "meanTimeLoss/demora". Una verificación read
 - Relacionadas: D-008 (SUMO end-to-end), D-013 (target meanTimeLoss del track STGNN, mismo dataset).
 - Scale de operación: C3 = 1.1 (fijado en B2; `gen_day.sh` lo adopta en B3.2).
 
+**Enmienda 2026-06-03 — señal #3: de "racha consecutiva sub-20" a "fracción de intervalos sub-20"**
+
+La señal #3 se fijó (arriba) como *"la velocidad media de red no permanece bajo 20 km/h por más de 15 min consecutivos"*. Al operacionalizarla en B3.2.a (evaluador `simulation/scripts/evaluate_drenaje.py`: mean_kmh de red por intervalo de 60 s ponderado por `sampledSeconds`) resultó **inerte** y se redefine.
+
+**Qué decía y por qué no sobrevivió.** La racha consecutiva máxima de intervalos sub-20 es **1–2 min en AMBOS regímenes** —el que drena (s11/scale 1.1) y el que colapsa (s13/scale 1.3)—, muy por debajo del corte de 15 min. El dip de v2 es **intermitente-frecuente, no sostenido**: no existe un bloque de 15 min consecutivos sub-20 ni siquiera en el día que colapsa. "Racha consecutiva" no discrimina.
+
+**El método del C3 no era reproducible en código.** Sus valores absolutos no coinciden con la serie ponderada por-60 s: C3 caracterizó el dip de s11 como "incipiente →23.7" (nunca sub-20), pero la media de red ponderada por `sampledSeconds` por-60 s toca **18.8 km/h** en el pico PM de s11. C3 midió con otra resolución/scope (no documentada). Por eso esta enmienda **no recalibra contra C3**: redefine la operacionalización sobre **evidencia nueva** —caracterización read-only sobre los fixtures versionados s11/s13 (`simulation/tests/fixtures/drenaje_c3/`), 2026-06-03.
+
+**Nueva regla.** La señal #3 pasa a: **el día falla si la fracción de intervalos con mean_kmh < 20 km/h supera el 10 % en cualquiera de las dos ventanas de pico** (AM 07-09 h / PM 18-20 h). mean_kmh = velocidad de red ponderada por `sampledSeconds` por intervalo de 60 s (igual que C3). El umbral de velocidad (20 km/h) se mantiene; lo que cambia es el corte: "15 min consecutivos" → ">10 % de intervalos".
+
+**Evidencia (caracterización, fixtures s11/s13, ventanas de pico, frac = nº sub-v / nº con tráfico):**
+
+| ventana | frac@18 | frac@20 | frac@22 | min | mediana |
+|---|--|--|--|--:|--:|
+| s11-AM | 0/120 · 0.0% | 1/120 · 0.8% | 13/120 · 10.8% | 19.79 | 25.30 |
+| s11-PM | 0/120 · 0.0% | 2/120 · 1.7% | 27/120 · 22.5% | 18.81 | 24.23 |
+| s13-AM | 3/120 · 2.5% | 21/120 · 17.5% | 56/120 · 46.7% | 16.63 | 22.87 |
+| s13-PM | 2/120 · 1.7% | 24/120 · 20.0% | 54/120 · 45.0% | 16.35 | 22.37 |
+
+**Por qué 20 km/h.** Es el único de los tres umbrales que separa con margen a ambos lados. @18 la señal es débil (s13 apenas registra, 1.7–2.5 %); @22 contamina (s11-PM salta a 22.5 %, solapando el rango de s13@20); @20 separa **~10×** con hueco ancho (s11 0.8–1.7 % vs s13 17.5–20.0 %).
+
+**Por qué 10 %.** Parte el hueco [2 %, 17 %] de forma asimétrica conservadora: **~6× de margen** sobre el peor del día que drena (s11-PM 1.7 %) y **~1.75–2× de margen** bajo el peor del que colapsa (s13-PM 20 %, AM 17.5 %). Más holgura del lado del día sano —para que la variación de seed de los 60 días no empuje un día que drena por encima del corte— y suficiente del lado del que colapsa. Mismo principio de margen que teleports/duración.
+
+**Por qué fracción-de-cola y no media/mediana.** Las medianas de s11 y s13 difieren solo **~2 km/h** (24–25 vs 22–23), pero la fracción sub-20 difiere **~10×**. La congestión de v2 vive en la **cola** de la distribución de intervalos, no en el centro: el día que colapsa no tiene una red sistemáticamente más lenta, tiene **más intervalos puntualmente congestionados**. Esto explica por qué "racha consecutiva" falló (buscaba un bloque sostenido que no existe) y por qué "fracción" funciona (mide la extensión de la cola — que es lo que "ancho" significaba en la caracterización cualitativa del C3).
+
+**Regla por ventana.** "Cualquiera de las dos ventanas dispara" se mantiene; PM es sistemáticamente la peor, así el criterio agarra naturalmente la ventana más severa. teleports/duración siguen mandando en los casos limítrofes; el dip recupera su rol espacial-temporal como tercera condición sin volverse la señal frágil que decide al filo.
+
+**Alcance de la enmienda.** Redefine **solo la operacionalización de la señal #3**. Las señales #1 (teleports ≤ 50) y #2 (Δduración media ≤ 280 s), la regla de combinación (AND; teleports primaria ante desacuerdo) y el resto de D-014 no cambian.
+
 ---
 
 ## D-PENDING-001 — Modelo: reutilizar `time_then_space.py` o GRU desde cero
