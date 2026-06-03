@@ -227,4 +227,21 @@ describe('CongestionMapView', () => {
     const liveStyle = (captured.props as { style: StyleFn }).style;
     expect(liveStyle({ properties: { congestion_level: 2 } }).opacity).toBeUndefined();
   });
+
+  it('no re-pide la geometría en re-renders (la carga inicial corre una sola vez)', async () => {
+    getGeometryMock.mockResolvedValue(buildGeometry());
+    getStateMock.mockResolvedValue(buildState());
+
+    const { rerender } = render(<CongestionMapView />);
+    await waitFor(() => expect(screen.getByTestId('geojson')).toBeInTheDocument());
+    expect(getGeometryMock).toHaveBeenCalledTimes(1);
+
+    // Un re-render no debe re-disparar el effect de carga inicial: vive en deps
+    // estables (applyState), separado del feed SSE/stale (que depende de mode).
+    rerender(<CongestionMapView />);
+    rerender(<CongestionMapView />);
+    await waitFor(() => expect(screen.getByTestId('geojson')).toBeInTheDocument());
+
+    expect(getGeometryMock).toHaveBeenCalledTimes(1);
+  });
 });

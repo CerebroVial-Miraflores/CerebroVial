@@ -30,7 +30,7 @@
  * Fuera de alcance: el componente todavía NO se cablea como tab en la navegación
  * (Sidebar/App, Fase 4).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Layer, PathOptions } from 'leaflet';
@@ -125,27 +125,33 @@ export const CongestionMapView = () => {
   // Sube en cada update; junto a `stale` forma la key que fuerza el remonte de
   // <GeoJSON> (vía de recolorización elegida).
   const [renderSeq, setRenderSeq] = useState(0);
+  // Modo de la vista (HU-23). En esta fase queda fijo en 'live' (sin UI para
+  // togglear); `setMode` queda declarado para Fase 3. El SSE/stale (Effect B)
+  // depende de `mode`; la carga inicial de geometría (Effect A) NO.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setMode se cablea en Fase 3
+  const [mode, setMode] = useState<'live' | 'historic'>('live');
   // Geometría estática cacheada: se cruza con cada estado nuevo SIN re-pedirla.
   const geometryRef = useRef<GeometryFeatureCollection | null>(null);
+  // Handle del timer de stale, elevado a ref para compartirlo entre la carga
+  // inicial (Effect A, primer armado) y el feed vivo (Effect B, re-armado en
+  // cada wake + limpieza en cleanup).
+  const staleTimerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let staleTimer: number | null = null;
+  // (Re)arma el timer de stale: si no llega otro wake en STALE_TIMEOUT_MS, marca
+  // el estado como desactualizado (CA-22.4). Estable: lo comparten ambos effects.
+  const armStale = useCallback(() => {
+    if (staleTimerRef.current !== null) window.clearTimeout(staleTimerRef.current);
+    staleTimerRef.current = window.setTimeout(() => {
+      setNow(new Date());
+      setStale(true);
+    }, STALE_TIMEOUT_MS);
+  }, []);
 
-    // (Re)arma el timer de stale: si no llega otro wake en STALE_TIMEOUT_MS,
-    // marca el estado como desactualizado (CA-22.4).
-    const armStale = () => {
-      if (staleTimer !== null) window.clearTimeout(staleTimer);
-      staleTimer = window.setTimeout(() => {
-        if (cancelled) return;
-        setNow(new Date());
-        setStale(true);
-      }, STALE_TIMEOUT_MS);
-    };
-
-    // Aplica un estado fresco: cruza con la geometría cacheada, recolorea
-    // (bump de renderSeq → remonte), sale de stale y re-arma el timer.
-    const applyState = (state: CongestionStateResponse) => {
+  // Aplica un estado fresco: cruza con la geometría cacheada, recolorea (bump de
+  // renderSeq → remonte), sale de stale y re-arma el timer. Estable: lo invocan
+  // tanto la carga inicial (Effect A) como cada wake del feed (Effect B).
+  const applyState = useCallback(
+    (state: CongestionStateResponse) => {
       const geometry = geometryRef.current;
       if (!geometry) return;
       setFeatures(mergeCongestion(geometry, state));
@@ -153,9 +159,16 @@ export const CongestionMapView = () => {
       setStale(false);
       setRenderSeq((s) => s + 1);
       armStale();
-    };
+    },
+    [armStale],
+  );
 
-    // Carga inicial: geometría (estática) + estado, 1× cada uno al montar.
+  // Effect A — carga inicial: geometría (estática) + estado, 1× cada uno al
+  // montar. NO depende de `mode`: la geometría se pide una sola vez pase lo que
+  // pase con el modo (`applyState` es estable, así que este effect corre 1×).
+  useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
       try {
         const [geometry, state] = await Promise.all([
@@ -174,6 +187,22 @@ export const CongestionMapView = () => {
       }
     };
 
+    void init();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyState]);
+
+  // Effect B — feed vivo (SSE + stale), dependiente de `mode`. En 'live' abre el
+  // stream y el wake re-arma el stale (vía applyState); en 'historic' NO abre
+  // stream NI arma stale. El cleanup limpia el timer de stale (compartido) y
+  // abortea el stream — el clearTimeout evita que el callback dispare tras montar.
+  useEffect(() => {
+    if (mode !== 'live') return;
+
+    let cancelled = false;
+
     // Wake del feed: re-lee SOLO el estado (la geometría NO se re-pide) y recolorea.
     const onWake = async () => {
       try {
@@ -181,22 +210,24 @@ export const CongestionMapView = () => {
         if (cancelled) return;
         applyState(state);
       } catch (err) {
-        // Falla de re-lectura: conservamos el último estado. El staleTimer ya
+        // Falla de re-lectura: conservamos el último estado. El timer de stale ya
         // armado atenuará si no llegan más wakes.
         if (cancelled) return;
         console.error('Error re-leyendo estado de congestión:', err);
       }
     };
 
-    void init();
     const controller = openCongestionStream({ onWake: () => void onWake() });
 
     return () => {
       cancelled = true;
-      if (staleTimer !== null) window.clearTimeout(staleTimer);
+      if (staleTimerRef.current !== null) {
+        window.clearTimeout(staleTimerRef.current);
+        staleTimerRef.current = null;
+      }
       controller.abort();
     };
-  }, []);
+  }, [mode, applyState]);
 
   // Mientras stale: tick de 1 s para refrescar el contador "hace X" del banner.
   useEffect(() => {
@@ -267,8 +298,9 @@ export const CongestionMapView = () => {
             <CongestionLegend />
           </MapContainer>
         )}
-        {/* Banner stale (CA-22.4): datos desactualizados → "datos de hace X". */}
-        {!loading && !error && stale && latestTs && (
+        {/* Banner stale (CA-22.4): datos desactualizados → "datos de hace X".
+            Solo aplica en modo 'live' (en histórico no hay feed que envejezca). */}
+        {!loading && !error && mode === 'live' && stale && latestTs && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-2 bg-amber-500/95 text-slate-900 font-semibold px-4 py-2 rounded-full shadow-lg">
             <Clock size={16} />
             <span className="text-sm">
