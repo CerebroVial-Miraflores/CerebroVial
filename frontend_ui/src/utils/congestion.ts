@@ -13,7 +13,9 @@
 import type {
     GeometryFeatureCollection,
     CongestionStateResponse,
+    CongestionSeriesResponse,
     EdgeCongestionState,
+    EdgeCongestionSeries,
     MergedCongestionFeature,
 } from '../types/congestion';
 
@@ -83,6 +85,36 @@ export function mergeCongestion(
                 ...feature.properties,
                 congestion_level: match ? match.congestion_level : null,
                 snapshot_timestamp: match ? match.snapshot_timestamp : null,
+            },
+        };
+    });
+}
+
+/**
+ * Igual que `mergeCongestion`, pero toma el nivel del índice temporal `i` de la
+ * serie (`series.edges[].levels[i]`) en vez del último estado — para el recorrido
+ * temporal de HU-23. Arista sin serie o índice fuera de rango de `levels` → nivel
+ * `null` (estilo neutro vía `congestionStyle`). `snapshot_timestamp` no aplica a la
+ * serie (se deriva de `t0 + i*step_s` en la capa de UI), va `null`.
+ */
+export function mergeCongestionAtIndex(
+    geometry: GeometryFeatureCollection,
+    series: CongestionSeriesResponse,
+    i: number,
+): MergedCongestionFeature[] {
+    const byEdgeId = new Map<string, EdgeCongestionSeries>(
+        series.edges.map((e) => [e.edge_id, e]),
+    );
+    return geometry.features.map((feature) => {
+        const match = byEdgeId.get(feature.properties.edge_id);
+        const level =
+            match && i >= 0 && i < match.levels.length ? match.levels[i] : null;
+        return {
+            ...feature,
+            properties: {
+                ...feature.properties,
+                congestion_level: level,
+                snapshot_timestamp: null,
             },
         };
     });
