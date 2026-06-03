@@ -20,6 +20,7 @@
 | D-012 | Cerrada | 2026-06-01 | Enmienda a D-011: escenario del track STGNN de corredor Larco a Miraflores completo |
 | D-013 | Cerrada | 2026-06-01 | Target del track STGNN: meanTimeLoss/demora (enmienda a D-011, cierre de deuda diferida por D-012) |
 | D-014 | Cerrada | 2026-06-03 | Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica) |
+| D-015 | Cerrada | 2026-06-03 | Revalidación del veredicto STGNN sobre v2 (1660): STGNN supera al GRU en severo; D-011/Fase 5 revertido (adopción abierta) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -530,6 +531,36 @@ La señal #3 se fijó (arriba) como *"la velocidad media de red no permanece baj
 **Regla por ventana.** "Cualquiera de las dos ventanas dispara" se mantiene; PM es sistemáticamente la peor, así el criterio agarra naturalmente la ventana más severa. teleports/duración siguen mandando en los casos limítrofes; el dip recupera su rol espacial-temporal como tercera condición sin volverse la señal frágil que decide al filo.
 
 **Alcance de la enmienda.** Redefine **solo la operacionalización de la señal #3**. Las señales #1 (teleports ≤ 50) y #2 (Δduración media ≤ 280 s), la regla de combinación (AND; teleports primaria ante desacuerdo) y el resto de D-014 no cambian.
+
+---
+
+## D-015 — Revalidación del veredicto del track STGNN sobre el universo v2 (1660): el STGNN supera al GRU en régimen severo (D-011/Fase 5 se revierte como veredicto técnico; adopción abierta)
+**Estado:** Cerrada · 2026-06-03 · **Revisa:** cierre de Fase 5 del track STGNN (veredicto sobre 375) y el criterio de adopción de D-011/D-012 · **Track:** investigación; NO decide adopción en producción
+
+**Contexto.** El cierre de Fase 5 (2026-06-02, registrado en `ESTADO_Y_PROXIMOS_PASOS.md`) aplicó el criterio de adopción de D-011/D-012 —"el STGNN se adopta solo si supera al baseline GRU en el régimen severo; si no, se conserva el GRU y se documenta el hallazgo"— sobre el **universo de 375 nodos / 504 aristas** y conservó el GRU: el STGNN ganaba en régimen normal y agregado pero **perdía en congestión máxima** (test_081 MAE@30 STGNN 24.02 vs GRU 23.20). B4 reentrenó ambos modelos sobre el **universo real v2 (1660 nodos / 2948 aristas, grafo 5.8× más denso)** —el universo sobre el que el sistema realmente opera— para revalidar ese veredicto.
+
+**Validez de la revalidación.** Config de entrenamiento **idéntica** a la corrida de 375 (épocas, horizonte MAE@30, hiperparámetros; solo cambian N y el split estratificado B4.2). Ambos modelos sobre el **mismo universo de evaluación** (scaler train-only idéntico 6.820/26.581, `severe_test=[71,85,90]`, conteos de ventanas idénticos por corte). Ambos convergieron limpio (GRU early-stop ep 12, STGNN ep 28; sin divergencia). La única variable entre el veredicto viejo y este es **la densidad del grafo** —que es lo que la revalidación aísla.
+
+**Hallazgo — D-011/Fase 5 se revierte como veredicto técnico.** Sobre 1660 el STGNN **supera al GRU en el régimen severo**, el régimen sobre el que el veredicto viejo había fallado a favor del GRU:
+
+| corte (@30 min) | métrica | GRU-1660 | STGNN-1660 |
+|---|---|--:|--:|
+| severe_dia {71,85,90} (primario) | MAE | 6.006 | **5.882** |
+| | RMSE | 19.831 | **18.000** |
+| | R² | 0.700 | **0.753** |
+| severe_pico 18-20h (afilado) | MAE | 7.970 | **7.421** |
+| | RMSE | 27.858 | **24.634** |
+| | R² | 0.737 | **0.794** |
+
+El STGNN gana también en `test_all` y `test_normal` (los cuatro cortes), pero lo decisivo es que **gana donde antes perdía**: la congestión severa.
+
+**Interpretación — la utilidad de la componente espacial escala con la densidad del grafo.** En 375/504 el grafo era demasiado ralo para que la vecindad aportara, y el STGNN perdía en severo; en 1660/2948 (5.8× aristas) la correlación espacial entre tramos vecinos —la apuesta original del track (D-011/D-012, señal confirmada: contraste vecinos-1-salto vs no-vecinos)— sí tiene señal explotable. La magnitud, con honestidad: **en MAE@30 severo el resultado es casi un empate (5.882 vs 6.006 = 0.12 s sobre ~6 s, ~2%), diferencia que podría no ser significativa frente a la varianza de entrenamiento. La ventaja robusta y consistente del STGNN está en RMSE (~9%, 18.0 vs 19.8) y R² (+0.05, 0.753 vs 0.700) —los errores grandes—, no en el MAE medio.** El STGNN penaliza mejor los outliers, coherente con que la información espacial ayuda cuando la congestión se **propaga entre tramos**. Por horizonte: el STGNN gana en 15/20/25/30 min (donde la propagación espacial tiene tiempo de manifestarse) y el GRU empata/gana marginal en 5/10 min (corto plazo, dominado por la dinámica temporal local). **El veredicto "STGNN gana en severo" se sostiene por RMSE / R² / horizontes largos, no por el MAE medio** —y decirlo así es más defendible, no más débil. El track STGNN tenía fundamento; lo que faltaba en Fase 5 no era el modelo sino un universo con densidad espacial suficiente.
+
+**Lo que este veredicto NO decide — adopción en producción ABIERTA.** El criterio de D-011/D-012 condicionaba la adopción a *"un margen que justifique su complejidad e integración; si no lo supera, se conserva el GRU"*. B4 establece la **primera mitad**: el STGNN supera al GRU en severo sobre el universo real. Pero si ese margen —**modesto en MAE, robusto en RMSE/R²**— justifica el **costo operativo** (CPU-bound, ~4× más lento de entrenar —~2 h vs ~36 min—, dependencia `tsl` con venv separado, servido in-process no resuelto) es precisamente la **decisión de adopción que queda abierta**. El veredicto técnico es **condición necesaria pero no suficiente** para adoptar. Honestidad sobre el alcance: el dato sostiene *"el STGNN gana técnicamente en severo sobre el universo real"*, no *"se adopta el STGNN"*. La decisión de adopción es de producto/ingeniería y se toma con estos datos sobre la mesa, no aquí.
+
+**Alcance / límite.** Track de investigación; NO toca producción (TTH-09, D-009/D-010 intactos). **Limitación metodológica: el veredicto se apoya en una corrida por modelo (n=1, sin validación multi-seed)** —a diferencia del gate de drenaje (60 seeds) y de IE05 (9/10 seeds), donde el rigor multi-seed fue exigido. La consistencia del resultado a través de RMSE, R² y los horizontes largos sugiere que **no es artefacto de inicialización**, pero una **confirmación multi-seed robustecería el veredicto antes de cualquier decisión de adopción** —se registra como condición para cerrar la adopción, no para el veredicto técnico direccional. El resultado es net-específico de v2: una reconstrucción futura del net podría volver a mover la densidad y con ella el resultado. No reescribe D-011/D-012/Fase 5 in-place: esta entrada los revisa desde afuera (mismo patrón que D-012 sobre D-011).
+
+**Referencias.** Métricas: `ia_prediction_service/scripts/miraflores_{baseline,stgnn}_metrics.json` (retrain B4.3, commit `467c5106`). Split estratificado: `ia_prediction_service/src/data/miraflores_split.py` (B4.2). Corte de régimen severo derivado del split: `severe_in()` + `PM_PEAK_*` en el mismo módulo. Contexto histórico (375, no contendiente): `ESTADO_Y_PROXIMOS_PASOS.md` §Fase 5. Relacionadas: D-011 (apertura del track), D-012 (escenario Miraflores completo), D-013 (target timeLoss), D-014 (gate de drenaje v2).
 
 ---
 

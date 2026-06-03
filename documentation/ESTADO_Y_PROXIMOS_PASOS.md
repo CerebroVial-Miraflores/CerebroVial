@@ -76,6 +76,16 @@ y sus consumidores siguen usando jam_level; D-013 es excepción acotada del trac
 separados del histórico `corredor-larco/` (escenario Larco descartado por D-012).
 
 ## STGNN Fase 5 — cierre del track: GRU se mantiene, STGNN no adoptado (D-011) (2026-06-02)
+
+> **⚠️ SUPERADO por B4 (2026-06-03, ver D-015).** Este veredicto se midió sobre el **universo
+> de 375 nodos / 504 aristas**. B4 reentrenó ambos modelos sobre el **universo real v2 (1660 /
+> 2948, grafo 5.8× más denso)** con config idéntica y mismo universo de evaluación, y **el
+> veredicto se revirtió**: el STGNN **gana en régimen severo** (severe_dia MAE@30 5.882 vs 6.006,
+> RMSE 18.0 vs 19.8, R² 0.753 vs 0.700; severe_pico aún más claro) y en todos los cortes. La
+> utilidad de la componente espacial escala con la densidad del grafo. Veredicto técnico, NO
+> decisión de adopción (modesto en MAE, robusto en RMSE/R²; n=1, confirmación multi-seed pendiente
+> para cerrar adopción). **Las métricas de 375 de abajo son contexto histórico, no contendientes.**
+> Detalle completo: `lean-inception/4-decisiones/DECISIONS.md` § D-015.
 **Veredicto del track STGNN Miraflores (investigación paralela, fuera de producción).** Tras entrenar
 el STGNN Time-then-Space en serio (modo completo, CPU, espejo byte-a-byte del baseline GRU de Fase 3) y
 correr un multi-seed de robustez, la decisión es **no adoptar el STGNN; se mantiene el GRU baseline**
@@ -241,9 +251,12 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   N=1660). **Pendiente:** (1) corregir el hardcode `381`/`548640` de `simulation/scripts/aggregate_sanity.py:57`
   (sobre data v2 marca todo día `FORMA`); (2) correrlo sobre la data nueva; (3) escribir la narrativa de
   régimen desde la tabla del gate de drenaje (`calibracion/DRENAJE_GATE_60D_RESULTS.md`: 48/60 drenan,
-  12 de congestión severa de pico PM, gradiente continuo no-bimodal). **Consecuencia ya conocida para B4:**
-  el split train/val/test debe estratificarse por régimen de congestión (los 12 días severos
-  `53,55,58,60,62,63,71,83,85,90,97,99`), NO aleatorio.
+  12 de congestión severa de pico PM, gradiente continuo no-bimodal). **Consecuencia para B4 —
+  CERRADA en B4.2 (2026-06-03):** el split train/val/test se re-estratificó por régimen de
+  congestión (los 12 severos `53,55,58,60,62,63,71,83,85,90,97,99` repartidos por gradiente, sin
+  ancla 081) en `ia_prediction_service/src/data/miraflores_split.py`; `test_miraflores_split.py`
+  protege la estratificación como invariante (12 sin pérdida, cada fold ≥1 severo, test ≥3, duros
+  no concentrados). **(La recaracterización Sanity en sí —pasos (1)-(3) de arriba— sigue pendiente.)**
 - **Fuga de `routes.rou.xml` a cwd desde randomTrips (registrada 2026-06-03 en B3.2.c; mitigada).**
   `run_randomtrips` (`simulation/scripts/generate_b1_demand.py:97-108`) llama a randomTrips con
   `-o <trips>` pero **sin output de ruta explícito** → randomTrips escribe su `.rou.xml` descartable
@@ -263,6 +276,23 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   alineación 1660=1660=1660) **ni de la elección de día.** **Scope de HU-22 (B4):** si se requiere vista en-pico por
   default, el read-path debe servir un snapshot representativo (un timestep de pico) en vez del último, o el frontend
   parametrizar la hora. Decisión de diseño del read-path, fuera de B3.2.e.
+- **Adopción del STGNN en producción — ABIERTA (registrada 2026-06-03 en B4, ver D-015).** B4
+  revalidó el veredicto del track sobre el universo real (1660): el STGNN **gana técnicamente** al
+  GRU en régimen severo (severe_dia MAE@30 5.882 vs 6.006 —casi empate—, RMSE 18.0 vs 19.8 y R²
+  0.753 vs 0.700 —ventaja robusta—; severe_pico más claro). **Adoptar o no es decisión aparte:** la
+  ganancia (modesta en MAE, robusta en RMSE/R²) se pesa contra el costo operativo del STGNN
+  (CPU-bound, ~4× más lento, dep `tsl` con venv separado, servido in-process no resuelto). **Condición
+  para cerrar la adopción:** confirmación **multi-seed** (el veredicto B4 es n=1 por modelo,
+  direccional pero no multi-seed —a diferencia del rigor de 60/9-seeds del resto del proyecto).
+  Veredicto técnico cerrado (D-015); decisión de adopción pendiente.
+- **Tesis escrita (.docx) desactualizada — diferida fuera de B4 (registrada 2026-06-03).** Los 2
+  `.docx` de `documentation/tesis/` y los markdown que citan números viejos (375 nodos, métricas de
+  375, scaler 18.886/120.929) quedan **stale** tras B4: el universo real es 1660, el scaler v2 es
+  **6.820/26.581**, y el veredicto del track se movió (D-015). Actualizar la tesis con los números v2
+  es **trabajo de redacción post-B4**, cuando los números estén firmes (idealmente tras la
+  confirmación multi-seed de la adopción). Markdown técnicos del repo ya actualizados en B4.5; los
+  `.docx` no (binarios, no grepeables, redacción aparte). Adyacente: `aggregate_sanity.py:57`
+  (hardcode 381/548640) sigue pendiente con la recaracterización Sanity.
 
 **Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl
