@@ -59,7 +59,7 @@ class SumoReplayAdapter(CongestionFeed):
 
     def __init__(
         self,
-        day: str = "seed062",
+        day: str = "seed051",
         *,
         parquet_dir: Path | str = _DEFAULT_PARQUET_DIR,
         net_path: Path | str = _DEFAULT_NET,
@@ -182,7 +182,7 @@ class SumoReplayAdapter(CongestionFeed):
             yield self._row_at(i)
 
     def preseed(self, repo: WazeJamsRepo, *, chunk: int = 10_000) -> dict:
-        """Modo PRE-SIEMBRA: deriva los 375×1440 snapshots e inserta en lotes.
+        """Modo PRE-SIEMBRA: deriva todos los snapshots del día (universo LCC × timesteps) e inserta en lotes.
 
         Idempotente: event_uuid determinista + ON CONFLICT DO NOTHING. Tras insertar,
         puebla geom desde graph_edges (UPDATE-join). Devuelve métricas de la corrida.

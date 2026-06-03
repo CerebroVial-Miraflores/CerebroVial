@@ -70,3 +70,10 @@ el broadcaster SSE y los endpoints es Fase 3.
   (D-009). El "1-5" del DATA_MODEL heredado es obsoleto → saneamiento documental futuro.
 - `jam_length_m` / `road_type` en centinela (−1 / 0): sin fuente en el feed SUMO; el
   ingestor de Waze real los traerá.
+
+---
+
+> **Forward-note (B3.2.e):** la cadena fue re-sembrada sobre el universo v2 (1660 aristas,
+> `--day seed051`) en B3.2.e. Este documento refleja el estado de **TTH-12** (375 aristas,
+> seed062) y se preserva como registro histórico de esa época; no se reescribe. Para el estado
+> actual de la fuente, el universo y la alineación, ver `documentation/contracts/congestion_contract.md`.

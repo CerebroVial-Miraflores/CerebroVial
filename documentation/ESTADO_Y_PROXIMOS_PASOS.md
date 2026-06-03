@@ -247,6 +247,15 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   pasar a randomTrips un output de ruta explícito hacia `$WORK`/outdir (o `cd` antes de invocarlo) para
   que no escriba a cwd; requiere re-smoke de la cadena de generación, no urge (síntoma = un archivo de
   ~323 KB ya ignorado).
+- **`/congestion/state` sirve el último snapshot — el mapa HU-22 por default abre drenado (registrada 2026-06-03 en B3.2.e).**
+  El endpoint de estado (`core_management_api/src/congestion/presentation/api/routes.py:70` → `WazeJamsRepo.latest_per_edge`)
+  devuelve el **último snapshot por arista**, que en un día simulado completo es **23:59** (medianoche, red ya drenada:
+  96.93% en nivel 0 sobre seed051). Por eso el mapa estático **abre mayormente verde — por la hora, no por el día**:
+  cualquier día abriría quieto a las 23:59; seed051 sí trae congestión visible en sus picos (~5.2% en nivel ≥3 en la
+  ventana PM 18-20h). **NO es deuda de la siembra** (correcta y verificada en B3.2.e: 2.39M filas, 0 huérfanos,
+  alineación 1660=1660=1660) **ni de la elección de día.** **Scope de HU-22 (B4):** si se requiere vista en-pico por
+  default, el read-path debe servir un snapshot representativo (un timestep de pico) en vez del último, o el frontend
+  parametrizar la hora. Decisión de diseño del read-path, fuera de B3.2.e.
 
 **Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl

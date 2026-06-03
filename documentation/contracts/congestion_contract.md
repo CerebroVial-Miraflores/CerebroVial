@@ -3,11 +3,11 @@
 > Documento vivo del producto. Define la interfaz de feed, los endpoints HTTP y el
 > canal SSE que habilitan HU-22 (mapa de congestión de la red). Habilita: geometría
 > de red (CT-12.2), feed de estado por arista (CT-12.6), robustez (CT-12.7),
-> alineación de IDs (CT-12.8). Fuente V1: replay de dataset SUMO (seed062).
+> alineación de IDs (CT-12.8). Fuente V1: replay de dataset SUMO (seed051).
 
 ## Unidad y alcance
 - Unidad de análisis: **tramo de vía = arista del grafo** (`edge_id` SUMO, p. ej. `-129822384#0`).
-- Universo: las **375 aristas del LCC** (`miraflores_graph_lcc_mapping.json`, campo `sumo_edge`).
+- Universo: las **1660 aristas del LCC** (`miraflores_graph_lcc_mapping.json`, campo `sumo_edge`).
 - Nivel de congestión: entero **0-5** (escala Waze, D-009; 0 = flujo libre). La columna
   `waze_jams.congestion_level` no enforça rango — el rango efectivo del sistema es 0-5.
 
@@ -25,12 +25,12 @@
 Ambos protegidos con `require_role(OPERATOR, ADMIN)` (TTH-01). Prefijo `/congestion`.
 
 ### `GET /congestion/geometry` — geometría de la red (CT-12.2)
-Estática, cacheable. Lee `graph_edges` (las 375). Respuesta GeoJSON:
+Estática, cacheable. Lee `graph_edges` (las 1660). Respuesta GeoJSON:
 
 ```json
 {
   "type": "FeatureCollection",
-  "count": 375,
+  "count": 1660,
   "features": [
     {
       "type": "Feature",
@@ -49,7 +49,7 @@ el más reciente). Respuesta:
 
 ```json
 {
-  "count": 375,
+  "count": 1660,
   "edges": [
     {"edge_id": "-129822384#0", "congestion_level": 0, "snapshot_timestamp": "2025-01-06T23:59:00"}
   ]
@@ -68,7 +68,7 @@ no reusa el de `control/`).
 
 ## Escritura del feed (replay)
 `SumoReplayAdapter` + `WazeJamsRepo`, vía `scripts/replay_congestion.py`:
-- **pre-siembra** (batch, 375×1440 idempotente; event_uuid uuid5 + ON CONFLICT).
+- **pre-siembra** (batch, 1660×1440 idempotente; event_uuid uuid5 + ON CONFLICT).
 - **replay en vivo** (gotea a cadencia; tras cada paso invoca `wake` → el broadcaster
   publica el wake-up SSE). La pre-siembra NO emite wakes.
 
@@ -76,12 +76,12 @@ Mapeo a `waze_jams` y regla del NaN: ver `documentation/docs/tth12_congestion_re
 Centinelas sin fuente en el feed SUMO V1: `jam_length_m = -1`, `road_type = 0` (DHU-028).
 
 ## Alineación de IDs end-to-end (CT-12.8)
-`mapping.sumo_edge` == `graph_edges.edge_id` == `waze_jams` DISTINCT `edge_id` == **375**.
-Verificable con `scripts/verify_edge_id_alignment.py` (375 = 375 = 375).
+`mapping.sumo_edge` == `graph_edges.edge_id` == `waze_jams` DISTINCT `edge_id` == **1660**.
+Verificable con `scripts/verify_edge_id_alignment.py` (1660 = 1660 = 1660).
 
 ## Desacople de fuente (resumen)
 | Hoy (V1) | Mañana |
 |---|---|
-| Replay de dataset SUMO pre-generado (seed062) escribe `waze_jams` | SUMO en vivo (TraCI) o ingestor de Waze real escribe `waze_jams` |
+| Replay de dataset SUMO pre-generado (seed051) escribe `waze_jams` | SUMO en vivo (TraCI) o ingestor de Waze real escribe `waze_jams` |
 | Detrás de `CongestionFeed` | Misma interfaz; solo cambia el escritor |
 Los consumidores (repositorio, endpoints, vista HU-22) no cambian.
