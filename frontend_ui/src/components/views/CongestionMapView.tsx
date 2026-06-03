@@ -35,15 +35,21 @@ import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Layer, PathOptions } from 'leaflet';
 import type { Feature, GeoJsonObject } from 'geojson';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, History, Radio } from 'lucide-react';
 import { LoadingOverlay } from '../ui/LoadingStates';
 import { congestionService } from '../../services/congestionService';
 import { openCongestionStream } from '../../services/congestionSseClient';
-import { mergeCongestion, congestionStyle, elapsedSeconds } from '../../utils/congestion';
+import {
+  mergeCongestion,
+  mergeCongestionAtIndex,
+  congestionStyle,
+  elapsedSeconds,
+} from '../../utils/congestion';
 import type {
   MergedCongestionFeature,
   GeometryFeatureCollection,
   CongestionStateResponse,
+  CongestionSeriesResponse,
 } from '../../types/congestion';
 
 /** Niveles 0-5 de la escala aprobada (CA-22.3) para iterar en la leyenda. */
@@ -77,6 +83,33 @@ function formatAge(seconds: number): string {
   const min = Math.floor(s / 60);
   const rem = s % 60;
   return rem === 0 ? `${min} min` : `${min} min ${rem} s`;
+}
+
+/** Fecha de hoy en `YYYY-MM-DD` con componentes LOCALES (no UTC): es el default
+ *  del date picker, debe coincidir con el "hoy" del usuario, no con UTC. */
+function todayIsoLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Marcas de hora orientativas sobre la pista del slider (cada 3 h, 0..24). */
+const HOUR_MARKS = [0, 3, 6, 9, 12, 15, 18, 21, 24] as const;
+
+/**
+ * Instante `t0 + i*stepS` formateado `HH:MM` (00:00–23:59). `t0` es naive-UTC
+ * (mismo criterio que `normalizeToUtc` en utils): se parsea como UTC y se lee con
+ * `getUTC*` para no desfasar por zona horaria local.
+ */
+function formatHourLabel(t0: string | null, stepS: number, i: number): string {
+  if (!t0) return '--:--';
+  const base = Date.parse(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(t0) ? t0 : `${t0}Z`);
+  const d = new Date(base + i * stepS * 1000);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
 }
 
 /**
@@ -125,17 +158,24 @@ export const CongestionMapView = () => {
   // Sube en cada update; junto a `stale` forma la key que fuerza el remonte de
   // <GeoJSON> (vía de recolorización elegida).
   const [renderSeq, setRenderSeq] = useState(0);
-  // Modo de la vista (HU-23). En esta fase queda fijo en 'live' (sin UI para
-  // togglear); `setMode` queda declarado para Fase 3. El SSE/stale (Effect B)
-  // depende de `mode`; la carga inicial de geometría (Effect A) NO.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setMode se cablea en Fase 3
+  // Modo de la vista (HU-23). El SSE/stale (Effect B) y la carga de serie
+  // (Effect C) dependen de `mode`; la carga inicial de geometría (Effect A) NO.
   const [mode, setMode] = useState<'live' | 'historic'>('live');
+  // Modo histórico (HU-23): día seleccionado, serie del día y posición del slider.
+  const [day, setDay] = useState<string>(() => todayIsoLocal());
+  const [series, setSeries] = useState<CongestionSeriesResponse | null>(null);
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const [seriesLoading, setSeriesLoading] = useState(false);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
   // Geometría estática cacheada: se cruza con cada estado nuevo SIN re-pedirla.
   const geometryRef = useRef<GeometryFeatureCollection | null>(null);
   // Handle del timer de stale, elevado a ref para compartirlo entre la carga
   // inicial (Effect A, primer armado) y el feed vivo (Effect B, re-armado en
   // cada wake + limpieza en cleanup).
   const staleTimerRef = useRef<number | null>(null);
+  // Distingue el mount inicial en 'live' (Effect A ya cargó el estado → NO re-leer)
+  // del retorno a 'live' desde histórico (SÍ re-leer estado). Ver Effect B.
+  const firstLiveRef = useRef(true);
 
   // (Re)arma el timer de stale: si no llega otro wake en STALE_TIMEOUT_MS, marca
   // el estado como desactualizado (CA-22.4). Estable: lo comparten ambos effects.
@@ -217,6 +257,15 @@ export const CongestionMapView = () => {
       }
     };
 
+    // Al RE-entrar en 'live' desde histórico, re-leer el estado (puede haber
+    // avanzado mientras el feed estaba silenciado). El mount inicial NO re-lee:
+    // Effect A ya cargó el estado (preserva `getState` 1× al montar).
+    if (firstLiveRef.current) {
+      firstLiveRef.current = false;
+    } else {
+      void onWake();
+    }
+
     const controller = openCongestionStream({ onWake: () => void onWake() });
 
     return () => {
@@ -229,6 +278,50 @@ export const CongestionMapView = () => {
     };
   }, [mode, applyState]);
 
+  // Effect C — carga de la serie del día (modo histórico). Al entrar en histórico
+  // o cambiar de día, pide getSeries(day); maneja loading/error. `count === 0`
+  // (día sin datos) NO es error: se refleja como serie vacía (CA-23.7).
+  useEffect(() => {
+    if (mode !== 'historic') return;
+
+    let cancelled = false;
+    setSeriesLoading(true);
+    setSeriesError(null);
+
+    congestionService
+      .getSeries(day)
+      .then((s) => {
+        if (cancelled) return;
+        setSeries(s);
+        setSliderIndex(0);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Error cargando la serie histórica de congestión:', err);
+        setSeriesError('No se pudo cargar la serie histórica de este día.');
+        setSeries(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSeriesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, day]);
+
+  // Effect D — repintado histórico: cruza la geometría cacheada con el nivel del
+  // índice del slider y recolorea (la `key` del <GeoJSON> lleva `sliderIndex`, así
+  // que cada movimiento remonta la capa). Con serie vacía (count 0) el merge
+  // devuelve todas las features con nivel null → mapa neutro, coherente con
+  // "día sin datos" y sin contaminar las features del modo vivo.
+  useEffect(() => {
+    if (mode !== 'historic') return;
+    const geometry = geometryRef.current;
+    if (!geometry || !series) return;
+    setFeatures(mergeCongestionAtIndex(geometry, series, sliderIndex));
+  }, [mode, series, sliderIndex]);
+
   // Mientras stale: tick de 1 s para refrescar el contador "hace X" del banner.
   useEffect(() => {
     if (!stale) return;
@@ -240,13 +333,25 @@ export const CongestionMapView = () => {
   const data = { type: 'FeatureCollection', features } as unknown as GeoJsonObject;
 
   // style callback: {color, weight} de congestionStyle (opciones de path válidas
-  // de Leaflet). En stale, atenúa la opacidad de stroke manteniendo color+grosor.
+  // de Leaflet). En stale atenúa la opacidad manteniendo color+grosor — SOLO en
+  // modo 'live'; en histórico no hay feed que envejezca, así que no se atenúa.
   const styleFeature = (feature?: Feature): PathOptions => {
     const base = congestionStyle(
       (feature?.properties as { congestion_level?: number | null })?.congestion_level,
     );
-    return stale ? { ...base, opacity: STALE_OPACITY } : base;
+    return mode === 'live' && stale ? { ...base, opacity: STALE_OPACITY } : base;
   };
+
+  // Key del remonte: en histórico depende de `sliderIndex` (cada movimiento del
+  // slider remonta la capa y recolorea); en vivo, de `renderSeq`/`stale` (Fase 3).
+  const geoKey =
+    mode === 'historic'
+      ? `historic-${sliderIndex}`
+      : `${renderSeq}-${stale ? 'stale' : 'live'}`;
+
+  // Modo histórico: nº de muestras (longitud de la serie) y estado "día sin datos".
+  const seriesLength = series?.edges[0]?.levels.length ?? 0;
+  const noData = series !== null && (series.count === 0 || seriesLength === 0);
 
   // CA-22.5 — consulta puntual: hover (tooltip) y click (popup) muestran edge_id + nivel.
   const onEachFeature = (feature: Feature, layer: Layer) => {
@@ -287,16 +392,121 @@ export const CongestionMapView = () => {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {/* key cambia por update (renderSeq) y al togglear stale → remonta la
-                capa y recolorea (react-leaflet 5 no refresca `data` in-place). */}
+            {/* key cambia por update (renderSeq/stale en vivo, sliderIndex en
+                histórico) → remonta la capa y recolorea (react-leaflet 5 no
+                refresca `data` in-place). */}
             <GeoJSON
-              key={`${renderSeq}-${stale ? 'stale' : 'live'}`}
+              key={geoKey}
               data={data}
               style={styleFeature}
               onEachFeature={onEachFeature}
             />
             <CongestionLegend />
           </MapContainer>
+        )}
+        {/* Controles superiores: toggle vivo/histórico (CA-23.6) + rótulo y date
+            picker del modo histórico (CA-23.4 / Paso 3). */}
+        {!loading && !error && (
+          <div className="absolute top-4 right-4 z-[500] flex flex-col items-end gap-2">
+            <div className="flex rounded-full overflow-hidden border border-slate-700 bg-slate-900/90 backdrop-blur shadow-lg">
+              <button
+                type="button"
+                onClick={() => setMode('live')}
+                aria-pressed={mode === 'live'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  mode === 'live'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Radio size={14} /> Vivo
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('historic')}
+                aria-pressed={mode === 'historic'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  mode === 'historic'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <History size={14} /> Histórico
+              </button>
+            </div>
+            {mode === 'historic' && (
+              <div className="flex flex-col items-end gap-2 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <History size={16} className="text-indigo-400" />
+                  <span
+                    className="text-sm font-bold text-white"
+                    title="(día de muestra, datos simulados)"
+                  >
+                    Visualización histórica
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-slate-300">
+                  Día
+                  <input
+                    type="date"
+                    value={day}
+                    onChange={(e) => setDay(e.target.value)}
+                    aria-label="Día a visualizar"
+                    className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-xs"
+                  />
+                </label>
+                {seriesError && (
+                  <span className="text-xs text-rose-400">{seriesError}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Slider temporal + label de hora + marcas (Paso 4 / CA-23.1-3) y estado
+            "día sin datos" (CA-23.7). Solo en histórico, sobre el mapa. */}
+        {!loading && !error && mode === 'historic' && !seriesError && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] w-[min(90%,640px)] bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-5 py-4 shadow-lg">
+            {seriesLoading ? (
+              <p className="text-sm text-slate-300 text-center">
+                Cargando serie del día…
+              </p>
+            ) : series ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wide text-slate-400">
+                    Hora
+                  </span>
+                  <span className="text-lg font-bold text-white tabular-nums">
+                    {noData
+                      ? '--:--'
+                      : formatHourLabel(series.t0, series.step_s ?? 60, sliderIndex)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(0, seriesLength - 1)}
+                  value={sliderIndex}
+                  onChange={(e) => setSliderIndex(Number(e.target.value))}
+                  disabled={noData}
+                  aria-label="Hora del día"
+                  className="w-full accent-indigo-500 disabled:opacity-40"
+                />
+                {/* Marcas orientativas cada 3 h (0..24). La marca 24 es el borde del
+                    eje (23:59 es el último dato), no un instante con dato. */}
+                <div className="flex justify-between text-[10px] text-slate-500 tabular-nums">
+                  {HOUR_MARKS.map((h) => (
+                    <span key={h}>{String(h).padStart(2, '0')}h</span>
+                  ))}
+                </div>
+                {noData && (
+                  <p className="text-sm text-slate-400 text-center pt-1">
+                    No hay datos para este día
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
         )}
         {/* Banner stale (CA-22.4): datos desactualizados → "datos de hace X".
             Solo aplica en modo 'live' (en histórico no hay feed que envejezca). */}
