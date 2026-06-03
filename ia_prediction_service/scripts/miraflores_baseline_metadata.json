@@ -7,16 +7,16 @@
     "horizonte": 30
   },
   "scaler": {
-    "mean": 18.885616302490234,
-    "std": 120.9287338256836
+    "mean": 6.820021629333496,
+    "std": 26.580738067626953
   },
   "hyperparams": {
     "lr": 0.001,
     "batch": 512,
     "max_epochs": 60,
     "patience": 6,
-    "epochs_run": 34,
-    "best_epoch": 28,
+    "epochs_run": 12,
+    "best_epoch": 6,
     "train_stride": 12,
     "eval_stride": 12,
     "lookback": 30,
@@ -29,20 +29,24 @@
       44,
       46,
       47,
+      48,
       49,
       50,
       52,
       53,
+      54,
       55,
       56,
-      58,
+      57,
       59,
-      62,
+      60,
+      61,
+      63,
       64,
       65,
+      67,
       68,
       70,
-      71,
       72,
       73,
       74,
@@ -50,254 +54,118 @@
       77,
       79,
       80,
+      81,
       82,
       83,
-      85,
       86,
       87,
-      88,
       89,
       91,
       92,
-      94,
       95,
       97,
       98,
-      99,
-      100,
-      101
+      99
     ],
     "val": [
-      48,
-      54,
-      60,
+      58,
+      62,
       66,
-      78,
+      75,
       84,
-      90,
-      96
+      94,
+      96,
+      101
     ],
     "test": [
       45,
       51,
-      57,
-      61,
-      63,
-      67,
       69,
-      75,
-      81,
-      93
+      71,
+      78,
+      85,
+      88,
+      90,
+      93,
+      100
     ]
   },
   "seed": 0,
   "device": "mps",
   "target_authority": "D-013 + enmienda 2026-06-01: target = timeLoss TOTAL por arista por intervalo de 60 s (columna timeLoss del Parquet, sin derivación per-vehículo).",
-  "best_val_mse_std": 0.06606,
+  "best_val_mse_std": 0.302167,
   "history": [
     {
       "epoch": 1,
-      "train_mse_std": 0.107064,
-      "val_mse_std": 0.077947,
-      "secs": 40.1
+      "train_mse_std": 0.345903,
+      "val_mse_std": 0.318535,
+      "secs": 180.3
     },
     {
       "epoch": 2,
-      "train_mse_std": 0.073452,
-      "val_mse_std": 0.072628,
-      "secs": 40.0
+      "train_mse_std": 0.302992,
+      "val_mse_std": 0.307856,
+      "secs": 176.2
     },
     {
       "epoch": 3,
-      "train_mse_std": 0.072776,
-      "val_mse_std": 0.07073,
-      "secs": 40.0
+      "train_mse_std": 0.298266,
+      "val_mse_std": 0.306937,
+      "secs": 177.1
     },
     {
       "epoch": 4,
-      "train_mse_std": 0.07207,
-      "val_mse_std": 0.073255,
-      "secs": 40.1
+      "train_mse_std": 0.295989,
+      "val_mse_std": 0.302788,
+      "secs": 176.0
     },
     {
       "epoch": 5,
-      "train_mse_std": 0.071213,
-      "val_mse_std": 0.070014,
-      "secs": 39.8
+      "train_mse_std": 0.296478,
+      "val_mse_std": 0.305451,
+      "secs": 176.4
     },
     {
       "epoch": 6,
-      "train_mse_std": 0.070656,
-      "val_mse_std": 0.069781,
-      "secs": 39.8
+      "train_mse_std": 0.295188,
+      "val_mse_std": 0.302167,
+      "secs": 178.0
     },
     {
       "epoch": 7,
-      "train_mse_std": 0.070244,
-      "val_mse_std": 0.070312,
-      "secs": 39.7
+      "train_mse_std": 0.292943,
+      "val_mse_std": 0.304703,
+      "secs": 178.5
     },
     {
       "epoch": 8,
-      "train_mse_std": 0.070153,
-      "val_mse_std": 0.069016,
-      "secs": 39.9
+      "train_mse_std": 0.294176,
+      "val_mse_std": 0.307255,
+      "secs": 175.9
     },
     {
       "epoch": 9,
-      "train_mse_std": 0.069934,
-      "val_mse_std": 0.069797,
-      "secs": 39.9
+      "train_mse_std": 0.291814,
+      "val_mse_std": 0.307156,
+      "secs": 177.5
     },
     {
       "epoch": 10,
-      "train_mse_std": 0.069942,
-      "val_mse_std": 0.069714,
-      "secs": 40.3
+      "train_mse_std": 0.291708,
+      "val_mse_std": 0.302469,
+      "secs": 176.4
     },
     {
       "epoch": 11,
-      "train_mse_std": 0.069181,
-      "val_mse_std": 0.069101,
-      "secs": 40.9
+      "train_mse_std": 0.29218,
+      "val_mse_std": 0.303568,
+      "secs": 176.1
     },
     {
       "epoch": 12,
-      "train_mse_std": 0.068868,
-      "val_mse_std": 0.068516,
-      "secs": 39.7
-    },
-    {
-      "epoch": 13,
-      "train_mse_std": 0.068486,
-      "val_mse_std": 0.072773,
-      "secs": 40.3
-    },
-    {
-      "epoch": 14,
-      "train_mse_std": 0.068481,
-      "val_mse_std": 0.068287,
-      "secs": 40.0
-    },
-    {
-      "epoch": 15,
-      "train_mse_std": 0.068219,
-      "val_mse_std": 0.072738,
-      "secs": 39.7
-    },
-    {
-      "epoch": 16,
-      "train_mse_std": 0.067857,
-      "val_mse_std": 0.068399,
-      "secs": 40.0
-    },
-    {
-      "epoch": 17,
-      "train_mse_std": 0.067584,
-      "val_mse_std": 0.067392,
-      "secs": 40.2
-    },
-    {
-      "epoch": 18,
-      "train_mse_std": 0.06719,
-      "val_mse_std": 0.067688,
-      "secs": 40.7
-    },
-    {
-      "epoch": 19,
-      "train_mse_std": 0.066771,
-      "val_mse_std": 0.067728,
-      "secs": 40.1
-    },
-    {
-      "epoch": 20,
-      "train_mse_std": 0.066644,
-      "val_mse_std": 0.067795,
-      "secs": 42.0
-    },
-    {
-      "epoch": 21,
-      "train_mse_std": 0.066089,
-      "val_mse_std": 0.067151,
-      "secs": 40.2
-    },
-    {
-      "epoch": 22,
-      "train_mse_std": 0.066082,
-      "val_mse_std": 0.06638,
-      "secs": 40.0
-    },
-    {
-      "epoch": 23,
-      "train_mse_std": 0.066273,
-      "val_mse_std": 0.066278,
-      "secs": 39.9
-    },
-    {
-      "epoch": 24,
-      "train_mse_std": 0.065292,
-      "val_mse_std": 0.066878,
-      "secs": 40.3
-    },
-    {
-      "epoch": 25,
-      "train_mse_std": 0.065329,
-      "val_mse_std": 0.066347,
-      "secs": 41.2
-    },
-    {
-      "epoch": 26,
-      "train_mse_std": 0.064879,
-      "val_mse_std": 0.067814,
-      "secs": 40.9
-    },
-    {
-      "epoch": 27,
-      "train_mse_std": 0.064743,
-      "val_mse_std": 0.067503,
-      "secs": 40.2
-    },
-    {
-      "epoch": 28,
-      "train_mse_std": 0.064628,
-      "val_mse_std": 0.06606,
-      "secs": 40.1
-    },
-    {
-      "epoch": 29,
-      "train_mse_std": 0.064178,
-      "val_mse_std": 0.068602,
-      "secs": 40.7
-    },
-    {
-      "epoch": 30,
-      "train_mse_std": 0.064028,
-      "val_mse_std": 0.067836,
-      "secs": 39.6
-    },
-    {
-      "epoch": 31,
-      "train_mse_std": 0.063975,
-      "val_mse_std": 0.067888,
-      "secs": 40.2
-    },
-    {
-      "epoch": 32,
-      "train_mse_std": 0.063794,
-      "val_mse_std": 0.068157,
-      "secs": 40.1
-    },
-    {
-      "epoch": 33,
-      "train_mse_std": 0.063357,
-      "val_mse_std": 0.068772,
-      "secs": 40.1
-    },
-    {
-      "epoch": 34,
-      "train_mse_std": 0.063516,
-      "val_mse_std": 0.066735,
-      "secs": 39.8
+      "train_mse_std": 0.290682,
+      "val_mse_std": 0.306478,
+      "secs": 181.1
     }
   ],
   "checkpoint": "miraflores_gru_baseline.pt",

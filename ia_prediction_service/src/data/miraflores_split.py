@@ -45,6 +45,24 @@ SEVERE_SEEDS: list[int] = [53, 55, 58, 60, 62, 63, 71, 83, 85, 90, 97, 99]
 # para que ningún fold los concentre (invariante de estratificación).
 SEVERE_DUROS: list[int] = [55, 62, 83, 85]
 
+# Ventana de pico PM (régimen severo vinculante del gate D-014: 18-20h). En timesteps
+# de 60 s desde t=0=00:00 → [64800/60, 72000/60) = [1080, 1200) (fin exclusivo). Es la
+# ventana donde la congestión de pico PM es máxima; el corte severo afilado la usa para
+# evaluar el momento que más importa predecir. Fuente: DRENAJE_GATE_60D_RESULTS.md §Criterio.
+PM_PEAK_START_T: int = 1080
+PM_PEAK_END_T: int = 1200
+
+
+def severe_in(fold_seeds) -> list[int]:
+    """Severos del gate D-014 presentes en un fold (intersección, ordenada).
+
+    Deriva el subconjunto severo de un fold del split + ``SEVERE_SEEDS``, para que el
+    corte métrico de régimen severo **siga al split automáticamente** (si se re-estratifica,
+    el corte se recalcula solo; no hay literal que se desalinee, a diferencia del viejo
+    ``== 81`` clavado).
+    """
+    return sorted(set(SEVERE_SEEDS) & set(int(s) for s in fold_seeds))
+
 # --- Split estratificado explícito (seeds enteras 42..101) -------------------------
 # 10 días: 3 severos (85 duro/peor + 71 medio + 90 marginal) + 7 moderados/suaves.
 TEST_SEEDS: list[int] = [45, 51, 69, 71, 78, 85, 88, 90, 93, 100]
