@@ -34,7 +34,7 @@ ponderada por viaje**: en colapso toca **~11 km/h, no 3–4**. Resultado: el bin
 2. **Δduración de viaje**: salto material sobre el baseline ~254s (≤1.0).
 3. **Dip bimodal sostenido**: dips **sub-20 km/h en franjas anchas** AM/PM (vs incipiente/ausente).
 
-Esto es **deuda de método** a tener presente en B3/B4 y **candidato a ADR**: el umbral de
+Esto es **deuda de método** a tener presente en B3/B4, **formalizada en el ADR D-014**: el umbral de
 drenaje es **net-específico**; `analyze24.py` necesita un veredicto recalibrado (o multi-señal)
 para v2. (`racha sub-8` se deja intacta en el código por compatibilidad con C2; se interpreta
 con este caveat.)
@@ -114,6 +114,6 @@ scale C3=1.1 (este doc).
 - **N del tensor STGNN cambia con v2**: el 375/N del net viejo ya no aplica (LCC ~1660 nodos);
   **el N autoritativo lo fija B3** vía `miraflores_graph_builder.build_miraflores_graph`.
 - **Umbral de drenaje net-específico** (HALLAZGO CRÍTICO arriba): `analyze24.py` necesita
-  veredicto recalibrado para v2 — candidato a ADR.
+  veredicto recalibrado para v2 — **formalizado en D-014**.
 - **Re-confirmar la caracterización de señal espacial** sobre el dataset final de B3 si el
   scale o la distribución de demanda cambian.

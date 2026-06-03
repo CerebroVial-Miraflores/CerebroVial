@@ -19,6 +19,7 @@
 | D-011 | Cerrada | 2026-06-01 | Reapertura de D-006: predictor espacio-temporal sobre grafo (STGNN) acotado al corredor de la Av. Larco |
 | D-012 | Cerrada | 2026-06-01 | Enmienda a D-011: escenario del track STGNN de corredor Larco a Miraflores completo |
 | D-013 | Cerrada | 2026-06-01 | Target del track STGNN: meanTimeLoss/demora (enmienda a D-011, cierre de deuda diferida por D-012) |
+| D-014 | Cerrada | 2026-06-03 | Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -462,6 +463,43 @@ D-013 fijó el target del track en "meanTimeLoss/demora". Una verificación read
 **Corrección.** El target del track es timeLoss total por arista por intervalo de 60 s (la columna timeLoss del Parquet, ya disponible). Sin regeneración, sin recompactado, sin derivación per-vehículo. Todo lo demás de D-013 se mantiene: el target sigue siendo demora (no velocidad/jam_level, evitando la contaminación del semáforo que motivó D-013), continuo, con discretización 0–5 solo en presentación, alcance solo-track, producción intacta.
 
 **Deuda registrada.** El timeLoss total mezcla intensidad de congestión con volumen de tráfico (confounding acotado: Spearman 0.94 con el per-vehículo indica reordenamiento moderado, concentrado en celdas de alto volumen). Es un sesgo medible y documentado, preferible a la indefinición catastrófica del per-vehículo en el atasco. Si una fase futura quisiera un target per-vehículo, requeriría regeneración + una política de regularización para las colas estáticas — no resuelto aquí.
+
+---
+
+## D-014 — Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica)
+**Estado:** Cerrada · 2026-06-03 · **Revisa:** criterio de drenaje de `analyze24.py` (C2, v1-específico) · **Habilita:** gate de aceptación por-día de B3.2 · **Cierra:** deuda de método de B2 (C3, candidato a ADR)
+
+**Contexto.** El veredicto binario de drenaje de `analyze24.py` —"racha ≥3h con velocidad media < 8 km/h"— está calibrado al **colapso duro del net v1**, donde la velocidad se clavaba sostenida en 3–4 km/h. El net v2 (distrito completo, 1664 edges ≈ 4.4×, LCC 1660 nodos) **colapsa "suave"**: en su peor punto medido (scale 1.5) la velocidad media ponderada por viaje toca **~11 km/h**, nunca 3–4. Consecuencia: el criterio sub-8 marca "drena" **incluso en scales que colapsan en v2** (a 1.5: 920 teleports y +43% de duración de viaje, y el binario igual dice "drena"). El criterio v1 no traslada a v2.
+
+**Evidencia (C3, `simulation/data/datasets/miraflores_laborable_60d/calibracion/SWEEP_C3_RESULTS.md`).** Barrido de 10 scales sobre v2, seed 42, 24h continua, control fijo. La rodilla del colapso es **gradual** y el cliff cae **entre 1.2 y 1.3**:
+
+| señal | 1.0 | 1.1 (operación) | 1.2 | 1.3 (onset colapso) | 1.5 (colapso) |
+|---|--:|--:|--:|--:|--:|
+| teleports | 0 | 11 | 36 | 137 | 920 |
+| Δdur vs 1.0 | — | +2% | +5.5% | +15% | +43% |
+| dip (km/h mín) | →25.2 | →23.7 incipiente | →21.3 recupera | sub-20 ancho | →11.2 |
+
+**Decisión.** Para v2 el drenaje se evalúa con un **criterio multi-señal por-día**, no con la racha sub-8. Un día de simulación v2 **drena si y solo si se cumplen las tres**:
+
+1. **Teleports ≤ 50** — *señal primaria* (la más limpia: sale de `stats.xml`, no contaminada por stops de semáforo en tramos cortos). Referencia: 1.1 = 11 teleports; onset de colapso 1.3 = 137.
+2. **Δduración media de viaje ≤ +10 %** sobre el baseline ~254 s (es decir, **≤ ~280 s**), de `tripinfo.xml`. Referencia: 1.1 = +2 %; 1.3 = +15 %.
+3. **Dip acotado** — la velocidad media de red **NO** permanece **bajo 20 km/h por más de 15 minutos consecutivos** en ninguno de los dos picos (AM 07-09 / PM 18-20). El doble criterio duración-Y-profundidad distingue 1.2 (toca 21.3 y **recupera** → pasa) de 1.3 (**sub-20 ancho sostenido** → falla). Requiere serie de velocidad sub-horaria (`edgeData freq=60` la soporta; el bucketing horario de `analyze24.py` es demasiado grueso para el test de 15 min).
+
+**Regla de combinación.** El día **falla** si `teleports > 50` **O** dispara cualquiera de las otras dos. Ante señales en desacuerdo, **manda teleports** (es la menos contaminada por el ciclo de semáforo en tramos cortos).
+
+**Consecuencias.**
+- `analyze24.py` **conserva la racha sub-8 intacta** por compatibilidad con C2, pero se interpreta con el caveat de que es **v1-específica**; el **veredicto autoritativo para v2 es este criterio multi-señal**. Este ADR no reescribe el código.
+- **B3.2 usa este criterio como gate de aceptación por-día** sobre los 60 seeds del dataset regenerado a scale 1.1. Un día que falla el criterio es **bandera** (a investigar / posible descarte), **no se absorbe en silencio**.
+- **Evaluador pendiente (trabajo de B3.2, no de B3.1.5).** Evaluar este criterio requiere un **evaluador multi-señal sub-horario** que lea `edgeData freq=60` + `stats.xml` + `tripinfo.xml` y emita el veredicto de las tres señales por-día. **`analyze24.py` no lo soporta** (buckets horarios, no puede testear "15 min consecutivos" ni leer la distribución de duración). Hasta que B3.2 lo implemente, **este criterio es normativo, no automatizado**: define la vara, no la herramienta que la mide.
+- **Robustez a seed.** El criterio se fijó sobre seed 42 (único del C3). El margen de los umbrales respecto del régimen de 1.1 (teleports 11 vs corte 50; Δdur +2 % vs +10 %) está **dimensionado para que la variación de seed de los 60 días de B3.2 no cruce el umbral espuriamente**. Si en B3.2 una fracción material de los 60 días falla el gate, eso es señal de que **el margen o el scale necesitan revisión** — queda como **trigger explícito**, no como sorpresa.
+
+**Alcance / límite.** Define el criterio de aceptación de drenaje del **dataset v2** (B3.2 en adelante). No toca producción, ni el GRU de TTH-09, ni la variable predicha (D-009/D-013). No modifica `analyze24.py`. Los cortes son net-específicos de v2: una reconstrucción futura del net los invalida (re-localizar el cliff, como hizo C3).
+
+**Referencias.**
+- Evidencia: `simulation/data/datasets/miraflores_laborable_60d/calibracion/SWEEP_C3_RESULTS.md` (barrido v2, cliff 1.2–1.3, hallazgo del colapso suave ~11 km/h).
+- Señales: `stats.xml` (`<teleports total>`), `tripinfo.xml` (`duration`), `edgeData freq=60` (serie de velocidad de red).
+- Relacionadas: D-008 (SUMO end-to-end), D-013 (target meanTimeLoss del track STGNN, mismo dataset).
+- Scale de operación: C3 = 1.1 (fijado en B2; `gen_day.sh` lo adopta en B3.2).
 
 ---
 
