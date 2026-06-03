@@ -53,6 +53,7 @@ Entregado en esta sesión (rama `feature/stgnn-corredor-larco`, **sin push/PR/me
   `miraflores_graph_mapping.json` (381, evidencia del análisis de componentes) y
   `miraflores_graph_lcc_mapping.json` (375, canónico de modelado, con procedencia `derived_from` /
   `full_graph_nodes` / `dropped_component_nodes` / `dropped_edges`).
+  _(Puntero-hacia-adelante, agregado en B3.1 2026-06-03: estos mappings se regeneraron sobre el net **v2** — LCC=**1660**, full=**1664**. Los 381/375 de esta línea son del net **v1**, correctos a la fecha de este cierre.)_
 - **`tests/test_miraflores_graph_builder.py`** — 13 tests verdes (6 previos + 7 nuevos: LCC 375,
   gate de componentes, mutua exclusión, conexidad, islita excluida, determinismo, gate de fantasmas
   bajo LCC).
@@ -213,6 +214,19 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   el STGNN (Fase 4) usan loop manual en `scripts/train_miraflores_*.py`, NO este clúster.
   **Disparador de limpieza:** "limpieza del Dockerfile" — al tocar el Dockerfile, borrar el clúster
   completo (predictor.py + los 3 scripts) y reapuntar/quitar el `CMD`.
+- **Nodos degenerados sub-métricos del net v2 (registrada 2026-06-03 en B3.1; asignada a B4).**
+  B3.1 fijó el N autoritativo del LCC en **1660** sobre v2 **tolerando** 59 edges de longitud `<1m`
+  (52 de ellos exactamente `0.200m`, artefactos de netconvert). No se excluyeron porque, bajo el
+  criterio "longitud anómala **y** topológicamente prescindible", fallan la segunda condición: muchos
+  son conectores intermedios de edges multi-parte (`337605614#12/#14`, `653645243/244/245/248`,
+  `129822384#...`), donde el `0.2m` es el eslabón `A→stub→B` de una calle segmentada; removerlos parte
+  la cadena salvo reconexión `A→B` (cirugía de topología, no exclusión de artefacto). Además el builder
+  es length-agnostic: excluir exigiría lógica nueva, fuera del alcance "fijar N" de B3. **Deuda B4:**
+  esos ~52 nodos de `0.2m` entran al tensor STGNN como nodos con señal de demora (`meanTimeLoss`) ~0
+  —no hay distancia donde acumular demora—, o sea ruido de baja varianza, no señal. Un STGNN
+  aprendiendo "este nodo siempre vale 0" no es informativo y puede diluir métricas. Pendiente en B4:
+  caracterizar los nodos degenerados y evaluar **masking / tratamiento aparte** en entrenamiento. NO
+  bloquea B3 (el N es el N y debe ser coherente con el net real); es deuda heredada por el entrenamiento.
 
 **Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl

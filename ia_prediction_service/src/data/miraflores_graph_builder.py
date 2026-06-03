@@ -58,10 +58,17 @@ DEFAULT_MAPPING_OUT = Path(__file__).resolve().parent / "artifacts" / "miraflore
 # sobrescribe el mapping completo. Ver build_miraflores_graph(largest_component_only=...).
 DEFAULT_LCC_MAPPING_OUT = Path(__file__).resolve().parent / "artifacts" / "miraflores_graph_lcc_mapping.json"
 
-# Aristas-fantasma esperadas sobre el grafo COMPLETO (los 381 nodos): pares que
-# la regla ingenua ``to==from`` propone pero que no tienen ``<connection>`` real.
-# Es un invariante de la red canónica; si cambia, algo se movió y hay que revisar.
-EXPECTED_GHOST_EDGES = 12
+# Aristas-fantasma esperadas sobre el grafo COMPLETO (los 1664 nodos de v2): pares
+# que la regla ingenua ``to==from`` propone pero que no tienen ``<connection>`` real.
+# Son mayormente pares reverse ``-X``/``X`` de la misma calle que se tocan en un nodo
+# sin maniobra de giro en U habilitada; su cantidad ESCALA con las calzadas divididas
+# de la red, así que es un número NET-ESPECÍFICO, no una constante mágica. Observado
+# en B3.1 sobre v2 (net completo): 510, dispersos en 276 nodos sin cluster patológico
+# (antes 12 sobre el net v1 de 381 nodos). Es un invariante de la red canónica ACTUAL;
+# cualquier reconstrucción del net (otro netconvert / otra versión OSM) lo moverá y el
+# gate abortará a propósito —para gritar que la topología cambió, no por bug. Si cambia,
+# algo se movió y hay que revisar antes de actualizarlo.
+EXPECTED_GHOST_EDGES = 510
 
 
 # --------------------------------------------------------------------------- #
@@ -374,7 +381,7 @@ def build_miraflores_graph(
         lcc_set = set(lcc)
         dropped = sorted(s for s in sumo_ids if s not in lcc_set)
         provenance = {
-            "derived_from": "largest connected component of full 381-node graph",
+            "derived_from": "largest connected component of full 1664-node graph",
             "full_graph_nodes": n_discovered,
             "dropped_component_nodes": len(dropped),
             "dropped_edges": dropped,
@@ -423,16 +430,16 @@ def build_miraflores_graph(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    print("== Grafo completo (381) ==")
-    ei, ew, m = build_miraflores_graph(expected_nodes=381)
+    print("== Grafo completo (1664) ==")
+    ei, ew, m = build_miraflores_graph(expected_nodes=1664)
     print("counts:", m["counts"])
     print("edge_index shape:", tuple(ei.shape))
     print("edge_weight (placeholder):", ew.shape, "todos 1.0:", bool((ew == 1.0).all()))
     print("mapping escrito en:", DEFAULT_MAPPING_OUT)
 
-    print("\n== Componente conexa principal (LCC, 375) ==")
+    print("\n== Componente conexa principal (LCC, 1660) ==")
     ei_lcc, ew_lcc, m_lcc = build_miraflores_graph(
-        largest_component_only=True, expected_component_sizes=(375, 6)
+        largest_component_only=True, expected_component_sizes=(1660, 4)
     )
     print("counts:", m_lcc["counts"])
     print("derived_from:", m_lcc["derived_from"])

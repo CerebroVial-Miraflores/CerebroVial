@@ -43,7 +43,7 @@ _REPO = Path(__file__).resolve().parent.parent
 _NET = _REPO / "simulation/conf/network/miraflores.net.xml"
 _MAPPING = _REPO / "ia_prediction_service/src/data/artifacts/miraflores_graph_lcc_mapping.json"
 
-EXPECTED_EDGES = 375
+EXPECTED_EDGES = 1660
 
 
 class SpikeStop(RuntimeError):
