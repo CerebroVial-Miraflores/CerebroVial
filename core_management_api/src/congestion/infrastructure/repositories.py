@@ -17,7 +17,7 @@ Decisiones del esquema (verificadas en Fase 2 Paso 1):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 from typing import Iterable
 
 import json
@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 
 from cerebrovial_shared.database.models import WazeJamDB
 
-from ..application.feed import EdgeCongestion
+from ..application.feed import DayCongestionSeries, EdgeCongestion, EdgeSeries
 
 # Columnas escritas explícitamente (geom queda NULL y se puebla por UPDATE-join).
 _COLS = (
@@ -168,6 +168,71 @@ class WazeJamsRepo:
                            snapshot_timestamp=r.snapshot_timestamp)
             for r in self.session.execute(q)
         ]
+
+    def series_for_day(self, day: date) -> DayCongestionSeries:
+        """Serie de congestión por arista de un día completo (TTH-13 / CT-13.1).
+
+        Opuesto a ``latest_per_edge``: SIN agregación ni join. Lee todas las filas
+        del día ``[00:00, 00:00 del día siguiente)`` ordenadas por
+        ``(edge_id, snapshot_timestamp)`` y las agrupa a Formato B en Python (append
+        secuencial sobre el resultado ya ordenado; portátil PostgreSQL/SQLite).
+
+        ``t0``/``coverage_end`` se derivan de los instantes distintos del día (mínimo
+        y máximo); ``step_s`` del delta entre los dos primeros instantes (grilla
+        uniforme, supuesto sin-huecos del contrato; default 60 si hay <2 instantes).
+        Día sin datos → serie vacía con campos temporales en ``None`` (CA-23.7), sin
+        error.
+        """
+        start = datetime.combine(day, time.min)
+        end = start + timedelta(days=1)
+        q = (
+            select(
+                WazeJamDB.edge_id,
+                WazeJamDB.snapshot_timestamp,
+                WazeJamDB.congestion_level,
+            )
+            .where(
+                and_(
+                    WazeJamDB.snapshot_timestamp >= start,
+                    WazeJamDB.snapshot_timestamp < end,
+                )
+            )
+            .order_by(WazeJamDB.edge_id, WazeJamDB.snapshot_timestamp)
+        )
+
+        edges: list[EdgeSeries] = []
+        distinct_ts: set[datetime] = set()
+        cur_edge: str | None = None
+        cur_levels: list[int] = []
+        for r in self.session.execute(q):
+            distinct_ts.add(r.snapshot_timestamp)
+            if r.edge_id != cur_edge:
+                if cur_edge is not None:
+                    edges.append(EdgeSeries(edge_id=cur_edge, levels=cur_levels))
+                cur_edge = r.edge_id
+                cur_levels = []
+            cur_levels.append(r.congestion_level)
+        if cur_edge is not None:
+            edges.append(EdgeSeries(edge_id=cur_edge, levels=cur_levels))
+
+        if not distinct_ts:
+            return DayCongestionSeries(
+                day=day, t0=None, step_s=None, coverage_end=None, edges=[]
+            )
+
+        ordered_ts = sorted(distinct_ts)
+        step_s = (
+            int((ordered_ts[1] - ordered_ts[0]).total_seconds())
+            if len(ordered_ts) >= 2
+            else 60
+        )
+        return DayCongestionSeries(
+            day=day,
+            t0=ordered_ts[0],
+            step_s=step_s,
+            coverage_end=ordered_ts[-1],
+            edges=edges,
+        )
 
 
 class NetworkGeometryRepo:

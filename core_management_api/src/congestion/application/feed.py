@@ -13,7 +13,7 @@ nunca se reescribe el mapeo en este nivel.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Iterable, Protocol, runtime_checkable
 
 
@@ -28,6 +28,34 @@ class EdgeCongestion:
     edge_id: str
     congestion_level: int          # 0-5 (0 = flujo libre; CT-12.3 / D-009)
     snapshot_timestamp: datetime
+
+
+@dataclass(frozen=True)
+class EdgeSeries:
+    """Serie de niveles de congestión de UNA arista a lo largo de un día (Formato B).
+
+    ``levels[i]`` es el nivel 0-5 (D-009) en el instante ``t0 + i * step_s`` de la
+    serie del día (ver ``DayCongestionSeries``). El consumidor (HU-23) indexa en O(1).
+    """
+    edge_id: str
+    levels: list[int]
+
+
+@dataclass(frozen=True)
+class DayCongestionSeries:
+    """Serie de congestión de toda la red para un día (TTH-13 / CT-13.1, Formato B).
+
+    Compacta: por arista, un array ``levels`` de niveles 0-5 muestreados a paso
+    constante ``step_s`` desde ``t0`` (primer instante con datos) hasta
+    ``coverage_end`` (último instante con datos, límite del control temporal HU-23
+    CA-23.2). Día sin datos → ``edges`` vacío y campos temporales en ``None`` (señal
+    de ausencia, CA-23.7), no error.
+    """
+    day: date
+    t0: datetime | None
+    step_s: int | None
+    coverage_end: datetime | None
+    edges: list[EdgeSeries]
 
 
 @runtime_checkable

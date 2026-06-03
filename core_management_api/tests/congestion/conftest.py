@@ -5,7 +5,9 @@ no entiende) para ``graph_edges`` y ``waze_jams`` — mismo patrón que
 ``tests/control/conftest.py``. Añade ``simulation/src`` al path para que el adaptador
 pueda reusar ``cerebrovial_simulation.jam_level`` (la derivación 0-5).
 """
+import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
@@ -20,6 +22,18 @@ _REPO = Path(__file__).resolve().parents[3]
 _SIM_SRC = str(_REPO / "simulation/src")
 if _SIM_SRC not in sys.path:
     sys.path.insert(0, _SIM_SRC)
+
+# Fidelidad SQLite ↔ PostgreSQL en filtros de rango por timestamp (TTH-13).
+# pysqlite, al adaptar un ``datetime`` con ``microsecond == 0``, omite los
+# microsegundos (almacena ``"... 00:00:00"``), pero SQLAlchemy bindea los
+# parámetros de filtro tipados como DateTime con ``".000000"``. En la comparación
+# TEXT de SQLite ``"... 00:00:00" < "... 00:00:00.000000"``, así que el borde exacto
+# (medianoche) se evalúa mal. PostgreSQL compara por valor y no tiene el artefacto.
+# Alineamos el almacenamiento de SQLite al formato con microsegundos para que el
+# test ejercite la query real (``series_for_day``) con la misma semántica de bordes.
+sqlite3.register_adapter(
+    datetime, lambda dt: dt.isoformat(sep=" ", timespec="microseconds")
+)
 
 # Esquema stripped (sin geom): refleja las columnas que el repo escribe/lee.
 _GRAPH_EDGES_DDL = """
