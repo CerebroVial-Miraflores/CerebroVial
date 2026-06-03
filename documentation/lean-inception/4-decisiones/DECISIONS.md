@@ -497,7 +497,8 @@ D-013 fijó el target del track en "meanTimeLoss/demora". Una verificación read
 
 **Referencias.**
 - Evidencia: `simulation/data/datasets/miraflores_laborable_60d/calibracion/SWEEP_C3_RESULTS.md` (barrido v2, cliff 1.2–1.3, hallazgo del colapso suave ~11 km/h).
-- Señales: `stats.xml` (`<teleports total>`), `tripinfo.xml` (`duration`), `edgeData freq=60` (serie de velocidad de red).
+- Señales: `stats.xml` (`<teleports total>` y `vehicleTripStatistics @duration`, la media agregada de duración de viaje), `edgeData freq=60` (serie de velocidad de red sub-horaria).
+- **Nota de implementación (B3.2.a, 2026-06-03):** la señal #2 (Δduración media) se computa de la **media agregada** `vehicleTripStatistics @duration` de `stats.xml`; **`tripinfo.xml` no se genera ni se persiste**, porque el corte es sobre la media, no sobre la distribución (percentiles). La mención a `tripinfo.xml` como fuente era referencia de origen del dato, no dependencia operativa.
 - Relacionadas: D-008 (SUMO end-to-end), D-013 (target meanTimeLoss del track STGNN, mismo dataset).
 - Scale de operación: C3 = 1.1 (fijado en B2; `gen_day.sh` lo adopta en B3.2).
 
