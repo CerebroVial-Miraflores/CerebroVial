@@ -1,0 +1,315 @@
+meta:
+  fase: B1 — validación de cobertura PMU del net reconstruido (geométrica)
+  fuente_pmu: Plan de Movilidad Urbana de Miraflores 2017-2020
+  red: conf/network/miraflores_v2.net.xml
+  proyeccion: +proj=utm +zone=18 +ellps=WGS84 +datum=WGS84 +units=m +no_defs
+  tls_bbox_lonlat:
+    lon_min: -77.038941
+    lat_min: -12.131371
+    lon_max: -77.016335
+    lat_max: -12.103001
+  umbral_ok_m: 40.0
+  umbral_dudosa_m: 80.0
+  n_traffic_light: 99
+  intersecciones_validables: 11
+  criterio_gate: '>= 11/12 validables (<=40 m a un traffic_light)'
+  gate_pasa: true
+  resultado_cobertura: >-
+    11/11 intersecciones SEMAFORIZADAS del gazetteer PMU mapeadas a un traffic_light a
+    <=27 m. La 12va (ovalo_gutierrez) NO es semaforizada (óvalo/rotonda, control por
+    cesión de paso; nivel_los=None en el PMU): queda fuera del mapeo POR DEFINICIÓN, no
+    por error de cobertura. Avenidas Angamos, 28 de Julio y Paseo/Panamá recuperadas
+    respecto del net viejo (3/12 → 11/12).
+  metricas_net:
+    n_nodos: 907
+    n_traffic_light: 99
+    n_edges_total_no_internas: 1664
+    n_edges_vehiculares: 1664
+    convBoundary_xy:
+    - 0.0
+    - 0.0
+    - 3483.12
+    - 3538.41
+    ancho_m: 3483.1
+    alto_m: 3538.4
+    full_graph_nodes: 1664
+    lcc_n_estimado: 1660
+    dropped_fuera_lcc: 4
+    n_componentes: 2
+    top5_componentes:
+    - 1660
+    - 4
+  nota_lcc: 'lcc_n_estimado es una ESTIMACIÓN (BFS sobre edge.getOutgoing()), NO el
+    N autoritativo: B3 lo produce vía miraflores_graph_builder.build_miraflores_graph.
+    dropped_fuera_lcc es señal de salud (fragmentos desconectados).'
+intersecciones:
+- nombre: larco_benavides
+  coord_gazetteer:
+    lat: -12.12454
+    lon: -77.029332
+  pmu:
+    nivel_los: C/D
+    nota: null
+  junction_id: cluster_108178119_263630444_2673400749_3245705958_#6more
+  distancia_m: 8.0
+  in_bbox: true
+  edges_incoming:
+  - 129466113#3
+  - 344159559#3
+  - 406007422#0
+  edges_outgoing:
+  - 279893831#2
+  - 279893875#1
+  - 406008845#1
+  n_edges: 6
+  estado: ok
+- nombre: ovalo_miraflores
+  coord_gazetteer:
+    lat: -12.119287
+    lon: -77.029081
+  pmu:
+    nivel_los: null
+    nota: Larco/Pardo/Arequipa, núcleo
+  junction_id: '262577865'
+  distancia_m: 21.51
+  in_bbox: true
+  edges_incoming:
+  - 314356553#1
+  - 654086787#0
+  edges_outgoing:
+  - 314356553#2
+  n_edges: 3
+  estado: ok
+  candidatos_top3:
+  - junction_id: '262577865'
+    distancia_m: 21.51
+  - junction_id: '108177573'
+    distancia_m: 22.07
+  - junction_id: '3597685333'
+    distancia_m: 32.37
+- nombre: pardo_espinar
+  coord_gazetteer:
+    lat: -12.118978
+    lon: -77.037054
+  pmu:
+    nivel_los: F/H
+    nota: crítico
+  junction_id: cluster_13110592228_138852135_138852136_262577852_#3more
+  distancia_m: 9.96
+  in_bbox: true
+  edges_incoming:
+  - 14342450#0
+  - 319655874#10
+  - 330154010#0
+  - 67701598#0
+  edges_outgoing:
+  - 1230462978#0
+  - 24252817#2
+  - 319655871#2
+  - 33783509#0
+  n_edges: 8
+  estado: ok
+- nombre: arequipa_angamos
+  coord_gazetteer:
+    lat: -12.113838
+    lon: -77.030074
+  pmu:
+    nivel_los: E/H
+    nota: null
+  junction_id: cluster_108177589_108177590_108180348_108180350_#2more
+  distancia_m: 26.61
+  in_bbox: true
+  edges_incoming:
+  - 1023395811#2
+  - 1148678976#1
+  - 435657506#1
+  - 784296866#0
+  edges_outgoing:
+  - 435555978#0
+  - 784296858#0
+  - 784296859#0
+  - 892945205#0
+  n_edges: 8
+  estado: ok
+- nombre: espinar_angamos
+  coord_gazetteer:
+    lat: -12.113999
+    lon: -77.036845
+  pmu:
+    nivel_los: F/F
+    nota: null
+  junction_id: cluster_13110592243_13110592244_3777385835_3777385836_#1more
+  distancia_m: 6.37
+  in_bbox: true
+  edges_incoming:
+  - 129822387#0
+  - 1317420490#0
+  - '1365860785'
+  - 1380185340#1
+  edges_outgoing:
+  - -129822387#2
+  - 1317420487#0
+  - 315557586#0
+  - 320601933#0
+  n_edges: 8
+  estado: ok
+- nombre: ovalo_gutierrez
+  coord_gazetteer:
+    lat: -12.112
+    lon: -77.037
+  pmu:
+    nivel_los: null
+    nota: Espinar/Santa Cruz; óvalo (coord aprox. corregida a mano)
+  junction_id: cluster_13110592243_13110592244_3777385835_3777385836_#1more
+  distancia_m: 223.77
+  in_bbox: true
+  edges_incoming:
+  - 129822387#0
+  - 1317420490#0
+  - '1365860785'
+  - 1380185340#1
+  edges_outgoing:
+  - -129822387#2
+  - 1317420487#0
+  - 315557586#0
+  - 320601933#0
+  n_edges: 8
+  estado: dudosa
+  nota_cobertura: >-
+    NO-SEMAFORIZADA: el Óvalo Gutiérrez (Av. Comandante Espinar / Santa Cruz) es una
+    rotonda con control por cesión de paso, sin semáforo (nivel_los=None en el PMU). La
+    distancia de 223.77 m al traffic_light más cercano NO es un hueco de cobertura: no
+    existe un TLS que mapear en esa intersección. Queda fuera del mapeo PMU por
+    definición. Coord de origen aproximada (corregida a mano).
+  candidatos_top3:
+  - junction_id: cluster_13110592243_13110592244_3777385835_3777385836_#1more
+    distancia_m: 223.77
+  - junction_id: '134380224'
+    distancia_m: 464.68
+  - junction_id: '3811342113'
+    distancia_m: 498.74
+- nombre: 28julio_reducto
+  coord_gazetteer:
+    lat: -12.129166
+    lon: -77.023688
+  pmu:
+    nivel_los: E/H
+    nota: null
+  junction_id: '4350145649'
+  distancia_m: 16.39
+  in_bbox: true
+  edges_incoming:
+  - 24315794#0
+  edges_outgoing:
+  - 24315794#2
+  n_edges: 2
+  estado: ok
+- nombre: 28julio_lapaz
+  coord_gazetteer:
+    lat: -12.127884
+    lon: -77.027016
+  pmu:
+    nivel_los: D/F
+    nota: null
+  junction_id: '133936090'
+  distancia_m: 3.33
+  in_bbox: true
+  edges_incoming:
+  - -427240760#3
+  - 653650077#9
+  edges_outgoing:
+  - 344160289#0
+  - 427240760#0
+  - 653650077#12
+  n_edges: 5
+  estado: ok
+- nombre: ricardopalma_paseo
+  coord_gazetteer:
+    lat: -12.119221
+    lon: -77.025545
+  pmu:
+    nivel_los: D/F
+    nota: null
+  junction_id: cluster_114612822_262573260_3967025039_3967025044_#2more
+  distancia_m: 10.78
+  in_bbox: true
+  edges_incoming:
+  - '1148860369'
+  - 437344447#1
+  - 653439619#0
+  edges_outgoing:
+  - '1148860370'
+  - 24252390#2
+  - 345820035#1
+  n_edges: 6
+  estado: ok
+- nombre: paseo_angamos
+  coord_gazetteer:
+    lat: -12.113408
+    lon: -77.025577
+  pmu:
+    nivel_los: E/H
+    nota: muy saturada
+  junction_id: cluster_262572974_262573427_4560879413_4560879416
+  distancia_m: 12.33
+  in_bbox: true
+  edges_incoming:
+  - '1148986834'
+  - 1364169039#0
+  - 344194837#5
+  edges_outgoing:
+  - '1148986835'
+  - 313299276#0
+  - 336184134#0
+  n_edges: 6
+  estado: ok
+- nombre: paseo_benavides
+  coord_gazetteer:
+    lat: -12.125343
+    lon: -77.023909
+  pmu:
+    nivel_los: D/E
+    nota: null
+  junction_id: cluster_108191741_108191742_263630437_3245706003
+  distancia_m: 13.9
+  in_bbox: true
+  edges_incoming:
+  - 1312216915#0
+  - 33232949#0
+  - '437191070'
+  - 511365267#1
+  edges_outgoing:
+  - 1312216914#2
+  - 33232585#0
+  - '39441965'
+  n_edges: 7
+  estado: ok
+- nombre: benavides_panama
+  coord_gazetteer:
+    lat: -12.126337
+    lon: -77.018081
+  pmu:
+    nivel_los: null
+    nota: al filo este
+  junction_id: cluster_108191747_262573989_4266807074
+  distancia_m: 10.37
+  in_bbox: true
+  edges_incoming:
+  - 1162552908#1
+  - 1305172761#2
+  - 24315836#5
+  - 430610770#9
+  edges_outgoing:
+  - -430610770#11
+  - 1162552911#1
+  - 1305172758#0
+  - 344256563#0
+  n_edges: 8
+  estado: ok
+  candidatos_top3:
+  - junction_id: cluster_108191747_262573989_4266807074
+    distancia_m: 10.37
+  - junction_id: cluster_10092527738_10092527740_10092527742_10092527744_#5more
+    distancia_m: 449.95
+  - junction_id: cluster_10092527737_10092527758_10092527759_263624809_#5more
+    distancia_m: 489.72

@@ -4,3 +4,7 @@
 *.h5     filter=lfs diff=lfs merge=lfs -text
 *.npy    filter=lfs diff=lfs merge=lfs -text
 *.docx   filter=lfs diff=lfs merge=lfs -text
+# Insumo OSM del net de distrito completo (B1): ~13.5 MB, se conserva como fuente
+# reproducible (no repetir el map.osm perdido). Por LFS para no inflar git. Regla por
+# PATH: solo este .osm va por LFS (corredor_larco.osm sigue plano, es chico).
+simulation/conf/network/miraflores_completo.osm filter=lfs diff=lfs merge=lfs -text
