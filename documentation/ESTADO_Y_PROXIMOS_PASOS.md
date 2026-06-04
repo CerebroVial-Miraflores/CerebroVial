@@ -142,6 +142,31 @@ queda **gitignored** (`models/.gitignore` ignora `*.pt`). Los artefactos del bas
 (`scripts/miraflores_baseline_*.json`, `models/miraflores_gru_baseline.pt`) **no fueron tocados**
 (guardia anti-pisado activa en el trainer + SHA-256 idénticos pre/post).
 
+## Loader de inferencia model-agnostic — Fase 1 (cierre) (2026-06-03)
+**Rama `feature/inference-loader`** (desde `03153666`). Módulo nuevo
+`ia_prediction_service/src/inference/` que carga cualquiera de los dos `.pt` (GRU baseline /
+STGNN) por ruta explícita y expone un contrato único: `predict(window [30,1660,2]) -> [1660,30]`
+(timeLoss en segundos por arista × 30 pasos, orden `node_index`). Las tres asimetrías
+(forward con/sin grafo, layout batch-por-nodo vs snapshot-de-grafo, reconstrucción de `arch`)
+quedan dentro de los adaptadores; el caller ve una sola interfaz. No toca modelos, scripts de
+training ni el core; no entrena.
+
+**Gate de cierre — verde y honesto** (`tests/test_inference_loader.py`, 9 passed / 1 skipped;
++1 con `RUN_SLOW=1`): el loader reproduce el `predict_collect` del eval offline, con (a) assert
+explícito de alineación de orden de nodos GRU **antes** del `allclose`, y (b) CPU en ambos lados
+con tolerancia estricta `1e-5`. Reproducción doble: per-predicción + métricas agregadas vs
+`miraflores_baseline_metrics.json`. Detalle completo en
+`documentation/handoffs/inference-loader/fase1-handoff.md`.
+
+**Deuda al cierre:** (1) **rename futuro `TimeThenSpaceModel → MirafloresSTGNNModel`** — el
+registry queda listo para el alias de una línea (`"MirafloresSTGNNModel": StgnnAdapter` en
+`src/inference/registry.py`; ambos strings → mismo adaptador, no toca nada más). (2) pytest en el
+venv de training y (3) fallas preexistentes de la suite: ver bloque de deudas más abajo.
+
+**Siguiente — Fase 2:** conversión `timeLoss` (segundos) → nivel 0-5, con la sub-decisión de los
+**cortes** (qué demora mapea a cada nivel) a resolver con la **distribución real de `timeLoss`**,
+no a ojo. No existe todavía; se planea aparte.
+
 ## Configuración intencional preservada
 `CerebroVial/.gemini/settings.json` (5 líneas) configura Gemini CLI para que cargue
 `CLAUDE.md` como contexto del proyecto. Es flujo multi-agente intencional del equipo
@@ -327,11 +352,25 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   que la metadata lo permita). **Disparador:** querer reunificar los venvs.
 - **Referencia.** Snapshot del `.venv` raíz pre-separación en `/tmp/venv_root_pre_separacion.txt`
   (efímero, no versionado).
-- **Deuda pytest — ubicación de los tests del módulo de predicción (registrada 2026-06-01).** Los
-  tests de `ia_prediction_service` que son numpy-puro corren en el venv raíz (donde vive pytest); el
-  venv de training no tiene pytest. Grieta: si un test del módulo llega a depender de tsl, pasaría en
-  el raíz (sin tsl) mientras el código corre en el venv de training. Disparador: cuando un test del
-  módulo dependa de tsl, instalar pytest en el venv de training y mover ese test ahí.
+- **Deuda pytest — ubicación de los tests del módulo de predicción (registrada 2026-06-01;
+  DISPARADA y materializada 2026-06-03).** Los tests de `ia_prediction_service` que son numpy-puro
+  corren en el venv raíz (donde vive pytest); el venv de training no tenía pytest. Grieta: si un test
+  del módulo llega a depender de tsl, pasaría en el raíz (sin tsl) mientras el código corre en el venv
+  de training. **El disparador ocurrió:** el gate del loader de inferencia
+  (`tests/test_inference_loader.py`) importa `tsl` (vía el STGNN) → se instaló `pytest>=8.0.0` en
+  `ia_prediction_service/.venv` (dev-dep declarada en `requirements-dev.txt`). **Ese cambio es estado
+  local del venv, NO lo captura el commit:** un clon limpio necesita instalar las dev-deps en el venv
+  de training para correr el gate. Follow-up de doc (no bloqueante): que el README/setup de
+  `ia_prediction_service` mencione el requisito. Detalle en
+  `documentation/handoffs/inference-loader/fase1-handoff.md` (deuda 2).
+- **Suite de `ia_prediction_service` — 2 fallas + 1 error preexistentes, ajenos a cualquier cambio
+  nuevo (registrada 2026-06-03).** `pytest tests/` completo arroja: `test_data_loader.py` (2 fallas,
+  `ValueError: Invalid frequency: 5T` — pandas deprecó el alias `T`→`min`) y
+  `test_miraflores_dataset_builder.py` (1 error de colección, `ModuleNotFoundError: pyarrow`). Ambas
+  son deuda de entorno/versión preexistente —verificado que fallan en aislamiento, sin código nuevo—.
+  Se registran para que una corrida futura de la suite completa no atribuya estas roturas a trabajo
+  reciente (p.ej. el loader de inferencia). Disparadores: migrar `5T→5min` en `test_data_loader.py`;
+  instalar `pyarrow` en el venv para los tests de dataset builder.
 
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
