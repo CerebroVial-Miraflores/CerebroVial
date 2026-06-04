@@ -1,4 +1,4 @@
-# Estado de la tesis CerebroVial — actualizado 2026-06-02
+# Estado de la tesis CerebroVial — actualizado 2026-06-03
 
 ## Dónde estoy
 Ciclo SDD (Spec Kit v0.8.11, brownfield) cerrado y sellado. 6/6 artefactos poblados y verificados:
@@ -6,9 +6,12 @@ constitution, spec, plan, tasks, data-model, quickstart. /speckit-analyze: 0 err
 Rama de trabajo del SDD: feature/SDD. Snapshot de adopción en documentation/sdd/SPECKIT_MAPPING.md §5.
 
 ## Siguiente paso (Tier 4 — construcción del Sprint 4)
-Orden comprometido (19 SP, de tasks.md): TTH-01 (Auth JWT+bcrypt) → HU-01 (RBAC) →
+Orden comprometido del Sprint 4 (19 SP, de tasks.md): TTH-01 (Auth JWT+bcrypt) → HU-01 (RBAC) →
 TTH-10 (cierre Motor) → HU-05 (ControlView pasiva) → TTH-03 (cierre CI).
-Comando de arranque: /speckit-implement sobre TTH-01.
+**Estado al 2026-06-03 (re-verificado contra código en HEAD c73e3976):** TTH-01, HU-01 y HU-05
+están **Completos**; TTH-10 sigue en cierre parcial (núcleo del motor cerrado) y TTH-03 sigue
+parcial. **Siguiente real: TTH-10** (cerrar lo que reste del Sprint 4), luego **TTH-03**
+(gate de cobertura + mypy). El arranque ya NO es TTH-01 (está hecho).
 Autoridad del alcance del sprint: tasks.md (NO los 32 elementos del inventario; solo estos 5).
 
 ## Corredor Larco / IE05 (validación SUMO) — Etapa 2 (2026-05-30)
