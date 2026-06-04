@@ -10,7 +10,7 @@
  *  - `congestionService` y `congestionSseClient` se mockean para no pegar a la red
  *    ni abrir SSE real; el holder captura el callback `onWake` para simular wakes.
  *
- * Fase 2 afirma: monta sin crashear; carga geometry+state 1× cada uno; pasa 375
+ * Fase 2 afirma: monta sin crashear; carga geometry+state 1× cada uno; pasa 1660
  * features + un `style` callback cableado a `congestionStyle`.
  * Fase 3 afirma: mount abre el stream; un wake re-lee SOLO state (geometry sigue
  * 1×) y recolorea (remonte); stale tras 90 s atenúa + muestra banner, y un wake
@@ -69,7 +69,7 @@ const getGeometryMock = congestionService.getGeometry as unknown as ReturnType<t
 const getStateMock = congestionService.getState as unknown as ReturnType<typeof vi.fn>;
 const openStreamMock = openCongestionStream as unknown as ReturnType<typeof vi.fn>;
 
-const COUNT = 375;
+const COUNT = 1660;
 
 function buildGeometry(): GeometryFeatureCollection {
   return {
@@ -125,7 +125,7 @@ describe('CongestionMapView', () => {
     vi.useRealTimers();
   });
 
-  it('carga geometría+estado 1× cada uno y pinta 375 tramos por <GeoJSON> con style callback', async () => {
+  it('carga geometría+estado 1× cada uno y pinta 1660 tramos por <GeoJSON> con style callback', async () => {
     getGeometryMock.mockResolvedValue(buildGeometry());
     getStateMock.mockResolvedValue(buildState());
 

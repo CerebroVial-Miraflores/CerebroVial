@@ -7,7 +7,7 @@
  * shape documentado del contrato (GeoJSON estándar).
  */
 
-// --- GET /congestion/geometry (estática, 375 aristas de la LCC, CT-12.2) ---
+// --- GET /congestion/geometry (estática, 1660 aristas de la LCC, CT-12.2) ---
 
 export interface EdgeProperties {
   edge_id: string;
@@ -71,4 +71,35 @@ export interface CongestionSeriesResponse {
   coverage_end: string | null; // ISO 8601, null si día vacío
   count: number;
   edges: EdgeCongestionSeries[];
+}
+
+// --- GET /congestion/prediction (predicción GRU baseline por arista, Fase 3) ---
+
+export interface PredictedEdgeCongestion {
+  edge_id: string;
+  levels: number[]; // levels[i] = nivel predicho 0-4 en base_timestep + 1 + i (horizon=30)
+}
+
+export interface CongestionPredictionResponse {
+  base_timestep: number; // corte t (minuto del día 0..1439); ventana t-29..t
+  horizon: number; // nº de pasos futuros predichos (=30)
+  source: string; // día-fuente, p.ej. "seed051 (day_idx=9)"
+  source_date: string; // "YYYY-MM-DD" — fecha-calendario del día-fuente (getSeries en modo pinned, Gate 3b)
+  count: number;
+  edges: PredictedEdgeCongestion[];
+}
+
+// --- Contrato estructural mínimo para el cruce por índice temporal ---
+
+/**
+ * Fuente de niveles por arista indexados posicionalmente: lo único que
+ * `mergeCongestionAtIndex` consume (no `t0`/`step_s`/`day`/`base_timestep`).
+ *
+ * Tanto `CongestionSeriesResponse` (recorrido histórico, HU-23) como
+ * `CongestionPredictionResponse` (predicción servida, Fase 4) lo satisfacen
+ * estructuralmente, así que el mismo helper cruza ambas sin duplicarse. Es el
+ * contrato del PARÁMETRO del helper; cada caller sigue pasando su tipo completo.
+ */
+export interface IndexedEdgeLevels {
+  edges: { edge_id: string; levels: number[] }[];
 }

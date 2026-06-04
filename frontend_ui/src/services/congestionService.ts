@@ -9,10 +9,11 @@ import type {
   GeometryFeatureCollection,
   CongestionStateResponse,
   CongestionSeriesResponse,
+  CongestionPredictionResponse,
 } from '../types/congestion';
 
 export const congestionService = {
-  /** Geometría de la red (estática, 375 aristas). Se consume 1× al montar el mapa. */
+  /** Geometría de la red (estática, 1660 aristas). Se consume 1× al montar el mapa. */
   async getGeometry(): Promise<GeometryFeatureCollection> {
     const res = await httpClient.get<GeometryFeatureCollection>(
       '/congestion/geometry',
@@ -33,6 +34,16 @@ export const congestionService = {
     const res = await httpClient.get<CongestionSeriesResponse>(
       '/congestion/series',
       { params: { day } },
+    );
+    return res.data;
+  },
+
+  /** Predicción GRU por arista (Fase 3). `t` opcional: si se omite, el backend lo deriva
+   *  del feed vivo (max(snapshot_timestamp) de waze_jams), coherente con getState(). */
+  async getPrediction(t?: number): Promise<CongestionPredictionResponse> {
+    const res = await httpClient.get<CongestionPredictionResponse>(
+      '/congestion/prediction',
+      t !== undefined ? { params: { t } } : undefined,
     );
     return res.data;
   },

@@ -64,7 +64,7 @@ const getStateMock = congestionService.getState as unknown as ReturnType<typeof 
 const getSeriesMock = congestionService.getSeries as unknown as ReturnType<typeof vi.fn>;
 const openStreamMock = openCongestionStream as unknown as ReturnType<typeof vi.fn>;
 
-const COUNT = 375;
+const COUNT = 1660;
 
 function buildGeometry(): GeometryFeatureCollection {
   return {

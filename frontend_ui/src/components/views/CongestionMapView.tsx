@@ -3,13 +3,13 @@
  *
  * Monta un mapa Leaflet propio (NO reusa el de DashboardView, que arrastra estado
  * de KPIs/cámaras/SSE de visión), carga geometría + estado al montar, los cruza con
- * `mergeCongestion` y pinta los 375 tramos por una capa <GeoJSON> coloreada por
+ * `mergeCongestion` y pinta los 1660 tramos por una capa <GeoJSON> coloreada por
  * nivel (CA-22.1/22.3). Consulta puntual por tramo vía hover/click (CA-22.5) y
  * leyenda 0-5.
  *
  * Decisión firme: <GeoJSON> con `style` callback, NO <Polyline>. El endpoint
  * devuelve coordenadas [lon, lat] (GeoJSON estándar) que <GeoJSON> interpreta
- * nativo; <Polyline> obligaría a invertir las 375 geometrías a [lat,lng] a mano.
+ * nativo; <Polyline> obligaría a invertir las 1660 geometrías a [lat,lng] a mano.
  *
  * FEED VIVO (Fase 3, CA-22.2): se abre un stream SSE de congestión; cada wake
  * re-lee SOLO el estado (la geometría es estática, NO se re-pide) y recolorea.
@@ -21,21 +21,21 @@
  * capa con los datos nuevos. El remonte re-ejecuta `onEachFeature`, así que recolor,
  * tooltip/popup (CA-22.5) y atenuado stale se refrescan juntos, sin la trampa de
  * propiedades stale de `layer.setStyle`. A ~60 s de cadencia el costo de remontar
- * 375 LineStrings es despreciable.
+ * 1660 LineStrings es despreciable.
  *
  * STALE (CA-22.4): si no llega un wake en 90 s, se atenúan los tramos (opacidad 50%,
  * manteniendo color+grosor) y aparece un banner "datos de hace X". Un wake posterior
  * lo limpia.
  *
- * Fuera de alcance: el componente todavía NO se cablea como tab en la navegación
- * (Sidebar/App, Fase 4).
+ * Cableado como tab operator-only ('congestion') en la navegación
+ * (App/Sidebar/roles, HU-22 #42).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Layer, PathOptions } from 'leaflet';
 import type { Feature, GeoJsonObject } from 'geojson';
-import { AlertTriangle, Clock, History, Radio } from 'lucide-react';
+import { AlertTriangle, Clock, History, Radio, TrendingUp } from 'lucide-react';
 import { LoadingOverlay } from '../ui/LoadingStates';
 import { congestionService } from '../../services/congestionService';
 import { openCongestionStream } from '../../services/congestionSseClient';
@@ -43,13 +43,17 @@ import {
   mergeCongestion,
   mergeCongestionAtIndex,
   congestionStyle,
+  predictionStyle,
   elapsedSeconds,
+  LEVELS_PREDICTION,
+  LEVEL_LABEL_PREDICTION,
 } from '../../utils/congestion';
 import type {
   MergedCongestionFeature,
   GeometryFeatureCollection,
   CongestionStateResponse,
   CongestionSeriesResponse,
+  CongestionPredictionResponse,
 } from '../../types/congestion';
 
 /** Niveles 0-5 de la escala aprobada (CA-22.3) para iterar en la leyenda. */
@@ -98,6 +102,9 @@ function todayIsoLocal(): string {
 /** Marcas de hora orientativas sobre la pista del slider (cada 3 h, 0..24). */
 const HOUR_MARKS = [0, 3, 6, 9, 12, 15, 18, 21, 24] as const;
 
+/** Horizonte de la predicción servida (pasos de 1 min): el slider recorre 0..HORIZON. */
+const PREDICTION_HORIZON = 30;
+
 /**
  * Instante `t0 + i*stepS` formateado `HH:MM` (00:00–23:59). `t0` es naive-UTC
  * (mismo criterio que `normalizeToUtc` en utils): se parsea como UTC y se lee con
@@ -113,13 +120,62 @@ function formatHourLabel(t0: string | null, stepS: number, i: number): string {
 }
 
 /**
+ * Minuto del día (0..1439) de un timestamp ISO, leído naive-UTC (igual que
+ * `formatHourLabel`): el backend escribe `snapshot_timestamp` naive y deriva el corte
+ * `t` con `ts.hour*60 + ts.minute` sobre la MISMA columna que alimenta `t0` de la
+ * serie; forzar `Z` + `getUTC*` recupera ese hour/minute crudo sin desfase de zona.
+ */
+function minuteOfDayUtc(iso: string): number {
+  const base = Date.parse(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
+  const d = new Date(base);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+
+/**
+ * Índice en `series.levels[]` que corresponde al minuto del día `t` (el corte de la
+ * predicción). La serie está muestreada cada `step_s` desde `t0`; el índice es
+ * `(t - minutoDelDía(t0)) / pasoEnMinutos`, acotado a [0, len-1]. Devuelve -1 si la
+ * serie no tiene grilla temporal (día vacío).
+ */
+function seriesIndexForMinuteOfDay(s: CongestionSeriesResponse, t: number): number {
+  if (!s.t0 || !s.step_s) return -1;
+  const max = (s.edges[0]?.levels.length ?? 0) - 1;
+  if (max < 0) return -1;
+  const idx = Math.round((t - minuteOfDayUtc(s.t0)) / (s.step_s / 60));
+  return Math.max(0, Math.min(max, idx));
+}
+
+/** Minuto del día (0..1439) → etiqueta `HH:MM` para el slider de corte de predicción. */
+function formatMinuteOfDay(m: number): string {
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Mensaje de error de `/congestion/prediction` por status HTTP (Gate 3a). Compartido
+ * por el corte 'now' y 'pinned' — mismos mensajes, sin romper la base.
+ *   503 — servicio no inicializado / feed (waze_jams) vacío
+ *   409 — feed con <29 pasos de historia (no debería pasar con el corte bloqueado ≥29)
+ *   422 — `t` fuera de rango
+ */
+function predictionErrorMessage(err: unknown): string {
+  const status = (err as { response?: { status?: number } }).response?.status;
+  return status === 503
+    ? 'El servicio de predicción no está disponible (sin datos del feed o no inicializado).'
+    : status === 409
+      ? 'El feed no tiene suficiente historia (≥29 pasos) para predecir todavía.'
+      : status === 422
+        ? 'El instante solicitado está fuera de rango.'
+        : 'No se pudo cargar la predicción.';
+}
+
+/**
  * Leyenda 0-5: muestra la codificación de `congestionStyle` (color + grosor real),
  * más la entrada neutra "sin dato". Es la referencia visual de CA-22.1/22.3.
  */
 const CongestionLegend = () => (
-  <div className="absolute bottom-4 left-4 z-[400] bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
+  <div className="bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
     <h4 className="text-xs font-bold text-white mb-2 uppercase tracking-wide">
-      Nivel de congestión
+      Observado
     </h4>
     <ul className="flex flex-col gap-1.5">
       {LEVELS.map((level) => {
@@ -147,6 +203,35 @@ const CongestionLegend = () => (
   </div>
 );
 
+/**
+ * Leyenda de la capa de predicción (Fase 4 Gate 3b): paleta fría 0-4 de
+ * `predictionStyle` con semántica de demora (`LEVEL_LABEL_PREDICTION`). Separada de
+ * la observada; conviven (la base observada sigue visible bajo la predicción).
+ */
+const PredictionLegend = () => (
+  <div className="bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
+    <h4 className="text-xs font-bold text-white mb-2 uppercase tracking-wide">
+      Predicción (demora)
+    </h4>
+    <ul className="flex flex-col gap-1.5">
+      {LEVELS_PREDICTION.map((level) => {
+        const { color, weight } = predictionStyle(level);
+        return (
+          <li key={level} className="flex items-center gap-2">
+            <span
+              className="inline-block w-6 rounded-full"
+              style={{ backgroundColor: color, height: weight }}
+            />
+            <span className="text-[11px] text-slate-300">
+              {level} · {LEVEL_LABEL_PREDICTION[level]}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+);
+
 export const CongestionMapView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,15 +243,36 @@ export const CongestionMapView = () => {
   // Sube en cada update; junto a `stale` forma la key que fuerza el remonte de
   // <GeoJSON> (vía de recolorización elegida).
   const [renderSeq, setRenderSeq] = useState(0);
-  // Modo de la vista (HU-23). El SSE/stale (Effect B) y la carga de serie
-  // (Effect C) dependen de `mode`; la carga inicial de geometría (Effect A) NO.
-  const [mode, setMode] = useState<'live' | 'historic'>('live');
+  // Modo de la vista (HU-23 + Fase 4). El SSE/stale (Effect B), la carga de serie
+  // (Effect C) y la carga de predicción (Effect E) dependen de `mode`; la carga
+  // inicial de geometría (Effect A) NO.
+  const [mode, setMode] = useState<'live' | 'historic' | 'prediction'>('live');
   // Modo histórico (HU-23): día seleccionado, serie del día y posición del slider.
   const [day, setDay] = useState<string>(() => todayIsoLocal());
   const [series, setSeries] = useState<CongestionSeriesResponse | null>(null);
   const [sliderIndex, setSliderIndex] = useState(0);
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesError, setSeriesError] = useState<string | null>(null);
+  // Modo predicción (Fase 4, Gate 3a): respuesta del GRU servido, loading y error.
+  // La capa de predicción se superpone a la base observada (que sigue viva por SSE).
+  const [prediction, setPrediction] = useState<CongestionPredictionResponse | null>(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
+  // Controles de predicción (Gate 3b). `horizonIndex` recorre 0..PREDICTION_HORIZON
+  // (0='ahora', no pinta; reindexado LOCAL de la respuesta ya cargada, sin red).
+  const [horizonIndex, setHorizonIndex] = useState(0);
+  // Corte: 'now' deriva t del feed vivo (base viva por SSE); 'pinned' fija un t del
+  // día-fuente (base = observado de ese día reindexado, SSE cortado). `pinnedTDraft`
+  // es lo que mueve el slider (instantáneo); `pinnedT` el valor comprometido tras el
+  // debounce, que dispara getPrediction(t) + reindex de la base.
+  const [cutMode, setCutMode] = useState<'now' | 'pinned'>('now');
+  const [pinnedT, setPinnedT] = useState(29);
+  const [pinnedTDraft, setPinnedTDraft] = useState(29);
+  // Serie observada del día-fuente (getSeries(source_date)): se carga 1× al entrar a
+  // pinned y se reindexa localmente al mover el corte (la base coherente con el t).
+  const [pinnedBaseSeries, setPinnedBaseSeries] = useState<CongestionSeriesResponse | null>(null);
+  const [pinnedBaseLoading, setPinnedBaseLoading] = useState(false);
+  const [pinnedBaseError, setPinnedBaseError] = useState<string | null>(null);
   // Geometría estática cacheada: se cruza con cada estado nuevo SIN re-pedirla.
   const geometryRef = useRef<GeometryFeatureCollection | null>(null);
   // Handle del timer de stale, elevado a ref para compartirlo entre la carga
@@ -234,12 +340,16 @@ export const CongestionMapView = () => {
     };
   }, [applyState]);
 
-  // Effect B — feed vivo (SSE + stale), dependiente de `mode`. En 'live' abre el
-  // stream y el wake re-arma el stale (vía applyState); en 'historic' NO abre
-  // stream NI arma stale. El cleanup limpia el timer de stale (compartido) y
-  // abortea el stream — el clearTimeout evita que el callback dispare tras montar.
+  // Effect B — feed vivo (SSE + stale), dependiente de `mode` y `cutMode`. Abre el
+  // stream en 'live' y en 'prediction' con corte 'now' (base viva bajo la predicción).
+  // En 'historic' y en 'prediction'+'pinned' NO abre stream: en pinned la base es la
+  // serie del día-fuente reindexada en el t fijado, no el now — cortar el SSE evita que
+  // un wake la repinte al now. El cleanup limpia el timer de stale (compartido) y abortea
+  // el stream. Volver a 'now' (o a 'live' desde histórico) reabre y re-lee el estado 1×
+  // (firstLiveRef), resincronizando la base al now.
   useEffect(() => {
-    if (mode !== 'live') return;
+    if (mode === 'historic') return;
+    if (mode === 'prediction' && cutMode === 'pinned') return;
 
     let cancelled = false;
 
@@ -276,7 +386,7 @@ export const CongestionMapView = () => {
       }
       controller.abort();
     };
-  }, [mode, applyState]);
+  }, [mode, cutMode, applyState]);
 
   // Effect C — carga de la serie del día (modo histórico). Al entrar en histórico
   // o cambiar de día, pide getSeries(day); maneja loading/error. `count === 0`
@@ -322,6 +432,140 @@ export const CongestionMapView = () => {
     setFeatures(mergeCongestionAtIndex(geometry, series, sliderIndex));
   }, [mode, series, sliderIndex]);
 
+  // Effect E0 — reset al ENTRAR en predicción: horizonte a 0 (no pinta, solo observado)
+  // y corte a 'now' (default). No se resetea al salir: las capas/paneles se desmontan
+  // por `mode`.
+  useEffect(() => {
+    if (mode !== 'prediction') return;
+    setHorizonIndex(0);
+    setCutMode('now');
+  }, [mode]);
+
+  // Effect E1 — driver NOW (modo predicción, corte 'now'). Pide getPrediction() SIN `t`
+  // (lo deriva el backend del feed vivo, coherente con getState). La base NO se toca:
+  // sigue viva por SSE (Effect B). No limpia `prediction` al empezar (sin parpadeo); en
+  // error conserva la predicción previa si existía. Errores 503/409/422 (Gate 3a).
+  useEffect(() => {
+    if (mode !== 'prediction' || cutMode !== 'now') return;
+
+    let cancelled = false;
+    setPredictionLoading(true);
+    setPredictionError(null);
+
+    congestionService
+      .getPrediction()
+      .then((p) => {
+        if (cancelled) return;
+        setPrediction(p);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Error cargando la predicción de congestión:', err);
+        // Conservamos la predicción previa (si la había) para no parpadear la capa.
+        setPredictionError(predictionErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setPredictionLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, cutMode]);
+
+  // Effect E2 — carga de la serie observada del día-fuente al entrar en pinned. Se pide
+  // 1× (getSeries(source_date)); luego el corte se reindexa LOCAL sobre ella. `source_date`
+  // viene de la predicción ya cargada en 'now'; sin ella no hay base coherente. `count:0`
+  // (día no sembrado) NO es error: serie vacía → base neutra + aviso (igual que histórico).
+  useEffect(() => {
+    if (mode !== 'prediction' || cutMode !== 'pinned') return;
+    const day = prediction?.source_date;
+    if (!day) {
+      setPinnedBaseError('Sin día-fuente: cargá la predicción en «Ahora» primero.');
+      setPinnedBaseSeries(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPinnedBaseLoading(true);
+    setPinnedBaseError(null);
+
+    congestionService
+      .getSeries(day)
+      .then((s) => {
+        if (cancelled) return;
+        setPinnedBaseSeries(s);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Error cargando el observado del día-fuente:', err);
+        setPinnedBaseError('No se pudo cargar el observado del día-fuente.');
+        setPinnedBaseSeries(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPinnedBaseLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, cutMode, prediction?.source_date]);
+
+  // Effect E3 — driver PINNED (modo predicción, corte 'pinned'). Salto SINCRONIZADO
+  // base↔predicción: pide getPrediction(pinnedT) y, al llegar, reindexa la base al MISMO
+  // `pinnedT` DENTRO del `.then` (las dos conmutan en el mismo render — la base nunca se
+  // adelanta a la predicción). Durante la espera del fetch (y los 2 s previos de debounce
+  // sobre `pinnedT`) se mantiene la capa vieja pintada y el horizonte deshabilitado
+  // (predictionLoading). El early-return `!pinnedBaseSeries` evita el fetch hasta que E2
+  // cargue la serie → 1 sola predicción por entrada a pinned.
+  useEffect(() => {
+    if (mode !== 'prediction' || cutMode !== 'pinned') return;
+    if (!pinnedBaseSeries) return;
+
+    let cancelled = false;
+    setPredictionLoading(true);
+    setPredictionError(null);
+
+    congestionService
+      .getPrediction(pinnedT)
+      .then((p) => {
+        if (cancelled) return;
+        const idx = seriesIndexForMinuteOfDay(pinnedBaseSeries, pinnedT);
+        const baseFeatures =
+          geometryRef.current && idx >= 0
+            ? mergeCongestionAtIndex(geometryRef.current, pinnedBaseSeries, idx)
+            : null;
+        setPrediction(p);
+        if (baseFeatures) {
+          setFeatures(baseFeatures);
+          setRenderSeq((s) => s + 1);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Error cargando la predicción del corte fijado:', err);
+        // Conservamos la predicción previa pintada (sin parpadeo) + la base actual.
+        setPredictionError(predictionErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setPredictionLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, cutMode, pinnedT, pinnedBaseSeries]);
+
+  // Effect E4 — debounce del corte (2 s). Mover el slider escribe `pinnedTDraft`
+  // (instantáneo); recién tras 2 s de quietud se comprometé en `pinnedT`, que dispara
+  // el driver PINNED (fetch + reindex). El cleanup limpia el timer en cada movimiento
+  // y al desmontar/cambiar de modo.
+  useEffect(() => {
+    if (mode !== 'prediction' || cutMode !== 'pinned') return;
+    const id = window.setTimeout(() => setPinnedT(pinnedTDraft), 2000);
+    return () => window.clearTimeout(id);
+  }, [pinnedTDraft, mode, cutMode]);
+
   // Mientras stale: tick de 1 s para refrescar el contador "hace X" del banner.
   useEffect(() => {
     if (!stale) return;
@@ -342,12 +586,44 @@ export const CongestionMapView = () => {
     return mode === 'live' && stale ? { ...base, opacity: STALE_OPACITY } : base;
   };
 
-  // Key del remonte: en histórico depende de `sliderIndex` (cada movimiento del
-  // slider remonta la capa y recolorea); en vivo, de `renderSeq`/`stale` (Fase 3).
+  // Key del remonte de la BASE: en histórico depende de `sliderIndex` (cada
+  // movimiento del slider remonta y recolorea); en vivo/predicción, de
+  // `renderSeq`/`stale` (Fase 3) — la base sigue viva por SSE en ambos.
   const geoKey =
     mode === 'historic'
       ? `historic-${sliderIndex}`
       : `${renderSeq}-${stale ? 'stale' : 'live'}`;
+
+  // --- Capa de predicción (Fase 4 Gate 3b) — superpuesta a la base observada ---
+  // Cruza la geometría cacheada con el nivel predicho del horizonte elegido. El slider
+  // recorre 0..PREDICTION_HORIZON: en 0 ('ahora') la capa NO pinta (solo el observado);
+  // en N (1..30) pinta `levels[N-1]` (levels[k] es el paso base+1+k → "+(k+1) min").
+  // Reindexado LOCAL de la respuesta ya cargada, sin re-pedir al backend.
+  const predictionData: GeoJsonObject | null =
+    mode === 'prediction' && prediction && geometryRef.current && horizonIndex >= 1
+      ? ({
+          type: 'FeatureCollection',
+          features: mergeCongestionAtIndex(
+            geometryRef.current,
+            prediction,
+            horizonIndex - 1,
+          ),
+        } as unknown as GeoJsonObject)
+      : null;
+
+  // Estilo de la capa de predicción: paleta fría (predictionStyle, 0-4) con
+  // `interactive: false` para no robar el hover/click a la base observada (CA-22.5
+  // sigue respondiendo por debajo).
+  const stylePrediction = (feature?: Feature): PathOptions => ({
+    ...predictionStyle(
+      (feature?.properties as { congestion_level?: number | null })?.congestion_level,
+    ),
+    interactive: false,
+  });
+
+  // Key propia de la capa de predicción (namespace independiente de la base): su
+  // remonte por horizonte NO toca la base ni viceversa.
+  const predictionGeoKey = `prediction-${horizonIndex}`;
 
   // Modo histórico: nº de muestras (longitud de la serie) y estado "día sin datos".
   const seriesLength = series?.edges[0]?.levels.length ?? 0;
@@ -392,16 +668,33 @@ export const CongestionMapView = () => {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {/* key cambia por update (renderSeq/stale en vivo, sliderIndex en
-                histórico) → remonta la capa y recolorea (react-leaflet 5 no
-                refresca `data` in-place). */}
+            {/* Capa BASE (observada). key cambia por update (renderSeq/stale en
+                vivo y predicción, sliderIndex en histórico) → remonta la capa y
+                recolorea (react-leaflet 5 no refresca `data` in-place). */}
             <GeoJSON
               key={geoKey}
               data={data}
               style={styleFeature}
               onEachFeature={onEachFeature}
             />
-            <CongestionLegend />
+            {/* Capa de PREDICCIÓN (Fase 4 Gate 3a), superpuesta a la base: se
+                renderiza DESPUÉS → queda encima en el overlayPane. Su `key` propia
+                (prediction-${índice}) es independiente de la base: remontar una NO
+                toca la otra. Solo en modo predicción y con respuesta cargada. */}
+            {predictionData && (
+              <GeoJSON
+                key={predictionGeoKey}
+                data={predictionData}
+                style={stylePrediction}
+              />
+            )}
+            {/* Leyendas apiladas: observada (0-5) abajo, predicción (demora 0-4)
+                arriba — solo en modo predicción. flex-col-reverse: el primer hijo
+                (observada) queda abajo. Conviven cuando la base es visible. */}
+            <div className="absolute bottom-4 left-4 z-[400] flex flex-col-reverse gap-2">
+              <CongestionLegend />
+              {mode === 'prediction' && <PredictionLegend />}
+            </div>
           </MapContainer>
         )}
         {/* Controles superiores: toggle vivo/histórico (CA-23.6) + rótulo y date
@@ -433,7 +726,35 @@ export const CongestionMapView = () => {
               >
                 <History size={14} /> Histórico
               </button>
+              <button
+                type="button"
+                onClick={() => setMode('prediction')}
+                aria-pressed={mode === 'prediction'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  mode === 'prediction'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <TrendingUp size={14} /> Predicción
+              </button>
             </div>
+            {mode === 'prediction' && (
+              <div className="flex flex-col items-end gap-2 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={16} className="text-indigo-400" />
+                  <span
+                    className="text-sm font-bold text-white"
+                    title="(predicción GRU servida)"
+                  >
+                    Predicción de congestión
+                  </span>
+                </div>
+                {predictionError && (
+                  <span className="text-xs text-rose-400">{predictionError}</span>
+                )}
+              </div>
+            )}
             {mode === 'historic' && (
               <div className="flex flex-col items-end gap-2 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
                 <div className="flex items-center gap-2">
@@ -506,6 +827,111 @@ export const CongestionMapView = () => {
                 )}
               </div>
             ) : null}
+          </div>
+        )}
+        {/* Panel inferior de predicción (Gate 3b): toggle Ahora/Momento + slider de
+            corte (solo pinned) + slider de horizonte. Misma zona visual que el slider
+            histórico (modos excluyentes, no coexisten). */}
+        {!loading && !error && mode === 'prediction' && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] w-[min(90%,640px)] bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-5 py-4 shadow-lg flex flex-col gap-3">
+            {/* Toggle "Predecir desde" — mismo lenguaje visual que el toggle de modo. */}
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">
+                Predecir desde
+              </span>
+              <div className="flex rounded-full overflow-hidden border border-slate-700 bg-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setCutMode('now')}
+                  aria-pressed={cutMode === 'now'}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold transition-colors ${
+                    cutMode === 'now'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Radio size={13} /> Ahora
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const seed = prediction?.base_timestep ?? 29;
+                    setPinnedTDraft(seed);
+                    setPinnedT(seed);
+                    setCutMode('pinned');
+                  }}
+                  aria-pressed={cutMode === 'pinned'}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold transition-colors ${
+                    cutMode === 'pinned'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Clock size={13} /> Momento elegido
+                </button>
+              </div>
+            </div>
+            {/* Slider de corte t (solo pinned): minuto del día [29, 1439]. El min=29
+                bloquea cortes sin historia suficiente (evita el 409). */}
+            {cutMode === 'pinned' && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wide text-slate-400">
+                    Corte
+                  </span>
+                  <span className="text-lg font-bold text-white tabular-nums">
+                    {formatMinuteOfDay(pinnedTDraft)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={29}
+                  max={1439}
+                  value={pinnedTDraft}
+                  onChange={(e) => setPinnedTDraft(Number(e.target.value))}
+                  aria-label="Momento del día (corte de predicción)"
+                  className="w-full accent-indigo-500"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Base: observado del día-fuente en el instante elegido
+                </p>
+                {pinnedBaseLoading && (
+                  <span className="text-xs text-slate-300">
+                    Cargando observado del día-fuente…
+                  </span>
+                )}
+                {pinnedBaseError && (
+                  <span className="text-xs text-rose-400">{pinnedBaseError}</span>
+                )}
+              </div>
+            )}
+            {/* Slider de horizonte: 0='ahora' (no pinta) .. +30 min. Reindexado local;
+                deshabilitado mientras carga una predicción nueva (corte pinned). */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Horizonte
+                </span>
+                <span className="text-lg font-bold text-white tabular-nums">
+                  {horizonIndex === 0 ? 'ahora' : `+${horizonIndex} min`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={PREDICTION_HORIZON}
+                value={horizonIndex}
+                onChange={(e) => setHorizonIndex(Number(e.target.value))}
+                disabled={predictionLoading}
+                aria-label="Horizonte de predicción"
+                className="w-full accent-indigo-500 disabled:opacity-40"
+              />
+            </div>
+            {predictionLoading && (
+              <span className="text-xs text-slate-300 text-center">
+                Cargando predicción…
+              </span>
+            )}
           </div>
         )}
         {/* Banner stale (CA-22.4): datos desactualizados → "datos de hace X".

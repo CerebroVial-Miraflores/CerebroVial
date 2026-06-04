@@ -182,6 +182,8 @@ def main() -> None:
     parser.add_argument("--train-stride", type=int, default=None, help="Stride de ventanas train.")
     parser.add_argument("--eval-stride", type=int, default=None, help="Stride de ventanas val/test.")
     parser.add_argument("--npz", type=str, default=str(DEFAULT_NPZ), help="Ruta del .npz Fase 2.")
+    parser.add_argument("--seed", type=int, default=SEED,
+                        help="Semilla global (random/numpy/torch + shuffle). Default 0 = corrida canónica.")
     args = parser.parse_args()
 
     quick = args.quick
@@ -193,8 +195,10 @@ def main() -> None:
     lr = args.lr
     hidden = args.hidden
 
-    set_seeds(SEED)
-    print(f"[baseline] device={DEV} quick={quick} max_epochs={max_epochs} patience={patience} "
+    seed = args.seed
+    suffix = "" if seed == 0 else f"_seed{seed}"
+    set_seeds(seed)
+    print(f"[baseline] seed={seed} device={DEV} quick={quick} max_epochs={max_epochs} patience={patience} "
           f"batch={batch} lr={lr} hidden={hidden} lookback={LOOKBACK} horizonte={HORIZON} "
           f"train_stride={train_stride} eval_stride={eval_stride}")
 
@@ -306,11 +310,11 @@ def main() -> None:
         "scaler": scaler,
         "hyperparams": hyperparams,
         "split": split_dict,
-        "seed": SEED,
+        "seed": seed,
         "device": DEV,
         "target_authority": TARGET_AUTHORITY,
     }
-    ckpt_path = MODELS_DIR / "miraflores_gru_baseline.pt"
+    ckpt_path = MODELS_DIR / f"miraflores_gru_baseline{suffix}.pt"
     torch.save(ckpt, ckpt_path)
 
     metadata = {
@@ -320,7 +324,7 @@ def main() -> None:
         "scaler": scaler,
         "hyperparams": hyperparams,
         "split": split_dict,
-        "seed": SEED,
+        "seed": seed,
         "device": DEV,
         "target_authority": TARGET_AUTHORITY,
         "best_val_mse_std": round(best_val, 6),
@@ -328,7 +332,7 @@ def main() -> None:
         "checkpoint": ckpt_path.name,
         "npz": str(Path(args.npz).relative_to(REPO_ROOT)) if str(args.npz).startswith(str(REPO_ROOT)) else str(args.npz),
     }
-    meta_path = SCRIPTS_DIR / "miraflores_baseline_metadata.json"
+    meta_path = SCRIPTS_DIR / f"miraflores_baseline_metadata{suffix}.json"
     meta_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
 
     metrics_payload = {
@@ -346,7 +350,7 @@ def main() -> None:
         "test_severe_pico": metrics_severe_pico,
         "test_normal": metrics_normal,
     }
-    metrics_path = SCRIPTS_DIR / "miraflores_baseline_metrics.json"
+    metrics_path = SCRIPTS_DIR / f"miraflores_baseline_metrics{suffix}.json"
     metrics_path.write_text(json.dumps(metrics_payload, indent=2, ensure_ascii=False) + "\n")
 
     print(f"\n[baseline] checkpoint -> {ckpt_path}  (gitignored)")

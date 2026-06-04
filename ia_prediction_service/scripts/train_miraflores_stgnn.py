@@ -198,6 +198,8 @@ def main() -> None:
                         help="cpu (default; PyG/MPS incompleto) | mps | cuda.")
     parser.add_argument("--out-dir", type=str, default="/tmp/miraflores_stgnn",
                         help="Directorio DESCARTABLE de salida (ckpt/metadata/metrics).")
+    parser.add_argument("--seed", type=int, default=SEED,
+                        help="Semilla global (random/numpy/torch + shuffle). Default 0 = corrida canónica.")
     args = parser.parse_args()
 
     quick = args.quick
@@ -212,17 +214,19 @@ def main() -> None:
     gnn_kernel = args.gnn_kernel
     dev = args.device
 
-    set_seeds(SEED)
-    print(f"[stgnn] device={dev} quick={quick} max_epochs={max_epochs} patience={patience} "
+    seed = args.seed
+    suffix = "" if seed == 0 else f"_seed{seed}"
+    set_seeds(seed)
+    print(f"[stgnn] seed={seed} device={dev} quick={quick} max_epochs={max_epochs} patience={patience} "
           f"batch={batch} lr={lr} hidden={hidden} emb={emb} gnn_kernel={gnn_kernel} "
           f"lookback={LOOKBACK} horizonte={HORIZON} train_stride={train_stride} eval_stride={eval_stride}")
 
     # --- Guardia: la salida NO puede pisar artefactos versionados del baseline ---
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_path = out_dir / "miraflores_stgnn.pt"
-    meta_path = out_dir / "miraflores_stgnn_metadata.json"
-    metrics_path = out_dir / "miraflores_stgnn_metrics.json"
+    ckpt_path = out_dir / f"miraflores_stgnn{suffix}.pt"
+    meta_path = out_dir / f"miraflores_stgnn_metadata{suffix}.json"
+    metrics_path = out_dir / f"miraflores_stgnn_metrics{suffix}.json"
     for p in (ckpt_path, meta_path, metrics_path):
         if p.resolve() in BASELINE_PROTECTED:
             raise SystemExit(f"[stgnn] ABORT: la salida {p} pisaría un artefacto versionado del baseline.")
@@ -350,14 +354,14 @@ def main() -> None:
     ckpt = {
         "state_dict": best_state, "version": VERSION, "model": "TimeThenSpaceModel",
         "arch": arch, "scaler": scaler, "hyperparams": hyperparams, "split": split_dict,
-        "seed": SEED, "device": dev, "target_authority": TARGET_AUTHORITY,
+        "seed": seed, "device": dev, "target_authority": TARGET_AUTHORITY,
     }
     torch.save(ckpt, ckpt_path)
 
     metadata = {
         "version": VERSION, "model": "TimeThenSpaceModel", "base": "B (solo capas tsl)",
         "arch": arch, "scaler": scaler, "hyperparams": hyperparams, "split": split_dict,
-        "seed": SEED, "device": dev, "target_authority": TARGET_AUTHORITY,
+        "seed": seed, "device": dev, "target_authority": TARGET_AUTHORITY,
         "best_val_mse_std": round(best_val, 6), "history": history, "checkpoint": ckpt_path.name,
         "quick": quick,
     }

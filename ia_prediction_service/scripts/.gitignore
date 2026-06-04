@@ -1,0 +1,19 @@
+# Salida de la corrida multi-seed D-015/D-011 (run_multiseed_d015.py).
+#
+# Criterio: versionar SÓLO las métricas agregables (las MISMAS que abrió D-015) y la
+# consolidación; dejar fuera del control de versiones los binarios pesados (.pt → Git LFS,
+# regenerables), los logs y la metadata por-seed (config+history regenerable; el metadata
+# CANÓNICO seed-0 sí se versiona, como hasta ahora).
+#
+# Lo que SÍ se versiona (no listado acá → trackeado por defecto):
+#   - miraflores_{baseline,stgnn}_metrics_seed{N}.json   (métricas por seed)
+#   - multiseed/consolidated_metrics.{csv,json}          (tabla agregada 5+5)
+
+# --- Metadata por-seed del baseline (cae en este mismo scripts/) ---
+miraflores_baseline_metadata_seed*.json
+
+# --- Subárbol multiseed/ (STGNN + logs + lanzamiento) ---
+multiseed/**/*.pt
+multiseed/logs/
+multiseed/launch.out
+multiseed/**/*_metadata_seed*.json

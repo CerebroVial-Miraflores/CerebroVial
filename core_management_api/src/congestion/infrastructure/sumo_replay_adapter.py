@@ -61,11 +61,16 @@ class SumoReplayAdapter(CongestionFeed):
         self,
         day: str = "seed051",
         *,
+        day_epoch: datetime = DAY_EPOCH,
         parquet_dir: Path | str = _DEFAULT_PARQUET_DIR,
         net_path: Path | str = _DEFAULT_NET,
         mapping_path: Path | str = _DEFAULT_MAPPING,
     ) -> None:
         self.day = day
+        # Epoch base del día reproducido (default DAY_EPOCH = 2025-01-06). Parametrizable
+        # para fechar el mismo seed en fechas distintas (calendario histórico HU-23): al
+        # cambiar la base cambian snapshot_timestamp Y event_uuid → sin colisión de PK.
+        self.day_epoch = day_epoch
         self.parquet_dir = Path(parquet_dir)
         self.net_path = Path(net_path)
         self.mapping_path = Path(mapping_path)
@@ -136,7 +141,7 @@ class SumoReplayAdapter(CongestionFeed):
 
     def _row_at(self, i: int) -> WazeJamRow:
         edge_id = self._edge_ids[i]
-        ts = DAY_EPOCH + timedelta(seconds=int(self._timestep[i]))
+        ts = self.day_epoch + timedelta(seconds=int(self._timestep[i]))
         level, speed_mps, delay = self._level_speed_delay(
             self._speed_rel[i], self._speed[i], self._timeloss[i], edge_id
         )

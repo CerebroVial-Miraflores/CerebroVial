@@ -134,6 +134,15 @@ class WazeJamsRepo:
     def count(self) -> int:
         return int(self.session.scalar(select(func.count()).select_from(WazeJamDB)))
 
+    def latest_timestamp(self) -> datetime | None:
+        """``snapshot_timestamp`` más reciente de toda la tabla, o ``None`` si está vacía.
+
+        Es el proxy del "step que el mapa vivo está mostrando" (la misma fuente que lee
+        ``latest_per_edge`` / ``GET /congestion/state``): la predicción servida ancla su
+        corte ``t`` acá, NO en el reloj de pared (invariante de coherencia, Fase 3).
+        """
+        return self.session.scalar(select(func.max(WazeJamDB.snapshot_timestamp)))
+
     def latest_per_edge(self) -> list[EdgeCongestion]:
         """Último estado de congestión conocido por arista (CT-12.6 read-path).
 
