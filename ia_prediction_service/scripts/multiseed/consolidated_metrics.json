@@ -1,0 +1,5762 @@
+[
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.855902922385897
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.5016218118963147
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.7372720915077
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.382190705706453
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.9011214006926886
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.778489978179586
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.073387404530987
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.559580268912066
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.280321381486658
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.700321859219967
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.346173906824069
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.26034305161723
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7813944000193428
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7937678723678722
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7252163403722771
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6842878924282321
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6804395633974676
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6556974667078053
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.973312812820332
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.631500114204485
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.942182463191349
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.573799510928579
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 4.147885147112198
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 6.00613683730983
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.613426144433058
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 12.464059099519279
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 17.360213603111823
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 16.946935070249186
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 15.818453350675924
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 19.830598003919153
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8322624691439504
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8344832872598608
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.770067830684208
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7364354372302587
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7333286090263815
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7003460734470994
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 6.049254279223157
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.740212565371859
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 7.352816618135469
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 7.088980273387632
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.750467623261091
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.970017456513984
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 17.795949544139713
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 16.594441050978343
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 21.778602360229208
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 22.810389759906375
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 22.68465263342597
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 27.858363591139387
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8642828735994539
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8735060854366357
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8305352233354374
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7982541875204869
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7840714721046582
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7371717367562267
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.805988870870403
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.446185241915957
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.649561029234156
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.300389055242876
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.795583114084698
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.681328813845629
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.836922238320513
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.151199857834369
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.795529259356323
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.136878740034124
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.668163210926437
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.5474148521939
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7441987450385494
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7625264229637356
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.6942811005417795
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6467653648365812
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6393088572493894
+  },
+  {
+    "model": "baseline",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.62512299206052
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.129950762139314
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.5295991224646137
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.60233923412369
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.148645216883616
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.7993242101068696
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.915286834838257
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.025151200219963
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.534014195208588
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.17784151863759
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.687728986205176
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.342577014082302
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.213540567783856
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7830045796816026
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7946791018528209
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7286648181100761
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6847941404016156
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6805997845867218
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6574601458423048
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.2350866702231045
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.6602396978203666
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.8130190755200735
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.343012594743047
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 4.053712871268934
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 6.155754621824039
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.52738648991688
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 12.316803229165298
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 17.11503608560544
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 16.823102038482936
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 15.753638916110063
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 19.70156414199476
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8343760402900323
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8383711586053024
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7765166123190564
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7402731523213807
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7355094474486727
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7042329667121392
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 6.206373896026703
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.750133561901031
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 7.208697197636637
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.809279617341927
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.665232742971889
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 8.113279978587295
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 17.390107665842315
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 16.322476873183845
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 21.474615268776514
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 22.4808904342147
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 22.42553093681882
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 27.492133548812642
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8704024278308773
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.877618295049346
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8352330068013307
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8040405847423231
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7889763040327957
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7440366705604387
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.085254705335198
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.4738371878744987
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.512158573493064
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.065665876311312
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.6905248268056337
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.812653614869335
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.80567211033573
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.183220085562242
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.759654387303549
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.177167045029936
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.694763767725037
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.540046935509963
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7454426712307336
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7611606730274182
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.6956682236147509
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6448825244082801
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6379035591966957
+  },
+  {
+    "model": "baseline",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6254377373045982
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.984550118488188
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.5840017946820337
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.450965486739035
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.143757464356596
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.7479854854773995
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.70877784237728
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.085755746509266
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.581313418361209
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.30245647525716
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.755335771327925
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.47530490505526
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.355178099485837
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7809805718779114
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7929916699597158
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.724468628237059
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6820715062931499
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6746608974130143
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6521119112734592
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.107220182834729
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.701750294949264
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.656941413822768
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.3556735157357105
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.9985830187460465
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.959216524694571
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.640175210745017
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 12.376662634801505
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 17.31123653330316
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 17.090459277749403
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 16.017789568925732
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 20.005970530765868
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8316026454707195
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8367963154640662
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7713633813827682
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7319522574993795
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7265653438679813
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6950226399545478
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 6.143895837117492
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.7850577375841326
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 7.102091240319124
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.906504925208387
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.621090854398988
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.990878801432525
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 17.828782451121008
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 16.523024805716823
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 22.002602264850402
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 23.333591799584198
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 23.110216572334835
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 28.416690094809365
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8637816248914897
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.874592507272476
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8270312969545504
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7888931580947641
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7758938431725465
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7265311635740648
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.932399827839365
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.533742645469734
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.362798317752665
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.053286242314165
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.6408075281270524
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.601888979244368
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.842809064260113
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.224682751861213
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.851042597983195
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.149547704847409
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.76292178921443
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.60353623025139
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7439640777690437
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7593863588039018
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.6921284281479149
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6461738307445072
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.634290325364947
+  },
+  {
+    "model": "baseline",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.622721241369137
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.288921727015755
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.4963476005226357
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.418236129858396
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.157915898557525
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.833996601734134
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.667636571579378
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.127256176615964
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.511256817306103
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.260635763046547
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.733138557190589
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.297243043963649
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.190558125707284
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7795891637239964
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7954885261434849
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7258804569811064
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6829667148335025
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6826157118702403
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6583240564587212
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.424799323236009
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.6476667820771205
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.636402977924222
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.40412987813231
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 4.105597530857258
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.924337983675757
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.74498196211361
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 12.438078784307493
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 17.303669410760143
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 17.246946384487256
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 15.942721508089225
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 19.803746599863004
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8290048804531347
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.835172580314707
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7715632218933539
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7270210789643925
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7291222648252595
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7011570102903653
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 6.511530650851837
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.828839117218817
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 7.123721392948531
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 7.106899859387982
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.790103468442256
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.918553816952125
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 18.09108515191524
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 16.78450662855018
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 22.041994957546017
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 23.870488084545737
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 22.863182778309064
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 27.813440089256574
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8597439642575603
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8705918778406658
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8264113882372848
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7790664274406175
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7806593461263289
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.738018710126495
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.23115656504819
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.4317593186577287
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.3248506860690155
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.0528022015482765
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.717835710530682
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.558074734527256
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.855656103295228
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.092099939290918
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.793129582925301
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.040526745441063
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.532540860290974
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.45670617376486
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7434515810614684
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7650369112109432
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.6943739838758904
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6512479982533641
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6464312608292717
+  },
+  {
+    "model": "baseline",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6289887133036818
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.250847622350293
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.812647197253375
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.516554188816389
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.275542604694883
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.8683233762506175
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.684488223051421
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.175662494029659
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.625485818706482
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.3389353700245
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.724066681847882
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.419097960672213
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.29835937662712
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7779606515567968
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7914095535429149
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7232341731426559
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6833322181617609
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6771825457651637
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6542623630924416
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.374543382708842
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.933984289778519
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.721185757171876
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.4606513172418225
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 4.099435894025267
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.909737029166417
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.729457913566682
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 12.523685817044456
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 17.429836884789943
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 17.00702902343284
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 15.902423598234519
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 19.885762638503348
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8293909176967881
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8328958710198724
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7682198426427674
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7345629194694443
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7304899122221918
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6986766037418614
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 6.417230660106932
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.95017048586416
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 7.0738982221388405
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.894560747314683
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.5892826939404845
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.821101131895303
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 17.602985252008832
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 16.278100379485714
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 21.598591506531562
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 22.486301505734076
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 22.08947477853944
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 27.673967743657865
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8672101212654433
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8782828373795836
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8333250651392443
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8039462399008436
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7952534763238217
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7406395675895051
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.198261281183127
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.7608563122368546
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.428962467188601
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.196515974452219
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.7694789572729235
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.588350563385993
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.933047845284719
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.220229043460535
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.8490465860071
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.143273038433867
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.73587724065437
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.57724882069737
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7403534128847087
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7595772613746961
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.6922059595342434
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6464668667417142
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6357261738990627
+  },
+  {
+    "model": "baseline",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6238471828918014
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.742672475911597
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.732742618878056
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.274987712675146
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 4.996198003279936
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.972075021263327
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.693536563218414
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.615810176678423
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.824970732049508
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.296886283153883
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.652375739774667
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.114250270355631
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.905262945878018
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.796429279916959
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8191470264183988
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7574110403924463
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7250268934331554
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7329652638942827
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7049020353529211
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.850021210802893
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.8349534623743624
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.444855131498302
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.147714413928042
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 4.159084638405425
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.88172811535788
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.106731231828839
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.424761610202612
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.025868162473255
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.51114071019038
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.14217487085161
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.999506846001232
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8445165550965403
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8609352219870313
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8040556527848159
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7792035118575376
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7868522285841864
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7531292911670493
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.854570363424162
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.771486119995953
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 6.619380928131854
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.481365849929808
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.482570268793547
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.42051487571995
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 16.860731418171678
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 14.946028579762908
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 19.772651105869166
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 20.62022029294424
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 20.146573023065393
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 24.634279450891135
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8781725525669003
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8973885104337047
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8603151714942406
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8351360434331782
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.8296868733877476
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7944863898842672
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.697035687872182
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.6891154811842646
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.202276645742691
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 4.931512601954231
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.892092953967103
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.613215181260652
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.40122095470883
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.55858902909138
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 14.97400572912867
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.270019093358181
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 12.649140112733951
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.416038666112982
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7612684922435351
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.787095977260011
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7252549271498892
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6860650087836835
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6910862979512904
+  },
+  {
+    "model": "stgnn",
+    "seed": 0,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6719052732634365
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.788180513565342
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.386345199938106
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.25961407341008
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 4.974190669171539
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.5885911180340524
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.467085211809824
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.599941551931337
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.728585986286518
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.240878748381393
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.592070081663447
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.02660570284624
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.861180680784837
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.796941075144049
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8223532916458439
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.759184203398633
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7272856820133673
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7365226059785084
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7064390272486696
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.88780659413276
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.486386864277104
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.4180570928281915
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.123197602739077
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.7803500210222425
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.657311824326974
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.078607732574687
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.306245283474697
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.958375157531979
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.459950337984077
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.08025591015539
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 17.97505466503492
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8451830900414579
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8638054718804542
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8057026180986306
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7806584665802654
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7887146007178188
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7537995791936205
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.876208915526081
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.4294234172906215
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 6.651145292116476
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.447739024246329
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.200972960189937
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.3616388074388155
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 16.691945604306568
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 14.713078084296177
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 19.63235296121879
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 20.51610592530389
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 19.965717817183855
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 24.492711841517075
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8805994724659753
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.9005622119529286
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8622904245260511
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8367966826351717
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.8327309405985086
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7968416828026554
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.745826830248467
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.343643943242272
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.1917931747957065
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 4.910576614054338
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.5065778306008317
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.385895252808912
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.390847635184759
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.472322474012739
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 14.923217637544676
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.205413372951048
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 12.54898997236224
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.362700425754582
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7616677113977319
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.790560733186759
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.72711549997288
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6889011765617218
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6959586094011798
+  },
+  {
+    "model": "stgnn",
+    "seed": 1,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.674033870260424
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.834797515891497
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.366099401363817
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.263366450023737
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.1212608653074225
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.6250756565928723
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.4503402396172405
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.603947893074432
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.74245171885537
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.251653698784912
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.603888404614636
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.024242177640712
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.831507445140268
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7968119233288973
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8218938101286525
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7588435805865412
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7268437527939557
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7366182070862763
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7074713676429407
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.945902598513168
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.469128906730302
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.437994675655278
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.264509672626211
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.821014110239733
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.6510550205272345
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.10698392532661
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.34694317624475
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.013049397468265
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.493040158103454
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.210551761998078
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.09093263453348
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.844510559698666
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.862823217182909
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8043689911900674
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7797185231711496
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7847861227135071
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7506150366642229
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.85880822123135
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.390784399155363
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 6.6117305726173745
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.453163463449039
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.227632872133411
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.318684040756879
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 16.81003880957174
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 14.817993946523572
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 19.71505626729351
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 20.539154134546212
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 20.43322881699022
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 24.88904111554756
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.878904011613197
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8991390158613174
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8611277492280247
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8364297848311857
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.8248057880194042
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7902136673078293
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.787563805025305
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.322122830352452
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.188617538842543
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.060105070029478
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.5412748188338536
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.3646738619357786
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.383905631570698
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.473815379347199
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 14.913865594209136
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.207352324635195
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 12.48249595298129
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.264309168617558
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.761934689119937
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7905010147649197
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7274574139062921
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6888162446081443
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6991721543759273
+  },
+  {
+    "model": "stgnn",
+    "seed": 2,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6779422459005203
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.735803308627088
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.3712265757689925
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.331752960126785
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.031044007171691
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.648707942652681
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.6433758519061294
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.610336289373185
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.755990080844096
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.254283296360626
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.633258703493972
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.051899993081339
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.87508031798954
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7966058966252548
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.821444604387896
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7587604159650461
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7257439432473114
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7354984030254494
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.705954829499292
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.849246784480895
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.486401147477931
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.505165494505696
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.190918566467973
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.8660942336941293
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.84690226237956
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.172338710540076
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.44089281566501
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.060916215232076
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.609737238769762
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.360139541123898
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.193353648605775
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8429560733043434
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8605422393960634
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8031976677803545
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7763876058712571
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.780231365280363
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7477832795021049
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.849410818355845
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.471898382213335
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 6.740028393436975
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.543658069705543
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.398292673075353
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.54818000950876
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 17.072605953723052
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 15.115121135139939
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 19.939765482619574
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 20.990951309953655
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 20.797295874119712
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 25.02596351636174
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8750915102546336
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8950535772933325
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8579440185823987
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8291545726824363
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.8185071594018898
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.787899117760956
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.687575484915544
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.3220660686555683
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.25752442070759
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 4.962790344181559
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.555734088018552
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.556509452387761
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.36367786819455
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.449989464468608
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 14.895662877683037
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.195936429116783
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 12.450481796437726
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.279962025859817
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7627117615716112
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7914530704298379
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7281222969157066
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.6893161286017521
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.700713256359274
+  },
+  {
+    "model": "stgnn",
+    "seed": 3,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6773220474280701
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.765119874467827
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.3786099568199015
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.270702452771602
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.0039674120970545
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.6616452470091607
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.463870026919561
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.638909609843207
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.747394070714988
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 15.258582066096189
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.632354682436825
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 13.046261190477678
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.870626693862558
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7956831251835579
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8217298874085656
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7586244306126623
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7257778284668519
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.735726898511111
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_all",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7061100161807772
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.879991734171354
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.492991442945886
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.446185659662768
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 5.177000803968775
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.8700252760099185
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.676803307295178
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 13.202512968933371
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 11.410614683700624
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 16.065268996032113
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 15.653096303956112
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 14.234986546070571
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 18.200823896280074
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.8422357590688928
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8612794079251224
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8030909797828276
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.7751436271980428
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.7840453737500187
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_dia",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7475761150376341
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 5.916091450310465
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 4.496483078731451
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 6.711008892827549
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 6.590299422557363
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 5.354896843588095
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 7.439611162496141
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 17.172968848288768
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 15.194511215934243
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 20.000455309549313
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 21.27387070009622
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 20.59830557507515
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 25.26292200285578
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.873618621445393
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.8939482489977235
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.8570779629450803
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.8245181729243389
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.8219636219765217
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_severe_pico",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.7838635453985763
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 5,
+    "value": 4.716284806981546
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 10,
+    "value": 3.3297879661764216
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 15,
+    "value": 5.195587570293351
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 20,
+    "value": 4.93009597897576
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 25,
+    "value": 3.5725232769338806
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "MAE",
+    "horizon": 30,
+    "value": 5.372988713969369
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 5,
+    "value": 12.391543948520212
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 10,
+    "value": 10.451500672865746
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 15,
+    "value": 14.899940570087589
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 20,
+    "value": 14.174207478147611
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 25,
+    "value": 12.503399361982085
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "RMSE",
+    "horizon": 30,
+    "value": 16.269809169989777
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 5,
+    "value": 0.7616409241078443
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 10,
+    "value": 0.7913927487117616
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 15,
+    "value": 0.7279661204246339
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 20,
+    "value": 0.690266494655273
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 25,
+    "value": 0.6981637674648539
+  },
+  {
+    "model": "stgnn",
+    "seed": 4,
+    "regime": "test_normal",
+    "metric": "R2",
+    "horizon": 30,
+    "value": 0.6777243924929167
+  }
+]
