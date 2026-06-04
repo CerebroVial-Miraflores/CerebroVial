@@ -179,7 +179,8 @@ def test_gate_stgnn_reproduce_eval(test_snapshots):
     ).to("cpu")
     oracle_model.load_state_dict(ckpt["state_dict"])
     ei_np, ew_np = load_lcc_edge_index()
-    ei = torch.from_numpy(ei_np); ew = torch.from_numpy(ew_np)
+    ei = torch.from_numpy(ei_np)
+    ew = torch.from_numpy(ew_np)
     pred_o, _y, _ym = stgnn.predict_collect(
         oracle_model, timeloss, mask, gidx_k, mean, std, 16, ei, ew, "cpu"
     )
@@ -216,7 +217,6 @@ def test_gru_full_metrics_vs_json(real_data):
     timeloss, mask, seeds = real_data
     n_t = timeloss.shape[1]
     train_seeds, _v, test_seeds = get_split()
-    scaler = compute_timeloss_scaler(timeloss, mask, seeds, train_seeds)
     gidx = build_graph_window_index(seeds, test_seeds, n_timesteps=n_t, stride=12)
     adapter = load_inference_adapter(GRU_CKPT, device="cpu")
 
