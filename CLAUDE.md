@@ -282,6 +282,45 @@ obligatoria antes de tocar predicción o métricas de estado.
 Fase 1 cerrada (`documentation/docs/20260503_PHASE1_CLOSURE.md`).
 `documentation/docs/PLAN.md` es histórico, no operativo.
 
+## Registro de cierres de rama
+
+**Mantenimiento (hacia adelante):** de ahora en más, cada cierre de rama se documenta aquí
+AL HACER EL MERGE, con la columna *Deuda/follow-ups* poblada. Las columnas `Rama`/`PR`/`Merge`/
+`Fecha` son git-grounded; *Qué entregó* es un resumen breve; *Deuda/follow-ups* va **vacía en
+las entradas históricas** (git no la registra — no se rellena retroactivamente con suposiciones).
+
+| Rama | PR | Merge | Fecha | Qué entregó | Deuda/follow-ups |
+|---|---|---|---|---|---|
+| feature/net-miraflores-completo | #44 | `c73e3976` | 2026-06-03 | Net Miraflores v2 (1660/2948): reentrena GRU+STGNN sobre universo real, re-estratifica split, D-015 (STGNN gana en severo). | |
+| feat/hu-23-recorrido-temporal-congestion | #43 | `81c463c4` | 2026-06-02 | HU-23: recorrido temporal — `/congestion/series` + modo histórico (slider, repintado por índice). | |
+| feature/hu-22-mapa-congestion | #42 | `bd6f5b0a` | 2026-06-02 | HU-22: mapa de congestión operator-only (`CongestionMapView`, live + SSE; cableado tab/roles/Sidebar). | |
+| feature/tth-12-congestion-aristas | #41 | `7ba5e2d3` | 2026-06-02 | TTH-12: infra de congestión por arista — `/congestion/{geometry,state,state/stream}` sobre graph_edges/waze_jams. | |
+| fase-backlog-hu22 | #40 | `1c16a332` | 2026-06-02 | Precursor de HU-22 (backlog). | |
+| feature/stgnn-corredor-larco | #39 | `3379066d` | 2026-06-02 | Track STGNN (investigación). | |
+| feature/tth-09-gru-predictor | #38 | `7b89c85d` | 2026-05-31 | TTH-09: GRU 4-way servido (`POST /predictions/predict`, jam_level 0-5 × N/S/E/W × 30 pasos) + persistencia durable. | |
+| feature/tth-11-hiperparametros-temporales | #37 | `9ec02649` | 2026-05-31 | TTH-11: spike hiperparámetros temporales. | |
+| feature/corredor-larco-mp-red | #36 | `fe3cd9bd` | 2026-05-30 | Corredor Larco: MP-red (investigación, descartado). | |
+| feature/tth-07 | #35 | `77426705` | 2026-05-29 | TTH-07: integración SUMO. | |
+| feature/tth-08-fase* | #22–#34 | varios | 2026-05-27→29 | TTH-08: visión computacional (DDD). Cerrado en 13 PRs consecutivos por fase (fase0-auditoría → fase9-docs). | |
+| docs/dhu-023-024-encuadre-hu07-tth08 | #21 | `ab017de7` | 2026-05-27 | Docs DHU-023/024 (encuadre HU-07/TTH-08). | |
+| feature/hu-05-vista-pasiva-estrategia | #20 | `af8cd5b6` | 2026-05-27 | HU-05: vista pasiva de estrategia activa (`/control/active-state` + SSE, `ActiveStrategyView`); cierre cruzado CA-01.6. | |
+| san-06-purge-torch-core | #19 | `ec948502` | 2026-05-26 | SAN-01: purga de torch muerto del core. | |
+| feat/hu-01-rbac | #18 | `2a3a2441` | 2026-05-26 | HU-01: maquinaria RBAC — `require_role` (backend) + `RoleGate`/`roles.ts` (frontend), primer Gherkin pytest-bdd. | |
+| san-05 | #17 | `81c482ba` | 2026-05-26 | Saneamiento. | |
+| feat/tth-01-frontend-login | #16 | `8c7c626c` | 2026-05-26 | TTH-01: login frontend + manejo de sesión (CT-01.6–01.13). | |
+| feat/tth-01-auth-jwt | #15 | `534c228f` | 2026-05-26 | TTH-01: backend auth — JWT (jose HS256) + bcrypt (cost 12), `POST /auth/login`, `get_current_user`. | |
+| chore/saneamiento-documental | #14 | `4214ff8f` | 2026-05-25 | Saneamiento documental. | |
+| fix/consolidar-decisiones | #13 | `954e2cd8` | 2026-05-25 | SAN-04: consolidación de DECISIONS. | |
+| chore/orden-repo | #12 | `d3994e22` | 2026-05-25 | Orden del repo (limpieza ligera). | |
+| feature/SDD | #11 | `5085b595` | 2026-05-25 | Adopción Spec Kit v0.8.11 brownfield (DHU-021). | |
+| inception-agile | #10 | `20106a5d` | 2026-05-19 | Lean Inception / backlog ágil. | |
+| fase-2-* (fork AndresBR2003/) | #2–#9 | varios | 2026-05-03→09 | Fase 2 (cimientos, alembic, motor, frontend-ci). **Detalle no derivable desde el log de merges.** | |
+
+**Cierres NO rastreables por PR (incluidos con salvedad):**
+- **TTH-10 (cierre parcial)** — commit directo `6df521e4` (2026-05-26), **SIN PR**: persistencia + config + health.
+- **Fase 0** — `3f1bacef` (2026-05-02), merge sin PR (`analysis/initial-discovery`).
+- **PRs #2–#9** — del fork `AndresBR2003/`; el detalle de entrega no es derivable desde el log de merges.
+
 ## Git LFS (requerido)
 Este repo usa Git LFS para binarios (.joblib, .pt, .ckpt, .h5, .npy, .docx).
 Antes de clonar o pull, instalar git-lfs y configurarlo:
