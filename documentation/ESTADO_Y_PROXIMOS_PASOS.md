@@ -53,6 +53,7 @@ Entregado en esta sesión (rama `feature/stgnn-corredor-larco`, **sin push/PR/me
   `miraflores_graph_mapping.json` (381, evidencia del análisis de componentes) y
   `miraflores_graph_lcc_mapping.json` (375, canónico de modelado, con procedencia `derived_from` /
   `full_graph_nodes` / `dropped_component_nodes` / `dropped_edges`).
+  _(Puntero-hacia-adelante, agregado en B3.1 2026-06-03: estos mappings se regeneraron sobre el net **v2** — LCC=**1660**, full=**1664**. Los 381/375 de esta línea son del net **v1**, correctos a la fecha de este cierre.)_
 - **`tests/test_miraflores_graph_builder.py`** — 13 tests verdes (6 previos + 7 nuevos: LCC 375,
   gate de componentes, mutua exclusión, conexidad, islita excluida, determinismo, gate de fantasmas
   bajo LCC).
@@ -75,6 +76,16 @@ y sus consumidores siguen usando jam_level; D-013 es excepción acotada del trac
 separados del histórico `corredor-larco/` (escenario Larco descartado por D-012).
 
 ## STGNN Fase 5 — cierre del track: GRU se mantiene, STGNN no adoptado (D-011) (2026-06-02)
+
+> **⚠️ SUPERADO por B4 (2026-06-03, ver D-015).** Este veredicto se midió sobre el **universo
+> de 375 nodos / 504 aristas**. B4 reentrenó ambos modelos sobre el **universo real v2 (1660 /
+> 2948, grafo 5.8× más denso)** con config idéntica y mismo universo de evaluación, y **el
+> veredicto se revirtió**: el STGNN **gana en régimen severo** (severe_dia MAE@30 5.882 vs 6.006,
+> RMSE 18.0 vs 19.8, R² 0.753 vs 0.700; severe_pico aún más claro) y en todos los cortes. La
+> utilidad de la componente espacial escala con la densidad del grafo. Veredicto técnico, NO
+> decisión de adopción (modesto en MAE, robusto en RMSE/R²; n=1, confirmación multi-seed pendiente
+> para cerrar adopción). **Las métricas de 375 de abajo son contexto histórico, no contendientes.**
+> Detalle completo: `lean-inception/4-decisiones/DECISIONS.md` § D-015.
 **Veredicto del track STGNN Miraflores (investigación paralela, fuera de producción).** Tras entrenar
 el STGNN Time-then-Space en serio (modo completo, CPU, espejo byte-a-byte del baseline GRU de Fase 3) y
 correr un multi-seed de robustez, la decisión es **no adoptar el STGNN; se mantiene el GRU baseline**
@@ -213,6 +224,75 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   el STGNN (Fase 4) usan loop manual en `scripts/train_miraflores_*.py`, NO este clúster.
   **Disparador de limpieza:** "limpieza del Dockerfile" — al tocar el Dockerfile, borrar el clúster
   completo (predictor.py + los 3 scripts) y reapuntar/quitar el `CMD`.
+- **Nodos sub-métricos del net v2 — CERRADA en B4 (2026-06-03): NO se enmascaran; la premisa de
+  masking era incorrecta.**
+  B3.1 fijó el N autoritativo del LCC en **1660** sobre v2 **tolerando** 59 edges de longitud `<1m`
+  (52 de ellos exactamente `0.200m`, artefactos de netconvert). No se excluyeron porque, bajo el
+  criterio "longitud anómala **y** topológicamente prescindible", fallan la segunda condición: muchos
+  son conectores intermedios de edges multi-parte (`337605614#12/#14`, `653645243/244/245/248`,
+  `129822384#...`), donde el `0.2m` es el eslabón `A→stub→B` de una calle segmentada; removerlos parte
+  la cadena salvo reconexión `A→B` (cirugía de topología, no exclusión de artefacto). Además el builder
+  es length-agnostic. **La nota original asignaba a B4 evaluar masking** sobre la premisa de que esos
+  nodos entran "con señal de demora ~0 —no hay distancia donde acumular demora—, ruido de baja
+  varianza". **Esa premisa es FALSA, verificado contra el tensor v2 en B4:** `timeLoss` es **demora de
+  encolamiento, no distancia** — un stub de 0.2m en una junction congestionada acumula el tiempo que
+  los vehículos esperan ahí, independiente de su longitud. Caracterización B4 (read-only, net.xml ∩ LCC
+  ∩ tensor): los 59 edges <1m (52 a `0.200m` + 7 entre `0.13` y `0.98m`) son **todos** conectores
+  `A→stub→B` con señal real — los 52 a `0.200m` tienen max timeLoss mediana 8.5s (hasta 225s), 52/52
+  con señal no-trivial; en **régimen severo** 23/59 superan 10s y 5/59 superan 60s. Enmascararlos
+  descartaría demora real de encolamiento, peor en el régimen que decide D-011. El argumento "diluyen
+  métricas" tampoco se sostiene (mean ~0.48s vs mediana global 0.98s — no son outliers de bajo nivel).
+  **Decisión B4: N_eval = 1660 completo en ambos modelos, sin masking.** Deuda cerrada sin masking,
+  con evidencia.
+- **Recaracterización de la sección "Sanity agregado" del dataset v2 (registrada 2026-06-03 en B3.2.c;
+  asignada post-B3.2.c, p.ej. B3.2.d-bis o pre-B4).** El README del dataset
+  (`simulation/data/datasets/miraflores_laborable_60d/README.md`) tiene la sección Sanity reemplazada
+  por un **banner**: los números previos eran de scale 0.20/v1 y NO aplican al dataset v2 (scale 1.1,
+  N=1660). **Pendiente:** (1) corregir el hardcode `381`/`548640` de `simulation/scripts/aggregate_sanity.py:57`
+  (sobre data v2 marca todo día `FORMA`); (2) correrlo sobre la data nueva; (3) escribir la narrativa de
+  régimen desde la tabla del gate de drenaje (`calibracion/DRENAJE_GATE_60D_RESULTS.md`: 48/60 drenan,
+  12 de congestión severa de pico PM, gradiente continuo no-bimodal). **Consecuencia para B4 —
+  CERRADA en B4.2 (2026-06-03):** el split train/val/test se re-estratificó por régimen de
+  congestión (los 12 severos `53,55,58,60,62,63,71,83,85,90,97,99` repartidos por gradiente, sin
+  ancla 081) en `ia_prediction_service/src/data/miraflores_split.py`; `test_miraflores_split.py`
+  protege la estratificación como invariante (12 sin pérdida, cada fold ≥1 severo, test ≥3, duros
+  no concentrados). **(La recaracterización Sanity en sí —pasos (1)-(3) de arriba— sigue pendiente.)**
+- **Fuga de `routes.rou.xml` a cwd desde randomTrips (registrada 2026-06-03 en B3.2.c; mitigada).**
+  `run_randomtrips` (`simulation/scripts/generate_b1_demand.py:97-108`) llama a randomTrips con
+  `-o <trips>` pero **sin output de ruta explícito** → randomTrips escribe su `.rou.xml` descartable
+  (documentado como throwaway en `generate_b1_demand.py:18`) al **cwd** con el nombre default
+  `routes.rou.xml`; corrido desde la raíz del repo, ensucia el working tree. Reproducible (cada corrida
+  de la cadena lo deja; último-escritor = último seed/fase). **Mitigación aplicada (B3.2.c):** patrón
+  `/routes.rou.xml` root-anchored en el `.gitignore` de la raíz. **Root-cause diferido (baja prioridad):**
+  pasar a randomTrips un output de ruta explícito hacia `$WORK`/outdir (o `cd` antes de invocarlo) para
+  que no escriba a cwd; requiere re-smoke de la cadena de generación, no urge (síntoma = un archivo de
+  ~323 KB ya ignorado).
+- **`/congestion/state` sirve el último snapshot — el mapa HU-22 por default abre drenado (registrada 2026-06-03 en B3.2.e).**
+  El endpoint de estado (`core_management_api/src/congestion/presentation/api/routes.py:70` → `WazeJamsRepo.latest_per_edge`)
+  devuelve el **último snapshot por arista**, que en un día simulado completo es **23:59** (medianoche, red ya drenada:
+  96.93% en nivel 0 sobre seed051). Por eso el mapa estático **abre mayormente verde — por la hora, no por el día**:
+  cualquier día abriría quieto a las 23:59; seed051 sí trae congestión visible en sus picos (~5.2% en nivel ≥3 en la
+  ventana PM 18-20h). **NO es deuda de la siembra** (correcta y verificada en B3.2.e: 2.39M filas, 0 huérfanos,
+  alineación 1660=1660=1660) **ni de la elección de día.** **Scope de HU-22 (B4):** si se requiere vista en-pico por
+  default, el read-path debe servir un snapshot representativo (un timestep de pico) en vez del último, o el frontend
+  parametrizar la hora. Decisión de diseño del read-path, fuera de B3.2.e.
+- **Adopción del STGNN en producción — ABIERTA (registrada 2026-06-03 en B4, ver D-015).** B4
+  revalidó el veredicto del track sobre el universo real (1660): el STGNN **gana técnicamente** al
+  GRU en régimen severo (severe_dia MAE@30 5.882 vs 6.006 —casi empate—, RMSE 18.0 vs 19.8 y R²
+  0.753 vs 0.700 —ventaja robusta—; severe_pico más claro). **Adoptar o no es decisión aparte:** la
+  ganancia (modesta en MAE, robusta en RMSE/R²) se pesa contra el costo operativo del STGNN
+  (CPU-bound, ~4× más lento, dep `tsl` con venv separado, servido in-process no resuelto). **Condición
+  para cerrar la adopción:** confirmación **multi-seed** (el veredicto B4 es n=1 por modelo,
+  direccional pero no multi-seed —a diferencia del rigor de 60/9-seeds del resto del proyecto).
+  Veredicto técnico cerrado (D-015); decisión de adopción pendiente.
+- **Tesis escrita (.docx) desactualizada — diferida fuera de B4 (registrada 2026-06-03).** Los 2
+  `.docx` de `documentation/tesis/` y los markdown que citan números viejos (375 nodos, métricas de
+  375, scaler 18.886/120.929) quedan **stale** tras B4: el universo real es 1660, el scaler v2 es
+  **6.820/26.581**, y el veredicto del track se movió (D-015). Actualizar la tesis con los números v2
+  es **trabajo de redacción post-B4**, cuando los números estén firmes (idealmente tras la
+  confirmación multi-seed de la adopción). Markdown técnicos del repo ya actualizados en B4.5; los
+  `.docx` no (binarios, no grepeables, redacción aparte). Adyacente: `aggregate_sanity.py:57`
+  (hardcode 381/548640) sigue pendiente con la recaracterización Sanity.
 
 **Deuda de entorno — choque numpy tsl ↔ opencv (registrada 2026-06-01; RESUELTA 2026-06-01 vía separación de venvs):**
 - **Framework de modelado decidido (gate de viabilidad tsl).** El gate confirmó que tsl

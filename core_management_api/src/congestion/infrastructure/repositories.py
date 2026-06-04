@@ -118,7 +118,7 @@ class WazeJamsRepo:
         """Puebla ``geom`` de cada fila con la geometría de su arista (JOIN por edge_id).
 
         Set-based: la geometría es constante por arista, así que un solo UPDATE-join
-        cubre las 540k filas vía las 375 de ``graph_edges``. Solo PostGIS (UPDATE FROM).
+        cubre todas las filas (universo LCC × timesteps) vía las aristas de ``graph_edges``. Solo PostGIS (UPDATE FROM).
         Devuelve el nº de filas actualizadas.
         """
         if self.session.get_bind().dialect.name != "postgresql":
@@ -238,7 +238,7 @@ class WazeJamsRepo:
 class NetworkGeometryRepo:
     """Lectura de la geometría de la red desde ``graph_edges`` (CT-12.2).
 
-    Sirve las 375 aristas como features GeoJSON (geometry LineString en 4326,
+    Sirve las aristas del universo LCC como features GeoJSON (geometry LineString en 4326,
     orden [lon, lat]). Usa ``ST_AsGeoJSON`` de PostGIS — solo PostgreSQL/PostGIS.
     """
 

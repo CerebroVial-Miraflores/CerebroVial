@@ -6,7 +6,7 @@ target es el ``timeLoss`` TOTAL del Parquet (NO un promedio derivado); fail-fast
 arista/seed faltante; determinismo; y exclusión de las aristas de la islita.
 
 Fixtures chicas en ``tmp_path``. Dos tests adicionales corren contra el dataset real
-(60 Parquet en disco) para el shape exacto [60,1440,375,1] y ~82% de máscara vacía;
+(60 Parquet en disco) para el shape exacto [60,1440,1660,1] y ~78.5% de máscara vacía;
 se saltan si el dataset no está presente.
 
 Corre con el venv raíz:
@@ -224,19 +224,19 @@ real_only = pytest.mark.skipif(
 @real_only
 def test_real_shape_and_island_exclusion():
     r = build_miraflores_dataset()
-    assert r["tensor"].shape == (60, 1440, 375, 1)
-    assert r["mask"].shape == (60, 1440, 375)
-    # las 6 aristas de la islita (dropped_edges del LCC) no aparecen.
+    assert r["tensor"].shape == (60, 1440, 1660, 1)
+    assert r["mask"].shape == (60, 1440, 1660)
+    # las 4 aristas de la islita (dropped_edges del LCC) no aparecen.
     dropped = json.loads(DEFAULT_LCC_MAPPING.read_text())["dropped_edges"]
     assert dropped, "el mapping debería declarar dropped_edges"
     assert set(dropped).isdisjoint(set(r["node_order"]))
 
 
 @real_only
-def test_real_mask_fraction_about_82pct():
+def test_real_mask_fraction_about_78pct():
     r = build_miraflores_dataset()
     empty_frac = 1.0 - float(r["mask"].mean())
-    assert 0.78 <= empty_frac <= 0.86, f"fracción vacía={empty_frac:.3f}, esperaba ≈0.82"
+    assert 0.745 <= empty_frac <= 0.825, f"fracción vacía={empty_frac:.3f}, esperaba ≈0.785"
     # celdas vacías → NaN; celdas válidas → finitas (timeLoss total, sin imputar).
     assert np.isnan(r["tensor"][~r["mask"]]).all()
     assert np.isfinite(r["tensor"][r["mask"]]).all()
@@ -246,5 +246,5 @@ def test_load_node_order_real_lcc():
     if not DEFAULT_LCC_MAPPING.exists():
         pytest.skip("LCC mapping ausente")
     order = load_node_order(DEFAULT_LCC_MAPPING)
-    assert len(order) == 375
-    assert len(set(order)) == 375  # sin duplicados
+    assert len(order) == 1660
+    assert len(set(order)) == 1660  # sin duplicados

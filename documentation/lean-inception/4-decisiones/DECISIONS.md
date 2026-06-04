@@ -19,6 +19,8 @@
 | D-011 | Cerrada | 2026-06-01 | Reapertura de D-006: predictor espacio-temporal sobre grafo (STGNN) acotado al corredor de la Av. Larco |
 | D-012 | Cerrada | 2026-06-01 | Enmienda a D-011: escenario del track STGNN de corredor Larco a Miraflores completo |
 | D-013 | Cerrada | 2026-06-01 | Target del track STGNN: meanTimeLoss/demora (enmienda a D-011, cierre de deuda diferida por D-012) |
+| D-014 | Cerrada | 2026-06-03 | Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica) |
+| D-015 | Cerrada | 2026-06-03 | Revalidación del veredicto STGNN sobre v2 (1660): STGNN supera al GRU en severo; D-011/Fase 5 revertido (adopción abierta) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -462,6 +464,103 @@ D-013 fijó el target del track en "meanTimeLoss/demora". Una verificación read
 **Corrección.** El target del track es timeLoss total por arista por intervalo de 60 s (la columna timeLoss del Parquet, ya disponible). Sin regeneración, sin recompactado, sin derivación per-vehículo. Todo lo demás de D-013 se mantiene: el target sigue siendo demora (no velocidad/jam_level, evitando la contaminación del semáforo que motivó D-013), continuo, con discretización 0–5 solo en presentación, alcance solo-track, producción intacta.
 
 **Deuda registrada.** El timeLoss total mezcla intensidad de congestión con volumen de tráfico (confounding acotado: Spearman 0.94 con el per-vehículo indica reordenamiento moderado, concentrado en celdas de alto volumen). Es un sesgo medible y documentado, preferible a la indefinición catastrófica del per-vehículo en el atasco. Si una fase futura quisiera un target per-vehículo, requeriría regeneración + una política de regularización para las colas estáticas — no resuelto aquí.
+
+---
+
+## D-014 — Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica)
+**Estado:** Cerrada · 2026-06-03 · **Revisa:** criterio de drenaje de `analyze24.py` (C2, v1-específico) · **Habilita:** gate de aceptación por-día de B3.2 · **Cierra:** deuda de método de B2 (C3, candidato a ADR)
+
+**Contexto.** El veredicto binario de drenaje de `analyze24.py` —"racha ≥3h con velocidad media < 8 km/h"— está calibrado al **colapso duro del net v1**, donde la velocidad se clavaba sostenida en 3–4 km/h. El net v2 (distrito completo, 1664 edges ≈ 4.4×, LCC 1660 nodos) **colapsa "suave"**: en su peor punto medido (scale 1.5) la velocidad media ponderada por viaje toca **~11 km/h**, nunca 3–4. Consecuencia: el criterio sub-8 marca "drena" **incluso en scales que colapsan en v2** (a 1.5: 920 teleports y +43% de duración de viaje, y el binario igual dice "drena"). El criterio v1 no traslada a v2.
+
+**Evidencia (C3, `simulation/data/datasets/miraflores_laborable_60d/calibracion/SWEEP_C3_RESULTS.md`).** Barrido de 10 scales sobre v2, seed 42, 24h continua, control fijo. La rodilla del colapso es **gradual** y el cliff cae **entre 1.2 y 1.3**:
+
+| señal | 1.0 | 1.1 (operación) | 1.2 | 1.3 (onset colapso) | 1.5 (colapso) |
+|---|--:|--:|--:|--:|--:|
+| teleports | 0 | 11 | 36 | 137 | 920 |
+| Δdur vs 1.0 | — | +2% | +5.5% | +15% | +43% |
+| dip (km/h mín) | →25.2 | →23.7 incipiente | →21.3 recupera | sub-20 ancho | →11.2 |
+
+**Decisión.** Para v2 el drenaje se evalúa con un **criterio multi-señal por-día**, no con la racha sub-8. Un día de simulación v2 **drena si y solo si se cumplen las tres**:
+
+1. **Teleports ≤ 50** — *señal primaria* (la más limpia: sale de `stats.xml`, no contaminada por stops de semáforo en tramos cortos). Referencia: 1.1 = 11 teleports; onset de colapso 1.3 = 137.
+2. **Δduración media de viaje ≤ +10 %** sobre el baseline ~254 s (es decir, **≤ ~280 s**), de `tripinfo.xml`. Referencia: 1.1 = +2 %; 1.3 = +15 %.
+3. **Dip acotado** — la velocidad media de red **NO** permanece **bajo 20 km/h por más de 15 minutos consecutivos** en ninguno de los dos picos (AM 07-09 / PM 18-20). El doble criterio duración-Y-profundidad distingue 1.2 (toca 21.3 y **recupera** → pasa) de 1.3 (**sub-20 ancho sostenido** → falla). Requiere serie de velocidad sub-horaria (`edgeData freq=60` la soporta; el bucketing horario de `analyze24.py` es demasiado grueso para el test de 15 min).
+
+**Regla de combinación.** El día **falla** si `teleports > 50` **O** dispara cualquiera de las otras dos. Ante señales en desacuerdo, **manda teleports** (es la menos contaminada por el ciclo de semáforo en tramos cortos).
+
+**Consecuencias.**
+- `analyze24.py` **conserva la racha sub-8 intacta** por compatibilidad con C2, pero se interpreta con el caveat de que es **v1-específica**; el **veredicto autoritativo para v2 es este criterio multi-señal**. Este ADR no reescribe el código.
+- **B3.2 usa este criterio como gate de aceptación por-día** sobre los 60 seeds del dataset regenerado a scale 1.1. Un día que falla el criterio es **bandera** (a investigar / posible descarte), **no se absorbe en silencio**.
+- **Evaluador pendiente (trabajo de B3.2, no de B3.1.5).** Evaluar este criterio requiere un **evaluador multi-señal sub-horario** que lea `edgeData freq=60` + `stats.xml` + `tripinfo.xml` y emita el veredicto de las tres señales por-día. **`analyze24.py` no lo soporta** (buckets horarios, no puede testear "15 min consecutivos" ni leer la distribución de duración). Hasta que B3.2 lo implemente, **este criterio es normativo, no automatizado**: define la vara, no la herramienta que la mide.
+- **Robustez a seed.** El criterio se fijó sobre seed 42 (único del C3). El margen de los umbrales respecto del régimen de 1.1 (teleports 11 vs corte 50; Δdur +2 % vs +10 %) está **dimensionado para que la variación de seed de los 60 días de B3.2 no cruce el umbral espuriamente**. Si en B3.2 una fracción material de los 60 días falla el gate, eso es señal de que **el margen o el scale necesitan revisión** — queda como **trigger explícito**, no como sorpresa.
+
+**Alcance / límite.** Define el criterio de aceptación de drenaje del **dataset v2** (B3.2 en adelante). No toca producción, ni el GRU de TTH-09, ni la variable predicha (D-009/D-013). No modifica `analyze24.py`. Los cortes son net-específicos de v2: una reconstrucción futura del net los invalida (re-localizar el cliff, como hizo C3).
+
+**Referencias.**
+- Evidencia: `simulation/data/datasets/miraflores_laborable_60d/calibracion/SWEEP_C3_RESULTS.md` (barrido v2, cliff 1.2–1.3, hallazgo del colapso suave ~11 km/h).
+- Señales: `stats.xml` (`<teleports total>` y `vehicleTripStatistics @duration`, la media agregada de duración de viaje), `edgeData freq=60` (serie de velocidad de red sub-horaria).
+- **Nota de implementación (B3.2.a, 2026-06-03):** la señal #2 (Δduración media) se computa de la **media agregada** `vehicleTripStatistics @duration` de `stats.xml`; **`tripinfo.xml` no se genera ni se persiste**, porque el corte es sobre la media, no sobre la distribución (percentiles). La mención a `tripinfo.xml` como fuente era referencia de origen del dato, no dependencia operativa.
+- Relacionadas: D-008 (SUMO end-to-end), D-013 (target meanTimeLoss del track STGNN, mismo dataset).
+- Scale de operación: C3 = 1.1 (fijado en B2; `gen_day.sh` lo adopta en B3.2).
+
+**Enmienda 2026-06-03 — señal #3: de "racha consecutiva sub-20" a "fracción de intervalos sub-20"**
+
+La señal #3 se fijó (arriba) como *"la velocidad media de red no permanece bajo 20 km/h por más de 15 min consecutivos"*. Al operacionalizarla en B3.2.a (evaluador `simulation/scripts/evaluate_drenaje.py`: mean_kmh de red por intervalo de 60 s ponderado por `sampledSeconds`) resultó **inerte** y se redefine.
+
+**Qué decía y por qué no sobrevivió.** La racha consecutiva máxima de intervalos sub-20 es **1–2 min en AMBOS regímenes** —el que drena (s11/scale 1.1) y el que colapsa (s13/scale 1.3)—, muy por debajo del corte de 15 min. El dip de v2 es **intermitente-frecuente, no sostenido**: no existe un bloque de 15 min consecutivos sub-20 ni siquiera en el día que colapsa. "Racha consecutiva" no discrimina.
+
+**El método del C3 no era reproducible en código.** Sus valores absolutos no coinciden con la serie ponderada por-60 s: C3 caracterizó el dip de s11 como "incipiente →23.7" (nunca sub-20), pero la media de red ponderada por `sampledSeconds` por-60 s toca **18.8 km/h** en el pico PM de s11. C3 midió con otra resolución/scope (no documentada). Por eso esta enmienda **no recalibra contra C3**: redefine la operacionalización sobre **evidencia nueva** —caracterización read-only sobre los fixtures versionados s11/s13 (`simulation/tests/fixtures/drenaje_c3/`), 2026-06-03.
+
+**Nueva regla.** La señal #3 pasa a: **el día falla si la fracción de intervalos con mean_kmh < 20 km/h supera el 10 % en cualquiera de las dos ventanas de pico** (AM 07-09 h / PM 18-20 h). mean_kmh = velocidad de red ponderada por `sampledSeconds` por intervalo de 60 s (igual que C3). El umbral de velocidad (20 km/h) se mantiene; lo que cambia es el corte: "15 min consecutivos" → ">10 % de intervalos".
+
+**Evidencia (caracterización, fixtures s11/s13, ventanas de pico, frac = nº sub-v / nº con tráfico):**
+
+| ventana | frac@18 | frac@20 | frac@22 | min | mediana |
+|---|--|--|--|--:|--:|
+| s11-AM | 0/120 · 0.0% | 1/120 · 0.8% | 13/120 · 10.8% | 19.79 | 25.30 |
+| s11-PM | 0/120 · 0.0% | 2/120 · 1.7% | 27/120 · 22.5% | 18.81 | 24.23 |
+| s13-AM | 3/120 · 2.5% | 21/120 · 17.5% | 56/120 · 46.7% | 16.63 | 22.87 |
+| s13-PM | 2/120 · 1.7% | 24/120 · 20.0% | 54/120 · 45.0% | 16.35 | 22.37 |
+
+**Por qué 20 km/h.** Es el único de los tres umbrales que separa con margen a ambos lados. @18 la señal es débil (s13 apenas registra, 1.7–2.5 %); @22 contamina (s11-PM salta a 22.5 %, solapando el rango de s13@20); @20 separa **~10×** con hueco ancho (s11 0.8–1.7 % vs s13 17.5–20.0 %).
+
+**Por qué 10 %.** Parte el hueco [2 %, 17 %] de forma asimétrica conservadora: **~6× de margen** sobre el peor del día que drena (s11-PM 1.7 %) y **~1.75–2× de margen** bajo el peor del que colapsa (s13-PM 20 %, AM 17.5 %). Más holgura del lado del día sano —para que la variación de seed de los 60 días no empuje un día que drena por encima del corte— y suficiente del lado del que colapsa. Mismo principio de margen que teleports/duración.
+
+**Por qué fracción-de-cola y no media/mediana.** Las medianas de s11 y s13 difieren solo **~2 km/h** (24–25 vs 22–23), pero la fracción sub-20 difiere **~10×**. La congestión de v2 vive en la **cola** de la distribución de intervalos, no en el centro: el día que colapsa no tiene una red sistemáticamente más lenta, tiene **más intervalos puntualmente congestionados**. Esto explica por qué "racha consecutiva" falló (buscaba un bloque sostenido que no existe) y por qué "fracción" funciona (mide la extensión de la cola — que es lo que "ancho" significaba en la caracterización cualitativa del C3).
+
+**Regla por ventana.** "Cualquiera de las dos ventanas dispara" se mantiene; PM es sistemáticamente la peor, así el criterio agarra naturalmente la ventana más severa. teleports/duración siguen mandando en los casos limítrofes; el dip recupera su rol espacial-temporal como tercera condición sin volverse la señal frágil que decide al filo.
+
+**Alcance de la enmienda.** Redefine **solo la operacionalización de la señal #3**. Las señales #1 (teleports ≤ 50) y #2 (Δduración media ≤ 280 s), la regla de combinación (AND; teleports primaria ante desacuerdo) y el resto de D-014 no cambian.
+
+---
+
+## D-015 — Revalidación del veredicto del track STGNN sobre el universo v2 (1660): el STGNN supera al GRU en régimen severo (D-011/Fase 5 se revierte como veredicto técnico; adopción abierta)
+**Estado:** Cerrada · 2026-06-03 · **Revisa:** cierre de Fase 5 del track STGNN (veredicto sobre 375) y el criterio de adopción de D-011/D-012 · **Track:** investigación; NO decide adopción en producción
+
+**Contexto.** El cierre de Fase 5 (2026-06-02, registrado en `ESTADO_Y_PROXIMOS_PASOS.md`) aplicó el criterio de adopción de D-011/D-012 —"el STGNN se adopta solo si supera al baseline GRU en el régimen severo; si no, se conserva el GRU y se documenta el hallazgo"— sobre el **universo de 375 nodos / 504 aristas** y conservó el GRU: el STGNN ganaba en régimen normal y agregado pero **perdía en congestión máxima** (test_081 MAE@30 STGNN 24.02 vs GRU 23.20). B4 reentrenó ambos modelos sobre el **universo real v2 (1660 nodos / 2948 aristas, grafo 5.8× más denso)** —el universo sobre el que el sistema realmente opera— para revalidar ese veredicto.
+
+**Validez de la revalidación.** Config de entrenamiento **idéntica** a la corrida de 375 (épocas, horizonte MAE@30, hiperparámetros; solo cambian N y el split estratificado B4.2). Ambos modelos sobre el **mismo universo de evaluación** (scaler train-only idéntico 6.820/26.581, `severe_test=[71,85,90]`, conteos de ventanas idénticos por corte). Ambos convergieron limpio (GRU early-stop ep 12, STGNN ep 28; sin divergencia). La única variable entre el veredicto viejo y este es **la densidad del grafo** —que es lo que la revalidación aísla.
+
+**Hallazgo — D-011/Fase 5 se revierte como veredicto técnico.** Sobre 1660 el STGNN **supera al GRU en el régimen severo**, el régimen sobre el que el veredicto viejo había fallado a favor del GRU:
+
+| corte (@30 min) | métrica | GRU-1660 | STGNN-1660 |
+|---|---|--:|--:|
+| severe_dia {71,85,90} (primario) | MAE | 6.006 | **5.882** |
+| | RMSE | 19.831 | **18.000** |
+| | R² | 0.700 | **0.753** |
+| severe_pico 18-20h (afilado) | MAE | 7.970 | **7.421** |
+| | RMSE | 27.858 | **24.634** |
+| | R² | 0.737 | **0.794** |
+
+El STGNN gana también en `test_all` y `test_normal` (los cuatro cortes), pero lo decisivo es que **gana donde antes perdía**: la congestión severa.
+
+**Interpretación — la utilidad de la componente espacial escala con la densidad del grafo.** En 375/504 el grafo era demasiado ralo para que la vecindad aportara, y el STGNN perdía en severo; en 1660/2948 (5.8× aristas) la correlación espacial entre tramos vecinos —la apuesta original del track (D-011/D-012, señal confirmada: contraste vecinos-1-salto vs no-vecinos)— sí tiene señal explotable. La magnitud, con honestidad: **en MAE@30 severo el resultado es casi un empate (5.882 vs 6.006 = 0.12 s sobre ~6 s, ~2%), diferencia que podría no ser significativa frente a la varianza de entrenamiento. La ventaja robusta y consistente del STGNN está en RMSE (~9%, 18.0 vs 19.8) y R² (+0.05, 0.753 vs 0.700) —los errores grandes—, no en el MAE medio.** El STGNN penaliza mejor los outliers, coherente con que la información espacial ayuda cuando la congestión se **propaga entre tramos**. Por horizonte: el STGNN gana en 15/20/25/30 min (donde la propagación espacial tiene tiempo de manifestarse) y el GRU empata/gana marginal en 5/10 min (corto plazo, dominado por la dinámica temporal local). **El veredicto "STGNN gana en severo" se sostiene por RMSE / R² / horizontes largos, no por el MAE medio** —y decirlo así es más defendible, no más débil. El track STGNN tenía fundamento; lo que faltaba en Fase 5 no era el modelo sino un universo con densidad espacial suficiente.
+
+**Lo que este veredicto NO decide — adopción en producción ABIERTA.** El criterio de D-011/D-012 condicionaba la adopción a *"un margen que justifique su complejidad e integración; si no lo supera, se conserva el GRU"*. B4 establece la **primera mitad**: el STGNN supera al GRU en severo sobre el universo real. Pero si ese margen —**modesto en MAE, robusto en RMSE/R²**— justifica el **costo operativo** (CPU-bound, ~4× más lento de entrenar —~2 h vs ~36 min—, dependencia `tsl` con venv separado, servido in-process no resuelto) es precisamente la **decisión de adopción que queda abierta**. El veredicto técnico es **condición necesaria pero no suficiente** para adoptar. Honestidad sobre el alcance: el dato sostiene *"el STGNN gana técnicamente en severo sobre el universo real"*, no *"se adopta el STGNN"*. La decisión de adopción es de producto/ingeniería y se toma con estos datos sobre la mesa, no aquí.
+
+**Alcance / límite.** Track de investigación; NO toca producción (TTH-09, D-009/D-010 intactos). **Limitación metodológica: el veredicto se apoya en una corrida por modelo (n=1, sin validación multi-seed)** —a diferencia del gate de drenaje (60 seeds) y de IE05 (9/10 seeds), donde el rigor multi-seed fue exigido. La consistencia del resultado a través de RMSE, R² y los horizontes largos sugiere que **no es artefacto de inicialización**, pero una **confirmación multi-seed robustecería el veredicto antes de cualquier decisión de adopción** —se registra como condición para cerrar la adopción, no para el veredicto técnico direccional. El resultado es net-específico de v2: una reconstrucción futura del net podría volver a mover la densidad y con ella el resultado. No reescribe D-011/D-012/Fase 5 in-place: esta entrada los revisa desde afuera (mismo patrón que D-012 sobre D-011).
+
+**Referencias.** Métricas: `ia_prediction_service/scripts/miraflores_{baseline,stgnn}_metrics.json` (retrain B4.3, commit `467c5106`). Split estratificado: `ia_prediction_service/src/data/miraflores_split.py` (B4.2). Corte de régimen severo derivado del split: `severe_in()` + `PM_PEAK_*` en el mismo módulo. Contexto histórico (375, no contendiente): `ESTADO_Y_PROXIMOS_PASOS.md` §Fase 5. Relacionadas: D-011 (apertura del track), D-012 (escenario Miraflores completo), D-013 (target timeLoss), D-014 (gate de drenaje v2).
 
 ---
 

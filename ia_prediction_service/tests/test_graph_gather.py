@@ -108,7 +108,7 @@ def test_paridad_valores_grafo_vs_baseline(real_data):
 
 
 def test_scaler_fijo_desde_metadata(real_data):
-    """(3) Scaler: el aplicado es el train-only FIJO {18.886, 120.929} de metadata, no recomputado."""
+    """(3) Scaler: el aplicado es el train-only FIJO {6.820, 26.581} de metadata, no recomputado."""
     if not BASELINE_METADATA.exists():
         pytest.skip(f"metadata baseline ausente: {BASELINE_METADATA}")
     timeloss, mask, seeds = real_data
@@ -121,6 +121,6 @@ def test_scaler_fijo_desde_metadata(real_data):
     scaler = compute_timeloss_scaler(timeloss, mask, seeds, train_seeds)
     assert abs(scaler["mean"] - meta_scaler["mean"]) < 1e-4
     assert abs(scaler["std"] - meta_scaler["std"]) < 1e-4
-    # Valores fijos documentados.
-    assert round(scaler["mean"], 3) == 18.886
-    assert round(scaler["std"], 3) == 120.929
+    # Valores fijos documentados (universo v2, N=1660; B4 retrain).
+    assert round(scaler["mean"], 3) == 6.82
+    assert round(scaler["std"], 3) == 26.581

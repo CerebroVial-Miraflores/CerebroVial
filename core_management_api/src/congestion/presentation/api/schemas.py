@@ -18,7 +18,7 @@ class GeometryFeature(BaseModel):
 
 
 class GeometryFeatureCollection(BaseModel):
-    """FeatureCollection GeoJSON con la red completa (375 aristas)."""
+    """FeatureCollection GeoJSON con la red completa (universo LCC de aristas)."""
     type: str = "FeatureCollection"
     features: list[GeometryFeature]
     count: int
@@ -41,7 +41,7 @@ class EdgeCongestionSeries(BaseModel):
     """Serie de niveles 0-5 de UNA arista a lo largo del día (Formato B, TTH-13).
 
     ``levels[i]`` es el nivel en el instante ``t0 + i * step_s``; el consumidor
-    (HU-23) indexa en O(1). No se valida cada entero por costo (375×1440); el
+    (HU-23) indexa en O(1). No se valida cada entero por costo (universo LCC × timesteps); el
     repositorio sólo lee niveles 0-5 ya persistidos (D-009).
     """
     edge_id: str

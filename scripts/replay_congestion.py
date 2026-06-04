@@ -3,14 +3,16 @@
 Envuelve el ``SumoReplayAdapter`` + ``WazeJamsRepo``: lee un día del dataset SUMO,
 deriva el nivel 0-5 por arista y lo persiste en ``waze_jams``. Dos modos:
 
-  pre-siembra (batch, los 375×1440 de una):
-      .venv/bin/python scripts/replay_congestion.py --mode presiembra --day seed062
+  pre-siembra (batch, todo el día —universo LCC × 1440 timesteps— de una):
+      .venv/bin/python scripts/replay_congestion.py --mode presiembra --day seed051
   replay en vivo (gotea a cadencia configurable):
-      .venv/bin/python scripts/replay_congestion.py --mode vivo --day seed062 --speedup 60
+      .venv/bin/python scripts/replay_congestion.py --mode vivo --day seed051 --speedup 60
 
-El día es parámetro (default seed062, elegido en el perfilado de Fase 2 Paso 2 por
-amplitud de transición — 219 aristas alcanzan jam≥3, pico AM). NO se hardcodea en la
-lógica del adaptador; acá es solo el default del CLI.
+El día es parámetro (default seed051, elegido en B3.2.e como día representativo del
+régimen "drena" con pico AM/PM visible y simétrico —gate D-014,
+DRENAJE_GATE_60D_RESULTS.md:38—, NO la cola severa de pico PM. La pre-siembra alimenta
+solo el mapa HU-22, no ningún cómputo). NO se hardcodea en la lógica del adaptador;
+acá es solo el default del CLI.
 
 Requiere el stack de BD (sqlalchemy+psycopg2) y pyarrow en el venv. NO push/PR/merge.
 """
@@ -49,7 +51,7 @@ def _load_dotenv() -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Replay de congestión SUMO → waze_jams (TTH-12).")
     ap.add_argument("--mode", choices=["presiembra", "vivo"], default="presiembra")
-    ap.add_argument("--day", default="seed062", help="día del dataset (default: seed062)")
+    ap.add_argument("--day", default="seed051", help="día del dataset (default: seed051)")
     ap.add_argument("--speedup", type=float, default=60.0, help="aceleración del replay vivo (1=tiempo real)")
     ap.add_argument("--max-steps", type=int, default=None, help="limita pasos en modo vivo (debug)")
     args = ap.parse_args()

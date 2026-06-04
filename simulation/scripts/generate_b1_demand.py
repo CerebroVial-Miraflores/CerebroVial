@@ -94,11 +94,11 @@ def write_weight_file(path: Path, arterial, other, hi: float, lo: float, end_s: 
     path.write_text("\n".join(lines) + "\n")
 
 
-def run_randomtrips(begin_s, end_s, vph, prefix, weights_prefix, out_trips, seed=None):
+def run_randomtrips(net, begin_s, end_s, vph, prefix, weights_prefix, out_trips, seed=None):
     # vph ya viene escalado por el caller; period = 3600/vph_efectivo.
     period = 3600.0 / vph
     cmd = [
-        sys.executable, str(RANDOMTRIPS), "-n", str(NET),
+        sys.executable, str(RANDOMTRIPS), "-n", str(net),
         "--weights-prefix", str(weights_prefix), "--vclass", "passenger",
         "-b", str(begin_s), "-e", str(end_s), "-p", f"{period:.4f}",
         "--prefix", prefix, "--fringe-factor", "1", "-o", str(out_trips),
@@ -119,16 +119,22 @@ def main() -> int:
                     help="directorio de salida (default: el dataset versionado "
                          "simulation/data/datasets/miraflores_laborable_60d/). "
                          "gen_day.sh siempre pasa --outdir explícito a un _work dir.")
+    ap.add_argument("--net", type=str, default=str(NET),
+                    help="ruta al .net.xml (default: el net viejo miraflores.net.xml; "
+                         "el sweep lo parametriza para barrer sobre otros nets). "
+                         "Pesa edges por clase vial y rutea sobre ESTE net.")
     args = ap.parse_args()
 
     hi, lo = args.ratio * args.low, args.low
     end_day = 24 * 3600
     outdir = Path(args.outdir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
+    net = Path(args.net).resolve()
 
-    arterial, other = classify_edges(NET)
+    arterial, other = classify_edges(net)
     print(f"edges vehiculares: {len(arterial) + len(other)}  "
           f"(arteria={len(arterial)} peso {hi}, resto={len(other)} peso {lo})")
+    print(f"net={net}")
     print(f"scale={args.scale} seed={args.seed} outdir={outdir}")
 
     src = outdir / "miraflores_b1.src.xml"
@@ -142,7 +148,7 @@ def main() -> int:
     for idx, (bh, eh, vph) in enumerate(LABORABLE_PHASES):
         vph_eff = vph * args.scale  # scale uniforme: baja el nivel, preserva la forma
         out = outdir / f"p{idx:02d}_{bh:02d}-{eh:02d}h.trips.xml"
-        run_randomtrips(bh * 3600, eh * 3600, vph_eff, f"p{idx}_", weights_prefix, out,
+        run_randomtrips(net, bh * 3600, eh * 3600, vph_eff, f"p{idx}_", weights_prefix, out,
                         seed=args.seed)
         trip_files.append(out)
         print(f"  fase {idx} {bh:02d}-{eh:02d}h vph={vph:4d}*{args.scale}={vph_eff:7.1f} -> {out.name}")

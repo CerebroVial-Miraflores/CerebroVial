@@ -1,4 +1,4 @@
-"""e2e CT-12.9(a): el builder de geometría carga las 375 aristas con geom válida.
+"""e2e CT-12.9(a): el builder de geometría carga las 1660 aristas con geom válida.
 
 Cierra el único sub-ítem de CT-12.9 que estaba verificado por ejecución pero sin
 test de regresión: la extracción/carga desde el `.net.xml` produce el número esperado
@@ -92,15 +92,15 @@ def _run_builder() -> None:
 
 
 @pytest.mark.e2e
-def test_builder_loads_375_edges_with_valid_geometry(builder_engine):
+def test_builder_loads_1660_edges_with_valid_geometry(builder_engine):
     _run_builder()
 
     with builder_engine.connect() as conn:
-        # 375 aristas, todas formato SUMO (no prefijo sumo_ ni nombre sintético).
-        assert conn.execute(text("SELECT count(*) FROM graph_edges")).scalar_one() == 375
+        # 1660 aristas, todas formato SUMO (no prefijo sumo_ ni nombre sintético).
+        assert conn.execute(text("SELECT count(*) FROM graph_edges")).scalar_one() == 1660
         assert conn.execute(text(
             "SELECT count(*) FROM graph_edges WHERE edge_id !~ '^sumo_'"
-        )).scalar_one() == 375
+        )).scalar_one() == 1660
         # 0 geom NULL; geometría LINESTRING en SRID 4326.
         assert conn.execute(text(
             "SELECT count(*) FROM graph_edges WHERE geom IS NULL"
@@ -109,13 +109,13 @@ def test_builder_loads_375_edges_with_valid_geometry(builder_engine):
             "SELECT DISTINCT ST_GeometryType(geom), ST_SRID(geom) FROM graph_edges"
         )).all()
         assert gtypes == [("ST_LineString", 4326)]
-        # graph_nodes: 5 control intactos + 307 sumo_.
+        # graph_nodes: 5 control intactos + 904 sumo_.
         assert conn.execute(text(
             "SELECT count(*) FROM graph_nodes WHERE node_id !~ '^sumo_'"
         )).scalar_one() == 5
         assert conn.execute(text(
             "SELECT count(*) FROM graph_nodes WHERE node_id ~ '^sumo_'"
-        )).scalar_one() == 307
+        )).scalar_one() == 904
         # 0 FK huérfanas: source/target de cada arista resuelve a un nodo existente.
         assert conn.execute(text(
             "SELECT count(*) FROM graph_edges e "
@@ -129,10 +129,10 @@ def test_builder_is_idempotent_and_keeps_control_intact(builder_engine):
     _run_builder()
     _run_builder()  # segunda corrida: no debe duplicar ni tocar los nodos de control
     with builder_engine.connect() as conn:
-        assert conn.execute(text("SELECT count(*) FROM graph_edges")).scalar_one() == 375
+        assert conn.execute(text("SELECT count(*) FROM graph_edges")).scalar_one() == 1660
         assert conn.execute(text(
             "SELECT count(*) FROM graph_nodes WHERE node_id ~ '^sumo_'"
-        )).scalar_one() == 307
+        )).scalar_one() == 904
         assert conn.execute(text(
             "SELECT count(*) FROM graph_nodes WHERE node_id !~ '^sumo_'"
         )).scalar_one() == 5

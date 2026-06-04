@@ -1,9 +1,9 @@
 """Dataset builder por-arista de Miraflores (STGNN, Fase 2) — target = timeLoss TOTAL.
 
 De los 60 Parquet diarios de ``simulation/data/datasets/miraflores_laborable_60d/``
-(un día por seed 42..101, cada uno 1440 intervalos de 60 s × 381 aristas vehiculares)
-consolida un tensor ``[60, 1440, 375, 1]`` sobre el grafo edge-as-node del LCC
-(componente conexa mayor, 375 nodos) + una máscara de validez ``[60, 1440, 375]``.
+(un día por seed 42..101, cada uno 1440 intervalos de 60 s × 1664 aristas vehiculares)
+consolida un tensor ``[60, 1440, 1660, 1]`` sobre el grafo edge-as-node del LCC
+(componente conexa mayor, 1660 nodos) + una máscara de validez ``[60, 1440, 1660]``.
 
 Decisiones que este builder materializa:
 
@@ -18,10 +18,10 @@ Decisiones que este builder materializa:
   Demora continua en segundos.
 
 * **Orden de nodos = ``node_index`` del LCC mapping** (``artifacts/
-  miraflores_graph_lcc_mapping.json``, clave ``nodes``), 0..374. La alineación de
+  miraflores_graph_lcc_mapping.json``, clave ``nodes``), 0..1659. La alineación de
   cada arista del Parquet a su posición en el tensor es un ``reindex`` EXPLÍCITO
   por ``sumo_edge`` (NO por orden de aparición; la clave es ``node_index``, NO un
-  ``graph_index``). Las 6 aristas de la islita (fuera del LCC) quedan excluidas
+  ``graph_index``). Las 4 aristas de la islita (fuera del LCC) quedan excluidas
   por construcción. Fail-fast: arista del LCC ausente en el Parquet → ``ValueError``
   nombrándola; seed faltante → ``ValueError``.
 
@@ -80,7 +80,7 @@ _MASK_RULE = (
 
 
 def load_node_order(lcc_mapping_path: Path) -> list[str]:
-    """Los 375 ``sumo_edge`` del LCC, ordenados por ``node_index`` ascendente (0..374)."""
+    """Los 1660 ``sumo_edge`` del LCC, ordenados por ``node_index`` ascendente (0..1659)."""
     mapping = json.loads(Path(lcc_mapping_path).read_text())
     nodes = mapping["nodes"]
     ordered = sorted(nodes, key=lambda n: n["node_index"])
@@ -118,7 +118,7 @@ def build_miraflores_dataset(
 
     Returns dict con:
       - ``tensor``: np.ndarray ``[D, T, N, C]`` float32 (D=días/seeds, T=timesteps,
-        N=375 nodos LCC, C=len(feature_columns)). Celdas vacías = NaN.
+        N=1660 nodos LCC, C=len(feature_columns)). Celdas vacías = NaN.
       - ``mask``: np.ndarray ``[D, T, N]`` bool (True = tráfico, False = vacío).
       - ``seeds``: np.ndarray ``[D]`` int — seed por índice de día (ascendente).
       - ``node_order``: list[str] — los N ``sumo_edge`` en orden ``node_index``.
@@ -260,10 +260,10 @@ El `.npz` está **gitignored** (voluminoso, regenerable); `metadata.json` y este
 README **sí** se versionan.
 
 ## Contenido del `.npz`
-- `tensor` `[60, 1440, 375, 1]` float32 — canal 0 = `timeLoss` TOTAL (s) por arista
+- `tensor` `[60, 1440, 1660, 1]` float32 — canal 0 = `timeLoss` TOTAL (s) por arista
   por intervalo de 60 s. Celdas vacías (sin tráfico) = `NaN`.
-- `mask` `[60, 1440, 375]` bool — `True` = tráfico, `False` = vacío
-  (`density==0 AND speed.isna()`). ~82% de las celdas son vacías.
+- `mask` `[60, 1440, 1660]` bool — `True` = tráfico, `False` = vacío
+  (`density==0 AND speed.isna()`). ~78.5% de las celdas son vacías.
 - `seeds` `[60]` int — seed por índice de día (eje 0). Día N ↔ seed 42+N.
 - `node_order`, `channels`, `timesteps` — alineación (orden = `node_index` del LCC).
 
@@ -275,8 +275,8 @@ regeneración. Eje 0 = días separados por seed (nunca apilados como serie conti
 
 ## Cómo regenerar
 ```bash
-cd ia_prediction_service
-.venv/bin/python -m src.data.miraflores_dataset_builder
+# desde la raíz del repo, con el root .venv (el de ia_prediction_service NO tiene pyarrow):
+cd ia_prediction_service && PYTHONPATH=. ../.venv/bin/python -m src.data.miraflores_dataset_builder
 ```
 Defaults: lee `simulation/data/datasets/miraflores_laborable_60d/day_seed0{42..101}.parquet`
 y `src/data/artifacts/miraflores_graph_lcc_mapping.json`; escribe acá

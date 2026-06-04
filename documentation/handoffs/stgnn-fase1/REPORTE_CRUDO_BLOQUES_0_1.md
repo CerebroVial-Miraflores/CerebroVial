@@ -6,6 +6,12 @@ interpretativa). La interpretación vive en la nota de cierre anexada a **D-012*
 números EXACTOS tal como los emitieron los scripts de auditoría —sin redondeo, reinterpretación
 ni resumen— para que cualquiera pueda rastrear de dónde sale cada cifra de la decisión.
 
+> **Nota posterior — NO es parte del volcado crudo (agregada 2026-06-03, B3.1).** Los números de
+> abajo son del net **v1** (381 nodos), exactos a la fecha de medición (2026-06-01) y se preservan
+> sin tocar. El net fue reconstruido a **v2** y promovido a producción en B3.0/B3.1: sobre v2,
+> N_LCC=**1660** y grafo completo=**1664**. Esta nota es solo un puntero-hacia-adelante; el volcado
+> de abajo sigue siendo el dato crudo original, sin reinterpretación.
+
 ## Setup de medición
 
 - **Dataset:** `simulation/data/datasets/miraflores_laborable_60d/` (parquets `day_seed*.parquet`).

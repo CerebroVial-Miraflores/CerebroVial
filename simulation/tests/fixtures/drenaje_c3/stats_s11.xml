@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-06-03T02:19:17.568621-05:00 by Eclipse SUMO sumo 1.26.0
+<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="/Users/rasec/Tesis/CerebroVial/simulation/conf/network/miraflores_v2.net.xml"/>
+        <route-files value="/Users/rasec/Tesis/CerebroVial/scratch/b2_miraflores/sweep24_s11/rou_s11.rou.xml"/>
+        <additional-files value="/Users/rasec/Tesis/CerebroVial/scratch/b2_miraflores/sweep24_s11/edgedata_local.add.xml"/>
+    </input>
+
+    <output>
+        <statistic-output value="/Users/rasec/Tesis/CerebroVial/scratch/b2_miraflores/sweep24_s11/stats_s11.xml"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <end value="86400"/>
+    </time>
+
+    <processing>
+        <collision.action value="warn"/>
+        <time-to-teleport value="300"/>
+    </processing>
+
+    <report>
+        <log value="/Users/rasec/Tesis/CerebroVial/scratch/b2_miraflores/sweep24_s11/sumo_s11.log"/>
+        <duration-log.statistics value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+</sumoConfiguration>
+-->
+
+<statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
+    <performance clockBegin="1780471157.58" clockEnd="1780471184.36" clockDuration="26.78" traciDuration="1.00" realTimeFactor="3226.05" vehicleUpdatesPerSecond="324749.46" personUpdatesPerSecond="0.00" begin="0.00" end="86400.00" duration="86400.00"/>
+    <vehicles loaded="33557" inserted="33556" running="25" waiting="0"/>
+    <teleports total="11" jam="2" yield="9" wrongLane="0"/>
+    <safety collisions="2" emergencyStops="0" emergencyBraking="3"/>
+    <persons loaded="0" running="0" jammed="0"/>
+    <personTeleports total="0" abortWait="0" wrongDest="0"/>
+    <vehicleTripStatistics count="33531" routeLength="1953.78" speed="8.07" duration="259.30" waitingTime="73.61" timeLoss="109.87" departDelay="0.65" departDelayWaiting="-1.00" totalTravelTime="8694430.00" totalDepartDelay="21943.39"/>
+    <pedestrianStatistics number="0" routeLength="0.00" duration="0.00" timeLoss="0.00"/>
+    <rideStatistics number="0"/>
+    <transportStatistics number="0"/>
+</statistics>

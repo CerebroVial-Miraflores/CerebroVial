@@ -21,3 +21,8 @@ videos/
 # Debris descartable (corridas SUMO, datasets crudos, calibración). Cuelga de repo-root.
 # Lo versionable se promueve fuera de scratch/ (p.ej. simulation/data/datasets/).
 scratch/
+# Debris reproducible de randomTrips: escribe routes.rou.xml al cwd (raíz) por falta de
+# output path explícito en generate_b1_demand.py (mitigación B3.2.c; root-cause diferido,
+# ver documentation/ESTADO_Y_PROXIMOS_PASOS.md). Anclado a raíz (/): NO toca los .rou.xml
+# legítimos de conf/scenarios/, conf/corredor_larco/, etc.
+/routes.rou.xml

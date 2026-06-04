@@ -2,18 +2,18 @@
 Builder de geometría de red para TTH-12 (Fase 1) — congestión por arista.
 
 Puebla:
-  - graph_nodes: los junctions SUMO del subgrafo de las 375 aristas del LCC,
+  - graph_nodes: los junctions SUMO del subgrafo de las 1660 aristas del LCC,
     con node_id PREFIJADO ``sumo_<id>`` (p. ej. ``sumo_138854736``). El prefijo
     aísla este namespace del de los 5 nodos de CONTROL (``larco_schell``, etc.),
     que tienen colgando motor_decisions / engine_active_state / cameras y que
     este builder NO toca jamás.
-  - graph_edges: las 375 aristas del LCC (edge_id == ``sumo_edge`` del mapping),
+  - graph_edges: las 1660 aristas del LCC (edge_id == ``sumo_edge`` del mapping),
     source_node/target_node = ``sumo_<from>``/``sumo_<to>``, geometría LINESTRING.
 
-Universo (375): leído del mapping canónico
+Universo (1660): leído del mapping canónico
 ``ia_prediction_service/src/data/artifacts/miraflores_graph_lcc_mapping.json``
 (campo ``sumo_edge`` de cada entrada de ``nodes``). NO se usa el Parquet
-(gitignored) ni los 1044 edges del .net.xml.
+(gitignored) ni los 1664 edges del .net.xml.
 
 Geometría: extraída del .net.xml (atributo ``shape`` del edge; ``length`` y nº de
 lanes de sus <lane>; coords x,y de los <junction>). Las coords SUMO son UTM zona
@@ -43,7 +43,7 @@ _REPO = Path(__file__).resolve().parent.parent
 _NET = _REPO / "simulation/conf/network/miraflores.net.xml"
 _MAPPING = _REPO / "ia_prediction_service/src/data/artifacts/miraflores_graph_lcc_mapping.json"
 
-EXPECTED_EDGES = 375
+EXPECTED_EDGES = 1660
 
 
 class SpikeStop(RuntimeError):
@@ -117,7 +117,7 @@ def _parse_net(net_path: Path, universe: set[str]) -> tuple[dict, dict]:
 def main() -> None:
     _load_dotenv()
 
-    # --- PASO 1: universo de 375 aristas del mapping canónico ---
+    # --- PASO 1: universo de 1660 aristas del mapping canónico ---
     mapping = json.loads(_MAPPING.read_text())
     universe = [n["sumo_edge"] for n in mapping["nodes"]]
     if len(universe) != EXPECTED_EDGES or len(set(universe)) != EXPECTED_EDGES:
@@ -142,7 +142,7 @@ def main() -> None:
     no_len = sorted(e for e in universe if edges[e]["length"] is None)
     if no_len:
         raise SpikeStop(f"{len(no_len)} edges sin length (distance_m NOT NULL): {no_len[:10]}")
-    print("[2] 375 edges resueltos en el .net.xml (shape + length + lanes)")
+    print(f"[2] {len(universe)} edges resueltos en el .net.xml (shape + length + lanes)")
 
     # --- PASO 3: subgrafo de nodos (junctions) ---
     node_ids: set[str] = set()

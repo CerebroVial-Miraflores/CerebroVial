@@ -39,7 +39,12 @@ import torch
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC = REPO_ROOT / "ia_prediction_service" / "src"
 sys.path.insert(0, str(SRC))
-from data.miraflores_split import get_split  # noqa: E402
+from data.miraflores_split import (  # noqa: E402
+    PM_PEAK_END_T,
+    PM_PEAK_START_T,
+    get_split,
+    severe_in,
+)
 from data.miraflores_windower import (  # noqa: E402
     DEFAULT_NPZ,
     HORIZON,
@@ -300,21 +305,34 @@ def main() -> None:
     y_m = to_metric_shape(y_raw)
     mask_m = to_metric_shape(ymask)
     snap_seeds = np.asarray([int(seeds[d]) for d in test_gindex[:, 0]])  # [B]
+    snap_start = test_gindex[:, 1].astype(np.int64)                       # [B] start_t por snapshot
     row_seeds = np.repeat(snap_seeds, n_nodes)                            # [B·N], alineado a permute(0,2,1)
-    is081 = torch.from_numpy(row_seeds == 81)
+    row_start = np.repeat(snap_start, n_nodes)                            # [B·N], idéntico repeat
     cuts = DEFAULT_CUTS
 
+    # Corte de régimen severo DERIVADO del split (sigue al split; no es un literal clavado
+    # como el viejo ``== 81``). Espejo byte-a-byte del baseline.
+    severe_test = severe_in(test_seeds)
+    is_severe = np.isin(row_seeds, severe_test)
+    tgt_start = row_start + LOOKBACK
+    is_peak = (tgt_start >= PM_PEAK_START_T) & (tgt_start < PM_PEAK_END_T)
+    sev_dia = torch.from_numpy(is_severe)
+    sev_pico = torch.from_numpy(is_severe & is_peak)
+    norm = torch.from_numpy(~is_severe)
+
     metrics_all = masked_metrics_by_horizon(pred_m, y_m, mask_m, cuts)
-    metrics_081 = masked_metrics_by_horizon(pred_m[is081], y_m[is081], mask_m[is081], cuts)
-    norm = ~is081
+    metrics_severe_dia = masked_metrics_by_horizon(pred_m[sev_dia], y_m[sev_dia], mask_m[sev_dia], cuts)
+    metrics_severe_pico = masked_metrics_by_horizon(pred_m[sev_pico], y_m[sev_pico], mask_m[sev_pico], cuts)
     metrics_normal = masked_metrics_by_horizon(pred_m[norm], y_m[norm], mask_m[norm], cuts)
 
     print("\n[stgnn] ===== MÉTRICAS TEST (des-estandarizadas, segundos) =====")
     print(f"\nTEST completo (10 días, n_filas={pred_m.shape[0]:,}):")
     print(format_metrics_table(metrics_all, cuts))
-    print(f"\nDía 081 (congestión máxima, n_filas={int(is081.sum())}):")
-    print(format_metrics_table(metrics_081, cuts))
-    print(f"\nDías normales de test (9 días, n_filas={int(norm.sum())}):")
+    print(f"\nRégimen severo — días completos {severe_test} (n_filas={int(sev_dia.sum())}):")
+    print(format_metrics_table(metrics_severe_dia, cuts))
+    print(f"\nRégimen severo — pico PM 18-20h en esos días (n_filas={int(sev_pico.sum())}):")
+    print(format_metrics_table(metrics_severe_pico, cuts))
+    print(f"\nDías normales de test (n_filas={int(norm.sum())}):")
     print(format_metrics_table(metrics_normal, cuts))
 
     # --- Persistencia (DESCARTABLE; nunca pisa los artefactos del baseline) ---
@@ -348,9 +366,16 @@ def main() -> None:
     metrics_payload = {
         "version": VERSION, "units": "segundos (timeLoss total des-estandarizado)",
         "cuts_steps": list(cuts),
+        "severe_test_seeds": severe_test,
+        "pm_peak_t": [PM_PEAK_START_T, PM_PEAK_END_T],
         "n_rows": {"test_all": int(pred_m.shape[0]),
-                   "test_081": int(is081.sum()), "test_normal": int(norm.sum())},
-        "test_all": metrics_all, "test_081": metrics_081, "test_normal": metrics_normal,
+                   "test_severe_dia": int(sev_dia.sum()),
+                   "test_severe_pico": int(sev_pico.sum()),
+                   "test_normal": int(norm.sum())},
+        "test_all": metrics_all,
+        "test_severe_dia": metrics_severe_dia,
+        "test_severe_pico": metrics_severe_pico,
+        "test_normal": metrics_normal,
     }
     metrics_path.write_text(json.dumps(metrics_payload, indent=2, ensure_ascii=False) + "\n")
 
