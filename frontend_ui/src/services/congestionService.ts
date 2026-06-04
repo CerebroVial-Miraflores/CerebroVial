@@ -13,7 +13,7 @@ import type {
 } from '../types/congestion';
 
 export const congestionService = {
-  /** Geometría de la red (estática, 375 aristas). Se consume 1× al montar el mapa. */
+  /** Geometría de la red (estática, 1660 aristas). Se consume 1× al montar el mapa. */
   async getGeometry(): Promise<GeometryFeatureCollection> {
     const res = await httpClient.get<GeometryFeatureCollection>(
       '/congestion/geometry',

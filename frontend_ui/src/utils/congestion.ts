@@ -142,7 +142,7 @@ export const LEVEL_LABEL_PREDICTION: Record<number, string> = {
  * Cruza la geometría (estática) con el estado de congestión por `edge_id`, y
  * devuelve features con `congestion_level` y `snapshot_timestamp` adjuntos.
  *
- * La alineación 375 = 375 = 375 está garantizada por CT-12.8, pero el helper es
+ * La alineación 1660 = 1660 = 1660 está garantizada por CT-12.8, pero el helper es
  * robusto al edge huérfano: una feature sin estado en `state` recibe
  * `congestion_level: null` y `snapshot_timestamp: null` (no lanza; `congestionStyle`
  * la pinta neutra).

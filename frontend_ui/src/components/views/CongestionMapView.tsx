@@ -3,13 +3,13 @@
  *
  * Monta un mapa Leaflet propio (NO reusa el de DashboardView, que arrastra estado
  * de KPIs/cámaras/SSE de visión), carga geometría + estado al montar, los cruza con
- * `mergeCongestion` y pinta los 375 tramos por una capa <GeoJSON> coloreada por
+ * `mergeCongestion` y pinta los 1660 tramos por una capa <GeoJSON> coloreada por
  * nivel (CA-22.1/22.3). Consulta puntual por tramo vía hover/click (CA-22.5) y
  * leyenda 0-5.
  *
  * Decisión firme: <GeoJSON> con `style` callback, NO <Polyline>. El endpoint
  * devuelve coordenadas [lon, lat] (GeoJSON estándar) que <GeoJSON> interpreta
- * nativo; <Polyline> obligaría a invertir las 375 geometrías a [lat,lng] a mano.
+ * nativo; <Polyline> obligaría a invertir las 1660 geometrías a [lat,lng] a mano.
  *
  * FEED VIVO (Fase 3, CA-22.2): se abre un stream SSE de congestión; cada wake
  * re-lee SOLO el estado (la geometría es estática, NO se re-pide) y recolorea.
@@ -21,14 +21,14 @@
  * capa con los datos nuevos. El remonte re-ejecuta `onEachFeature`, así que recolor,
  * tooltip/popup (CA-22.5) y atenuado stale se refrescan juntos, sin la trampa de
  * propiedades stale de `layer.setStyle`. A ~60 s de cadencia el costo de remontar
- * 375 LineStrings es despreciable.
+ * 1660 LineStrings es despreciable.
  *
  * STALE (CA-22.4): si no llega un wake en 90 s, se atenúan los tramos (opacidad 50%,
  * manteniendo color+grosor) y aparece un banner "datos de hace X". Un wake posterior
  * lo limpia.
  *
- * Fuera de alcance: el componente todavía NO se cablea como tab en la navegación
- * (Sidebar/App, Fase 4).
+ * Cableado como tab operator-only ('congestion') en la navegación
+ * (App/Sidebar/roles, HU-22 #42).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';

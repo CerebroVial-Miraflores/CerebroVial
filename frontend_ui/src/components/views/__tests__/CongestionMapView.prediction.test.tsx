@@ -81,7 +81,7 @@ const getSeriesMock = congestionService.getSeries as unknown as ReturnType<typeo
 const getPredictionMock = congestionService.getPrediction as unknown as ReturnType<typeof vi.fn>;
 const openStreamMock = openCongestionStream as unknown as ReturnType<typeof vi.fn>;
 
-const COUNT = 375;
+const COUNT = 1660;
 const HORIZON = 30;
 const SOURCE_DATE = '2026-06-08';
 // Corte sembrado al entrar a pinned = base_timestep. No múltiplo de 6 → la base

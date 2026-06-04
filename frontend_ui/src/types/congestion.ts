@@ -7,7 +7,7 @@
  * shape documentado del contrato (GeoJSON estándar).
  */
 
-// --- GET /congestion/geometry (estática, 375 aristas de la LCC, CT-12.2) ---
+// --- GET /congestion/geometry (estática, 1660 aristas de la LCC, CT-12.2) ---
 
 export interface EdgeProperties {
   edge_id: string;
