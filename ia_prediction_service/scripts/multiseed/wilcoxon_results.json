@@ -1,0 +1,169 @@
+{
+  "test": "Wilcoxon signed-rank, paired by seed (GRU vs STGNN)",
+  "source": "ia_prediction_service/scripts/multiseed/consolidated_metrics.json",
+  "scipy_version": "1.17.1",
+  "n_pairs": 5,
+  "note_floor": "Con n=5 pares y todas las diferencias del mismo signo, el p-value exacto de dos colas tiene piso en 2/2^5 = 0.0625; no puede bajar de ese valor. Un p=0.0625 NO significa ausencia de efecto: es el mínimo alcanzable con 5 muestras. La separacion no-solapada entre seeds (peor STGNN supera mejor GRU en todos los cortes severos) es la evidencia principal; Wilcoxon es respaldo formal acotado por n.",
+  "primary": {
+    "regime": "test_severe_dia",
+    "metric": "MAE",
+    "horizon": 30,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "gru_per_seed": [
+      6.0061,
+      6.1558,
+      5.9592,
+      5.9243,
+      5.9097
+    ],
+    "stgnn_per_seed": [
+      5.8817,
+      5.6573,
+      5.6511,
+      5.8469,
+      5.6768
+    ],
+    "diff_gru_minus_stgnn": [
+      0.1244,
+      0.4984,
+      0.3082,
+      0.0774,
+      0.2329
+    ],
+    "all_favor_stgnn": true,
+    "n_pairs": 5,
+    "wilcoxon_statistic": 0.0,
+    "p_value_two_sided": 0.0625,
+    "p_value_one_sided_stgnn_better": 0.03125,
+    "method": "exact",
+    "significant_0.05_two_sided": false
+  },
+  "secondary": [
+    {
+      "regime": "test_severe_pico",
+      "metric": "MAE",
+      "horizon": 30,
+      "seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "gru_per_seed": [
+        7.97,
+        8.1133,
+        7.9909,
+        7.9186,
+        7.8211
+      ],
+      "stgnn_per_seed": [
+        7.4205,
+        7.3616,
+        7.3187,
+        7.5482,
+        7.4396
+      ],
+      "diff_gru_minus_stgnn": [
+        0.5495,
+        0.7516,
+        0.6722,
+        0.3704,
+        0.3815
+      ],
+      "all_favor_stgnn": true,
+      "n_pairs": 5,
+      "wilcoxon_statistic": 0.0,
+      "p_value_two_sided": 0.0625,
+      "p_value_one_sided_stgnn_better": 0.03125,
+      "method": "exact",
+      "significant_0.05_two_sided": false
+    },
+    {
+      "regime": "test_severe_dia",
+      "metric": "RMSE",
+      "horizon": 30,
+      "seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "gru_per_seed": [
+        19.8306,
+        19.7016,
+        20.006,
+        19.8037,
+        19.8858
+      ],
+      "stgnn_per_seed": [
+        17.9995,
+        17.9751,
+        18.0909,
+        18.1934,
+        18.2008
+      ],
+      "diff_gru_minus_stgnn": [
+        1.8311,
+        1.7265,
+        1.915,
+        1.6104,
+        1.6849
+      ],
+      "all_favor_stgnn": true,
+      "n_pairs": 5,
+      "wilcoxon_statistic": 0.0,
+      "p_value_two_sided": 0.0625,
+      "p_value_one_sided_stgnn_better": 0.03125,
+      "method": "exact",
+      "significant_0.05_two_sided": false
+    },
+    {
+      "regime": "test_severe_pico",
+      "metric": "RMSE",
+      "horizon": 30,
+      "seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "gru_per_seed": [
+        27.8584,
+        27.4921,
+        28.4167,
+        27.8134,
+        27.674
+      ],
+      "stgnn_per_seed": [
+        24.6343,
+        24.4927,
+        24.889,
+        25.026,
+        25.2629
+      ],
+      "diff_gru_minus_stgnn": [
+        3.2241,
+        2.9994,
+        3.5276,
+        2.7875,
+        2.411
+      ],
+      "all_favor_stgnn": true,
+      "n_pairs": 5,
+      "wilcoxon_statistic": 0.0,
+      "p_value_two_sided": 0.0625,
+      "p_value_one_sided_stgnn_better": 0.03125,
+      "method": "exact",
+      "significant_0.05_two_sided": false
+    }
+  ]
+}
