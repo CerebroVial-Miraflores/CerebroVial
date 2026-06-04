@@ -1,0 +1,22 @@
+# Respaldo de datos citable del informe documentation/docs/INVESTIGACION_MUROS_VALIDACION_CONTROL.md
+# Cinco headline de la validacion fijo-vs-adaptativo, recomputados desde datos crudos persistidos (NO desde prosa).
+#
+# REGENERACION (todo read-only, no re-corre SUMO; rutas relativas a la raiz del repo CerebroVial/):
+#   1 IE05 + 2 Empate : simulation/.venv/bin/python simulation/scripts/reprocess_door2door.py ie05
+#                       (columnas RD%RED robusto y RD%viejo sobre los mismos 10 pares de seeds)
+#   3 Offsets         : simulation/.venv/bin/python simulation/scripts/reprocess_door2door.py offsets
+#   4 MP-red          : collect_corredor.collect_corredor() + _paired_t_ci()/_wilcoxon_signed_rank_exact()
+#                       (helpers de simulation/scripts/sweep_seeds_downstream.py) sobre los dirs mpred_* persistidos
+#   5 TTH-07          : lectura directa de simulation/data/kpis/comparison.csv (sin reproceso)
+#
+# Metrica principal Larco = W_RED puerta-a-puerta robusto a censura (Little's law: cuenta circulantes + esperando entrar).
+# NOTA estadistica: la columna 'intervalo' es media+-1*SD para IE05 y Empate (como lo reporta reprocess_door2door.py);
+#   para MP-red es el IC 95% pareado real (t, df=9) y ademas Wilcoxon exacto p (ver columna desglose_clave).
+# Este derivado se versiona EXCEPCIONALMENTE por ser respaldo citable de tesis; no cambia la regla general de no versionar regenerables.
+# Generado: 2026-06-04.
+id,descripcion,valor_recomputado,sd,intervalo,seeds_favorables,seeds_total,desglose_clave,fuente_script,fuente_datos,veredicto_vs_prosa
+IE05_mp_pernode_vs_fijo,"RD% reduccion de demora RED robusta, MP per-node ciclo variable vs fijo",+15.68%,8.07,"[+7.61, +23.75] (media+-SD, no cruza 0)",9,10,"espera-entrar 36.8->12.2s (-67%); adentro 104.5->107.1s (+2.5%, tapon relocalizado); nunca-insertados 68->23",reprocess_door2door.py ie05,simulation/data/corredor_larco/peak_s_n_seed{42..51}_end1800 (fijo) + peak_s_n_adaptive_seed{42..51}_end1800 (per-node),COINCIDE
+empate_metrica_vieja_censurada,"RD% con metrica vieja censurada (timeLoss solo de vehiculos completados), misma data que IE05",+1.00%,7.53,"[-6.53, +8.54] (media+-SD, CRUZA 0 = empate)",4,10,metrica net_mean_timeloss_s_postwarm de los kpis.json; misma data que IE05 da +15.68% con metrica robusta -> el muro es de medicion,reprocess_door2door.py ie05 (columna RD%viejo),idem IE05 (campo net_mean_timeloss_s_postwarm en kpis.json de cada dir),COINCIDE
+onda_verde_offsets,Barrido de offsets (onda verde) seed 42 ciclo 90s; W_RED por offset vs offset=0,offset=0 optimo (W_RED min 99.5s); peor offset=30: -122.8%,"n/a (1 seed, barrido)",n/a,0,8 offsets (10..80; offset=0 es el control),"empeoramiento 50-123% en 7/8 offsets; offset=60 casi-empate (-3.0%, fuera de banda); nunca-insertados 3->171",reprocess_door2door.py offsets,simulation/data/corredor_larco/peak_s_n_adaptive_seed42_cyc90_off{0..80}_end1800,COINCIDE (con salvedad: offset 60 fuera de la banda 50-123%)
+mp_red_mirar_al_vecino,Max Pressure de red (downstream ON) vs per-node; delta pareado W_RED,+35.07s (delta MP-red - per-node); -9.2% vs fijo,18.85,"[+21.59, +48.55] (IC 95% pareado t df=9, EXCLUYE 0); Wilcoxon exacto p=0.0020",0,10,"espera-entrar 12.2->48.2s (x4, cola devuelta a la entrada); adentro 107.1->106.2s (~igual); RD% MP-red vs fijo = -9.2%",collect_corredor + _paired_t_ci/_wilcoxon_signed_rank_exact (sweep_seeds_downstream.py) sobre dirs persistidos,simulation/data/corredor_larco/peak_s_n_mpred_downon_seed{42..51}_end1800 vs peak_s_n_mpred_pernode_seed{42..51}_end1800,COINCIDE
+tth07_adaptativo_vs_fijo,"Interseccion aislada 4-way: adaptativo vs fijo_webster, por patron","pico: travel +21.6% (am)/+38.6% (pm), delay +83.0%/+137.0%; fuera de pico: -3.0% (offpeak)/-0.8% (weekend)",n/a (medias de 3 seeds por patron),n/a,0 en pico (adaptativo peor); empate fuera de pico,3 seeds x 4 patrones,"maxQ_N am_peak 93->327m, pm_peak 113->453m (cola explota en pico); aliasing de ventana de sensado (diagnostico en el informe)",lectura directa de comparison.csv (sin reproceso),simulation/data/kpis/comparison.csv,COINCIDE
