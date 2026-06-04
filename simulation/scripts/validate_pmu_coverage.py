@@ -275,7 +275,8 @@ def print_metrics_table(label_a: str, ma: dict, label_b: str | None, mb: dict | 
             va = f"{ma['ancho_m']:.0f} x {ma['alto_m']:.0f}"
             vb = f"{mb['ancho_m']:.0f} x {mb['alto_m']:.0f}" if mb else None
         else:
-            va = str(ma[key]); vb = str(mb[key]) if mb else None
+            va = str(ma[key])
+            vb = str(mb[key]) if mb else None
         if mb is not None:
             print(f"{disp:<24} {va:>16} {vb:>16}")
         else:
@@ -285,7 +286,8 @@ def print_metrics_table(label_a: str, ma: dict, label_b: str | None, mb: dict | 
 def print_pmu_table(label: str, result: dict) -> int:
     print(f"\n=== COBERTURA PMU — {label} ===")
     hdr = f"{'interseccion':<20} {'junction_id':<14} {'dist(m)':>9}  estado"
-    print(hdr); print("-" * len(hdr))
+    print(hdr)
+    print("-" * len(hdr))
     validables = 0
     for e in result["entries"]:
         if e["estado"] == "ok":

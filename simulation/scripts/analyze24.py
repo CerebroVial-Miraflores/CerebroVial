@@ -1,14 +1,16 @@
 """C2 — analizador del barrido 24h continuo. Por cada scale: perfil horario de
 velocidad (ground-truth edgeData, ponderado por sampledSeconds), presencia
 (sampledSeconds/h), y totales del stats. Streaming (edgeData es grande)."""
-import argparse, xml.etree.ElementTree as ET
+import argparse
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
 
 def profile(edge_xml):
-    w = [0.0]*24; sv = [0.0]*24  # sampledSeconds-sum y sampledSeconds*speed-sum por hora
+    w = [0.0]*24  # sampledSeconds-sum por hora
+    sv = [0.0]*24  # sampledSeconds*speed-sum por hora
     cur = 0
     ctx = ET.iterparse(edge_xml, events=("start", "end"))
     for ev, el in ctx:
@@ -17,7 +19,8 @@ def profile(edge_xml):
         elif ev == "end" and el.tag == "edge":
             ss = float(el.get("sampledSeconds", "0") or 0)
             if ss > 0 and el.get("speed") is not None:
-                w[cur] += ss; sv[cur] += ss*float(el.get("speed"))
+                w[cur] += ss
+                sv[cur] += ss*float(el.get("speed"))
             el.clear()
         elif ev == "end" and el.tag == "interval":
             el.clear()
@@ -27,7 +30,9 @@ def profile(edge_xml):
 
 def totals(stats_xml):
     r = ET.parse(stats_xml).getroot()
-    v = r.find("vehicles"); t = r.find("teleports"); s = r.find("safety")
+    v = r.find("vehicles")
+    t = r.find("teleports")
+    s = r.find("safety")
     ts = r.find("vehicleTripStatistics")
     return dict(loaded=int(v.get("loaded")), inserted=int(v.get("inserted")),
                 waiting=int(v.get("waiting")), tel=int(t.get("total")),
@@ -40,7 +45,6 @@ def shape_verdict(kmh, w):
     """Heurísticas: ¿drena? (nunca clavado <8 sostenido en meseta/picos) y
     ¿presencia tiene forma? (no monótona creciente)."""
     # tramo 07-23h (donde antes se clavaba). sostenido<8 si >=3h consecutivas <8.
-    low = [h for h in range(7, 24) if kmh[h] < 8.0]
     # racha consecutiva máxima <8
     run = mx = 0
     for h in range(7, 24):
@@ -78,7 +82,8 @@ def main():
         print(f"{h:02d}h | {row}")
     print("\n# Totales 24h + veredicto de drenaje")
     hdr = f"{'scale':>6} | {'ins':>6} | {'wait':>5} | {'jam':>6} | {'yld':>5} | {'wL':>5} | {'col/em':>6} | {'km/h':>5} | {'maxrun<8':>8} | {'pico_pres_h':>11} | drena?"
-    print(hdr); print("-"*len(hdr))
+    print(hdr)
+    print("-"*len(hdr))
     for s in scales:
         kmh, w, t = cols[s]
         drains, mx, peak_h = shape_verdict(kmh, w)
