@@ -72,3 +72,18 @@ export interface CongestionSeriesResponse {
   count: number;
   edges: EdgeCongestionSeries[];
 }
+
+// --- GET /congestion/prediction (predicción GRU baseline por arista, Fase 3) ---
+
+export interface PredictedEdgeCongestion {
+  edge_id: string;
+  levels: number[]; // levels[i] = nivel predicho 0-4 en base_timestep + 1 + i (horizon=30)
+}
+
+export interface CongestionPredictionResponse {
+  base_timestep: number; // corte t (minuto del día 0..1439); ventana t-29..t
+  horizon: number; // nº de pasos futuros predichos (=30)
+  source: string; // día-fuente, p.ej. "seed051 (day_idx=9)"
+  count: number;
+  edges: PredictedEdgeCongestion[];
+}

@@ -9,6 +9,7 @@ import type {
   GeometryFeatureCollection,
   CongestionStateResponse,
   CongestionSeriesResponse,
+  CongestionPredictionResponse,
 } from '../types/congestion';
 
 export const congestionService = {
@@ -33,6 +34,16 @@ export const congestionService = {
     const res = await httpClient.get<CongestionSeriesResponse>(
       '/congestion/series',
       { params: { day } },
+    );
+    return res.data;
+  },
+
+  /** Predicción GRU por arista (Fase 3). `t` opcional: si se omite, el backend lo deriva
+   *  del feed vivo (max(snapshot_timestamp) de waze_jams), coherente con getState(). */
+  async getPrediction(t?: number): Promise<CongestionPredictionResponse> {
+    const res = await httpClient.get<CongestionPredictionResponse>(
+      '/congestion/prediction',
+      t !== undefined ? { params: { t } } : undefined,
     );
     return res.data;
   },
