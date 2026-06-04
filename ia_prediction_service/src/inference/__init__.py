@@ -13,6 +13,7 @@ API pública::
 from __future__ import annotations
 
 from .adapters import GruAdapter, InferenceAdapter, StgnnAdapter
+from .jam_mapping import timeloss_to_jam_level
 from .loader import load_inference_adapter
 from .registry import resolve
 
@@ -22,4 +23,5 @@ __all__ = [
     "GruAdapter",
     "StgnnAdapter",
     "resolve",
+    "timeloss_to_jam_level",
 ]
