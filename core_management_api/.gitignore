@@ -12,6 +12,9 @@ outputs/
 # Excepción TTH-09 Fase 3c: los checkpoints GRU servidos por el core se versionan
 # por Git LFS (horneados a la imagen vía COPY del Dockerfile). Ver models/gru/README.md.
 !models/gru/*.pt
+# Excepción Fase 3 (predicción servida): el checkpoint del baseline GRU univariado
+# (timeLoss continuo, por arista) servido por congestion/. Mismo trato LFS + horneo.
+!models/miraflores_gru_baseline.pt
 .idea/
 .vscode/
 data/
