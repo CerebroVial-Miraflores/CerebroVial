@@ -3182,6 +3182,48 @@ No hay solape: ninguna HU del Gerente representa la congestión geográfica por 
 
 ---
 
+## DHU-030 — Alcance del experimento de validación del control adaptativo sobre la red completa de Miraflores (ABIERTA — en ejecución)
+
+**Fecha:** 2026-06-04.
+**Estado:** Abierta (en ejecución). Las decisiones de alcance P1–P5 quedan fijadas en esta entrada; la ejecución corre en las fases F1–F10 acordadas (registradas en el plan operativo, no en este ADR).
+**TTH afectada:** módulo de simulación SUMO (`simulation/`). El núcleo P1–P4 **no** toca el motor (`core_management_api/`); solo el scope opcional P5 (MP-red) lo tocaría si llegara a activarse.
+**Decisiones relacionadas:** continúa la línea de validación de IE05 reformulada a **métrica de red** en DHU-027 (entonces sobre el corredor Larco, 3 cruces); corre sobre la red completa de Miraflores que D-012 fijó como escenario; es la **línea de CONTROL** (Max Pressure fijo-vs-adaptativo), distinta del **track de PREDICCIÓN STGNN** (D-011/D-012/D-015) que opera sobre la misma red.
+
+### Contexto
+
+La validación cuantitativa del motor adaptativo se hizo hasta ahora sobre **partes** del mapa: una intersección aislada (TTH-07) y el corredor de la Av. Larco (3 cruces consecutivos, IE05 / DHU-027). Este experimento la lleva a la **red completa de Miraflores** (`simulation/conf/network/miraflores.net.xml`, **99 TLS**) con la demanda **B2** (scale 1.1, gate D-014, ~33 557 vehículos; regeneración documentada en `simulation/scripts/REGENERACION_DEMANDA_B2.md`). Se conserva el espíritu de IE05: KPI de **demora a nivel de red** con umbral **RD% ≥ 15%** frente al control fijo.
+
+Una auditoría read-only del adaptador TraCI y del net (2026-06-04) fija el terreno: el lazo de control es **per-nodo y replicable** (sensa por TraCI directo, no necesita detectores para escalar), pero su núcleo asume **2 fases por nodo**; de los 99 TLS, **~54 son de 2 fases** (encajan casi sin tocar el núcleo), **31 son mono-fase** y **14 tienen 3–4 fases**. No existe `.sumocfg` versionado que combine el net completo con una demanda, ni runner agnóstico al número de nodos: ese es el hueco de infraestructura que las fases de ejecución llenan.
+
+### Decisión
+
+1. **Alcance del control — los 99 TLS, ejecutado por etapas.** El destino es la red completa. Se arranca por los **54 TLS de 2 fases** (que el adaptador actual controla casi sin tocar su núcleo) como **punto de salida seguro con resultado entregable** (~55% de la red); luego se generaliza el núcleo del adaptador a **N fases** para incorporar los **45 restantes** (31 mono-fase + 14 de 3–4 fases). *Justificación:* el escalonado garantiza un resultado entregable aun si el tiempo se corta antes de completar la generalización a N fases, que es el trabajo de mayor riesgo.
+
+2. **KPI — dos métricas, robustez diferida a diagnóstico.** (a) **`net_timeLoss`** sobre **todos** los vehículos de la corrida (red entera; escala directo desde `tripinfo`/`summary`). (b) **Demora agregada sobre los cruces que el PMU marca saturados** (nivel de servicio E/F), localizados vía `documentation/contracts/mapeo_pmu_edges_v2.yaml` (fuente: *Plan de Movilidad Urbana de Miraflores 2017-2020*; 11 intersecciones semaforizadas mapeadas a su `traffic_light`). La necesidad de una **métrica robusta a censura** (puerta-a-puerta / Little's law, como en IE05) se **difiere a un diagnóstico**: la primera corrida fija mide los **autos sin insertar**; si la censura es chica, `net_timeLoss` basta; si es grande, se computa puerta-a-puerta. *Justificación:* no se decide la métrica a ciegas — se mide la censura primero y se elige con el dato sobre la mesa.
+
+3. **Baseline fijo — los `tlLogic` de netconvert del net tal cual**, nombrados honestamente como **"tiempos heurísticos de netconvert"**: ni planes de campo 2014, ni Webster optimizado, sino un **tercer punto** — una red **sin optimizar**. *Justificación:* sintetizar el fijo con Webster fresco simularía una red optimizada a hoy, que **no** representa la realidad de Miraflores (planes 2014 sin actualizar, según DHU-027); y Webster es la **estrategia base del propio adaptativo**, de modo que un baseline Webster compararía el adaptativo contra una versión de sí mismo. El baseline se rotula sin sobreafirmar lo que representa.
+
+4. **Onda verde (coordinación de offsets) — diferida, scope opcional.** No es parte del núcleo per-node. A explorar escalonada, **de a un corredor principal** (uno primero, sumar más si el tiempo da). *Antecedente:* en Larco la onda verde se **descartó** en régimen sobresaturado con links cortos (offset óptimo = 0); a escala distrito, con corredores más largos, podría comportarse distinto — de ahí que se reabra como **opcional**, no como descarte definitivo.
+
+5. **MP-red / coordinación cableada — diferida, scope opcional que toca el core.** A explorar **solo si** los números del per-node a escala distrito muestran señal de que la coordinación ayudaría (p. ej. demora concentrada en tramos internos largos). *Antecedente:* refutado en Larco (**−9,2% vs +15,7%** del per-node, **0/10** semillas, **p=0,002**, DHU-027); el término sigue en el código del motor, **apagado por defecto** (retrocompat bit-a-bit). No entra al núcleo del experimento.
+
+### Consecuencias / Relación con otras decisiones
+
+- **Este experimento es la línea de CONTROL sobre Miraflores completo**, distinta del **track de PREDICCIÓN STGNN** (D-011/D-012, revalidado en D-015) que corre sobre la misma red. Comparten escenario (la red completa) pero no objeto: aquí se valida el motor adaptativo (Max Pressure fijo-vs-adaptativo); allá se compara un predictor espacio-temporal contra el baseline GRU. No se solapan ni se condicionan.
+- **Continuidad con DHU-027:** se preserva la reformulación de IE05 a métrica de red y el umbral RD% ≥ 15%; lo que cambia es la **unidad de validación** — de corredor (3 cruces) a **distrito (99 TLS)**.
+- **Salvedad de escenario (net v2):** D-012 fijó "Miraflores completo" citando **47 cruces semaforizados / ~590 edges** (el net previo a la reconstrucción). El net fue **reconstruido a v2** (PR #44, 2026-06-03; contexto en D-015), y el `miraflores.net.xml` vigente tiene **99 TLS / 1664 edges vehiculares** (verificado contra el net y contra `mapeo_pmu_edges_v2.yaml`, `n_traffic_light: 99`). Este experimento corre sobre el **net v2 vigente (99 TLS)**; la cifra "47" de D-012 corresponde al net anterior y no se reusa.
+- **Plan de ejecución:** las decisiones aquí registradas son el **qué** y el **por qué**; el **cómo** son las fases **F1–F10** acordadas (infraestructura `.sumocfg` + runner agnóstico, corrida fija de diagnóstico, etapa 2-fases, generalización a N fases, KPIs, scopes opcionales), que viven en el plan operativo de la rama `feature/validacion-red-completa`, no en este ADR.
+- **Antecedente de regeneración:** la demanda B2 que alimenta el experimento se regenera determinísticamente según `simulation/scripts/REGENERACION_DEMANDA_B2.md` (no se versiona el `.rou.xml`).
+
+### Lo que NO cambia con DHU-030
+
+- DHU-001 a DHU-029 mantienen su contenido; DHU-030 las usa como base sin reabrir ninguna. En particular, DHU-027 (IE05 a métrica de red) se **continúa**, no se enmienda.
+- Las decisiones técnicas D-001 a D-015 se mantienen. El track STGNN (D-011/D-012/D-013/D-015) **no** se toca: este experimento es la línea de control, paralela e independiente de la de predicción.
+- El motor (`core_management_api/`) **no** se modifica en el núcleo P1–P4. El término MP-red sigue **apagado por defecto** y solo se reabriría bajo la condición de P5; mientras tanto la decisión de Larco (per-node es el óptimo del eje de acoplamiento, DHU-027) sigue vigente.
+- El Product Backlog (HU/TTH) no se amplía ni se modifica: DHU-030 registra el alcance de un **experimento de validación**, no una feature de producto.
+
+---
+
 ## Resumen de impacto en los bloques redactados hasta la fecha
 
 | Bloque | HUs | TTH | Decisiones aplicadas |
