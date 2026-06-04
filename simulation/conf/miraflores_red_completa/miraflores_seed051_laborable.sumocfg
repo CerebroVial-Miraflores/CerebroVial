@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Día laborable COMPLETO seed051 (el "lunes 8 jun" de la demo) sobre Miraflores COMPLETO
+     (net v2, 99 TLS). Experimento de validación fijo-vs-adaptativo, F1 (DHU-030).
+
+     Control FIJO = los tlLogic de netconvert embebidos en miraflores.net.xml (tiempos
+     heurísticos de netconvert; sin motor, sin TraCI, sin add-file de tlLogic). Es el baseline.
+
+     seed=51 + time-to-teleport=300 + collision.action=warn reproducen EXACTAMENTE la dinámica
+     con que gen_day.sh generó day_seed051.parquet — lo que el mapa de congestión del frontend
+     muestra hardcodeado (2026-06-08 ↔ seed051 ↔ day_idx 9). Abrir en gui para presentar:
+
+         cd simulation/conf/miraflores_red_completa
+         sumo-gui -c miraflores_seed051_laborable.sumocfg
+
+     Config self-contained a propósito (seed y outputs embebidos, no inyectados por CLI) para
+     que corra y se observe con solo -c. Outputs a runs/ (gitignoreado, regenerable). Ver README. -->
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+  <input>
+    <net-file value="../network/miraflores.net.xml"/>
+    <route-files value="routes/miraflores_seed051_laborable.rou.xml"/>
+  </input>
+  <time>
+    <begin value="0"/>
+    <end value="86400"/>
+    <step-length value="1"/>
+  </time>
+  <processing>
+    <time-to-teleport value="300"/>
+    <collision.action value="warn"/>
+  </processing>
+  <random_number>
+    <seed value="51"/>
+  </random_number>
+  <output>
+    <tripinfo-output value="runs/tripinfo.parquet"/>
+    <summary-output value="runs/summary.parquet"/>
+  </output>
+  <report>
+    <no-step-log value="true"/>
+    <no-warnings value="false"/>
+  </report>
+</configuration>
