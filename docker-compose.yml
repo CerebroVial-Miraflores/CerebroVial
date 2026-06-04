@@ -41,7 +41,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          # Fix de demo (no de raíz): GET /congestion/series materializa el día
+          # completo en memoria (~2.39M filas → pico RSS ~2.0-2.3 GB; psycopg2
+          # bufferea todo el resultset client-side). A 512M moría por OOM (exit 137).
+          # Deuda de raíz: stream server-side (yield_per / server-side cursor) o
+          # agregar en SQL, para bajar el pico y volver a un límite chico.
+          memory: 4G
 
   # ------------------------------------
   # DOMINIO EDGE
