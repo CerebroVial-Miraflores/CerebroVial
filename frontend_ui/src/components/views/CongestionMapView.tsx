@@ -35,7 +35,7 @@ import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Layer, PathOptions } from 'leaflet';
 import type { Feature, GeoJsonObject } from 'geojson';
-import { AlertTriangle, Clock, History, Radio } from 'lucide-react';
+import { AlertTriangle, Clock, History, Radio, TrendingUp } from 'lucide-react';
 import { LoadingOverlay } from '../ui/LoadingStates';
 import { congestionService } from '../../services/congestionService';
 import { openCongestionStream } from '../../services/congestionSseClient';
@@ -43,6 +43,7 @@ import {
   mergeCongestion,
   mergeCongestionAtIndex,
   congestionStyle,
+  predictionStyle,
   elapsedSeconds,
 } from '../../utils/congestion';
 import type {
@@ -50,6 +51,7 @@ import type {
   GeometryFeatureCollection,
   CongestionStateResponse,
   CongestionSeriesResponse,
+  CongestionPredictionResponse,
 } from '../../types/congestion';
 
 /** Niveles 0-5 de la escala aprobada (CA-22.3) para iterar en la leyenda. */
@@ -97,6 +99,13 @@ function todayIsoLocal(): string {
 
 /** Marcas de hora orientativas sobre la pista del slider (cada 3 h, 0..24). */
 const HOUR_MARKS = [0, 3, 6, 9, 12, 15, 18, 21, 24] as const;
+
+/**
+ * Índice de prueba fijo del horizonte de predicción (horizon=30) para Gate 3a.
+ * Mitad del horizonte → confirma que la capa de predicción pinta. El control
+ * manual del horizonte (slider) es 3b; acá es fijo a propósito.
+ */
+const PREDICTION_TEST_INDEX = 15;
 
 /**
  * Instante `t0 + i*stepS` formateado `HH:MM` (00:00–23:59). `t0` es naive-UTC
@@ -158,15 +167,21 @@ export const CongestionMapView = () => {
   // Sube en cada update; junto a `stale` forma la key que fuerza el remonte de
   // <GeoJSON> (vía de recolorización elegida).
   const [renderSeq, setRenderSeq] = useState(0);
-  // Modo de la vista (HU-23). El SSE/stale (Effect B) y la carga de serie
-  // (Effect C) dependen de `mode`; la carga inicial de geometría (Effect A) NO.
-  const [mode, setMode] = useState<'live' | 'historic'>('live');
+  // Modo de la vista (HU-23 + Fase 4). El SSE/stale (Effect B), la carga de serie
+  // (Effect C) y la carga de predicción (Effect E) dependen de `mode`; la carga
+  // inicial de geometría (Effect A) NO.
+  const [mode, setMode] = useState<'live' | 'historic' | 'prediction'>('live');
   // Modo histórico (HU-23): día seleccionado, serie del día y posición del slider.
   const [day, setDay] = useState<string>(() => todayIsoLocal());
   const [series, setSeries] = useState<CongestionSeriesResponse | null>(null);
   const [sliderIndex, setSliderIndex] = useState(0);
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesError, setSeriesError] = useState<string | null>(null);
+  // Modo predicción (Fase 4, Gate 3a): respuesta del GRU servido, loading y error.
+  // La capa de predicción se superpone a la base observada (que sigue viva por SSE).
+  const [prediction, setPrediction] = useState<CongestionPredictionResponse | null>(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
   // Geometría estática cacheada: se cruza con cada estado nuevo SIN re-pedirla.
   const geometryRef = useRef<GeometryFeatureCollection | null>(null);
   // Handle del timer de stale, elevado a ref para compartirlo entre la carga
@@ -234,12 +249,14 @@ export const CongestionMapView = () => {
     };
   }, [applyState]);
 
-  // Effect B — feed vivo (SSE + stale), dependiente de `mode`. En 'live' abre el
-  // stream y el wake re-arma el stale (vía applyState); en 'historic' NO abre
-  // stream NI arma stale. El cleanup limpia el timer de stale (compartido) y
-  // abortea el stream — el clearTimeout evita que el callback dispare tras montar.
+  // Effect B — feed vivo (SSE + stale), dependiente de `mode`. En 'live' Y en
+  // 'prediction' abre el stream y el wake re-arma el stale (vía applyState): la
+  // capa base observada sigue VIVA bajo la predicción (el congelado/Ahora-vs-Momento
+  // es 3b). En 'historic' NO abre stream NI arma stale. El cleanup limpia el timer de
+  // stale (compartido) y abortea el stream — el clearTimeout evita que el callback
+  // dispare tras montar. Togglear live↔prediction reabre el stream (re-lee estado 1×).
   useEffect(() => {
-    if (mode !== 'live') return;
+    if (mode === 'historic') return;
 
     let cancelled = false;
 
@@ -322,6 +339,50 @@ export const CongestionMapView = () => {
     setFeatures(mergeCongestionAtIndex(geometry, series, sliderIndex));
   }, [mode, series, sliderIndex]);
 
+  // Effect E — carga de predicción (modo predicción, Fase 4 Gate 3a). Análogo a
+  // Effect C: al entrar en predicción pide getPrediction() SIN `t` (lo deriva el
+  // backend del feed vivo, coherente con getState). Maneja los errores del endpoint
+  // por status, cada uno con su mensaje, sin romper la vista ni la capa base:
+  //   503 — servicio no inicializado / feed (waze_jams) vacío
+  //   409 — feed con <29 pasos de historia
+  //   422 — `t` fuera de rango (defensivo; no debería pasar sin `t` manual)
+  useEffect(() => {
+    if (mode !== 'prediction') return;
+
+    let cancelled = false;
+    setPredictionLoading(true);
+    setPredictionError(null);
+
+    congestionService
+      .getPrediction()
+      .then((p) => {
+        if (cancelled) return;
+        setPrediction(p);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Error cargando la predicción de congestión:', err);
+        const status = (err as { response?: { status?: number } }).response?.status;
+        const message =
+          status === 503
+            ? 'El servicio de predicción no está disponible (sin datos del feed o no inicializado).'
+            : status === 409
+              ? 'El feed no tiene suficiente historia (≥29 pasos) para predecir todavía.'
+              : status === 422
+                ? 'El instante solicitado está fuera de rango.'
+                : 'No se pudo cargar la predicción.';
+        setPredictionError(message);
+        setPrediction(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPredictionLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
+
   // Mientras stale: tick de 1 s para refrescar el contador "hace X" del banner.
   useEffect(() => {
     if (!stale) return;
@@ -342,12 +403,42 @@ export const CongestionMapView = () => {
     return mode === 'live' && stale ? { ...base, opacity: STALE_OPACITY } : base;
   };
 
-  // Key del remonte: en histórico depende de `sliderIndex` (cada movimiento del
-  // slider remonta la capa y recolorea); en vivo, de `renderSeq`/`stale` (Fase 3).
+  // Key del remonte de la BASE: en histórico depende de `sliderIndex` (cada
+  // movimiento del slider remonta y recolorea); en vivo/predicción, de
+  // `renderSeq`/`stale` (Fase 3) — la base sigue viva por SSE en ambos.
   const geoKey =
     mode === 'historic'
       ? `historic-${sliderIndex}`
       : `${renderSeq}-${stale ? 'stale' : 'live'}`;
+
+  // --- Capa de predicción (Fase 4 Gate 3a) — superpuesta a la base observada ---
+  // Cruza la geometría cacheada con el nivel predicho del índice de prueba fijo.
+  // `null` mientras no haya geometría o respuesta → la capa no se renderiza.
+  const predictionData: GeoJsonObject | null =
+    mode === 'prediction' && prediction && geometryRef.current
+      ? ({
+          type: 'FeatureCollection',
+          features: mergeCongestionAtIndex(
+            geometryRef.current,
+            prediction,
+            PREDICTION_TEST_INDEX,
+          ),
+        } as unknown as GeoJsonObject)
+      : null;
+
+  // Estilo de la capa de predicción: paleta fría (predictionStyle, 0-4) con
+  // `interactive: false` para no robar el hover/click a la base observada (CA-22.5
+  // sigue respondiendo por debajo).
+  const stylePrediction = (feature?: Feature): PathOptions => ({
+    ...predictionStyle(
+      (feature?.properties as { congestion_level?: number | null })?.congestion_level,
+    ),
+    interactive: false,
+  });
+
+  // Key propia de la capa de predicción (namespace independiente de la base): su
+  // remonte por índice NO toca la base ni viceversa. En 3a el índice es fijo.
+  const predictionGeoKey = `prediction-${PREDICTION_TEST_INDEX}`;
 
   // Modo histórico: nº de muestras (longitud de la serie) y estado "día sin datos".
   const seriesLength = series?.edges[0]?.levels.length ?? 0;
@@ -392,15 +483,26 @@ export const CongestionMapView = () => {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {/* key cambia por update (renderSeq/stale en vivo, sliderIndex en
-                histórico) → remonta la capa y recolorea (react-leaflet 5 no
-                refresca `data` in-place). */}
+            {/* Capa BASE (observada). key cambia por update (renderSeq/stale en
+                vivo y predicción, sliderIndex en histórico) → remonta la capa y
+                recolorea (react-leaflet 5 no refresca `data` in-place). */}
             <GeoJSON
               key={geoKey}
               data={data}
               style={styleFeature}
               onEachFeature={onEachFeature}
             />
+            {/* Capa de PREDICCIÓN (Fase 4 Gate 3a), superpuesta a la base: se
+                renderiza DESPUÉS → queda encima en el overlayPane. Su `key` propia
+                (prediction-${índice}) es independiente de la base: remontar una NO
+                toca la otra. Solo en modo predicción y con respuesta cargada. */}
+            {predictionData && (
+              <GeoJSON
+                key={predictionGeoKey}
+                data={predictionData}
+                style={stylePrediction}
+              />
+            )}
             <CongestionLegend />
           </MapContainer>
         )}
@@ -433,7 +535,38 @@ export const CongestionMapView = () => {
               >
                 <History size={14} /> Histórico
               </button>
+              <button
+                type="button"
+                onClick={() => setMode('prediction')}
+                aria-pressed={mode === 'prediction'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  mode === 'prediction'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <TrendingUp size={14} /> Predicción
+              </button>
             </div>
+            {mode === 'prediction' && (
+              <div className="flex flex-col items-end gap-2 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={16} className="text-indigo-400" />
+                  <span
+                    className="text-sm font-bold text-white"
+                    title="(predicción GRU servida, índice de prueba fijo)"
+                  >
+                    Predicción de congestión
+                  </span>
+                </div>
+                {predictionLoading && (
+                  <span className="text-xs text-slate-300">Cargando predicción…</span>
+                )}
+                {predictionError && (
+                  <span className="text-xs text-rose-400">{predictionError}</span>
+                )}
+              </div>
+            )}
             {mode === 'historic' && (
               <div className="flex flex-col items-end gap-2 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-4 py-3 shadow-lg">
                 <div className="flex items-center gap-2">

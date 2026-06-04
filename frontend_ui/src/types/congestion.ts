@@ -87,3 +87,18 @@ export interface CongestionPredictionResponse {
   count: number;
   edges: PredictedEdgeCongestion[];
 }
+
+// --- Contrato estructural mínimo para el cruce por índice temporal ---
+
+/**
+ * Fuente de niveles por arista indexados posicionalmente: lo único que
+ * `mergeCongestionAtIndex` consume (no `t0`/`step_s`/`day`/`base_timestep`).
+ *
+ * Tanto `CongestionSeriesResponse` (recorrido histórico, HU-23) como
+ * `CongestionPredictionResponse` (predicción servida, Fase 4) lo satisfacen
+ * estructuralmente, así que el mismo helper cruza ambas sin duplicarse. Es el
+ * contrato del PARÁMETRO del helper; cada caller sigue pasando su tipo completo.
+ */
+export interface IndexedEdgeLevels {
+  edges: { edge_id: string; levels: number[] }[];
+}

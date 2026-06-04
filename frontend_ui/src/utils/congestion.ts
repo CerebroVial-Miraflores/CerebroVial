@@ -13,9 +13,8 @@
 import type {
     GeometryFeatureCollection,
     CongestionStateResponse,
-    CongestionSeriesResponse,
     EdgeCongestionState,
-    EdgeCongestionSeries,
+    IndexedEdgeLevels,
     MergedCongestionFeature,
 } from '../types/congestion';
 
@@ -170,18 +169,22 @@ export function mergeCongestion(
 
 /**
  * Igual que `mergeCongestion`, pero toma el nivel del índice temporal `i` de la
- * serie (`series.edges[].levels[i]`) en vez del último estado — para el recorrido
- * temporal de HU-23. Arista sin serie o índice fuera de rango de `levels` → nivel
- * `null` (estilo neutro vía `congestionStyle`). `snapshot_timestamp` no aplica a la
- * serie (se deriva de `t0 + i*step_s` en la capa de UI), va `null`.
+ * fuente (`source.edges[].levels[i]`) en vez del último estado — para el recorrido
+ * temporal de HU-23 y la predicción servida de Fase 4. Arista sin entrada o índice
+ * fuera de rango de `levels` → nivel `null` (estilo neutro). `snapshot_timestamp` no
+ * aplica (se deriva en la capa de UI), va `null`.
+ *
+ * El parámetro se tipa con el contrato estructural mínimo `IndexedEdgeLevels`, que
+ * tanto `CongestionSeriesResponse` (histórico) como `CongestionPredictionResponse`
+ * (predicción) satisfacen — el mismo helper cruza ambas sin duplicarse.
  */
 export function mergeCongestionAtIndex(
     geometry: GeometryFeatureCollection,
-    series: CongestionSeriesResponse,
+    source: IndexedEdgeLevels,
     i: number,
 ): MergedCongestionFeature[] {
-    const byEdgeId = new Map<string, EdgeCongestionSeries>(
-        series.edges.map((e) => [e.edge_id, e]),
+    const byEdgeId = new Map<string, IndexedEdgeLevels['edges'][number]>(
+        source.edges.map((e) => [e.edge_id, e]),
     );
     return geometry.features.map((feature) => {
         const match = byEdgeId.get(feature.properties.edge_id);
