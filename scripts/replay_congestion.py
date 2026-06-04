@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -52,6 +53,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Replay de congestión SUMO → waze_jams (TTH-12).")
     ap.add_argument("--mode", choices=["presiembra", "vivo"], default="presiembra")
     ap.add_argument("--day", default="seed051", help="día del dataset (default: seed051)")
+    ap.add_argument("--date", default=None,
+                    help="fecha YYYY-MM-DD del día sembrado (default: DAY_EPOCH = 2025-01-06). "
+                         "Fecha el seed en una fecha distinta para el calendario histórico (HU-23).")
     ap.add_argument("--speedup", type=float, default=60.0, help="aceleración del replay vivo (1=tiempo real)")
     ap.add_argument("--max-steps", type=int, default=None, help="limita pasos en modo vivo (debug)")
     args = ap.parse_args()
@@ -62,7 +66,12 @@ def main() -> None:
         raise RuntimeError("DATABASE_URL no encontrado en el entorno ni en .env")
 
     engine = create_engine(url, pool_pre_ping=True)
-    adapter = SumoReplayAdapter(day=args.day)
+    # Sin --date, no se pasa day_epoch → el adapter usa su default DAY_EPOCH (comportamiento
+    # idéntico a hoy). Con --date, se fecha el seed en esa fecha (calendario histórico HU-23).
+    kwargs = {}
+    if args.date:
+        kwargs["day_epoch"] = datetime.strptime(args.date, "%Y-%m-%d")
+    adapter = SumoReplayAdapter(day=args.day, **kwargs)
 
     with Session(engine) as session:
         repo = WazeJamsRepo(session)
