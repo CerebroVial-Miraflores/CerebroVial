@@ -84,6 +84,7 @@ export interface CongestionPredictionResponse {
   base_timestep: number; // corte t (minuto del día 0..1439); ventana t-29..t
   horizon: number; // nº de pasos futuros predichos (=30)
   source: string; // día-fuente, p.ej. "seed051 (day_idx=9)"
+  source_date: string; // "YYYY-MM-DD" — fecha-calendario del día-fuente (getSeries en modo pinned, Gate 3b)
   count: number;
   edges: PredictedEdgeCongestion[];
 }
