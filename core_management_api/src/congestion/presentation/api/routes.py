@@ -56,6 +56,13 @@ _PREDICTION_HORIZON = 30
 _MIN_T = 29
 _MAX_T = 1439  # último timestep del día (minuto del día 0..1439)
 _PREDICTION_SOURCE = "seed051 (day_idx=9)"
+# DEUDA HERMANA del ``_PREDICTION_SOURCE`` hardcodeado: NO es la fecha resuelta del día real
+# del slice. El slice (day_seed051_tensor.npz) NO lleva fecha; esta constante es coherente
+# POR CONVENCIÓN con el mapeo seed051 ↔ 2026-06-08 del calendario de siembra
+# (scripts/seed_congestion_calendar.py), NO derivada de él programáticamente. No leer como
+# "fecha resuelta correctamente": se paga junto con la deuda del source hardcodeado en el
+# cierre del STGNN servido / endpoint de predicción real.
+_PREDICTION_SOURCE_DATE = date(2026, 6, 8)
 
 # --- DI: servicio de predicción de congestión (Fase 3) -----------------------------
 # Singleton in-process, espejo del patrón de TTH-09 (init/get), pero en congestion/ con su
@@ -239,6 +246,7 @@ def get_congestion_prediction(
         base_timestep=resolved_t,
         horizon=_PREDICTION_HORIZON,
         source=_PREDICTION_SOURCE,
+        source_date=_PREDICTION_SOURCE_DATE,
         count=len(preds),
         edges=[
             PredictedEdgeCongestion(edge_id=p.edge_id, levels=p.levels) for p in preds

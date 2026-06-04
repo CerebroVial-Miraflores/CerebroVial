@@ -79,6 +79,20 @@ def test_contrato_30_pasos_1660_aristas(prediction_client):
         assert all(0 <= lv <= 4 for lv in e["levels"]), f"nivel fuera de 0-4 en {e['edge_id']}"
 
 
+def test_source_date_expuesto(prediction_client):
+    """El response trae ``source_date`` = la fecha-calendario del día-fuente (seed051 ↔ 2026-06-08).
+
+    Gate 3a-bis: el frontend (modo ``pinned``) la usa para pedir la base observada coherente
+    vía ``getSeries(source_date)``. Es deuda hermana del ``source`` hardcodeado (constante en
+    el endpoint, coherente-por-convención con el calendario de siembra), no una fecha resuelta
+    del slice — ver el comentario de ``_PREDICTION_SOURCE_DATE`` en routes.py.
+    """
+    prediction_client.as_role("operator")
+    r = prediction_client.get("/congestion/prediction", params={"t": T_DEMO})
+    assert r.status_code == 200, r.text
+    assert r.json()["source_date"] == "2026-06-08"  # Pydantic serializa date → ISO 8601
+
+
 def test_circulo_node_order_entrada_salida(prediction_client):
     """La arista i de la respuesta == node_order[i] (mismo orden que vio el modelo).
 

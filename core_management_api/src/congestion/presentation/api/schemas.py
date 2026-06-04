@@ -80,10 +80,13 @@ class CongestionPredictionResponse(BaseModel):
 
     ``base_timestep`` es el corte ``t`` (minuto del día, 0..1439) sobre el que se armó la
     ventana ``t-29..t``; la predicción cubre ``t+1..t+horizon``. ``edges`` viene en orden
-    ``node_index`` (el mismo del training). ``source`` documenta el día-fuente (seed051).
+    ``node_index`` (el mismo del training). ``source`` documenta el día-fuente (seed051);
+    ``source_date`` es su fecha-calendario, para que el consumidor pida la base observada
+    coherente vía ``getSeries(source_date)`` (HU-23, modo ``pinned``).
     """
     base_timestep: int
     horizon: int
     source: str
+    source_date: date  # fecha-calendario del día-fuente (seed051); deuda hermana de ``source`` — ver routes.py
     count: int
     edges: list[PredictedEdgeCongestion]
