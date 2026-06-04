@@ -62,3 +62,28 @@ class CongestionSeriesResponse(BaseModel):
     coverage_end: datetime | None
     count: int
     edges: list[EdgeCongestionSeries]
+
+
+class PredictedEdgeCongestion(BaseModel):
+    """Predicción de congestión de UNA arista: niveles 0-4 para los pasos t+1..t+horizon.
+
+    ``levels[i]`` es el nivel predicho en el paso ``base_timestep + 1 + i`` (futuro); el
+    frontend (slider HU-23) elige cuál mostrar. Niveles 0-4: el modelo predice ``timeLoss``
+    continuo y se presenta vía cortes; el nivel 5 ("cerrado") es observable, no predicho.
+    """
+    edge_id: str
+    levels: list[int]
+
+
+class CongestionPredictionResponse(BaseModel):
+    """Predicción GRU baseline por arista de toda la red, a ``horizon`` pasos (Fase 3).
+
+    ``base_timestep`` es el corte ``t`` (minuto del día, 0..1439) sobre el que se armó la
+    ventana ``t-29..t``; la predicción cubre ``t+1..t+horizon``. ``edges`` viene en orden
+    ``node_index`` (el mismo del training). ``source`` documenta el día-fuente (seed051).
+    """
+    base_timestep: int
+    horizon: int
+    source: str
+    count: int
+    edges: list[PredictedEdgeCongestion]

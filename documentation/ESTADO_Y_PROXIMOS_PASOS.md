@@ -371,6 +371,16 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   Se registran para que una corrida futura de la suite completa no atribuya estas roturas a trabajo
   reciente (p.ej. el loader de inferencia). Disparadores: migrar `5T→5min` en `test_data_loader.py`;
   instalar `pyarrow` en el venv para los tests de dataset builder.
+- **Gate de fidelidad de ventana (predicción servida, Fase 3) — no corre en CI (registrada 2026-06-04).**
+  `core_management_api/tests/congestion/test_prediction_window_gate.py` (STAGE-GATE 2: la ventana
+  servida en el core es byte-igual a la del training + el camino vendorizado reproduce el loader de
+  Fase 1) **depende del `.npz` completo gitignored/regenerable** (`miraflores_laborable_60d.npz`, 574 MB).
+  En CI y en un clon limpio el `.npz` no está → el gate hace **skip RUIDOSO** (warning + mensaje
+  explícito "la FIDELIDAD de la ventana NO está verificada en este entorno"), NO un verde silencioso.
+  **Consecuencia:** si alguien toca el `gru_window_builder` o el adapter vendorizado, CI no lo atrapa —
+  el gate duerme skipeado. Se verifica local (con el `.npz` presente). **Follow-up:** materializar un
+  fixture mínimo versionado (un slice de pocos días/nodos) para que el gate corra en CI. Disparador:
+  cualquier cambio al window-builder o al camino de inferencia vendorizado del core.
 
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).

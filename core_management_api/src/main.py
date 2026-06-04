@@ -1,3 +1,4 @@
+import logging
 import os
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
@@ -17,11 +18,18 @@ from src.control.application.max_pressure import MaxPressureController
 from src.control.application.mtc_constraints import MTCConstants, MTCRestrictionApplier
 from src.control.config import ControlSettings
 from src.control.infrastructure import init_broadcaster
-from src.congestion.presentation.api.routes import router as congestion_router
+from src.congestion.presentation.api.routes import router as congestion_router, init_prediction_service
+from src.congestion.application.congestion_prediction_service import CongestionPredictionService
 from src.congestion.infrastructure import init_congestion_broadcaster
+from src.congestion.infrastructure.gru_inference_adapter import load_gru_adapter
+from src.congestion.infrastructure.prediction_day_source import PredictionDaySource
 from src.auth.domain import Role
 from src.auth.presentation.api.dependencies import require_role
 from src.auth.presentation.api.routes import auth_router
+
+logger = logging.getLogger(__name__)
+
+_PREDICTION_CKPT = "models/miraflores_gru_baseline.pt"
 
 app = FastAPI(title="CerebroVial Core API", version="0.1.0")
 
@@ -50,6 +58,25 @@ init_predictor(_predictor)
 _gru_engine = GRUModelEngine()
 _gru_engine.load_models()
 init_gru_service(GruInferenceService(_gru_engine))
+
+# Fase 3: predicción de congestión por arista servida in-process (GRU baseline vendorizado,
+# GRU-only sin tsl). Carga eager el slice del día seed051 (~12 MB RAM) + el checkpoint. Es
+# OTRO predictor que el GRU 4-way de TTH-09 (por intersección): coexisten. Tolerante a
+# faltantes — si el slice o el .pt no están, el core bootea igual y GET /congestion/prediction
+# responde 503 (no se cae el arranque ni el resto del dominio congestion/).
+try:
+    _prediction_day_source = PredictionDaySource()
+    _prediction_day_source.load()
+    _prediction_adapter = load_gru_adapter(_PREDICTION_CKPT)
+    init_prediction_service(
+        CongestionPredictionService(_prediction_day_source, _prediction_adapter)
+    )
+    logger.info(
+        "Predicción de congestión lista (slice seed051 day_idx=%s + %s)",
+        _prediction_day_source.day_idx, _PREDICTION_CKPT,
+    )
+except Exception as e:  # noqa: BLE001 - boot tolerante, igual que el GRU 4-way
+    logger.error("Predicción de congestión NO disponible (GET /congestion/prediction → 503): %s", e)
 
 _control_settings = ControlSettings()
 _control_engine = AdaptiveEngine(

@@ -17,8 +17,9 @@ de "desactualizado" es del consumidor (HU-22, CA-22.4), no de aquí.
 import asyncio
 import json
 from datetime import date
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -27,6 +28,10 @@ from cerebrovial_shared.database import get_db
 from src.auth.domain import Role
 from src.auth.presentation.api.dependencies import require_role
 
+from ...application.congestion_prediction_service import (
+    CongestionPredictionService,
+    PredictionUnavailableError,
+)
 from ...infrastructure import (
     NetworkCongestionBroadcaster,
     NetworkGeometryRepo,
@@ -34,14 +39,74 @@ from ...infrastructure import (
     get_congestion_broadcaster,
 )
 from .schemas import (
+    CongestionPredictionResponse,
     CongestionSeriesResponse,
     CongestionStateResponse,
     EdgeCongestionSeries,
     EdgeCongestionState,
     GeometryFeatureCollection,
+    PredictedEdgeCongestion,
 )
 
 router = APIRouter(prefix="/congestion", tags=["congestion"])
+
+# Horizonte de la predicción servida (pasos de 60 s); = horizonte del modelo baseline.
+_PREDICTION_HORIZON = 30
+# Corte mínimo: la ventana lookback=30 termina en t y empieza en t-29 ⇒ t >= 29.
+_MIN_T = 29
+_MAX_T = 1439  # último timestep del día (minuto del día 0..1439)
+_PREDICTION_SOURCE = "seed051 (day_idx=9)"
+
+# --- DI: servicio de predicción de congestión (Fase 3) -----------------------------
+# Singleton in-process, espejo del patrón de TTH-09 (init/get), pero en congestion/ con su
+# infra vendorizada (GRU-only, sin tsl). Inicializado desde main.py al startup.
+_prediction_service_instance: Optional[CongestionPredictionService] = None
+
+
+def get_prediction_service() -> CongestionPredictionService:
+    if _prediction_service_instance is None:
+        raise HTTPException(
+            status_code=503, detail="Congestion prediction service not initialized"
+        )
+    return _prediction_service_instance
+
+
+def init_prediction_service(service: CongestionPredictionService) -> None:
+    global _prediction_service_instance
+    _prediction_service_instance = service
+
+
+def _resolve_t(t_param: Optional[int], db: Session) -> int:
+    """Resuelve el corte ``t`` (minuto del día 0..1439).
+
+    Si viene ``t`` explícito (demo controlada) → se valida y se usa. Si no → se deriva del
+    step actual del feed vivo: ``max(snapshot_timestamp)`` de ``waze_jams`` (la misma fuente
+    que pinta el mapa), NO del reloj de pared. ``t = hora*60 + minuto`` (minuto del día),
+    robusto al ``DAY_EPOCH`` con el que se haya fechado el replay.
+    """
+    if t_param is not None:
+        if not (_MIN_T <= t_param <= _MAX_T):
+            raise HTTPException(
+                status_code=422,
+                detail=f"t={t_param} fuera de rango [{_MIN_T}, {_MAX_T}] (minuto del día).",
+            )
+        return t_param
+
+    ts = WazeJamsRepo(db).latest_timestamp()
+    if ts is None:
+        raise HTTPException(
+            status_code=503,
+            detail="No hay feed de congestión para anclar t (waze_jams vacío). "
+            "Sembrá/replayá el día seed051 o pasá t explícito.",
+        )
+    t = ts.hour * 60 + ts.minute
+    if not (_MIN_T <= t <= _MAX_T):
+        raise HTTPException(
+            status_code=409,
+            detail=f"el feed está en t={t}; se requieren >= {_MIN_T} pasos de historia "
+            "para la ventana (lookback=30). Esperá a que el replay avance.",
+        )
+    return t
 
 
 @router.get(
@@ -137,3 +202,45 @@ async def stream_congestion_updates(
             await broadcaster.unsubscribe(queue)
 
     return EventSourceResponse(event_generator())
+
+
+@router.get(
+    "/prediction",
+    response_model=CongestionPredictionResponse,
+    dependencies=[Depends(require_role(Role.OPERATOR, Role.ADMIN))],
+)
+def get_congestion_prediction(
+    t: Optional[int] = Query(
+        None,
+        ge=_MIN_T,
+        le=_MAX_T,
+        description="Corte (minuto del día 0..1439). Si se omite, deriva del step actual "
+        "del feed vivo (max snapshot_timestamp de waze_jams), no del reloj de pared.",
+    ),
+    service: CongestionPredictionService = Depends(get_prediction_service),
+    db: Session = Depends(get_db),
+) -> CongestionPredictionResponse:
+    """Predicción GRU baseline por arista a 30 pasos (Fase 3) — alimenta el mapa.
+
+    Corta la ventana ``t-29..t`` del día seed051 (= lunes 8 jun, día-fuente del mapa vivo),
+    corre el GRU baseline vendorizado (``timeLoss`` continuo) y presenta niveles 0-4 por
+    arista para los pasos ``t+1..t+30``. El frontend (slider HU-23) elige cuál mostrar.
+
+    Coherencia: cuando ``t`` no se pasa, sale del MISMO step que ``GET /congestion/state``
+    muestra (``max(snapshot_timestamp)`` de ``waze_jams``), garantizando que predicción y
+    mapa vivo hablan del mismo instante del mismo día-fuente.
+    """
+    resolved_t = _resolve_t(t, db)
+    try:
+        preds = service.predict(resolved_t)
+    except PredictionUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return CongestionPredictionResponse(
+        base_timestep=resolved_t,
+        horizon=_PREDICTION_HORIZON,
+        source=_PREDICTION_SOURCE,
+        count=len(preds),
+        edges=[
+            PredictedEdgeCongestion(edge_id=p.edge_id, levels=p.levels) for p in preds
+        ],
+    )
