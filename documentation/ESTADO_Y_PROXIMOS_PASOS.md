@@ -381,6 +381,25 @@ Diferido a R2 (registrado en `specs/001-cerebrovial-mvp/data-model.md` § Trabaj
   el gate duerme skipeado. Se verifica local (con el `.npz` presente). **Follow-up:** materializar un
   fixture mínimo versionado (un slice de pocos días/nodos) para que el gate corra en CI. Disparador:
   cualquier cambio al window-builder o al camino de inferencia vendorizado del core.
+- **`GET /congestion/series` materializa el día completo en memoria — fix de demo (límite 4G), raíz
+  pendiente (registrada 2026-06-04).** El endpoint (`series_for_day`,
+  `core_management_api/src/congestion/infrastructure/repositories.py:181`) lee TODAS las filas del día
+  (días sembrados del calendario = 1660 aristas × 1440 pasos = **2.39M filas**) y las materializa en
+  Python; **psycopg2 bufferea el resultset completo client-side** (sin server-side cursor). **Medido
+  (2026-06-04, dentro del contenedor, día 2026-06-08):** heap Python `tracemalloc` 722 MB, pero el RSS
+  pico real (`VmHWM`) trepa a **~1.99 GB** (la diferencia es el buffer C de psycopg2, no rastreado por
+  tracemalloc). **Medición limpia con la máquina despejada (multiseed terminada, 2026-06-04):**
+  `getSeries(2026-06-08)` responde 200 con pico de contenedor (cgroup `memory.peak`) de **1.60 GB —
+  40% del límite 4G**, `OOMKilled=false`, `ExitCode=0`, sin reinicio. A **512M** el contenedor moría
+  por OOM (`State.OOMKilled=true`, `ExitCode=137`) → en el
+  front `net::ERR_SOCKET_NOT_CONNECTED` tras ~57s. El query NO es el cuello (`EXPLAIN ANALYZE` ~1.45s);
+  es la materialización + serialización. **Afecta también el modo `pinned` de predicción (Fase 4):**
+  llama `getSeries(source_date=2026-06-08)` — mismo camino, mismo pico. **Fix de demo aplicado:**
+  `docker-compose.yml:49` subió el límite de `memory: 512M` → `4G` (el pico medido 1.60 GB entra con
+  ~2.4 GB de aire; tolera el path pinned prediction+series). **Deuda de raíz (NO hecha):** stream server-side
+  (`yield_per` / server-side cursor / `stream_results`) o agregar en SQL para bajar el pico y volver a
+  un límite chico. **Disparador de cierre:** al implementar el stream/agregación de raíz, revertir el 4G
+  a un límite acotado en `docker-compose.yml`.
 
 ## Dónde vive cada cosa (índice)
 - Guía para agentes IA (canon): CLAUDE.md (raíz).
