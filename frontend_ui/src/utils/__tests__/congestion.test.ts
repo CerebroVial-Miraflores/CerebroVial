@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     congestionStyle,
+    predictionStyle,
     mergeCongestion,
     mergeCongestionAtIndex,
     elapsedSeconds,
@@ -48,6 +49,47 @@ describe('congestionStyle', () => {
         ['Infinity', Number.POSITIVE_INFINITY],
     ])('cae a estilo neutro gris para %s', (_label, level) => {
         expect(congestionStyle(level as number)).toEqual({ color: '#9E9E9E', weight: 3 });
+    });
+});
+
+describe('predictionStyle', () => {
+    it.each([
+        [0, '#C7D2FE', 3, 0.5],
+        [1, '#A5B4FC', 3.5, 0.525],
+        [2, '#818CF8', 4.5, 0.55],
+        [3, '#6366F1', 6, 0.575],
+        [4, '#4C1D95', 7.5, 0.6],
+    ])('level %i → color %s, weight %f, opacity %f', (level, color, weight, opacity) => {
+        expect(predictionStyle(level)).toEqual({ color, weight, opacity });
+    });
+
+    it('conserva la redundancia no-cromática de grosor (creciente, salto en el tramo alto)', () => {
+        expect(predictionStyle(4).weight).toBeGreaterThan(predictionStyle(0).weight);
+        // salto del nivel 2 (4.5 px) al nivel 3 (6 px), espejo del observado
+        expect(predictionStyle(3).weight).toBeGreaterThan(predictionStyle(2).weight);
+    });
+
+    it.each([
+        ['null', null],
+        ['undefined', undefined],
+        ['NaN', NaN],
+        ['negativo', -1],
+        ['fuera de rango alto (5, válido en el observado)', 5],
+        ['no-entero', 4.5],
+        ['Infinity', Number.POSITIVE_INFINITY],
+    ])('cae al neutro transparente (no pinta) para %s', (_label, level) => {
+        expect(predictionStyle(level as number)).toEqual({
+            color: 'transparent',
+            weight: 0,
+            opacity: 0,
+        });
+    });
+
+    it('distingue "nivel 0 válido" (pinta, opacity > 0) de "sin predicción" (null → no pinta)', () => {
+        // El horizonte índice 0 se modela como ausencia (null), NO como nivel 0:
+        // el merge de Gate 3 decide qué pasar. La función pura ya separa ambos casos.
+        expect(predictionStyle(0).opacity).toBeGreaterThan(0);
+        expect(predictionStyle(null).opacity).toBe(0);
     });
 });
 
