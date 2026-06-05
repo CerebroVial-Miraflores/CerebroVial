@@ -16,7 +16,11 @@ from src.vision.infrastructure.sources import (
 
 
 class FakeCapture:
-    """Yields n_frames successful reads, then signals end-of-stream."""
+    """Yields n_frames successful reads, then signals end-of-stream.
+
+    `set()` devuelve True pero NO rebobina (emula un backend cuyo seek miente):
+    sirve para ejercitar la guarda anti-loop-infinito (_MAX_REWINDS).
+    """
 
     def __init__(self, n_frames=3, opened=True):
         self._frames_left = n_frames
@@ -37,6 +41,22 @@ class FakeCapture:
 
     def release(self):
         self.released = True
+
+
+class RewindableFakeCapture(FakeCapture):
+    """Como FakeCapture pero `set(POS_FRAMES, 0)` realmente rebobina los frames.
+
+    Emula un backend de archivo cuyo seek funciona, así read() loopea de verdad.
+    """
+
+    def __init__(self, n_frames=3, opened=True):
+        super().__init__(n_frames=n_frames, opened=opened)
+        self._n_frames = n_frames
+
+    def set(self, prop, value):
+        if value == 0:
+            self._frames_left = self._n_frames
+        return True
 
 
 def test_create_source_auto_file():
@@ -65,7 +85,8 @@ def test_create_source_explicit_type():
 
 
 def test_read_returns_frames_then_none():
-    src = create_source("video.mp4", capture=FakeCapture(n_frames=2))
+    # loop=False => semántica EOF -> None (con loop por default ahora rebobinaría).
+    src = create_source("video.mp4", loop=False, capture=FakeCapture(n_frames=2))
 
     f0 = src.read()
     f1 = src.read()
@@ -73,6 +94,25 @@ def test_read_returns_frames_then_none():
     assert f1.id == 1
     assert f0.image.shape == (4, 4, 3)
     assert src.read() is None  # end of file
+
+
+def test_read_loops_file_at_eof_when_enabled():
+    # loop=True (default) + backend que rebobina => read() sigue dando frames al EOF.
+    src = create_source("video.mp4", capture=RewindableFakeCapture(n_frames=2))
+
+    # Consumimos más frames que n_frames: sin re-loop, la 3ra lectura sería None.
+    frames = [src.read() for _ in range(5)]
+    assert all(f is not None for f in frames)
+    assert [f.id for f in frames] == [0, 1, 2, 3, 4]
+
+
+def test_read_degrades_to_none_when_rewind_unsupported():
+    # loop=True pero el backend no rebobina (set() miente): la guarda _MAX_REWINDS
+    # evita el loop infinito y degrada a EOF -> None.
+    src = create_source("video.mp4", capture=FakeCapture(n_frames=1))
+
+    assert src.read() is not None  # frame 0
+    assert src.read() is None      # EOF: rewind sin progreso -> None (no cuelga)
 
 
 def test_release_delegates_to_capture():

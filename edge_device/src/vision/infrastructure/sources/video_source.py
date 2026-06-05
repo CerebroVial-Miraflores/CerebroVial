@@ -13,7 +13,9 @@ from .base import SourceConfig
 logger = logging.getLogger(__name__)
 
 _MAX_STREAM_RETRIES = 500
+_MAX_REWINDS = 3
 _STREAM_PREFIXES = ("http", "https", "rtsp", "udp")
+_CV2_CAP_PROP_POS_FRAMES = 1  # cv2.CAP_PROP_POS_FRAMES (valor estable de OpenCV)
 
 
 class OpenCVSource(FrameProducer):
@@ -91,10 +93,50 @@ class OpenCVSource(FrameProducer):
             logger.error(f"Reconnection failed: {e}")
         return False
 
+    def _rewind(self) -> bool:
+        """Reposiciona un archivo al frame 0 para re-loop.
+
+        Intenta primero el seek (`CAP_PROP_POS_FRAMES`); si el backend lo
+        ignora o lanza, degrada a reabrir la captura. Devuelve True si se pudo
+        intentar el rewind; la guarda de `read()` (`_MAX_REWINDS`) evita girar
+        sin frames cuando el seek miente.
+        """
+        pos = (
+            self._cv2.CAP_PROP_POS_FRAMES
+            if self._cv2 is not None
+            else _CV2_CAP_PROP_POS_FRAMES
+        )
+        try:
+            if self.cap.set(pos, 0):
+                logger.info("File source EOF: rewinding to start (loop).")
+                return True
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Seek to frame 0 failed: {e}; reopening file.")
+        # Degradar: reabrir la captura desde cero.
+        return self._reopen_file()
+
+    def _reopen_file(self) -> bool:
+        """Reabre la captura de archivo (fallback cuando el seek no se soporta)."""
+        if self._injected:
+            return False
+        try:
+            import cv2
+
+            self._cv2 = cv2
+            self.cap.release()
+            self.cap = cv2.VideoCapture(self.source)
+            if self.cap.isOpened():
+                logger.info("File source reopened for loop.")
+                return True
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"File reopen failed: {e}")
+        return False
+
     def read(self) -> Optional[Frame]:
         if self.cap is None:
             return None
 
+        rewinds = 0
         while True:
             ret, img = self.cap.read()
             if ret:
@@ -113,7 +155,20 @@ class OpenCVSource(FrameProducer):
 
             # Read failed.
             if not self._is_stream():
-                return None  # end of file
+                # EOF de archivo. Si el loop está habilitado y la fuente es un
+                # path de archivo, rebobinar al inicio y reintentar. El contador
+                # `rewinds` acota el caso degenerado en que el backend dice haber
+                # rebobinado (set() -> True) pero no entrega frames: tras
+                # _MAX_REWINDS sin progreso degradamos a EOF -> None.
+                if (
+                    self.config.loop
+                    and isinstance(self.source, str)
+                    and rewinds < _MAX_REWINDS
+                    and self._rewind()
+                ):
+                    rewinds += 1
+                    continue
+                return None  # end of file (loop off, webcam, o rewind sin progreso)
 
             logger.warning(f"Stream disconnected. Reconnecting... (attempt {self._retry_count + 1})")
             if self._reconnect():

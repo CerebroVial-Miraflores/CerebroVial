@@ -34,6 +34,7 @@ class SpeedEstimationConfig:
 class VisionConfig:
     source: str
     source_type: str = "auto"
+    loop: bool = True  # re-loop de archivos al EOF. NOTA: schema no cableado a runtime; el valor real lo lee build_source del YAML (conf/vision/default.yaml).
     camera_id: Optional[str] = None  # Obligatorio cuando persistence.enabled (validado por el builder).
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     model: ModelConfig = field(default_factory=ModelConfig)

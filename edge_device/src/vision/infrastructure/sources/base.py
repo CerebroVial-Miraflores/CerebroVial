@@ -12,6 +12,7 @@ class SourceConfig(BaseModel):
     target_width: Optional[int] = Field(None, gt=0, description="Target width in pixels")
     target_height: Optional[int] = Field(None, gt=0, description="Target height in pixels")
     format: str = Field("best", description="YouTube format")
+    loop: bool = Field(True, description="Re-loop file sources at EOF (no aplica a streams/webcam)")
 
     @field_validator('target_width', 'target_height')
     @classmethod

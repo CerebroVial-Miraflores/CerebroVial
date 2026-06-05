@@ -58,6 +58,8 @@ services:
     env_file: .env
     ports:
       - "8000:8000"
+    volumes:
+      - ./videos:/app/videos:ro
     depends_on:
       db:
         condition: service_healthy

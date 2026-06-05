@@ -22,11 +22,19 @@ def main(cfg: DictConfig):
     
     # Define cameras
     CAMERAS = [
-        {"id": "CAM_001", "source": "https://www.youtube.com/watch?v=6dp-bvQ7RWo"},
-        {"id": "CAM_002", "source": "https://www.youtube.com/watch?v=ByED80IKdIU"},
-        {"id": "CAM_003", "source": "https://www.youtube.com/watch?v=0IgonpX1jMg"},
-        {"id": "CAM_004", "source": "https://www.youtube.com/watch?v=rPxWUFTKgds"},
+        {"id": "CAM_001", "source": "/app/videos/trafico.mp4"},
+        {"id": "CAM_002", "source": "/app/videos/trafico.mp4"},
+        {"id": "CAM_003", "source": "/app/videos/trafico.mp4"},
+        {"id": "CAM_004", "source": "/app/videos/trafico.mp4"},
     ]
+    # Video local montado por docker-compose (./videos:/app/videos:ro). Re-loop al
+    # EOF habilitado por vision.loop=true (conf/vision/default.yaml). Mismo .mp4 en
+    # las 4 cámaras por ahora; reemplazar por videos distintos cuando estén.
+    # URLs YouTube originales (referencia, muertas / con bot-check):
+    #   CAM_001 https://www.youtube.com/watch?v=6dp-bvQ7RWo
+    #   CAM_002 https://www.youtube.com/watch?v=ByED80IKdIU
+    #   CAM_003 https://www.youtube.com/watch?v=0IgonpX1jMg
+    #   CAM_004 https://www.youtube.com/watch?v=rPxWUFTKgds
 
     # Add cameras
     for cam_info in CAMERAS:
