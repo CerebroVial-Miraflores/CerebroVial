@@ -3,6 +3,10 @@
 A cv2.VideoCapture-like fake is injected through the factory, so the suite
 runs without opencv/yt_dlp installed and exercises the pull-based read() API.
 """
+import os
+import sys
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -12,6 +16,11 @@ from src.vision.infrastructure.sources import (
     WebcamSource,
     YouTubeSource,
     create_source,
+)
+from src.vision.infrastructure.sources.base import SourceConfig
+from src.vision.infrastructure.sources.video_source import (
+    OpenCVSource,
+    _host_needs_claro_referer,
 )
 
 
@@ -125,3 +134,83 @@ def test_release_delegates_to_capture():
 def test_unopened_capture_raises_source_error():
     with pytest.raises(SourceError):
         create_source("video.mp4", capture=FakeCapture(opened=False))
+
+
+# ---- C1/E3: Referer server-side para el HLS de Claro -------------------
+
+_CLARO_URL = "https://video.claro.com.pe/live/cam.m3u8"
+_NON_CLARO_URL = "https://cdn.example.com/live/cam.m3u8"
+_REFERER = {"Referer": "https://claro.com.pe/"}
+_ENV = "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+
+
+def test_host_needs_claro_referer_detects_host():
+    assert _host_needs_claro_referer(_CLARO_URL) is True
+    assert _host_needs_claro_referer(_NON_CLARO_URL) is False
+    assert _host_needs_claro_referer("/app/videos/trafico.mp4") is False
+    assert _host_needs_claro_referer(0) is False  # webcam int, no es URL
+
+
+def _fake_streamlink(recorded):
+    class FakeSession:
+        def set_option(self, key, value):
+            recorded.append((key, value))
+
+        def streams(self, url):
+            return {}  # sin 'best' → no muta self.source
+
+    return SimpleNamespace(Streamlink=FakeSession)
+
+
+def test_resolve_stream_url_sends_referer_for_claro(monkeypatch):
+    recorded = []
+    monkeypatch.setitem(sys.modules, "streamlink", _fake_streamlink(recorded))
+    # capture inyectado → _initialize no toca cv2 y resolve no se auto-llama.
+    src = OpenCVSource(_CLARO_URL, SourceConfig(), capture=FakeCapture())
+    assert src._needs_referer is True
+
+    src._resolve_stream_url()
+    assert ("http-headers", _REFERER) in recorded
+
+
+def test_resolve_stream_url_omits_referer_for_non_claro(monkeypatch):
+    recorded = []
+    monkeypatch.setitem(sys.modules, "streamlink", _fake_streamlink(recorded))
+    src = OpenCVSource(_NON_CLARO_URL, SourceConfig(), capture=FakeCapture())
+    assert src._needs_referer is False
+
+    src._resolve_stream_url()
+    assert "http-headers" not in [k for k, _ in recorded]
+
+
+def test_open_capture_injects_referer_env_for_claro(monkeypatch):
+    """E3/SPIKE-D5: el Referer se inyecta a ffmpeg vía OPENCV_FFMPEG_CAPTURE_OPTIONS
+    durante la construcción del VideoCapture, y se restaura después."""
+    monkeypatch.delenv(_ENV, raising=False)
+    seen = {}
+
+    class FakeCv2:
+        def VideoCapture(self, source):
+            seen["env"] = os.environ.get(_ENV)
+            return FakeCapture()
+
+    src = OpenCVSource(_CLARO_URL, SourceConfig(), capture=FakeCapture())
+    src._open_capture(FakeCv2())
+
+    assert seen["env"] == "referer;https://claro.com.pe/"  # presente al abrir
+    assert os.environ.get(_ENV) is None                    # restaurado después
+
+
+def test_open_capture_no_referer_env_for_non_claro(monkeypatch):
+    monkeypatch.delenv(_ENV, raising=False)
+    seen = {}
+
+    class FakeCv2:
+        def VideoCapture(self, source):
+            seen["env"] = os.environ.get(_ENV)
+            return FakeCapture()
+
+    src = OpenCVSource("video.mp4", SourceConfig(), capture=FakeCapture())
+    src._open_capture(FakeCv2())
+
+    assert seen["env"] is None  # archivo local: sin Referer
