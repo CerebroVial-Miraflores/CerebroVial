@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { Car, TrendingDown, Activity, ShieldCheck, Video, AlertTriangle, Filter, Download } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Car, TrendingDown, Activity, ShieldCheck, AlertTriangle, Filter, Download } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { LoadingOverlay } from '../ui/LoadingStates';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { VisionStreamPayload } from '../../types/visionStream';
-import { congestionUiStatus } from '../../utils/trafficLabels';
 import { CameraGrid } from '../CameraGrid';
+import type { PlayerStatus } from '../HlsPlayer';
+import { openCongestionStream } from '../../services/congestionSseClient';
+import { markerVisual, type MarkerVisual } from '../../utils/markerVisual';
 
 // Fix for default marker icon in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -22,31 +24,161 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Component to handle map movement
+interface IntersectionData {
+    id: string;
+    name: string;
+    speed: number;
+    flow: number;
+    status: string;
+    lat: number;
+    lng: number;
+    stream_url: string | null;
+}
+
+// Component to handle map movement. El flyTo va en un useEffect y SOLO corre cuando center/zoom
+// cambian de verdad (selección de cámara). Si se llamara en el cuerpo del render, se dispararía
+// en cada re-render (cada tick del SSE, cada hover) y pisaría el zoom/pan del usuario. El ref
+// `first` salta el montaje inicial para no pelear con el encuadre de FitBounds.
 function MapUpdater({ center, zoom }: { center: [number, number], zoom: number }) {
     const map = useMap();
-    map.flyTo(center, zoom);
+    const first = useRef(true);
+    useEffect(() => {
+        if (first.current) { first.current = false; return; }
+        map.flyTo(center, zoom);
+    }, [map, center, zoom]);
+    return null;
+}
+
+// B2.10 — marcador como componente hijo: el icono (color de congestión + pulso/tachado de
+// salud) se memoiza y NO depende del hover, así cambiar selectedId (o un tick del SSE que
+// re-renderiza el padre) no recrea el divIcon ni reinicia el animate-ping ni huérfana el
+// tooltip nativo. El resaltado por hover se aplica como box-shadow sobre el contenedor del
+// icono ya montado (sin setIcon), replicando el ring anterior.
+function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onSelectCamera, onHover, onUnhover }: {
+    int: IntersectionData;
+    visual: MarkerVisual;
+    selected: boolean;
+    speedFlow: { speed: number; flow: number } | undefined;
+    onSelect: () => void;
+    onSelectCamera: () => void;
+    onHover: () => void;
+    onUnhover: () => void;
+}) {
+    const markerRef = useRef<L.Marker>(null);
+
+    const icon = useMemo(() => {
+        const pulseSpan = visual.pulse
+            ? `<span class="absolute inline-flex h-full w-full rounded-full ${visual.color} opacity-75 animate-ping"></span>`
+            : '';
+        // Offline = tachado diagonal sobre el punto (color de congestión conservado).
+        const struckSpan = visual.struck
+            ? `<span class="absolute inline-flex h-0.5 w-7 bg-white rotate-45 rounded-full shadow"></span>`
+            : '';
+        return L.divIcon({
+            className: 'custom-marker',
+            html: `<div class="relative flex items-center justify-center w-6 h-6">
+                     ${pulseSpan}
+                     <span class="relative inline-flex rounded-full h-4 w-4 ${visual.color} border-2 border-white shadow-lg ${visual.struck ? 'opacity-60' : ''}"></span>
+                     ${struckSpan}
+                   </div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+        });
+    }, [visual.color, visual.pulse, visual.struck]);
+
+    // Resaltado por hover: box-shadow sobre el contenedor ya montado, sin recrear el icono.
+    // Replica el ring anterior (1px de offset slate-900 + 2px indigo-400). Re-aplica tras
+    // recrear el icono (dep `icon`) porque setIcon devuelve un elemento nuevo.
+    useEffect(() => {
+        const el = markerRef.current?.getElement();
+        if (!el) return;
+        el.style.borderRadius = '9999px';
+        el.style.boxShadow = selected ? '0 0 0 1px #0f172a, 0 0 0 3px #818cf8' : '';
+    }, [selected, icon]);
+
+    return (
+        <Marker
+            ref={markerRef}
+            position={[int.lat, int.lng]}
+            icon={icon}
+            eventHandlers={{
+                click: onSelect,
+                mouseover: onHover,
+                mouseout: onUnhover,
+            }}
+        >
+            <Tooltip direction="top" offset={[0, -12]} opacity={1} permanent={false}>
+                <div className="text-center">
+                    <div className="font-bold text-slate-900 text-xs">{int.name}</div>
+                    <div className="text-[10px] text-slate-600">
+                        {speedFlow?.speed ?? '--'} km/h • {speedFlow?.flow ?? '--'} vpm
+                    </div>
+                </div>
+            </Tooltip>
+            <Popup className="custom-popup">
+                <div className="p-1 min-w-[120px]">
+                    <h4 className="font-bold text-slate-900 text-xs mb-1">{int.name}</h4>
+                    <div className="flex flex-col text-[10px] text-slate-600 gap-1">
+                        <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span>Velocidad:</span>
+                            <span className="font-bold text-indigo-600">{speedFlow?.speed ?? int.speed} km/h</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 pb-1">
+                            <span>Flujo:</span>
+                            <span className="font-bold text-indigo-600">{speedFlow?.flow ?? int.flow} vpm</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Estado:</span>
+                            <span className={`font-bold uppercase ${
+                                int.status === 'critical' ? 'text-red-500' :
+                                int.status === 'moderate' ? 'text-amber-500' : 'text-emerald-500'
+                            }`}>
+                                {int.status === 'critical' ? 'Crítico' :
+                                 int.status === 'moderate' ? 'Moderado' : 'Fluido'}
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onSelectCamera}
+                        className="mt-2 w-full bg-indigo-600 text-white text-[10px] py-1 rounded hover:bg-indigo-700"
+                    >
+                        Ver Cámara
+                    </button>
+                </div>
+            </Popup>
+        </Marker>
+    );
+}
+
+// B2: encuadra el mapa a TODAS las intersecciones una sola vez (cuando cargan), en vez
+// del center/zoom fijo. El guard por ref evita re-encuadrar en cada render y no pelea con
+// el flyTo por click de MapUpdater (que corre después, ante una selección del usuario).
+function FitBounds({ points }: { points: [number, number][] }) {
+    const map = useMap();
+    const done = useRef(false);
+    useEffect(() => {
+        if (done.current || points.length === 0) return;
+        done.current = true;
+        map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
+    }, [map, points]);
     return null;
 }
 
 export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string, name: string) => void }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [realData, setRealData] = useState<Record<string, { speed: number, flow: number, status: string }>>({});
+    // B2 D2: el SSE de visión alimenta SOLO speed/flow (señal de cámara). El color del
+    // marcador NO sale de acá: lo manda la congestión de red (Waze) en `int.status`.
+    const [realData, setRealData] = useState<Record<string, { speed: number, flow: number }>>({});
+    // B2: salud de cámara compartida (lazy-aware). Solo contiene estados REPORTADOS por las
+    // celdas de la grilla; un id AUSENTE = desconocido → el marcador pulsa normal, NUNCA
+    // offline. La grilla vive en otra sub-pestaña; este record persiste entre sub-tabs.
+    const [cameraHealth, setCameraHealth] = useState<Record<string, PlayerStatus>>({});
+    // B2: cross-selección hover (mapa↔lista↔grilla). Resalta el elemento que matchea.
+    const [selectedId, setSelectedId] = useState<string | null>(null);
     // B1: sub-pestañas del tab dashboard. 'map' = el mapa/dashboard que YA existe (sin cambios,
     // B2 lo mejora). 'cameras' = la grilla de previews HLS.
     const [dashTab, setDashTab] = useState<'map' | 'cameras'>('map');
-
-    interface IntersectionData {
-        id: string;
-        name: string;
-        speed: number;
-        flow: number;
-        status: string;
-        lat: number;
-        lng: number;
-        stream_url: string | null;
-    }
 
     const [intersections, setIntersections] = useState<IntersectionData[]>([]);
 
@@ -54,35 +186,46 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
     const [mapZoom, setMapZoom] = useState(14);
     const [viewMode, setViewMode] = useState<'leaflet' | 'waze'>('leaflet');
 
-    // Fetch real data from database
-    React.useEffect(() => {
-        const fetchIntersections = async () => {
-            try {
-                const apiBaseUrl = (import.meta.env?.VITE_CORE_API_URL) || 'http://localhost:8001';
-                const response = await fetch(`${apiBaseUrl}/api/intersections`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setIntersections(data);
-                } else {
-                    console.error("Failed to fetch intersections", response.statusText);
-                    setError("No se pudieron cargar las intersecciones desde la base de datos.");
-                }
-            } catch (err) {
-                console.error("Error fetching intersections:", err);
-                setError("Error de red al conectar con el servidor.");
-            } finally {
-                setLoading(false);
+    // Carga la lista (incluye la congestión REAL por intersección en `status`). Elevada a
+    // useCallback: la llaman tanto la carga inicial como el wake del SSE de congestión.
+    const fetchIntersections = useCallback(async () => {
+        try {
+            const apiBaseUrl = (import.meta.env?.VITE_CORE_API_URL) || 'http://localhost:8001';
+            const response = await fetch(`${apiBaseUrl}/api/intersections`);
+            if (response.ok) {
+                const data = await response.json();
+                setIntersections(data);
+                setError(null);
+            } else {
+                console.error("Failed to fetch intersections", response.statusText);
+                setError("No se pudieron cargar las intersecciones desde la base de datos.");
             }
-        };
+        } catch (err) {
+            console.error("Error fetching intersections:", err);
+            setError("Error de red al conectar con el servidor.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
+    // Carga inicial.
+    useEffect(() => {
         fetchIntersections();
-
         return () => {
             setViewMode('leaflet');
         };
-    }, []);
+    }, [fetchIntersections]);
 
-    // Connect to all cameras via SSE
+    // B2 D2 — SSE de CONGESTIÓN de red (core 8001, patrón HU-22). Wake sin payload →
+    // re-lee /api/intersections y recolorea los marcadores con el nivel Waze más reciente.
+    // Es la fuente primaria del color; convive con el SSE de visión de abajo (speed/flow).
+    useEffect(() => {
+        const controller = openCongestionStream({ onWake: () => void fetchIntersections() });
+        return () => controller.abort();
+    }, [fetchIntersections]);
+
+    // SSE de VISIÓN (edge 8000): alimenta SOLO speed/flow del tooltip/popup (señal de
+    // cámara). Sin YOLO está vacío; el color del marcador NO depende de esto (D2).
     React.useEffect(() => {
         const eventSources: EventSource[] = [];
         const baseUrl = (import.meta.env?.VITE_EDGE_API_URL) || 'http://localhost:8000';
@@ -100,7 +243,6 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                         [camera.id]: {
                             speed: Math.round(m.mean_speed_kmh ?? 0),
                             flow: m.unique_vehicles,
-                            status: congestionUiStatus(m.mean_occupancy),
                         }
                     }));
                 } catch (err) {
@@ -120,6 +262,12 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
             eventSources.forEach(es => es.close());
         };
     }, [intersections]); // Run when intersections are loaded
+
+    // B2: reporta estable la salud de una cámara (id ausente = desconocido). No re-set si
+    // no cambió, para no re-renderizar de más.
+    const reportCameraHealth = useCallback((id: string, status: PlayerStatus) => {
+        setCameraHealth(prev => (prev[id] === status ? prev : { ...prev, [id]: status }));
+    }, []);
 
     const handleCameraSelect = (id: string) => {
         const camera = intersections.find(c => c.id === id);
@@ -172,6 +320,9 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                 <CameraGrid
                     cameras={intersections.map(i => ({ id: i.id, name: i.name, stream_url: i.stream_url }))}
                     onSelectCamera={onSelectCamera}
+                    onStatusChange={reportCameraHealth}
+                    selectedId={selectedId}
+                    onHover={setSelectedId}
                 />
             ) : (
             <>
@@ -213,8 +364,9 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
 
             {/* Main Grid */}
             <div className="grid grid-cols-12 gap-6 h-[600px]">
-                {/* Map Section */}
-                <div className="col-span-8 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl flex flex-col">
+                {/* Map Section — mapa a todo el ancho (la lista lateral rica con previews es
+                    feature futura del dashboard; por ahora el mapa respira sin columna lateral). */}
+                <div className="col-span-12 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl flex flex-col">
                     {/* Map Header / Toggle */}
                     <div className="absolute top-4 left-4 z-[400] flex gap-2">
                         <div className="bg-slate-900/90 backdrop-blur px-3 py-1 rounded-full border border-slate-700 text-xs text-white font-medium shadow-lg flex items-center gap-2">
@@ -264,82 +416,24 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 />
                                 <MapUpdater center={mapCenter} zoom={mapZoom} />
+                                <FitBounds points={intersections.map(i => [i.lat, i.lng] as [number, number])} />
 
-                                {intersections.map((int) => {
-                                    // Determine color based on real-time status
-                                    const currentStatus = realData[int.id]?.status || int.status;
-                                    let colorClass = 'bg-emerald-500';
-                                    let pulseClass = '';
-                                    
-                                    if (currentStatus === 'critical') {
-                                        colorClass = 'bg-red-500';
-                                        pulseClass = 'animate-ping';
-                                    } else if (currentStatus === 'moderate') {
-                                        colorClass = 'bg-amber-500';
-                                    }
-
-                                    // Create custom icon
-                                    const customIcon = L.divIcon({
-                                        className: 'custom-marker',
-                                        html: `<div class="relative flex items-center justify-center w-6 h-6">
-                                                 <span class="absolute inline-flex h-full w-full rounded-full ${colorClass} opacity-75 ${pulseClass}"></span>
-                                                 <span class="relative inline-flex rounded-full h-4 w-4 ${colorClass} border-2 border-white shadow-lg"></span>
-                                               </div>`,
-                                        iconSize: [24, 24],
-                                        iconAnchor: [12, 12]
-                                    });
-
-                                    return (
-                                        <Marker
-                                            key={int.id}
-                                            position={[int.lat, int.lng]}
-                                            icon={customIcon}
-                                            eventHandlers={{
-                                                click: () => handleCameraSelect(int.id),
-                                            }}
-                                        >
-                                            <Tooltip direction="top" offset={[0, -12]} opacity={1} permanent={false}>
-                                                <div className="text-center">
-                                                    <div className="font-bold text-slate-900 text-xs">{int.name}</div>
-                                                    <div className="text-[10px] text-slate-600">
-                                                        {realData[int.id]?.speed ?? '--'} km/h • {realData[int.id]?.flow ?? '--'} vpm
-                                                    </div>
-                                                </div>
-                                            </Tooltip>
-                                            <Popup className="custom-popup">
-                                                <div className="p-1 min-w-[120px]">
-                                                    <h4 className="font-bold text-slate-900 text-xs mb-1">{int.name}</h4>
-                                                    <div className="flex flex-col text-[10px] text-slate-600 gap-1">
-                                                        <div className="flex justify-between border-b border-slate-100 pb-1">
-                                                            <span>Velocidad:</span>
-                                                            <span className="font-bold text-indigo-600">{realData[int.id]?.speed ?? int.speed} km/h</span>
-                                                        </div>
-                                                        <div className="flex justify-between border-b border-slate-100 pb-1">
-                                                            <span>Flujo:</span>
-                                                            <span className="font-bold text-indigo-600">{realData[int.id]?.flow ?? int.flow} vpm</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Estado:</span>
-                                                            <span className={`font-bold uppercase ${
-                                                                (realData[int.id]?.status || int.status) === 'critical' ? 'text-red-500' : 
-                                                                (realData[int.id]?.status || int.status) === 'moderate' ? 'text-amber-500' : 'text-emerald-500'
-                                                            }`}>
-                                                                {(realData[int.id]?.status || int.status) === 'critical' ? 'Crítico' : 
-                                                                 (realData[int.id]?.status || int.status) === 'moderate' ? 'Moderado' : 'Fluido'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => onSelectCamera(int.id, int.name)}
-                                                        className="mt-2 w-full bg-indigo-600 text-white text-[10px] py-1 rounded hover:bg-indigo-700"
-                                                    >
-                                                        Ver Cámara
-                                                    </button>
-                                                </div>
-                                            </Popup>
-                                        </Marker>
-                                    );
-                                })}
+                                {intersections.map((int) => (
+                                    // B2: dos dimensiones que no se pisan — color = congestión real (int.status,
+                                    // Waze); pulso/tachado = salud de la cámara. Desconocido (id ausente del
+                                    // record) pulsa normal, NUNCA offline.
+                                    <IntersectionMarker
+                                        key={int.id}
+                                        int={int}
+                                        visual={markerVisual(int.status, cameraHealth[int.id])}
+                                        selected={int.id === selectedId}
+                                        speedFlow={realData[int.id]}
+                                        onSelect={() => handleCameraSelect(int.id)}
+                                        onSelectCamera={() => onSelectCamera(int.id, int.name)}
+                                        onHover={() => setSelectedId(int.id)}
+                                        onUnhover={() => setSelectedId(null)}
+                                    />
+                                ))}
                             </MapContainer>
                         ) : (
                             <iframe
@@ -351,51 +445,6 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                                 style={{ border: 0 }}
                             ></iframe>
                         )}
-                    </div>
-                </div>
-
-                {/* Sidebar List */}
-                <div className="col-span-4 bg-slate-800 rounded-xl border border-slate-700 flex flex-col shadow-xl">
-                    <div className="p-4 border-b border-slate-700">
-                        <h3 className="font-bold text-white flex items-center gap-2">
-                            <Video size={18} className="text-indigo-400" />
-                            Cámaras Activas
-                        </h3>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                        {intersections.map((cam) => (
-                            <div key={cam.id}
-                                onClick={() => handleCameraSelect(cam.id)}
-                                className="bg-slate-700/50 p-4 rounded-lg border border-slate-600 hover:border-indigo-500 cursor-pointer transition-all hover:bg-slate-700 group"
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${
-                                            (realData[cam.id]?.status || cam.status) === 'critical' ? 'bg-red-500 animate-pulse' : 
-                                            (realData[cam.id]?.status || cam.status) === 'moderate' ? 'bg-amber-500' : 'bg-emerald-500'
-                                        }`}></div>
-                                        <span className="font-medium text-white text-sm">{cam.name}</span>
-                                    </div>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                        (realData[cam.id]?.status || cam.status) === 'critical' ? 'bg-red-500/20 text-red-300' : 
-                                        (realData[cam.id]?.status || cam.status) === 'moderate' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
-                                    }`}>
-                                        {(realData[cam.id]?.status || cam.status) === 'critical' ? 'Crítico' : 
-                                         (realData[cam.id]?.status || cam.status) === 'moderate' ? 'Moderado' : 'Fluido'}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 text-xs text-slate-400">
-                                    <div className="flex items-center gap-1">
-                                        <Activity size={12} />
-                                        <span>{realData[cam.id]?.flow ?? '--'} vpm</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <AlertTriangle size={12} />
-                                        <span>{realData[cam.id]?.speed ?? '--'} km/h</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>

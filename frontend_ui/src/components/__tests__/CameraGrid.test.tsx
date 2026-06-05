@@ -101,4 +101,58 @@ describe('CameraGrid', () => {
     fireEvent.click(screen.getByTestId('camera-cell'));
     expect(onSelect).toHaveBeenCalledWith('c1', 'Larco Benavides');
   });
+
+  // B2: la salud reportada por la celda sube al padre (para que el marcador la comparta).
+  it('propaga onStatusChange(id, status) cuando el player cambia de estado', () => {
+    const onStatusChange = vi.fn();
+    render(
+      <CameraGrid
+        cameras={[{ id: 'c1', name: 'Larco Benavides', stream_url: 'http://x/c1.m3u8' }]}
+        onStatusChange={onStatusChange}
+      />,
+    );
+    setVisible(true);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('go-playing'));
+    });
+    expect(onStatusChange).toHaveBeenCalledWith('c1', 'playing');
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('go-offline'));
+    });
+    expect(onStatusChange).toHaveBeenCalledWith('c1', 'offline');
+  });
+
+  it('reporta offline hacia arriba cuando stream_url es null, sin montar player', () => {
+    const onStatusChange = vi.fn();
+    render(
+      <CameraGrid
+        cameras={[{ id: 'c2', name: 'Sin Stream', stream_url: null }]}
+        onStatusChange={onStatusChange}
+      />,
+    );
+
+    expect(onStatusChange).toHaveBeenCalledWith('c2', 'offline');
+  });
+
+  // B2: cross-selección — la celda con id === selectedId se resalta (ring).
+  it('resalta la celda seleccionada y propaga hover', () => {
+    const onHover = vi.fn();
+    render(
+      <CameraGrid
+        cameras={[{ id: 'c1', name: 'Larco Benavides', stream_url: 'http://x/c1.m3u8' }]}
+        selectedId="c1"
+        onHover={onHover}
+      />,
+    );
+
+    const cell = screen.getByTestId('camera-cell');
+    expect(cell.className).toContain('ring-2');
+
+    fireEvent.mouseEnter(cell);
+    expect(onHover).toHaveBeenCalledWith('c1');
+    fireEvent.mouseLeave(cell);
+    expect(onHover).toHaveBeenCalledWith(null);
+  });
 });

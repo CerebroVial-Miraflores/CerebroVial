@@ -25,7 +25,7 @@ import json
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
 
-from cerebrovial_shared.database.models import WazeJamDB
+from cerebrovial_shared.database.models import IntersectionEdgeDB, WazeJamDB
 
 from ..application.feed import DayCongestionSeries, EdgeCongestion, EdgeSeries
 
@@ -177,6 +177,24 @@ class WazeJamsRepo:
                            snapshot_timestamp=r.snapshot_timestamp)
             for r in self.session.execute(q)
         ]
+
+    def max_level_by_intersection(self) -> dict[str, int]:
+        """MAX ``congestion_level`` por intersección sobre el último snapshot de sus aristas (B2).
+
+        Reusa ``latest_per_edge()`` (el read-path del feed, CT-12.6) — NO reimplementa la
+        lógica de "último snapshot por arista" — y agrega por intersección vía la tabla
+        puente ``intersection_edges`` (Fase A). Agregación = MAX (peor arista). Una
+        intersección cuyas aristas no tienen NINGUNA fila en ``waze_jams`` queda AUSENTE del
+        dict (el endpoint la resuelve a ``fluid``); una con dato de nivel 0 SÍ aparece (0).
+        """
+        levels = {ec.edge_id: ec.congestion_level for ec in self.latest_per_edge()}
+        out: dict[str, int] = {}
+        for iid, eid in self.session.execute(
+            select(IntersectionEdgeDB.intersection_id, IntersectionEdgeDB.edge_id)
+        ):
+            if eid in levels:
+                out[iid] = max(out.get(iid, 0), levels[eid])
+        return out
 
     def series_for_day(self, day: date) -> DayCongestionSeries:
         """Serie de congestión por arista de un día completo (TTH-13 / CT-13.1).

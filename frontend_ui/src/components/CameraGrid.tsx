@@ -16,9 +16,22 @@ export interface GridCamera {
 interface CameraGridProps {
   cameras: GridCamera[];
   onSelectCamera?: (id: string, name: string) => void;
+  /** B2: reporta hacia arriba la salud (playing/offline/loading) de cada cámara, para
+   *  que el marcador del mapa la comparta. */
+  onStatusChange?: (id: string, status: PlayerStatus) => void;
+  /** B2: id resaltado por la cross-selección (hover en mapa/lista/grilla). */
+  selectedId?: string | null;
+  /** B2: hover sobre una celda → propaga el id (o null al salir). */
+  onHover?: (id: string | null) => void;
 }
 
-export function CameraGrid({ cameras, onSelectCamera }: CameraGridProps) {
+export function CameraGrid({
+  cameras,
+  onSelectCamera,
+  onStatusChange,
+  selectedId,
+  onHover,
+}: CameraGridProps) {
   if (cameras.length === 0) {
     return (
       <div className="text-slate-400 text-sm p-6 text-center">
@@ -29,7 +42,14 @@ export function CameraGrid({ cameras, onSelectCamera }: CameraGridProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {cameras.map((cam) => (
-        <CameraCell key={cam.id} camera={cam} onSelect={onSelectCamera} />
+        <CameraCell
+          key={cam.id}
+          camera={cam}
+          onSelect={onSelectCamera}
+          onStatusChange={onStatusChange}
+          selected={cam.id === selectedId}
+          onHover={onHover}
+        />
       ))}
     </div>
   );
@@ -38,9 +58,15 @@ export function CameraGrid({ cameras, onSelectCamera }: CameraGridProps) {
 function CameraCell({
   camera,
   onSelect,
+  onStatusChange,
+  selected,
+  onHover,
 }: {
   camera: GridCamera;
   onSelect?: (id: string, name: string) => void;
+  onStatusChange?: (id: string, status: PlayerStatus) => void;
+  selected?: boolean;
+  onHover?: (id: string | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -60,6 +86,18 @@ function CameraCell({
     return () => obs.disconnect();
   }, []);
 
+  // Cámara sin stream_url: offline INMEDIATO, sin montar player. Se reporta hacia arriba
+  // (el player nunca correrá su onStatusChange para este caso).
+  useEffect(() => {
+    if (!camera.stream_url) onStatusChange?.(camera.id, 'offline');
+  }, [camera.stream_url, camera.id, onStatusChange]);
+
+  // Reporta cada cambio de estado del player hacia arriba además de guardarlo local.
+  const handleStatus = (s: PlayerStatus) => {
+    setStatus(s);
+    onStatusChange?.(camera.id, s);
+  };
+
   // Offline es STICKY: una vez marcado, la celda no remonta el player aunque siga visible.
   const offline = status === 'offline' || !camera.stream_url;
 
@@ -74,7 +112,11 @@ function CameraCell({
       ref={ref}
       data-testid="camera-cell"
       onClick={() => onSelect?.(camera.id, camera.name)}
-      className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors"
+      onMouseEnter={() => onHover?.(camera.id)}
+      onMouseLeave={() => onHover?.(null)}
+      className={`bg-slate-800 rounded-xl border overflow-hidden cursor-pointer transition-colors ${
+        selected ? 'border-indigo-400 ring-2 ring-indigo-500/60' : 'border-slate-700 hover:border-indigo-500'
+      }`}
     >
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700">
         <span className="font-medium text-white text-sm truncate">{camera.name}</span>
@@ -84,7 +126,7 @@ function CameraCell({
         {offline ? (
           <div className="text-rose-400 text-sm font-bold tracking-wide">CÁMARA OFFLINE</div>
         ) : visible ? (
-          <HlsPlayer src={camera.stream_url as string} onStatusChange={setStatus} />
+          <HlsPlayer src={camera.stream_url as string} onStatusChange={handleStatus} />
         ) : (
           <div className="text-slate-500 text-xs">…</div>
         )}
