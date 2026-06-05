@@ -70,7 +70,7 @@ def test_build_camera_config_uses_postgres_persistence():
 
 def test_build_camera_config_detection_tuning():
     """Regresión C1: umbral on-demand bajo (detecta más) y detección en cada
-    frame (sin parpadeo de boxes)."""
+    frame para la demo (boxes repintados en cada frame = detección visible)."""
     cfg = _build_camera_config(
         "cam_larco_benavides",
         "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
@@ -79,9 +79,9 @@ def test_build_camera_config_detection_tuning():
     )
     # OVERRIDE-LIVE: 0.2 para capturar más con yolo11n en ángulo alto (no 0.5/0.3).
     assert cfg.vision.model.conf_threshold == 0.2
-    # OVERRIDE-LIVE: 2 → YOLO sigue el ritmo del stream en CPU (n=1 saturaba); el
-    # parpadeo se resuelve persistiendo boxes en skip frames (visual-only).
-    assert cfg.vision.performance.detect_every_n_frames == 2
+    # OVERRIDE-LIVE: 1 → n=1 para la demo (boxes en cada frame, detección visible).
+    # Trade-off asumido: el stream salta en CPU sin GPU/MPS (DEUDA-YOLO-CPU).
+    assert cfg.vision.performance.detect_every_n_frames == 1
 
 def test_start_camera(client, mock_manager):
     response = client.post("/cameras/cam1/start")

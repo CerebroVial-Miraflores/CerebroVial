@@ -46,13 +46,18 @@ def _build_camera_config(
                 "conf_threshold": 0.2,
             },
             "performance": {
-                # OVERRIDE-LIVE: 2. n=1 saturaba — yolo11n en CPU (Docker en Mac
-                # no accede a MPS) infiere más lento que el stream HLS 720p y el
-                # reloj de la cámara saltaba. n=2 sigue el ritmo; el parpadeo de
-                # boxes se resuelve persistiendo los del último frame inferido en
-                # los skip frames (visual-only, no agrega inferencias). Palanca a
-                # n=3 si aún se arrastra. DEUDA: sin GPU/MPS en el contenedor.
-                "detect_every_n_frames": 2,
+                # OVERRIDE-LIVE: 1 — elegido PARA LA DEMO. Con n=1 YOLO infiere en
+                # cada frame, así que los boxes se repintan constantemente: máxima
+                # evidencia visual de que la detección corre. Trade-off conocido y
+                # asumido: yolo11n en CPU (Docker en Mac no accede a MPS) infiere
+                # más lento que el stream HLS 720p, así que el reloj de la cámara
+                # SALTA y hay más lag (DEUDA-YOLO-CPU). No resuelve el freeze del
+                # <img> MJPEG en el navegador (DEUDA-MJPEG-BROWSER: el src del <img>
+                # ya es estable, la causa es browser-side y no hay reconexión); n=1
+                # solo lo atenúa al repintar más seguido. Palanca: volver a n>=2 si
+                # se prioriza fluidez sobre evidencia — ahí revive la persistencia
+                # visual de boxes en skip frames (visual-only, no agrega inferencias).
+                "detect_every_n_frames": 1,
                 # OVERRIDE-LIVE: buffer chico = menos lag en stream en vivo
                 # (default.yaml usa 30, tuneado para batch/archivo).
                 "opencv_buffer_size": 2,
