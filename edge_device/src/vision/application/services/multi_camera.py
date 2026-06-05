@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -38,6 +39,13 @@ class CameraState:
     # Conservado para drenar TrafficData y publicar al broadcaster desde el
     # coroutine. None si persistence.enabled=False (modo dev/test sin agregador).
     aggregator: Optional[AsyncTrafficAggregator] = None
+    # Detector YOLO de esta cámara. Conservado para liberarlo en la baja
+    # dinámica (C1): tras `remove_camera` el modelo NO debe quedar en memoria.
+    detector: Optional[Any] = None
+    # Consumidores MJPEG activos del feed `/video/{id}` (C1). El SSE se cuenta
+    # vía broadcaster.subscribed_cameras(); el MJPEG no tiene registro propio,
+    # así que lo lleva el generador de video.py (inc al entrar, dec en finally).
+    mjpeg_consumers: int = 0
 
 
 class CameraInstance:
@@ -51,13 +59,14 @@ class CameraInstance:
         renderer: Optional[FrameRenderer] = None,
     ) -> None:
         pipeline = builder.build_pipeline()
-        aggregator = builder.get_components().get("aggregator")
+        components = builder.get_components()
         self.state = CameraState(
             camera_id=camera_id,
             config=config,
             pipeline=pipeline,
             renderer=renderer,
-            aggregator=aggregator,
+            aggregator=components.get("aggregator"),
+            detector=components.get("detector"),
         )
 
 
@@ -68,10 +77,22 @@ class MultiCameraManager:
     Each camera runs in its own set of threads.
     """
     
-    def __init__(self, broadcaster: RealtimeBroadcaster) -> None:
+    def __init__(
+        self,
+        broadcaster: RealtimeBroadcaster,
+        idle_timeout_s: float = 45.0,
+        watchdog_interval_s: float = 10.0,
+    ) -> None:
         self.cameras: dict[str, CameraInstance] = {}
         self.broadcaster = broadcaster
         self._tasks: dict[str, asyncio.Task] = {}
+        # Auto-liberación por timeout sin consumidores (C1, E4). `_idle_since`
+        # marca, por cámara, el monotonic en que se quedó sin consumidores;
+        # se limpia al reaparecer alguno y dispara la baja al superar el timeout.
+        self.idle_timeout_s = idle_timeout_s
+        self.watchdog_interval_s = watchdog_interval_s
+        self._idle_since: dict[str, float] = {}
+        self._watchdog_task: Optional[asyncio.Task] = None
 
     def add_camera(
         self,
@@ -101,6 +122,38 @@ class MultiCameraManager:
 
         self.cameras[camera_id] = camera
         logger.info("Added camera: %s", camera_id)
+        return camera
+
+    async def activate_camera(
+        self,
+        camera_id: str,
+        config: DictConfig,
+        renderer: Optional[FrameRenderer] = None,
+    ) -> CameraInstance:
+        """Alta on-demand con garantía de UN solo YOLO vivo (C1, D2).
+
+        - Idempotente sobre el mismo `source`: si la cámara ya existe y corre con
+          la misma fuente, no recrea (devuelve la instancia viva).
+        - Si la fuente cambió, baja+alta.
+        - Antes de dar de alta, libera CUALQUIER otra cámara on-demand viva, de
+          modo que nunca haya más de un modelo YOLO en memoria.
+        """
+        new_source = config.vision.source
+        existing = self.cameras.get(camera_id)
+        if existing is not None:
+            same_source = existing.state.config.vision.source == new_source
+            if same_source and existing.state.is_running:
+                logger.info("Camera %s ya activa con la misma fuente; no-op", camera_id)
+                return existing
+            await self.remove_camera(camera_id)
+
+        # Single-slot: soltar las demás antes de cargar la nueva.
+        for other_id in list(self.cameras.keys()):
+            if other_id != camera_id:
+                await self.remove_camera(other_id)
+
+        camera = self.add_camera(camera_id, config, renderer=renderer)
+        await self.start_camera(camera_id)
         return camera
 
     async def start_camera(self, camera_id: str) -> None:
@@ -177,6 +230,30 @@ class MultiCameraManager:
 
         logger.info("Stopped camera: %s", camera_id)
 
+    async def remove_camera(self, camera_id: str) -> None:
+        """Baja dinámica (C1): para la cámara, libera su modelo YOLO y la saca
+        del registro.
+
+        A diferencia de `stop_camera` (que solo suelta el `cv2.VideoCapture`),
+        acá liberamos también el detector YOLO (`detector.release()`) y borramos
+        la `CameraInstance` de `self.cameras` para que el modelo no quede
+        referenciado en memoria. Idempotente: si la cámara no existe, no-op.
+        """
+        if camera_id not in self.cameras:
+            return
+
+        await self.stop_camera(camera_id)
+
+        camera = self.cameras.pop(camera_id, None)
+        if camera is not None:
+            detector = camera.state.detector
+            if detector is not None and hasattr(detector, "release"):
+                detector.release()
+            camera.state.detector = None
+            camera.state.latest_frame_raw = None
+            camera.state.latest_frame_processed = None
+        logger.info("Removed camera: %s", camera_id)
+
     async def start_all(self):
         """Starts all registered cameras."""
         tasks = [self.start_camera(cam_id) for cam_id in self.cameras.keys()]
@@ -207,5 +284,87 @@ class MultiCameraManager:
         if processed:
             return camera.state.latest_frame_processed
         return camera.state.latest_frame_raw
+
+    # ---- Conteo de consumidores + auto-liberación (C1, E4) ------------
+
+    def add_mjpeg_consumer(self, camera_id: str) -> None:
+        """Registra un consumidor MJPEG activo del feed `/video/{id}`."""
+        camera = self.cameras.get(camera_id)
+        if camera is not None:
+            camera.state.mjpeg_consumers += 1
+            self._idle_since.pop(camera_id, None)
+
+    def remove_mjpeg_consumer(self, camera_id: str) -> None:
+        """Da de baja un consumidor MJPEG (llamado en el `finally` del generador)."""
+        camera = self.cameras.get(camera_id)
+        if camera is not None and camera.state.mjpeg_consumers > 0:
+            camera.state.mjpeg_consumers -= 1
+
+    def _has_consumers(self, camera_id: str) -> bool:
+        """True si la cámara tiene al menos un consumidor MJPEG o SSE.
+
+        SSE: vía `broadcaster.subscribed_cameras()` (registro ya existente).
+        MJPEG: vía el contador propio `CameraState.mjpeg_consumers`.
+        """
+        camera = self.cameras.get(camera_id)
+        if camera is None:
+            return False
+        if camera.state.mjpeg_consumers > 0:
+            return True
+        return camera_id in self.broadcaster.subscribed_cameras()
+
+    async def _sweep_idle(self, now: float) -> list[str]:
+        """Una pasada del watchdog: libera cámaras inactivas hace > timeout.
+
+        Aislada del loop para testearla con un `now` controlado (sin wall-clock).
+        Devuelve los camera_id liberados en esta pasada.
+        """
+        released: list[str] = []
+        for camera_id in list(self.cameras.keys()):
+            if self._has_consumers(camera_id):
+                self._idle_since.pop(camera_id, None)
+                continue
+            since = self._idle_since.get(camera_id)
+            if since is None:
+                self._idle_since[camera_id] = now
+            elif now - since >= self.idle_timeout_s:
+                logger.info(
+                    "Camera %s sin consumidores hace %.0fs; auto-liberando",
+                    camera_id,
+                    now - since,
+                )
+                await self.remove_camera(camera_id)
+                self._idle_since.pop(camera_id, None)
+                released.append(camera_id)
+        return released
+
+    async def _watchdog_loop(self) -> None:
+        try:
+            while True:
+                await asyncio.sleep(self.watchdog_interval_s)
+                await self._sweep_idle(time.monotonic())
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - el watchdog no debe matar el server
+            logger.exception("Watchdog de auto-liberación falló")
+
+    def start_watchdog(self) -> None:
+        """Arranca el task de auto-liberación (idempotente)."""
+        if self._watchdog_task is None or self._watchdog_task.done():
+            self._watchdog_task = asyncio.create_task(self._watchdog_loop())
+            logger.info(
+                "Watchdog de auto-liberación iniciado (timeout=%.0fs, intervalo=%.0fs)",
+                self.idle_timeout_s,
+                self.watchdog_interval_s,
+            )
+
+    async def stop_watchdog(self) -> None:
+        if self._watchdog_task is not None:
+            self._watchdog_task.cancel()
+            try:
+                await self._watchdog_task
+            except asyncio.CancelledError:
+                pass
+            self._watchdog_task = None
 
 

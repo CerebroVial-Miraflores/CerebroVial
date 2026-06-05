@@ -50,12 +50,17 @@ class CameraConfig(BaseModel):
 @app.post("/cameras/{camera_id}")
 async def add_camera(camera_id: str, config: CameraConfig):
     """
-    Adds a new camera dynamically.
-    
+    Alta on-demand de una cámara (C1, D3): registra Y arranca el pipeline YOLO.
+
+    Single-slot: garantiza un solo YOLO vivo a la vez (libera cualquier otra
+    cámara activa). Idempotente sobre el mismo `source`. El frontend la llama al
+    entrar al detalle, pasando el id real (`cam_<intersection>`) y la URL de
+    Claro como `source` (`source_type: "hls"`).
+
     Body example:
     {
-        "source": "https://youtube.com/...",
-        "source_type": "youtube",
+        "source": "https://.../claro/....m3u8",
+        "source_type": "hls",
         "zones": {
             "zone1": {
                 "polygon": [[0,0], [100,0], [100,100], [0,100]],
@@ -65,16 +70,20 @@ async def add_camera(camera_id: str, config: CameraConfig):
     }
     """
     manager = get_manager()
-    
+
     # Create config
     from omegaconf import OmegaConf
     cfg = OmegaConf.create({
         "vision": {
             "source": config.source,
             "source_type": config.source_type,
+            # build_persistence() exige vision.camera_id cuando persistence está
+            # habilitada (pipeline_builder); lo seteamos con el id real entrante.
+            "camera_id": camera_id,
             "zones": config.zones,
             "model": {"path": "yolo11n.pt", "conf_threshold": 0.5},
             "performance": {
+                # D4: 3 en el path on-demand (HLS sobre CPU). Palanca a 5 si lag.
                 "detect_every_n_frames": 3,
                 "opencv_buffer_size": 2,
                 "target_width": 1280,
@@ -84,7 +93,14 @@ async def add_camera(camera_id: str, config: CameraConfig):
             "persistence": {"enabled": True, "type": "csv", "interval_seconds": 60}
         }
     })
-    
+
     renderer = build_visualizer_from_vision_cfg(cfg.vision)
-    manager.add_camera(camera_id, cfg, renderer=renderer)
-    return {"status": "added", "camera_id": camera_id}
+    await manager.activate_camera(camera_id, cfg, renderer=renderer)
+    return {"status": "started", "camera_id": camera_id}
+
+@app.delete("/cameras/{camera_id}")
+async def remove_camera(camera_id: str):
+    """Baja on-demand (C1, D3): para la cámara y libera su modelo YOLO."""
+    manager = get_manager()
+    await manager.remove_camera(camera_id)
+    return {"status": "removed", "camera_id": camera_id}

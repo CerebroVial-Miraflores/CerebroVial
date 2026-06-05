@@ -29,6 +29,10 @@ class YoloDetector(VehicleDetector):
         self.target_classes = dict(_TARGET_CLASSES)
         self.logger = setup_logger(__name__)
 
+        # Device de inferencia; None en el path inyectado (tests, sin torch).
+        # Se conserva para que release() limpie la caché del device correcto.
+        self._device: str | None = None
+
         if model is None:
             # Real path: heavy deps imported lazily so the module collects
             # in environments without ultralytics/torch installed.
@@ -41,6 +45,7 @@ class YoloDetector(VehicleDetector):
                 device = "mps"
             else:
                 device = "cpu"
+            self._device = device
             self.logger.info(f"Using inference device: {device}")
 
             assert_real_binary(model_path)
@@ -50,6 +55,31 @@ class YoloDetector(VehicleDetector):
             # Injected model (tests): no weights on disk, so assert_real_binary
             # must NOT run here.
             self._model = model
+
+    def release(self) -> None:
+        """Libera el modelo YOLO y la caché del device (C1).
+
+        On-demand exige que tras la baja de una cámara su modelo NO quede en
+        memoria. Soltamos la referencia al modelo, forzamos un `gc.collect()` y
+        vaciamos la caché del acelerador (cuda/mps) si aplica. Idempotente:
+        llamarla dos veces no rompe. En el path inyectado (`_device is None`)
+        no se toca torch.
+        """
+        import gc
+
+        self._model = None
+        gc.collect()
+
+        if self._device in ("cuda", "mps"):
+            try:
+                import torch
+
+                if self._device == "cuda" and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                elif self._device == "mps" and torch.backends.mps.is_available():
+                    torch.mps.empty_cache()
+            except Exception:  # noqa: BLE001 - liberar es best-effort
+                self.logger.warning("empty_cache falló al liberar el modelo", exc_info=True)
 
     @log_execution_time(logging.getLogger(__name__))
     def detect(self, frame: np.ndarray, frame_id: int = 0) -> list[DetectedVehicle]:

@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 from src.vision.presentation.api.routes.cameras import app
 
 @pytest.fixture
@@ -27,6 +27,8 @@ def test_get_status(client, mock_manager):
     assert response.json() == {"cam1": {"running": True}}
 
 def test_add_camera(client, mock_manager):
+    # C1/D3: el alta on-demand registra Y arranca vía activate_camera (single-slot).
+    mock_manager.activate_camera = AsyncMock()
     payload = {
         "source": "video.mp4",
         "source_type": "file",
@@ -34,8 +36,17 @@ def test_add_camera(client, mock_manager):
     }
     response = client.post("/cameras/cam1", json=payload)
     assert response.status_code == 200
-    assert response.json() == {"status": "added", "camera_id": "cam1"}
-    mock_manager.add_camera.assert_called_once()
+    assert response.json() == {"status": "started", "camera_id": "cam1"}
+    mock_manager.activate_camera.assert_called_once()
+
+
+def test_remove_camera(client, mock_manager):
+    # C1/D3: la baja on-demand para + libera el modelo vía remove_camera.
+    mock_manager.remove_camera = AsyncMock()
+    response = client.delete("/cameras/cam1")
+    assert response.status_code == 200
+    assert response.json() == {"status": "removed", "camera_id": "cam1"}
+    mock_manager.remove_camera.assert_called_once()
 
 def test_start_camera(client, mock_manager):
     response = client.post("/cameras/cam1/start")
