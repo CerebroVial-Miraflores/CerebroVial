@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { VisionStreamPayload } from '../../types/visionStream';
 import { congestionUiStatus } from '../../utils/trafficLabels';
+import { CameraGrid } from '../CameraGrid';
 
 // Fix for default marker icon in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -28,10 +29,13 @@ function MapUpdater({ center, zoom }: { center: [number, number], zoom: number }
     return null;
 }
 
-export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string) => void }) => {
+export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string, name: string) => void }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [realData, setRealData] = useState<Record<string, { speed: number, flow: number, status: string }>>({});
+    // B1: sub-pestañas del tab dashboard. 'map' = el mapa/dashboard que YA existe (sin cambios,
+    // B2 lo mejora). 'cameras' = la grilla de previews HLS.
+    const [dashTab, setDashTab] = useState<'map' | 'cameras'>('map');
 
     interface IntersectionData {
         id: string;
@@ -41,6 +45,7 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string)
         status: string;
         lat: number;
         lng: number;
+        stream_url: string | null;
     }
 
     const [intersections, setIntersections] = useState<IntersectionData[]>([]);
@@ -121,8 +126,8 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string)
         if (camera) {
             setMapCenter([camera.lat, camera.lng]);
             setMapZoom(16);
-            if (viewMode === 'waze') setViewMode('leaflet'); 
-            onSelectCamera(id);
+            if (viewMode === 'waze') setViewMode('leaflet');
+            onSelectCamera(id, camera.name);
         }
     };
 
@@ -146,6 +151,30 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string)
                 </div>
             </div>
 
+            {/* B1: toggle Mapa | Cámaras dentro del tab dashboard (operator-only). 'Mapa' es
+                el dashboard/mapa que YA existe, sin cambios (B2 lo mejora). 'Cámaras' = la grilla. */}
+            <div className="flex gap-2">
+                <button
+                    onClick={() => setDashTab('map')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'map' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+                >
+                    Mapa
+                </button>
+                <button
+                    onClick={() => setDashTab('cameras')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'cameras' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+                >
+                    Cámaras
+                </button>
+            </div>
+
+            {dashTab === 'cameras' ? (
+                <CameraGrid
+                    cameras={intersections.map(i => ({ id: i.id, name: i.name, stream_url: i.stream_url }))}
+                    onSelectCamera={onSelectCamera}
+                />
+            ) : (
+            <>
             {/* FILA DE KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-gradient-to-br from-indigo-900/40 to-slate-800/40 border-indigo-500/20">
@@ -301,7 +330,7 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string)
                                                         </div>
                                                     </div>
                                                     <button
-                                                        onClick={() => onSelectCamera(int.id)}
+                                                        onClick={() => onSelectCamera(int.id, int.name)}
                                                         className="mt-2 w-full bg-indigo-600 text-white text-[10px] py-1 rounded hover:bg-indigo-700"
                                                     >
                                                         Ver Cámara
@@ -370,6 +399,8 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string)
                     </div>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 };

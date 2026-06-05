@@ -24,7 +24,9 @@ const CerebroVialApp = () => {
     () => defaultTabForRole(role) ?? 'dashboard',
   );
   const [showThesis, setShowThesis] = useState(false);
-  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  // B1: la selección lleva id + nombre real (de /api/intersections) para que el detalle
+  // no hardcodee el nombre.
+  const [selectedCamera, setSelectedCamera] = useState<{ id: string; name: string } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -62,13 +64,16 @@ const CerebroVialApp = () => {
 
         <RoleGate allowed={['operator']}>
           {activeTab === ('dashboard' as Tab) && (
-            selectedCameraId ? (
+            selectedCamera ? (
               <CameraDetailView
-                cameraId={selectedCameraId}
-                onBack={() => setSelectedCameraId(null)}
+                cameraId={selectedCamera.id}
+                cameraName={selectedCamera.name}
+                onBack={() => setSelectedCamera(null)}
               />
             ) : (
-              <DashboardView onSelectCamera={setSelectedCameraId} />
+              <DashboardView
+                onSelectCamera={(id, name) => setSelectedCamera({ id, name })}
+              />
             )
           )}
           {activeTab === ('alerts' as Tab) && <AlertsView />}

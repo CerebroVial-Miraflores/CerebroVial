@@ -16,10 +16,11 @@ import { congestionLabel, densityPercent } from '../../utils/trafficLabels';
 
 interface CameraDetailViewProps {
     cameraId: string;
+    cameraName: string; // B1: nombre real desde /api/intersections (propagado por App)
     onBack: () => void; // Using onBack to match parent usage
 }
 
-export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, onBack }) => {
+export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, cameraName, onBack }) => {
     const [viewMode, setViewMode] = useState<'live' | 'history'>('live');
     const [streamType, setStreamType] = useState<'raw' | 'processed'>('processed'); // Default to processed
     const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('high');
@@ -110,10 +111,6 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, on
     // Include type param
     const edgeApiUrl = (import.meta.env?.VITE_EDGE_API_URL) || 'http://localhost:8000';
     const streamUrl = `${edgeApiUrl}/video/${cameraId}?type=${streamType}&${getQualityParams()}`;
-
-    const cameraName = cameraId === 'CAM_001' ? 'Av. Larco / Av. Benavides' :
-        cameraId === 'CAM_002' ? 'Av. Pardo / Av. Espinar' :
-            cameraId === 'CAM_003' ? 'Av. Arequipa / Av. Angamos' : 'Ovalo Gutiérrez';
 
     const getCongestionStyles = (level: string) => {
         const l = (level || '').toLowerCase();

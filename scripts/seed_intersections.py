@@ -31,7 +31,7 @@ from pathlib import Path
 
 import yaml
 from geoalchemy2 import WKTElement
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, delete, func, select
 from sqlalchemy.orm import Session
 
 from cerebrovial_shared.database.models import (
@@ -162,6 +162,27 @@ def build_rows(mapeo: dict) -> dict:
     return {"intersections": intersections, "edges": edges, "cameras": cameras}
 
 
+def orphan_camera_ids(existing_ids: set[str], valid_ids: set[str]) -> set[str]:
+    """camera_ids a borrar: los que están en la base pero NO entre las 11 que el seed
+    gestiona (``valid_ids`` = los ``cam_<iid>`` de build_rows).
+
+    Limpia las cámaras placeholder huérfanas que dejó un seed B0 viejo (p. ej.
+    ``cam_larco_schell``, ``cam_ejercito_sucre``: nombres de nodos de control que NO
+    son ninguna de las 11 intersecciones del PMU). Esto hace el seed REPETIBLE:
+    correrlo N veces deja siempre 11 cámaras válidas y 0 huérfanas, sin importar la
+    basura previa.
+
+    Predicado por camera_id (no por intersection_id): garantiza exactamente las 11 sin
+    depender del estado de intersection_id. Las placeholder cuyo nombre SÍ está entre
+    las 11 (cam_larco_benavides, cam_arequipa_angamos) están en valid_ids → nunca se
+    borran: el merge de main() las actualiza in-place.
+
+    SOLO razona sobre la tabla ``cameras``. NO toca los 5 nodos de control de
+    graph_nodes, NO motor_decisions, NO engine_active_state (mundo de control, aparte).
+    """
+    return existing_ids - valid_ids
+
+
 def _precheck_edges_present(session: Session, edges: list[dict]) -> None:
     """Fail-fast: todo edge_id del mapeo debe existir en graph_edges (FK satisfacible)."""
     wanted = {e["edge_id"] for e in edges}
@@ -225,6 +246,18 @@ def main() -> None:
                 )
             )
 
+        # Limpieza idempotente de cámaras huérfanas, en la MISMA transacción que el
+        # merge (atómico). Se lee `existing` tras el merge: incluye las 11 recién
+        # sembradas + cualquier placeholder vieja; `to_delete` = existing - los 11
+        # válidos, así que por construcción NUNCA cae una de las 11 en el DELETE.
+        # Solo toca `cameras`; el mundo de control (graph_nodes/motor_decisions/
+        # engine_active_state) queda intacto.
+        valid_ids = {c["camera_id"] for c in rows["cameras"]}
+        existing = set(session.execute(select(CameraDB.camera_id)).scalars())
+        to_delete = orphan_camera_ids(existing, valid_ids)
+        if to_delete:
+            session.execute(delete(CameraDB).where(CameraDB.camera_id.in_(to_delete)))
+
         session.commit()
 
         n_int = session.scalar(select(func.count()).select_from(IntersectionDB))
@@ -237,7 +270,9 @@ def main() -> None:
         )
         print(
             f"Intersections: {n_int}, intersection_edges: {n_bridge}, "
-            f"cameras: {n_cams}, con tls_id: {n_tls}"
+            f"cameras: {n_cams}, con tls_id: {n_tls}, "
+            f"huérfanas eliminadas: {len(to_delete)}"
+            + (f" {sorted(to_delete)}" if to_delete else "")
         )
 
 

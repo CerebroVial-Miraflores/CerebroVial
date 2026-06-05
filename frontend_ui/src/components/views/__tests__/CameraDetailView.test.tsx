@@ -46,7 +46,8 @@ Object.defineProperty(globalThis, 'EventSource', {
 
 describe('CameraDetailView', () => {
     const mockOnBack = vi.fn();
-    const mockCameraId = 'CAM_001';
+    const mockCameraId = 'cam_larco_benavides';
+    const mockCameraName = 'Larco Benavides';
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -54,10 +55,10 @@ describe('CameraDetailView', () => {
     });
 
     it('renders correctly with default live view', () => {
-        render(<CameraDetailView cameraId={mockCameraId} onBack={mockOnBack} />);
+        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
 
-        // Check header title (CAM_001 maps to specific name in component)
-        expect(screen.getByText('Av. Larco / Av. Benavides')).toBeInTheDocument();
+        // Check header title (el nombre viene por prop desde /api/intersections, no hardcodeado)
+        expect(screen.getByText(mockCameraName)).toBeInTheDocument();
 
         // Check default buttons
         expect(screen.getByText('Analítica en tiempo Real')).toBeInTheDocument();
@@ -71,7 +72,7 @@ describe('CameraDetailView', () => {
     });
 
     it('calls onBack when back button is clicked', () => {
-        render(<CameraDetailView cameraId={mockCameraId} onBack={mockOnBack} />);
+        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
 
         const backButtons = screen.getAllByTestId('icon-arrow-left');
         // Note: ArrowLeft is used in the header back button. 
@@ -85,7 +86,7 @@ describe('CameraDetailView', () => {
     });
 
     it('switches to history view when tab is clicked', async () => {
-        render(<CameraDetailView cameraId={mockCameraId} onBack={mockOnBack} />);
+        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
 
         const historyTab = screen.getByText('Histórico');
         fireEvent.click(historyTab);
@@ -102,7 +103,7 @@ describe('CameraDetailView', () => {
     it('updates metrics when valid SSE data is simulated', async () => {
         // This test requires mocking EventSource which is tricky in jsdom.
         // We can verify initial state or mocked prediction calls instead.
-        render(<CameraDetailView cameraId={mockCameraId} onBack={mockOnBack} />);
+        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
 
         // Initial state check
         expect(screen.getByText('0%')).toBeInTheDocument(); // Density

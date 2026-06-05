@@ -129,6 +129,7 @@ def get_intersections(db: Session = Depends(get_db)):
             "name": name,
             "lat": cam.lat,
             "lng": cam.lon,
+            "stream_url": cam.stream_url,  # B0: HLS de Claro (nominal, DEUDA-CAM-GEO)
             "speed": 0,
             "flow": 0,
             "status": "fluid"

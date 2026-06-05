@@ -75,3 +75,34 @@ def test_camaras_1a1_con_stream_url_claro():
         assert (c["lat"], c["lon"]) == (inter["lat"], inter["lon"])
     # asignación 1:1: 11 stream_url distintos
     assert len({c["stream_url"] for c in cams}) == 11
+
+
+def _valid_camera_ids():
+    return {c["camera_id"] for c in _rows()["cameras"]}
+
+
+def test_orphan_camera_ids_borra_solo_huerfanas_puras():
+    # Estado de la base de docker: las 11 válidas + 2 placeholder huérfanas viejas
+    # (nombres de nodos de CONTROL que NO son intersecciones del PMU).
+    valid = _valid_camera_ids()
+    existing = valid | {"cam_larco_schell", "cam_ejercito_sucre"}
+    assert si.orphan_camera_ids(existing, valid) == {
+        "cam_larco_schell", "cam_ejercito_sucre",
+    }
+
+
+def test_orphan_camera_ids_idempotente_segunda_corrida_no_borra():
+    # Tras el primer seed la base ya tiene exactamente las 11: re-correr no borra nada.
+    valid = _valid_camera_ids()
+    assert si.orphan_camera_ids(valid, valid) == set()
+
+
+def test_orphan_camera_ids_nunca_borra_las_que_se_mergean():
+    # cam_larco_benavides y cam_arequipa_angamos existen como placeholder Y están entre
+    # las 11 → están en valid_ids → el merge las actualiza, jamás caen en el DELETE.
+    valid = _valid_camera_ids()
+    assert {"cam_larco_benavides", "cam_arequipa_angamos"} <= valid
+    existing = valid | {"cam_larco_schell"}
+    to_delete = si.orphan_camera_ids(existing, valid)
+    assert "cam_larco_benavides" not in to_delete
+    assert "cam_arequipa_angamos" not in to_delete
