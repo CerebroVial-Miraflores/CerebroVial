@@ -27,21 +27,26 @@ _CV2_CAP_PROP_POS_FRAMES = 1  # cv2.CAP_PROP_POS_FRAMES (valor estable de OpenCV
 # (string plano), así que el header debe ir por DOS vías: (1) la resolución de
 # Streamlink y (2) el ffmpeg de cv2.VideoCapture vía OPENCV_FFMPEG_CAPTURE_OPTIONS.
 _CLARO_REFERER = "https://claro.com.pe/"
-_CLARO_HOST_MARKER = "claro"
+_CLARO_URL_MARKER = "claro"
 _FFMPEG_CAPTURE_OPTIONS_ENV = "OPENCV_FFMPEG_CAPTURE_OPTIONS"
 
 
-def _host_needs_claro_referer(source) -> bool:
-    """True si el `source` es una URL cuyo host refiere a Claro.
+def _needs_claro_referer(source) -> bool:
+    """True si el `source` es una URL http(s) que refiere a Claro.
 
     Defensivo y laxo a propósito (el Referer es opcional, SPIKE-D5): basta con
-    que el host contenga "claro". No aplica a archivos locales (`.mp4`) ni a
-    otros orígenes.
+    que "claro" aparezca en cualquier parte de la URL (host O path). Las URLs
+    reales de Claro llegan vía CDN con el host del proveedor y "claro" en el
+    path (p. ej. `https://live.smartechlatam.online/claro/.../index.m3u8`), así
+    que mirar solo el host se quedaba corto. Restringido a http(s) para no
+    matchear un path de archivo local que casualmente contenga "claro".
     """
     if not isinstance(source, str):
         return False
-    host = (urlparse(source).hostname or "").lower()
-    return _CLARO_HOST_MARKER in host
+    parsed = urlparse(source)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    return _CLARO_URL_MARKER in source.lower()
 
 
 class OpenCVSource(FrameProducer):
@@ -63,7 +68,7 @@ class OpenCVSource(FrameProducer):
         # C1/E3: ¿esta fuente necesita Referer de Claro? Se decide sobre la URL
         # ORIGINAL (antes de resolver), porque la URL resuelta del CDN puede no
         # tener host de Claro pero igual servir segmentos detrás del mismo filtro.
-        self._needs_referer = _host_needs_claro_referer(source)
+        self._needs_referer = _needs_claro_referer(source)
 
         if not self._injected and isinstance(source, str) and source.startswith(("http", "https")):
             self._resolve_stream_url()

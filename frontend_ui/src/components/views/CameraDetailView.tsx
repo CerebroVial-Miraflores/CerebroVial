@@ -56,10 +56,15 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
     });
     const [prediction, setPrediction] = useState<PredictionResult | null>(null);
 
-    // C1/F1: alta on-demand del YOLO al montar; baja al desmontar. El edge recibe
-    // el id real (cam_<intersection>) + la URL de Claro como `source`, carga YOLO,
-    // y libera al recibir el DELETE (o por timeout sin consumidores, red de
-    // seguridad del edge si esto no corre, p. ej. cierre brusco de pestaña).
+    // C1/F1: alta on-demand del YOLO al montar. El front SOLO hace POST (idempotente
+    // en el edge); la BAJA la posee el edge, no el front:
+    //   - single-slot: al entrar a otra cámara, su POST libera la anterior al instante;
+    //   - watchdog: al salir, el cierre del SSE + el desmontaje del <img> MJPEG bajan los
+    //     consumidores a 0 y el edge libera en ≤45s (E4).
+    // Por qué NO un DELETE en el cleanup: bajo <StrictMode> (dev) el ciclo es
+    // mount→unmount→remount, y un DELETE en el cleanup de la 1ª pasada aterriza DESPUÉS
+    // del POST del remonte → removía la cámara con el detalle abierto ("Cargando…" eterno).
+    // Sin DELETE, el ciclo queda POST→POST(no-op) → cámara activa. Robusto por construcción.
     useEffect(() => {
         // Sin stream: el error ya quedó derivado en el init; no se hace alta.
         if (!streamUrl) return;
@@ -83,10 +88,9 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
                 }
             });
 
+        // El cleanup solo evita setState tras desmontar; NO da de baja (lo hace el edge).
         return () => {
             cancelled = true;
-            // Baja best-effort; el watchdog del edge libera igual si esto no llega.
-            fetch(`${EDGE_API_URL}/cameras/${cameraId}`, { method: 'DELETE' }).catch(() => {});
         };
     }, [cameraId, streamUrl]);
 

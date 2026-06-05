@@ -184,6 +184,14 @@ class MultiCameraManager:
         en 6d: el SSE emite el shape §6.2 que es por-ventana (TrafficData), no
         por-frame.
         """
+        # Persistencia VISUAL de boxes (C1): con detect_every_n_frames>1, los skip
+        # frames llegan con vehicles=[] (detection_ran=False). Para no parpadear,
+        # dibujamos sobre ellos el último análisis INFERIDO. Es visual-only: el
+        # aggregator ya consumió el análisis real aguas arriba (en la cadena), así
+        # que las métricas NO se tocan. Se actualiza en cada detection frame —
+        # incluso con 0 vehículos— para limpiar los boxes cuando la calle se vacía
+        # (sin boxes fantasma).
+        last_render_analysis = None
         try:
             for frame, analysis in camera.state.pipeline.run():
                 if not camera.state.is_running:
@@ -193,15 +201,23 @@ class MultiCameraManager:
                     for td in camera.state.aggregator.flush():
                         await self.broadcaster.publish(td)
 
+                # Elegir qué análisis dibujar: el real si corrió detección este
+                # frame (y actualizar el cache), o el último inferido en skip frames.
+                render_analysis = analysis
+                if analysis is not None and analysis.detection_ran:
+                    last_render_analysis = analysis
+                elif last_render_analysis is not None:
+                    render_analysis = last_render_analysis
+
                 # Store frames for video streaming (ALWAYS update).
                 if hasattr(frame, 'image') and frame.image is not None:
                     camera.state.latest_frame_raw = frame.image.copy()
 
                     processed_frame = frame.image.copy()
-                    if analysis and camera.state.renderer is not None:
+                    if render_analysis and camera.state.renderer is not None:
                         # Caso B roto (Fase 5e): el renderer es opcional vía
                         # Protocol FrameRenderer; no se importa de presentation/.
-                        processed_frame = camera.state.renderer.render(frame, analysis)
+                        processed_frame = camera.state.renderer.render(frame, render_analysis)
                     camera.state.latest_frame_processed = processed_frame
 
                 # Yield control to avoid blocking the event loop.

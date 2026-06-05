@@ -20,7 +20,7 @@ from src.vision.infrastructure.sources import (
 from src.vision.infrastructure.sources.base import SourceConfig
 from src.vision.infrastructure.sources.video_source import (
     OpenCVSource,
-    _host_needs_claro_referer,
+    _needs_claro_referer,
 )
 
 
@@ -93,6 +93,23 @@ def test_create_source_explicit_type():
     assert isinstance(src, WebcamSource)
 
 
+def test_create_source_hls_routes_to_streamlink_path():
+    """C1 fix: source_type="hls" (lo que manda el front) rutea a VideoFileSource,
+    el concreto OpenCVSource que pasa por Streamlink + Referer. Antes tiraba
+    ValueError ('No factory found') → 500 al abrir la cámara."""
+    src = create_source(
+        "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
+        source_type="hls",
+        capture=FakeCapture(),
+    )
+    assert isinstance(src, VideoFileSource)
+
+
+def test_create_source_stream_alias():
+    src = create_source("https://cdn.example.com/live.m3u8", source_type="stream", capture=FakeCapture())
+    assert isinstance(src, VideoFileSource)
+
+
 def test_read_returns_frames_then_none():
     # loop=False => semántica EOF -> None (con loop por default ahora rebobinaría).
     src = create_source("video.mp4", loop=False, capture=FakeCapture(n_frames=2))
@@ -139,16 +156,23 @@ def test_unopened_capture_raises_source_error():
 # ---- C1/E3: Referer server-side para el HLS de Claro -------------------
 
 _CLARO_URL = "https://video.claro.com.pe/live/cam.m3u8"
+# URL real de Claro: host del CDN proveedor, "claro" en el PATH (no en el host).
+_CLARO_PATH_URL = "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8"
 _NON_CLARO_URL = "https://cdn.example.com/live/cam.m3u8"
 _REFERER = {"Referer": "https://claro.com.pe/"}
 _ENV = "OPENCV_FFMPEG_CAPTURE_OPTIONS"
 
 
-def test_host_needs_claro_referer_detects_host():
-    assert _host_needs_claro_referer(_CLARO_URL) is True
-    assert _host_needs_claro_referer(_NON_CLARO_URL) is False
-    assert _host_needs_claro_referer("/app/videos/trafico.mp4") is False
-    assert _host_needs_claro_referer(0) is False  # webcam int, no es URL
+def test_needs_claro_referer_detects_host_and_path():
+    # Host con "claro".
+    assert _needs_claro_referer(_CLARO_URL) is True
+    # "claro" en el path aunque el host sea el CDN del proveedor (caso real).
+    assert _needs_claro_referer(_CLARO_PATH_URL) is True
+    # Sin "claro" en ninguna parte → no aplica.
+    assert _needs_claro_referer(_NON_CLARO_URL) is False
+    # Path de archivo local (aunque tuviera "claro") no es http(s) → no aplica.
+    assert _needs_claro_referer("/app/videos/claro_trafico.mp4") is False
+    assert _needs_claro_referer(0) is False  # webcam int, no es URL
 
 
 def _fake_streamlink(recorded):

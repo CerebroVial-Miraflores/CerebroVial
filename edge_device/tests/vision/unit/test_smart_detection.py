@@ -56,6 +56,7 @@ def test_detection_frequency():
     assert len(a0.vehicles) == 1
     assert a0.unique_vehicles == 1
     assert a0.zones == {}
+    assert a0.detection_ran is True  # C1: corrió inferencia
     metrics.record_detection.assert_called_once()
 
     # Frame 1: skip.
@@ -64,6 +65,7 @@ def test_detection_frequency():
     assert a1.vehicles == []
     assert a1.unique_vehicles == 0
     assert a1.zones == {}
+    assert a1.detection_ran is False  # C1: skip → visualización persiste boxes
 
     # Frame 2: skip.
     processor._process(_frame(2), None)

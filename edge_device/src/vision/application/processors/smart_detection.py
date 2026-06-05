@@ -75,14 +75,18 @@ class SmartDetectionProcessor(FrameProcessor):
                 vehicles=detections,
                 unique_vehicles=len({d.id for d in detections}),
                 zones={},
+                detection_ran=True,  # corrió inferencia (aunque detecte 0)
             )
 
         # Frame skip: emitir analysis vacío. El tracker downstream mantiene
-        # los IDs vivos hasta `lost_track_buffer` frames.
+        # los IDs vivos hasta `lost_track_buffer` frames. `detection_ran=False`
+        # le dice a la visualización que persista los boxes del último frame
+        # inferido (visual-only; las métricas siguen viendo vehicles=[]).
         return FrameAnalysis(
             frame_id=frame.id,
             timestamp=frame.timestamp,
             vehicles=[],
             unique_vehicles=0,
             zones={},
+            detection_ran=False,
         )

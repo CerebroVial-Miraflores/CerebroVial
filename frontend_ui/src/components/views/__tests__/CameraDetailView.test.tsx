@@ -1,4 +1,5 @@
 
+import { StrictMode } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CameraDetailView } from '../CameraDetailView';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -138,16 +139,40 @@ describe('CameraDetailView', () => {
         expect(body).toEqual({ source: mockStreamUrl, source_type: 'hls', zones: {} });
     });
 
-    it('DELETEs the camera on unmount', async () => {
+    it('does NOT DELETE on unmount (teardown is owned by the edge watchdog)', async () => {
         const { unmount } = renderView();
         await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
         unmount();
 
-        expect(fetchMock).toHaveBeenCalledWith(
-            `${EDGE}/cameras/${mockCameraId}`,
-            expect.objectContaining({ method: 'DELETE' }),
+        // El front nunca da de baja: la libera el edge (single-slot + watchdog).
+        const deleted = fetchMock.mock.calls.some(
+            (c) => (c[1] as RequestInit)?.method === 'DELETE',
         );
+        expect(deleted).toBe(false);
+    });
+
+    it('survives the StrictMode mount→unmount→remount cycle without DELETE', async () => {
+        // Bajo <StrictMode> React monta, desmonta y remonta el efecto. Con el código
+        // viejo, el cleanup de la 1ª pasada disparaba un DELETE que removía la cámara
+        // recién dada de alta → "Cargando detección…" eterno. Ahora no hay DELETE.
+        render(
+            <StrictMode>
+                <CameraDetailView
+                    cameraId={mockCameraId}
+                    cameraName={mockCameraName}
+                    streamUrl={mockStreamUrl}
+                    onBack={mockOnBack}
+                />
+            </StrictMode>,
+        );
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+        // Se dio de alta (POST) pero NUNCA se mandó DELETE pese al doble-invoke.
+        const methods = fetchMock.mock.calls.map((c) => (c[1] as RequestInit)?.method);
+        expect(methods).toContain('POST');
+        expect(methods).not.toContain('DELETE');
     });
 
     it('shows a loading overlay until the edge responds', () => {
