@@ -42,6 +42,25 @@ class VideoFileFactory(SourceFactory):
         return VideoFileSource(config, source_config, capture=capture)
 
 
+class HlsFactory(SourceFactory):
+    """Streams HLS/HTTP genéricos (C1): la fuente YOLO on-demand del HLS de Claro.
+
+    Matchea SOLO por `source_type` explícito ("hls"/"stream") — aditivo, no toca el
+    ruteo de youtube/webcam/file/auto. Crea un `VideoFileSource`, que es el concreto
+    `OpenCVSource`: para URLs http(s) pasa por `_resolve_stream_url()` (Streamlink) +
+    `_open_capture()` (env ffmpeg con el Referer de Claro), y `read()` se comporta como
+    stream porque `_is_stream()` decide por el prefijo de la URL, no por la clase.
+    """
+
+    def can_handle(self, config: str, source_type: str) -> bool:
+        return source_type in ("hls", "stream")
+
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        capture = kwargs.pop("capture", None)
+        source_config = self._create_config(**kwargs)
+        return VideoFileSource(config, source_config, capture=capture)
+
+
 class SourceRegistry:
     """
     Centralized registry for source factories.
@@ -65,6 +84,7 @@ class SourceRegistry:
 _registry = SourceRegistry()
 _registry.register("youtube", YouTubeFactory())
 _registry.register("webcam", WebcamFactory())
+_registry.register("hls", HlsFactory())
 _registry.register("file", VideoFileFactory())
 
 

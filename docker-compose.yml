@@ -58,6 +58,8 @@ services:
     env_file: .env
     ports:
       - "8000:8000"
+    volumes:
+      - ./videos:/app/videos:ro
     depends_on:
       db:
         condition: service_healthy
@@ -73,6 +75,11 @@ services:
     build:
       context: ./frontend_ui
       dockerfile: Dockerfile
+      args:
+        # Horneadas en el bundle de Vite en build-time. Explícitas (no
+        # accidentales): un deploy con otro host solo cambia estos valores.
+        VITE_CORE_API_URL: http://localhost:8001
+        VITE_EDGE_API_URL: http://localhost:8000
     ports:
       - "5173:80"
     depends_on:

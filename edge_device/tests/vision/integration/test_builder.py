@@ -110,3 +110,27 @@ def test_builder_requires_camera_id_when_persistence_enabled():
     builder = VisionApplicationBuilder(cfg)
     with pytest.raises(ValueError, match="camera_id"):
         builder.build_persistence()
+
+
+def test_builder_builds_postgres_aggregator():
+    """Camino feliz (el que ejercita el alta on-demand de C1): postgres +
+    camera_id → build_persistence construye el aggregator sin reventar.
+
+    PostgresTrafficRepository se parcha para no tocar la DB (su __init__ es lazy
+    igual, pero lo aislamos del entorno)."""
+    cfg = _base_cfg()
+    cfg.vision.camera_id = 'cam_larco_benavides'
+    cfg.vision.persistence = OmegaConf.create({
+        'enabled': True,
+        'type': 'postgres',
+        'interval_seconds': 5,
+    })
+
+    with patch(
+        'src.vision.application.builders.pipeline_builder.PostgresTrafficRepository'
+    ) as MockRepo:
+        builder = VisionApplicationBuilder(cfg)
+        builder.build_persistence()
+
+        assert builder.aggregator is not None
+        MockRepo.assert_called_once()

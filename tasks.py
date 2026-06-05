@@ -244,8 +244,10 @@ def migrate_create(c, message):
 
 @task(pre=[check_env])
 def seed(c):
-    """Cargar datos iniciales de Miraflores (5 nodos, 6 edges, 4 cámaras, 1 admin).
+    """Cargar datos iniciales de Miraflores (5 nodos de control, 6 edges, 1 admin).
 
+    Las cámaras y las intersecciones del PMU se cargan aparte con
+    `invoke seed-intersections` (Fase A; requiere el net real cargado antes).
     Idempotente: usa session.merge(), se puede correr múltiples veces sin duplicar.
     Corre desde el venv local (scripts/ no se copia al container).
     Requiere `invoke setup-dev` previo y que la DB esté arriba.
@@ -253,6 +255,21 @@ def seed(c):
     py = _venv_python()
     c.run(f"{py} scripts/seed.py", pty=False)
     print("\n✓ Seed aplicado.")
+
+
+@task(pre=[check_env])
+def seed_intersections(c):
+    """Sembrar las 11 intersecciones del PMU + puente intersection_edges + 11 cámaras.
+
+    Lee documentation/contracts/mapeo_pmu_edges_v2.yaml. Requiere el net real ya cargado
+    (intersection_edges.edge_id es FK→graph_edges). ORDEN:
+        invoke seed  →  python scripts/build_graph_geometry.py  →  invoke seed-intersections
+    Pre-check fail-fast: si algún edge del mapeo no está en graph_edges, aborta con
+    mensaje claro. Idempotente (session.merge).
+    """
+    py = _venv_python()
+    c.run(f"{py} scripts/seed_intersections.py", pty=False)
+    print("\n✓ Intersecciones, puente y cámaras sembradas.")
 
 
 @task(pre=[check_env])

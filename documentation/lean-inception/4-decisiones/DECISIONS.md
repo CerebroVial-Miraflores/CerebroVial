@@ -21,6 +21,7 @@
 | D-013 | Cerrada | 2026-06-01 | Target del track STGNN: meanTimeLoss/demora (enmienda a D-011, cierre de deuda diferida por D-012) |
 | D-014 | Cerrada | 2026-06-03 | Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica) |
 | D-015 | Cerrada | 2026-06-03 | Revalidación del veredicto STGNN sobre v2 (1660): STGNN supera al GRU en severo; D-011/Fase 5 revertido (adopción abierta) |
+| D-016 | Cerrada | 2026-06-05 | `intersections` como entidad de primera clase; cámara accesorio; puente al grafo vía `intersection_edges` (Fase A) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -561,6 +562,28 @@ El STGNN gana también en `test_all` y `test_normal` (los cuatro cortes), pero l
 **Alcance / límite.** Track de investigación; NO toca producción (TTH-09, D-009/D-010 intactos). **Limitación metodológica: el veredicto se apoya en una corrida por modelo (n=1, sin validación multi-seed)** —a diferencia del gate de drenaje (60 seeds) y de IE05 (9/10 seeds), donde el rigor multi-seed fue exigido. La consistencia del resultado a través de RMSE, R² y los horizontes largos sugiere que **no es artefacto de inicialización**, pero una **confirmación multi-seed robustecería el veredicto antes de cualquier decisión de adopción** —se registra como condición para cerrar la adopción, no para el veredicto técnico direccional. El resultado es net-específico de v2: una reconstrucción futura del net podría volver a mover la densidad y con ella el resultado. No reescribe D-011/D-012/Fase 5 in-place: esta entrada los revisa desde afuera (mismo patrón que D-012 sobre D-011).
 
 **Referencias.** Métricas: `ia_prediction_service/scripts/miraflores_{baseline,stgnn}_metrics.json` (retrain B4.3, commit `467c5106`). Split estratificado: `ia_prediction_service/src/data/miraflores_split.py` (B4.2). Corte de régimen severo derivado del split: `severe_in()` + `PM_PEAK_*` en el mismo módulo. Contexto histórico (375, no contendiente): `ESTADO_Y_PROXIMOS_PASOS.md` §Fase 5. Relacionadas: D-011 (apertura del track), D-012 (escenario Miraflores completo), D-013 (target timeLoss), D-014 (gate de drenaje v2).
+
+---
+
+## D-016 — `intersections` como entidad de primera clase; cámara como accesorio; puente al grafo vía `intersection_edges`
+**Fecha:** 2026-06-05 · **Estado:** Cerrada · **Fase:** A (modelo de datos de intersecciones)
+
+**Contexto.** Hasta Fase A, las cámaras anclaban directamente a `graph_nodes` (`cameras.node_id` FK) y se sembraban 4 placeholders friendly-name. No existía una entidad de primera clase para las intersecciones semaforizadas del PMU de Miraflores: el mapeo canónico (`documentation/contracts/mapeo_pmu_edges_v2.yaml`, 11 semaforizadas + ovalo_gutierrez) vivía solo como YAML, sin materializarse en BD. El control (`motor_decisions`/`engine_active_state`) ancla a `graph_nodes.node_id` y es independiente de las cámaras.
+
+**Decisión.**
+1. **`intersections` es entidad de primera clase.** `intersection_id` (= `nombre` del mapeo) PK; `junction_id` (junction SUMO, opaco), `lat`/`lon`, `geom` POINT 4326, `los_pmu` y `tls_id` nullable. Las cámaras, el control y el puente al grafo cuelgan de acá.
+2. **La cámara es accesorio de la intersección.** `cameras` pierde `node_id` (FK→graph_nodes) y gana `intersection_id` (FK→intersections, nullable) + `stream_url`. Ya no ancla al grafo.
+3. **El puente al grafo va por `intersection_edges`**, no por una FK directa intersección→nodo. `intersection_edges(intersection_id FK→intersections, edge_id FK→graph_edges, direction)`, PK compuesta. `junction_id` queda como dato opaco; la resolución al grafo se hace por aristas (`edge_id` SUMO crudo → `graph_edges`). Esto acopla el seed al net real: orden `invoke seed` → `build_graph_geometry.py` → `invoke seed-intersections`, con pre-check fail-fast.
+4. **`tls_id` solo se puebla cuando está verificado** contra una config de control real. Hoy: `larco_benavides` (= su `junction_id`, idéntico en el mapeo y en `corredor_adaptive.py`). El resto NULL — no se mete a la base un `tls_id` sin verificar.
+5. **`intersections.geom` sin índice GIST** (`spatial_index=False`), consistente con los GIST comentados desde la migración inicial. Las queries `ST_DWithin` corren igual.
+
+**Deudas nombradas (registradas en `documentation/docs/TODO.md`).**
+- **DEUDA-CAM-GEO** — la asociación cámara-Claro ↔ intersección es nominal (stream_url asignado 1:1 arbitrariamente); falta concordancia geográfica real.
+- **DEUDA-CTRL-TLS** — 10 de 11 intersecciones sin `tls_id`/nodo de control. El modelo lo soporta; falta poblarlo en una fase de control futura. `arequipa_angamos` es el caso "casi listo" (ya es nodo de control sembrado; falta solo verificar su `tls_id` SUMO).
+
+**Consecuencias.** El único consumidor de `cameras.node_id` (`/api/intersections`) pasa a derivar el nombre de `intersection_id`. El frontend (`CameraDetailView.tsx`) y el edge (`run_server.py`) usan `camera_id`, no `node_id`: se ajustan en fases B/C. El control no se toca.
+
+**Referencias.** Migración `f3a9c1d2e4b7_intersections_cameras_bridge.py`; ORM `shared/cerebrovial_shared/database/models.py` (`IntersectionDB`, `IntersectionEdgeDB`, `CameraDB`); seed `scripts/seed_intersections.py`; contrato `documentation/contracts/intersections_contract.md`; schema `documentation/docs/DATA_MODEL.md`. Fuente: `documentation/contracts/mapeo_pmu_edges_v2.yaml`.
 
 ---
 

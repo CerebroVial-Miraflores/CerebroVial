@@ -20,7 +20,9 @@ from src.control.config import ControlSettings
 from src.control.infrastructure import init_broadcaster
 from src.congestion.presentation.api.routes import router as congestion_router, init_prediction_service
 from src.congestion.application.congestion_prediction_service import CongestionPredictionService
+from src.congestion.application.intersection_congestion import congestion_status_from_level
 from src.congestion.infrastructure import init_congestion_broadcaster
+from src.congestion.infrastructure.repositories import WazeJamsRepo
 from src.congestion.infrastructure.gru_inference_adapter import load_gru_adapter
 from src.congestion.infrastructure.prediction_day_source import PredictionDaySource
 from src.auth.domain import Role
@@ -119,19 +121,30 @@ app.include_router(congestion_router)
 
 @app.get("/api/intersections")
 def get_intersections(db: Session = Depends(get_db)):
-    """Obtiene la lista de cámaras/intersecciones activas desde la Base de Datos"""
+    """Lista de cámaras/intersecciones con su congestión REAL por intersección (B2).
+
+    ``status`` deja de ser placeholder: sale del nivel Waze agregado por intersección
+    (MAX de las aristas de la intersección, último snapshot —
+    ``WazeJamsRepo.max_level_by_intersection``) mapeado a fluid|moderate|critical. Cámara
+    sin intersección mapeada (DEUDA-CAM-GEO) o intersección sin dato Waze → fluid.
+    ``speed``/``flow`` siguen en 0: son señal de VISIÓN (edge), el SSE del front los
+    completa cuando corre YOLO — la congestión de red NO los deriva.
+    """
     cameras = db.query(CameraDB).all()
+    level_by_intersection = WazeJamsRepo(db).max_level_by_intersection()
     results = []
     for cam in cameras:
-        name = " ".join([word.capitalize() for word in cam.node_id.split("_")]) if cam.node_id else "Desconocida"
+        name = " ".join([word.capitalize() for word in cam.intersection_id.split("_")]) if cam.intersection_id else "Desconocida"
+        level = level_by_intersection.get(cam.intersection_id)
         results.append({
             "id": cam.camera_id,
             "name": name,
             "lat": cam.lat,
             "lng": cam.lon,
+            "stream_url": cam.stream_url,  # B0: HLS de Claro (nominal, DEUDA-CAM-GEO)
             "speed": 0,
             "flow": 0,
-            "status": "fluid"
+            "status": congestion_status_from_level(level),
         })
     return results
 

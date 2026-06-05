@@ -187,6 +187,26 @@ def main() -> None:
         wa = conn.execute(text("SELECT count(*) FROM waze_alerts")).scalar_one()
         if wj != 0 or wa != 0:
             raise SpikeStop(f"waze_jams={wj} waze_alerts={wa} (debían ser 0): abortando")
+        # Fase A: intersection_edges también tiene FK→graph_edges. Si está poblada (seed
+        # de intersecciones ya corrido), el DELETE de abajo violaría la FK. Orden correcto:
+        # build_graph_geometry.py ANTES de seed_intersections.py. Para re-cargar el net con
+        # intersecciones ya sembradas, truncá intersection_edges primero.
+        ie = conn.execute(
+            text(
+                "SELECT count(*) FROM information_schema.tables "
+                "WHERE table_name = 'intersection_edges'"
+            )
+        ).scalar_one()
+        if ie:
+            n_ie = conn.execute(
+                text("SELECT count(*) FROM intersection_edges")
+            ).scalar_one()
+            if n_ie != 0:
+                raise SpikeStop(
+                    f"intersection_edges={n_ie} (debía ser 0): tiene FK→graph_edges. "
+                    "Truncá intersection_edges antes de re-correr el builder "
+                    "(orden: build_graph_geometry.py → seed_intersections.py)."
+                )
 
         # a. graph_edges: namespace exclusivo de TTH-12 (0 FK entrantes con filas).
         #    Borra las 6 sintéticas y las sumo_ previas; reinserta abajo.

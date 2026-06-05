@@ -24,3 +24,6 @@ class Camera(BaseModel):
     lon: float = Field(..., description="Longitude")
     heading: float = Field(..., ge=0, le=360, description="Heading in degrees (0-360)")
     fov: float = Field(..., gt=0, lt=180, description="Field of View in degrees")
+    stream_url: str | None = Field(
+        None, description="HLS stream URL (Claro); nominal camera↔intersection link (DEUDA-CAM-GEO)"
+    )

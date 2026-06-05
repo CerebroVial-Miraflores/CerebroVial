@@ -43,11 +43,67 @@ class GraphEdgeDB(Base):
     lanes = Column(Integer, nullable=False)
     geom = Column(Geometry('LINESTRING', srid=4326))
 
+# --- Intersections (PMU) ---
+
+class IntersectionDB(Base):
+    """Intersección semaforizada del PMU de Miraflores (entidad de primera clase).
+
+    intersection_id == ``nombre`` del mapeo canónico
+    (``documentation/contracts/mapeo_pmu_edges_v2.yaml``); junction_id es el id del
+    junction SUMO. tls_id se puebla SOLO cuando está verificado contra una config de
+    control real (hoy: larco_benavides; el resto NULL — DEUDA-CTRL-TLS). El puente al
+    grafo va por ``intersection_edges`` → ``graph_edges`` (NO hay FK a graph_nodes:
+    junction_id es un str opaco). spatial_index=False: la fase NO crea índices GIST.
+    """
+    __tablename__ = "intersections"
+
+    intersection_id = Column(String, primary_key=True, index=True)
+    junction_id = Column(String, nullable=False)
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    los_pmu = Column(String, nullable=True)
+    tls_id = Column(String, nullable=True)
+    geom = Column(Geometry('POINT', srid=4326, spatial_index=False))
+
+
+class IntersectionEdgeDB(Base):
+    """Puente intersección → arista del grafo, con dirección (incoming/outgoing).
+
+    edge_id es FK real a graph_edges.edge_id (id SUMO crudo, p. ej. ``129466113#3``):
+    requiere que el net real esté cargado (``scripts/build_graph_geometry.py``) antes de
+    sembrar. PK compuesta (intersection_id, edge_id): incoming/outgoing son disjuntos por
+    intersección en el mapeo.
+    """
+    __tablename__ = "intersection_edges"
+
+    intersection_id = Column(
+        String, ForeignKey("intersections.intersection_id"), primary_key=True
+    )
+    edge_id = Column(String, ForeignKey("graph_edges.edge_id"), primary_key=True)
+    direction = Column(String, nullable=False)  # "incoming" | "outgoing"
+
+    __table_args__ = (
+        CheckConstraint(
+            "direction IN ('incoming', 'outgoing')",
+            name="ck_intersection_edges_direction",
+        ),
+    )
+
+
 class CameraDB(Base):
+    """Cámara como ACCESORIO de una intersección (no de un graph_node).
+
+    intersection_id es FK a intersections (nullable: una cámara puede no estar mapeada).
+    stream_url es el HLS de Claro; la asociación cámara-Claro ↔ intersección es NOMINAL
+    (DEUDA-CAM-GEO), sin concordancia geográfica real todavía.
+    """
     __tablename__ = "cameras"
 
     camera_id = Column(String, primary_key=True, index=True)
-    node_id = Column(String, ForeignKey("graph_nodes.node_id"), nullable=True)
+    intersection_id = Column(
+        String, ForeignKey("intersections.intersection_id"), nullable=True
+    )
+    stream_url = Column(String, nullable=True)
     lat = Column(Float, nullable=False)
     lon = Column(Float, nullable=False)
     heading = Column(Float, nullable=False)

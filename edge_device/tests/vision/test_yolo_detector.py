@@ -80,3 +80,18 @@ def test_injected_model_skips_weight_loading():
     det = YoloDetector(model=FakeModel([]))
     assert det.conf_threshold == 0.5
     assert det.detect(np.zeros((10, 10, 3), dtype=np.uint8)) == []
+
+
+def test_release_drops_model_reference():
+    """C1/E1: tras release() el modelo no queda referenciado (no toca torch en
+    el path inyectado, `_device is None`). Idempotente."""
+    det = YoloDetector(model=FakeModel([]))
+    assert det._model is not None
+    assert det._device is None  # path inyectado: sin device de acelerador
+
+    det.release()
+    assert det._model is None
+
+    # Idempotente: una segunda llamada no rompe.
+    det.release()
+    assert det._model is None

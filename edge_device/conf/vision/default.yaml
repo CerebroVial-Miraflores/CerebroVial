@@ -4,6 +4,7 @@ source: "https://www.youtube.com/watch?v=6dp-bvQ7RWo"
 # source: "https://www.youtube.com/watch?v=0IgonpX1jMg"
 # source: "https://www.youtube.com/watch?v=rPxWUFTKgds"
 source_type: "auto" # webcam, file, youtube, ip_cam, auto (dispatcher por contenido del source)
+loop: true # re-loop de archivos locales al EOF; false recupera la semántica EOF->None (no aplica a streams/webcam)
 camera_id: null
 
 # ROI Zones for counting

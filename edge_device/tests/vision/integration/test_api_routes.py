@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
-from src.vision.presentation.api.routes.cameras import app
+from unittest.mock import MagicMock, AsyncMock, patch
+from src.vision.presentation.api.routes.cameras import app, _build_camera_config
 
 @pytest.fixture
 def client():
@@ -27,6 +27,8 @@ def test_get_status(client, mock_manager):
     assert response.json() == {"cam1": {"running": True}}
 
 def test_add_camera(client, mock_manager):
+    # C1/D3: el alta on-demand registra Y arranca vía activate_camera (single-slot).
+    mock_manager.activate_camera = AsyncMock()
     payload = {
         "source": "video.mp4",
         "source_type": "file",
@@ -34,8 +36,52 @@ def test_add_camera(client, mock_manager):
     }
     response = client.post("/cameras/cam1", json=payload)
     assert response.status_code == 200
-    assert response.json() == {"status": "added", "camera_id": "cam1"}
-    mock_manager.add_camera.assert_called_once()
+    assert response.json() == {"status": "started", "camera_id": "cam1"}
+    mock_manager.activate_camera.assert_called_once()
+
+
+def test_remove_camera(client, mock_manager):
+    # C1/D3: la baja on-demand para + libera el modelo vía remove_camera.
+    mock_manager.remove_camera = AsyncMock()
+    response = client.delete("/cameras/cam1")
+    assert response.status_code == 200
+    assert response.json() == {"status": "removed", "camera_id": "cam1"}
+    mock_manager.remove_camera.assert_called_once()
+
+
+def test_build_camera_config_uses_postgres_persistence():
+    """Regresión C1: el cfg del alta on-demand persiste en postgres (no csv, que
+    build_persistence rechaza → 500), con ventana corta y el camera_id real."""
+    cfg = _build_camera_config(
+        "cam_larco_benavides",
+        "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
+        "hls",
+        {},
+    )
+    persistence = cfg.vision.persistence
+    assert persistence.type == "postgres"   # NO csv (decisión #8)
+    assert persistence.enabled is True
+    assert persistence.interval_seconds == 5  # ventana corta → conteo pronto
+    # camera_id obligatorio para build_persistence con persistence.enabled.
+    assert cfg.vision.camera_id == "cam_larco_benavides"
+    # El source/source_type llegan tal cual (ruteo hls).
+    assert cfg.vision.source_type == "hls"
+
+
+def test_build_camera_config_detection_tuning():
+    """Regresión C1: umbral on-demand bajo (detecta más) y detección en cada
+    frame para la demo (boxes repintados en cada frame = detección visible)."""
+    cfg = _build_camera_config(
+        "cam_larco_benavides",
+        "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
+        "hls",
+        {},
+    )
+    # OVERRIDE-LIVE: 0.2 para capturar más con yolo11n en ángulo alto (no 0.5/0.3).
+    assert cfg.vision.model.conf_threshold == 0.2
+    # OVERRIDE-LIVE: 1 → n=1 para la demo (boxes en cada frame, detección visible).
+    # Trade-off asumido: el stream salta en CPU sin GPU/MPS (DEUDA-YOLO-CPU).
+    assert cfg.vision.performance.detect_every_n_frames == 1
 
 def test_start_camera(client, mock_manager):
     response = client.post("/cameras/cam1/start")

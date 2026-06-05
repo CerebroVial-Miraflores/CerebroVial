@@ -87,14 +87,6 @@ _EDGES_RAW = [
     ("ejercito_to_arequipa",         "ejercito_sucre",       "arequipa_angamos"),
 ]
 
-_CAMERAS_RAW = [
-    ("cam_larco_schell",     "larco_schell"),
-    ("cam_larco_benavides",  "larco_benavides"),
-    ("cam_arequipa_angamos", "arequipa_angamos"),
-    ("cam_ejercito_sucre",   "ejercito_sucre"),
-]
-
-
 def main() -> None:
     _load_dotenv()
     url = os.environ.get("DATABASE_URL", "").replace("@db:", "@localhost:")
@@ -122,18 +114,10 @@ def main() -> None:
                 geom=e["geom"],
             ))
 
-        for cam_id, node_id in _CAMERAS_RAW:
-            lat, lon = _COORDS[node_id]
-            session.merge(CameraDB(
-                camera_id=cam_id,
-                node_id=node_id,
-                lat=lat,
-                lon=lon,
-                heading=0.0,
-                fov=90.0,
-                geom=_point(lat, lon),
-            ))
-
+        # Las cámaras ya NO se siembran acá (Fase A): pasaron a ser accesorio de
+        # intersección y se cargan, junto a las 11 intersecciones del PMU y el puente
+        # intersection_edges, en scripts/seed_intersections.py (requiere el net real
+        # cargado con build_graph_geometry.py primero).
         session.commit()
 
         # TODO: cambiar password antes de demo

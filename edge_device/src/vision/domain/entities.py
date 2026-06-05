@@ -51,6 +51,13 @@ class FrameAnalysis:
     vehicles: list[DetectedVehicle]
     unique_vehicles: int
     zones: dict[ZoneId, ZoneVehicleCount]
+    # ¿Se corrió detección en este frame? (C1) Con detect_every_n_frames>1, los
+    # skip frames emiten vehicles=[] con detection_ran=False; los detection frames
+    # (incluso con 0 vehículos) van con True. Lo usa la capa de visualización para
+    # persistir los boxes del último frame inferido SOLO en skip frames (sin tocar
+    # métricas), distinguiéndolos de un detection frame con la calle vacía de verdad.
+    # Default True → backward-compatible; replace() lo preserva por la cadena.
+    detection_ran: bool = True
 
 
 @dataclass(frozen=True)

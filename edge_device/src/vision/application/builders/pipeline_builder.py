@@ -104,6 +104,7 @@ class VisionApplicationBuilder:
             target_width=perf_cfg.get('target_width', None),
             target_height=perf_cfg.get('target_height', None),
             format=perf_cfg.get('youtube_format', 'best'),
+            loop=self.vision_cfg.get('loop', True),
         )
         return self
 
