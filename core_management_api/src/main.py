@@ -123,7 +123,7 @@ def get_intersections(db: Session = Depends(get_db)):
     cameras = db.query(CameraDB).all()
     results = []
     for cam in cameras:
-        name = " ".join([word.capitalize() for word in cam.node_id.split("_")]) if cam.node_id else "Desconocida"
+        name = " ".join([word.capitalize() for word in cam.intersection_id.split("_")]) if cam.intersection_id else "Desconocida"
         results.append({
             "id": cam.camera_id,
             "name": name,

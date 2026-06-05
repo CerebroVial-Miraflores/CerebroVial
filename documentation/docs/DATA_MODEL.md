@@ -8,7 +8,9 @@
 
 ```mermaid
 erDiagram
-    GraphNodeDB ||--o{ CameraDB : "ubicación opcional"
+    IntersectionDB ||--o{ CameraDB : "accesorio"
+    IntersectionDB ||--o{ IntersectionEdgeDB : "puente"
+    GraphEdgeDB ||--o{ IntersectionEdgeDB : "referenciada por"
     GraphNodeDB ||--o{ GraphEdgeDB : "source"
     GraphNodeDB ||--o{ GraphEdgeDB : "target"
     GraphEdgeDB ||--o{ WazeJamDB : "congestión en"
@@ -35,9 +37,26 @@ erDiagram
         geometry geom "LINESTRING 4326"
     }
 
+    IntersectionDB {
+        string intersection_id PK
+        string junction_id
+        float lat
+        float lon
+        string los_pmu "nullable"
+        string tls_id "nullable"
+        geometry geom "POINT 4326"
+    }
+
+    IntersectionEdgeDB {
+        string intersection_id PK_FK
+        string edge_id PK_FK
+        string direction "incoming|outgoing"
+    }
+
     CameraDB {
         string camera_id PK
-        string node_id FK "nullable"
+        string intersection_id FK "nullable"
+        string stream_url "nullable"
         float lat
         float lon
         float heading
@@ -130,24 +149,62 @@ sentido se modela como **dos aristas**.
 visión (los flujos turning conectan `from_edge_id` con `to_edge_id`),
 control adaptativo, GRU.
 
-### `cameras` — Cámaras de visión
+### `intersections` — Intersecciones semaforizadas del PMU (Fase A)
 
-Una fila por cámara desplegada en el sistema.
+Una fila por **intersección semaforizada** del Plan de Movilidad Urbana de
+Miraflores. Entidad de primera clase (D-016): el control, las cámaras y el
+mapeo al grafo cuelgan de acá. Fuente: `documentation/contracts/mapeo_pmu_edges_v2.yaml`.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `intersection_id` | string PK | = `nombre` del mapeo (ej. `"larco_benavides"`) |
+| `junction_id` | string | ID del junction SUMO (puede ser un `cluster_...`) |
+| `lat`, `lon` | float | `coord_gazetteer` (WGS84) |
+| `los_pmu` | string, nullable | Nivel de servicio del PMU (ej. `"C/D"`); NULL si el PMU no lo fija |
+| `tls_id` | string, nullable | ID del TLS SUMO. Poblado SOLO si está verificado (hoy: `larco_benavides`). DEUDA-CTRL-TLS |
+| `geom` | POINT 4326 | Sin índice GIST (D-016) |
+
+**Quién la llena:** `scripts/seed_intersections.py` (las 11 semaforizadas; excluye
+`ovalo_gutierrez`, rotonda sin TLS). **NO** hay FK a `graph_nodes`: `junction_id`
+es opaco; el puente al grafo va por `intersection_edges`.
+
+**Quién la lee:** `/api/intersections` (vía `cameras`), trabajos de control futuros.
+
+### `intersection_edges` — Puente intersección → arista (Fase A)
+
+Mapea cada intersección a sus aristas del grafo, con dirección. PK compuesta.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `intersection_id` | string FK → `intersections` | PK |
+| `edge_id` | string FK → `graph_edges` | PK. ID SUMO crudo (ej. `129466113#3`) |
+| `direction` | string | `'incoming'` \| `'outgoing'` (CHECK) |
+
+**Quién la llena:** `scripts/seed_intersections.py`, desde `edges_incoming`/
+`edges_outgoing` del mapeo. **Requiere el net real cargado** (`scripts/build_graph_geometry.py`)
+porque `edge_id` es FK→`graph_edges`. Orden: `invoke seed` → `build_graph_geometry.py`
+→ `invoke seed-intersections` (pre-check fail-fast si falta el net).
+
+### `cameras` — Cámaras de visión (accesorio de intersección)
+
+Una fila por cámara desplegada. Desde Fase A, la cámara es **accesorio de una
+intersección** (ya no ancla a `graph_nodes`).
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `camera_id` | string PK | |
-| `node_id` | string FK → `graph_nodes`, nullable | Una cámara puede estar en una intersección o mid-block |
-| `lat`, `lon` | float | Coordenadas WGS84 |
+| `intersection_id` | string FK → `intersections`, nullable | Reemplaza a `node_id` (Fase A) |
+| `stream_url` | string, nullable | HLS de Claro. Asociación cámara↔intersección NOMINAL — DEUDA-CAM-GEO |
+| `lat`, `lon` | float | Coordenadas WGS84 (hoy = coord de la intersección, nominal) |
 | `heading` | float | Ángulo de orientación 0-360° |
 | `fov` | float | Field of view en grados |
 | `geom` | POINT 4326 | |
 
-**Quién la llena:** seed inicial. Para cámaras YouTube no nativas de
-Miraflores, `heading`/`fov` son estimaciones manuales.
+**Quién la llena:** `scripts/seed_intersections.py` (1 cámara por intersección,
+`stream_url` de Claro asignado 1:1 arbitrariamente).
 
-**Quién la lee:** módulo de visión (`edge_device`), frontend (mapa de
-cámaras y stream).
+**Quién la lee:** módulo de visión (`edge_device`), frontend (mapa de cámaras y
+stream), `/api/intersections`.
 
 ### `waze_jams` — Snapshots de congestión de Waze
 
@@ -329,6 +386,12 @@ eficientes:
 - "intersecciones dentro de 500m" — `ST_DWithin`
 - "jams que cruzan esta zona" — `ST_Intersects`
 - "asignar cámara a la intersección más cercana" — `ST_Distance`
+
+> **Nota (Fase A / D-016):** `intersections.geom` se declara con
+> `spatial_index=False` — **sin** índice GIST. Las queries `ST_DWithin` corren
+> igual (validado en `tests/intersections/test_spatial_e2e.py`), solo sin el
+> índice; crearlo queda fuera del scope de Fase A. (En la práctica, los índices
+> GIST del schema están comentados desde la migración inicial `775d2d1db8b4`.)
 
 ## Tablas internas de PostGIS
 
