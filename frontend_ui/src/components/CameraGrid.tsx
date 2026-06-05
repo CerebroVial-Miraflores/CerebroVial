@@ -15,7 +15,7 @@ export interface GridCamera {
 
 interface CameraGridProps {
   cameras: GridCamera[];
-  onSelectCamera?: (id: string, name: string) => void;
+  onSelectCamera?: (id: string, name: string, streamUrl: string | null) => void;
   /** B2: reporta hacia arriba la salud (playing/offline/loading) de cada cámara, para
    *  que el marcador del mapa la comparta. */
   onStatusChange?: (id: string, status: PlayerStatus) => void;
@@ -63,7 +63,7 @@ function CameraCell({
   onHover,
 }: {
   camera: GridCamera;
-  onSelect?: (id: string, name: string) => void;
+  onSelect?: (id: string, name: string, streamUrl: string | null) => void;
   onStatusChange?: (id: string, status: PlayerStatus) => void;
   selected?: boolean;
   onHover?: (id: string | null) => void;
@@ -111,7 +111,7 @@ function CameraCell({
     <div
       ref={ref}
       data-testid="camera-cell"
-      onClick={() => onSelect?.(camera.id, camera.name)}
+      onClick={() => onSelect?.(camera.id, camera.name, camera.stream_url)}
       onMouseEnter={() => onHover?.(camera.id)}
       onMouseLeave={() => onHover?.(null)}
       className={`bg-slate-800 rounded-xl border overflow-hidden cursor-pointer transition-colors ${

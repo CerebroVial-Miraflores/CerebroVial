@@ -48,14 +48,31 @@ describe('CameraDetailView', () => {
     const mockOnBack = vi.fn();
     const mockCameraId = 'cam_larco_benavides';
     const mockCameraName = 'Larco Benavides';
+    const mockStreamUrl = 'https://video.claro.com.pe/live/cam.m3u8';
+    const EDGE = 'http://localhost:8000';
+
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    const renderView = (streamUrl: string | null = mockStreamUrl) =>
+        render(
+            <CameraDetailView
+                cameraId={mockCameraId}
+                cameraName={mockCameraName}
+                streamUrl={streamUrl}
+                onBack={mockOnBack}
+            />,
+        );
 
     beforeEach(() => {
         vi.clearAllMocks();
         mockOnBack.mockClear();
+        // Alta/baja en el edge: por defecto OK. Cada test puede sobreescribirlo.
+        fetchMock = vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response));
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
     });
 
     it('renders correctly with default live view', () => {
-        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
+        renderView();
 
         // Check header title (el nombre viene por prop desde /api/intersections, no hardcodeado)
         expect(screen.getByText(mockCameraName)).toBeInTheDocument();
@@ -72,13 +89,9 @@ describe('CameraDetailView', () => {
     });
 
     it('calls onBack when back button is clicked', () => {
-        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
+        renderView();
 
         const backButtons = screen.getAllByTestId('icon-arrow-left');
-        // Note: ArrowLeft is used in the header back button. 
-        // The X button is also a back button.
-
-        // Let's find the button containing the icon
         const backBtn = backButtons[0].parentElement;
         fireEvent.click(backBtn!);
 
@@ -86,7 +99,7 @@ describe('CameraDetailView', () => {
     });
 
     it('switches to history view when tab is clicked', async () => {
-        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
+        renderView();
 
         const historyTab = screen.getByText('Histórico');
         fireEvent.click(historyTab);
@@ -100,19 +113,67 @@ describe('CameraDetailView', () => {
         expect(screen.queryByText('PROCESADO')).not.toBeInTheDocument();
     });
 
-    it('updates metrics when valid SSE data is simulated', async () => {
-        // This test requires mocking EventSource which is tricky in jsdom.
-        // We can verify initial state or mocked prediction calls instead.
-        render(<CameraDetailView cameraId={mockCameraId} cameraName={mockCameraName} onBack={mockOnBack} />);
-
-        // Initial state check
-        expect(screen.getByText('0%')).toBeInTheDocument(); // Density
+    it('does not call prediction service initially (vehicles = 0)', () => {
+        renderView();
+        expect(predictionService.predictTraffic).not.toHaveBeenCalled();
     });
 
-    it('fetches prediction when vehicles > 0', async () => {
-        // To trigger this, we'd need to simulate SSE or manipulate state.
-        // For now, we verify the service is mocked.
-        expect(predictionService.predictTraffic).not.toHaveBeenCalled();
-        // It's not called initially because vehiclesPerHour is 0.
+    // ---- C1/F1-F2: orquestación on-demand del YOLO en el edge --------------
+
+    it('POSTs the camera to the edge on mount with the Claro stream_url', async () => {
+        renderView();
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                `${EDGE}/cameras/${mockCameraId}`,
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+
+        // El body lleva la URL de Claro como `source` y source_type "hls".
+        const postCall = fetchMock.mock.calls.find(
+            (c) => (c[1] as RequestInit)?.method === 'POST',
+        );
+        const body = JSON.parse((postCall![1] as RequestInit).body as string);
+        expect(body).toEqual({ source: mockStreamUrl, source_type: 'hls', zones: {} });
+    });
+
+    it('DELETEs the camera on unmount', async () => {
+        const { unmount } = renderView();
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+        unmount();
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            `${EDGE}/cameras/${mockCameraId}`,
+            expect.objectContaining({ method: 'DELETE' }),
+        );
+    });
+
+    it('shows a loading overlay until the edge responds', () => {
+        // fetch nunca resuelve → queda en "Cargando detección…".
+        fetchMock.mockReturnValue(new Promise(() => {}));
+        renderView();
+        expect(screen.getByText(/Cargando detección/)).toBeInTheDocument();
+    });
+
+    it('shows a clear error when the edge fails (Claro down)', async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 404 } as Response);
+        renderView();
+
+        await waitFor(() => {
+            expect(screen.getByText(/no se pudo iniciar la detección/i)).toBeInTheDocument();
+        });
+    });
+
+    it('shows an error and does not POST when there is no stream_url', () => {
+        renderView(null);
+
+        expect(screen.getByText(/no tiene un stream configurado/i)).toBeInTheDocument();
+        // Sin stream no se intenta el alta en el edge.
+        const posted = fetchMock.mock.calls.some(
+            (c) => (c[1] as RequestInit)?.method === 'POST',
+        );
+        expect(posted).toBe(false);
     });
 });

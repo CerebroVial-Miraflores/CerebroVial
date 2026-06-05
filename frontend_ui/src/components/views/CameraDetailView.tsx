@@ -17,13 +17,29 @@ import { congestionLabel, densityPercent } from '../../utils/trafficLabels';
 interface CameraDetailViewProps {
     cameraId: string;
     cameraName: string; // B1: nombre real desde /api/intersections (propagado por App)
+    streamUrl: string | null; // C1/F1: HLS de Claro; se manda al edge como `source` del YOLO on-demand
     onBack: () => void; // Using onBack to match parent usage
 }
 
-export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, cameraName, onBack }) => {
+const EDGE_API_URL = (import.meta.env?.VITE_EDGE_API_URL) || 'http://localhost:8000';
+
+export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, cameraName, streamUrl, onBack }) => {
     const [viewMode, setViewMode] = useState<'live' | 'history'>('live');
     const [streamType, setStreamType] = useState<'raw' | 'processed'>('processed'); // Default to processed
     const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('high');
+
+    // C1/F1-F2: orquestación on-demand del YOLO en el edge.
+    //  - `isActive`: el alta (POST /cameras/{id}) respondió OK → recién ahí montamos MJPEG+SSE.
+    //  - `isLoading`: alta en vuelo o esperando el primer frame del MJPEG.
+    //  - `error`: alta falló o la cámara de Claro está caída → mensaje claro, no spinner infinito.
+    // Init perezoso (el detalle se re-monta por cámara, así que basta el valor
+    // inicial — sin resets síncronos dentro del effect): cargando si hay stream
+    // que dar de alta; error directo si la cámara no tiene stream configurado.
+    const [isActive, setIsActive] = useState(false);
+    const [isLoading, setIsLoading] = useState(() => !!streamUrl);
+    const [error, setError] = useState<string | null>(
+        () => (streamUrl ? null : 'Esta cámara no tiene un stream configurado.'),
+    );
 
     // Data States
     const [metrics, setMetrics] = useState({
@@ -40,11 +56,46 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
     });
     const [prediction, setPrediction] = useState<PredictionResult | null>(null);
 
+    // C1/F1: alta on-demand del YOLO al montar; baja al desmontar. El edge recibe
+    // el id real (cam_<intersection>) + la URL de Claro como `source`, carga YOLO,
+    // y libera al recibir el DELETE (o por timeout sin consumidores, red de
+    // seguridad del edge si esto no corre, p. ej. cierre brusco de pestaña).
+    useEffect(() => {
+        // Sin stream: el error ya quedó derivado en el init; no se hace alta.
+        if (!streamUrl) return;
+
+        let cancelled = false;
+
+        fetch(`${EDGE_API_URL}/cameras/${cameraId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: streamUrl, source_type: 'hls', zones: {} }),
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error(`Edge respondió ${res.status}`);
+                if (!cancelled) setIsActive(true);
+            })
+            .catch((err) => {
+                console.error('Alta de cámara en el edge falló', err);
+                if (!cancelled) {
+                    setError('No se pudo iniciar la detección. La cámara de Claro podría no estar disponible.');
+                    setIsLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+            // Baja best-effort; el watchdog del edge libera igual si esto no llega.
+            fetch(`${EDGE_API_URL}/cameras/${cameraId}`, { method: 'DELETE' }).catch(() => {});
+        };
+    }, [cameraId, streamUrl]);
+
     // SSE Effect — shape §6.2 (TTH-08 6d). El backend emite `event: traffic_update`
     // con números crudos; la discretización ES y el `%` se computan client-side.
+    // C1/F1: solo se abre una vez que el alta en el edge respondió OK (`isActive`).
     useEffect(() => {
-        const edgeApiUrl = (import.meta.env?.VITE_EDGE_API_URL) || 'http://localhost:8000';
-        const sseUrl = `${edgeApiUrl}/stream/${cameraId}`;
+        if (!isActive) return;
+        const sseUrl = `${EDGE_API_URL}/stream/${cameraId}`;
         const eventSource = new EventSource(sseUrl);
 
         eventSource.addEventListener('traffic_update', (event) => {
@@ -71,7 +122,7 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
         return () => {
             eventSource.close();
         };
-    }, [cameraId]);
+    }, [cameraId, isActive]);
 
     // Prediction Polling
     useEffect(() => {
@@ -109,8 +160,7 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
     };
 
     // Include type param
-    const edgeApiUrl = (import.meta.env?.VITE_EDGE_API_URL) || 'http://localhost:8000';
-    const streamUrl = `${edgeApiUrl}/video/${cameraId}?type=${streamType}&${getQualityParams()}`;
+    const mjpegUrl = `${EDGE_API_URL}/video/${cameraId}?type=${streamType}&${getQualityParams()}`;
 
     const getCongestionStyles = (level: string) => {
         const l = (level || '').toLowerCase();
@@ -214,11 +264,30 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
                     <Card className="p-0 overflow-hidden border-indigo-500/30 shadow-[0_0_30px_rgba(79,70,229,0.1)] flex-1 min-h-[400px]">
                         {viewMode === 'live' ? (
                             <div className="relative w-full h-full bg-black flex items-center justify-center">
-                                <img
-                                    src={streamUrl}
-                                    alt="Live Stream"
-                                    className="w-full h-full object-contain"
-                                />
+                                {/* C1/F2: el MJPEG se monta solo tras el alta OK en el edge.
+                                    Mientras: overlay de carga; si falla: mensaje claro. */}
+                                {error ? (
+                                    <div className="flex flex-col items-center justify-center gap-3 text-center px-6">
+                                        <AlertTriangle className="w-10 h-10 text-amber-400" />
+                                        <p className="text-sm text-slate-300 max-w-xs">{error}</p>
+                                    </div>
+                                ) : isActive ? (
+                                    <img
+                                        src={mjpegUrl}
+                                        alt="Live Stream"
+                                        className="w-full h-full object-contain"
+                                        onLoad={() => setIsLoading(false)}
+                                        onError={() => setError('Se perdió la señal de la cámara.')}
+                                    />
+                                ) : null}
+
+                                {isLoading && !error && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60">
+                                        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                                        <span className="text-xs text-slate-300 uppercase tracking-wider">Cargando detección…</span>
+                                    </div>
+                                )}
+
                                 <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-full">
                                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                                     <span className="text-xs font-bold text-red-500 uppercase tracking-wider">En vivo</span>
@@ -273,9 +342,17 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
                                 <div className="text-slate-400 text-xs mb-1 flex items-center gap-1"><Car size={12} /> Vehículos detectados</div>
                                 <div className="text-xl font-bold text-white">{Math.round(metrics.vehiclesPerHour)}</div>
                             </div>
-                            <div className="p-3 bg-slate-900/50 rounded border border-slate-800">
-                                <div className="text-slate-400 text-xs mb-1 flex items-center gap-1"><Activity size={12} /> Vel. Promedio</div>
-                                <div className="text-xl font-bold text-white">{Math.round(metrics.avgSpeed)} <span className="text-xs font-normal text-slate-500">km/h</span></div>
+                            {/* C1/F3: la velocidad es aproximada/experimental (sin calibrar,
+                                DEUDA-SPEED-CALIB). El conteo de vehículos sí es real. */}
+                            <div
+                                className="p-3 bg-slate-900/50 rounded border border-slate-800"
+                                title="Velocidad experimental, sin calibrar (DEUDA-SPEED-CALIB)"
+                            >
+                                <div className="text-slate-400 text-xs mb-1 flex items-center gap-1">
+                                    <Activity size={12} /> Vel. Promedio
+                                    <span className="text-amber-400/80 text-[10px] font-semibold uppercase ml-auto">aprox.</span>
+                                </div>
+                                <div className="text-xl font-bold text-white">~{Math.round(metrics.avgSpeed)} <span className="text-xs font-normal text-slate-500">km/h</span></div>
                             </div>
                             <div className="p-3 bg-slate-900/50 rounded border border-slate-800">
                                 <div className="text-slate-400 text-xs mb-1 flex items-center gap-1"><Users size={12} /> Peatones</div>

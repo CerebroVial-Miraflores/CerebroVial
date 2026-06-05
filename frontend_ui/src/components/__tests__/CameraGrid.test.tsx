@@ -89,7 +89,7 @@ describe('CameraGrid', () => {
     expect(screen.queryByTestId('hls-player')).not.toBeInTheDocument();
   });
 
-  it('click en una celda dispara onSelectCamera con id y nombre', () => {
+  it('click en una celda dispara onSelectCamera con id, nombre y stream_url', () => {
     const onSelect = vi.fn();
     render(
       <CameraGrid
@@ -99,7 +99,8 @@ describe('CameraGrid', () => {
     );
 
     fireEvent.click(screen.getByTestId('camera-cell'));
-    expect(onSelect).toHaveBeenCalledWith('c1', 'Larco Benavides');
+    // C1/F1: la grilla propaga también la stream_url de Claro para el alta on-demand.
+    expect(onSelect).toHaveBeenCalledWith('c1', 'Larco Benavides', 'http://x/c1.m3u8');
   });
 
   // B2: la salud reportada por la celda sube al padre (para que el marcador la comparta).

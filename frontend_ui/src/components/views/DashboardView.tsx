@@ -164,7 +164,7 @@ function FitBounds({ points }: { points: [number, number][] }) {
     return null;
 }
 
-export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string, name: string) => void }) => {
+export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string, name: string, streamUrl: string | null) => void }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     // B2 D2: el SSE de visión alimenta SOLO speed/flow (señal de cámara). El color del
@@ -275,7 +275,7 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
             setMapCenter([camera.lat, camera.lng]);
             setMapZoom(16);
             if (viewMode === 'waze') setViewMode('leaflet');
-            onSelectCamera(id, camera.name);
+            onSelectCamera(id, camera.name, camera.stream_url);
         }
     };
 
@@ -429,7 +429,7 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                                         selected={int.id === selectedId}
                                         speedFlow={realData[int.id]}
                                         onSelect={() => handleCameraSelect(int.id)}
-                                        onSelectCamera={() => onSelectCamera(int.id, int.name)}
+                                        onSelectCamera={() => onSelectCamera(int.id, int.name, int.stream_url)}
                                         onHover={() => setSelectedId(int.id)}
                                         onUnhover={() => setSelectedId(null)}
                                     />
