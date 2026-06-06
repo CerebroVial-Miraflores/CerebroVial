@@ -28,3 +28,6 @@ scratch/
 # ver documentation/ESTADO_Y_PROXIMOS_PASOS.md). Anclado a raíz (/): NO toca los .rou.xml
 # legítimos de conf/scenarios/, conf/corredor_larco/, etc.
 /routes.rou.xml
+# Outputs regenerables del experimento de validación red-completa (F1, DHU-030): SUMO
+# escribe tripinfo/summary.parquet acá. Se versionan demanda + sumocfg + README, NO los runs.
+simulation/conf/miraflores_red_completa/runs/
