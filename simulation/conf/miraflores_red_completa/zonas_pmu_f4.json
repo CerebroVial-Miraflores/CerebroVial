@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "fase": "F4 (DHU-030) — medición KPI por zona + franjas sobre el experimento fijo-vs-adaptativo de Miraflores red completa",
+    "que_es": "Fuente de verdad VERSIONADA de la medición por zona de F4: los 3 cruces PMU bifásicos saturados (nivel_los E/F en algún pico) que caen entre los 54 TLS de 2 fases del brazo adaptativo, con sus edges-aproche, y los límites de franja de la curva B2. La consumen el generador del add-file de edgeData (make_edgedata_zonas.py) y el reproceso (reprocess_f4_zonas.py).",
+    "no_cambia_el_experimento": "F4 SOLO agrega medición (edgeData sobre estos 9 edges). El control es el mismo de F5 (54 adaptativos / 45 fijos), la demanda la misma (scale 1.1, seed por brazo). edgeData no perturba la dinámica.",
+    "fuentes": {
+      "zonas_y_aproches": "documentation/contracts/mapeo_pmu_edges_v2.yaml (campo edges_incoming), verificado contra simulation/conf/network/miraflores.net.xml (los 9 edge IDs existen, sin drift de sufijo)",
+      "clasificacion_bifasico": "2 fases verdes en el tlLogic del net (misma lógica que node_config_gen.find_two_phase_tls)",
+      "franjas": "simulation/conf/scenarios/perfil_dia_params.yaml (perfil laborable B2, 10 fases)"
+    },
+    "como_se_regenera": "Editar este JSON es la única fuente; make_edgedata_zonas.py y reprocess_f4_zonas.py leen de acá. Los crudos (edgeData/tripinfo) van a runs/ (gitignoreado)."
+  },
+  "franjas": [
+    {"nombre": "pico_am_07_09", "begin_s": 25200, "end_s": 32400, "label": "pico AM 07-09"},
+    {"nombre": "valle_10_17", "begin_s": 36000, "end_s": 61200, "label": "valle 10-17"},
+    {"nombre": "pico_pm_18_20", "begin_s": 64800, "end_s": 72000, "label": "pico PM 18-20"},
+    {"nombre": "dia_completo", "begin_s": 0, "end_s": 86400, "label": "día completo 00-24"}
+  ],
+  "zonas": [
+    {
+      "nombre": "arequipa_angamos",
+      "junction_id": "cluster_108177589_108177590_108180348_108180350_#2more",
+      "nivel_los": "E/H",
+      "fases_verdes": 2,
+      "edges_aproche": ["1023395811#2", "1148678976#1", "435657506#1", "784296866#0"]
+    },
+    {
+      "nombre": "28julio_lapaz",
+      "junction_id": "133936090",
+      "nivel_los": "D/F",
+      "fases_verdes": 2,
+      "edges_aproche": ["-427240760#3", "653650077#9"]
+    },
+    {
+      "nombre": "ricardopalma_paseo",
+      "junction_id": "cluster_114612822_262573260_3967025039_3967025044_#2more",
+      "nivel_los": "D/F",
+      "fases_verdes": 2,
+      "edges_aproche": ["1148860369", "437344447#1", "653439619#0"]
+    }
+  ]
+}

@@ -80,12 +80,17 @@ def _specs_to_nodecfgs(net_path: Path, tls_ids: Optional[list[str]]):
 def run_adaptive_red(seed: int, end_s: int, out_dir: Path, *,
                      net: Path = DEFAULT_NET, rou: Path = DEFAULT_ROU,
                      tls_ids: Optional[list[str]] = None,
+                     additional: Optional[Path] = None,
                      engine_recommend_fn: Optional[Callable] = None) -> dict:
     """Lazo adaptativo per-node puro sobre los TLS de 2 fases (todos si tls_ids=None).
 
     Mismos parámetros SUMO que el fijo de F1/F2 (tt=300, collision warn, seed, 0..end_s);
     única diferencia con el fijo = el control adaptativo por TraCI. Escribe
     summary.parquet + tripinfo.parquet en out_dir (métrica vía collect_red_metrics.py).
+
+    ``additional`` (F4, opcional): add-file de SUMO (-a), p.ej. el edgeData de zonas PMU.
+    edgeData es pura medición — no perturba la dinámica; el brazo sin --additional es
+    byte-idéntico al de F5.
     """
     if engine_recommend_fn is None:
         engine_recommend_fn = recommend
@@ -102,6 +107,8 @@ def run_adaptive_red(seed: int, end_s: int, out_dir: Path, *,
         "--tripinfo-output", str(out_dir / "tripinfo.parquet"),
         "--no-step-log", "--log", str(out_dir / "sumo.log"),
     ]
+    if additional is not None:
+        sumo_cmd += ["-a", str(additional)]
 
     sensors = {n.intersection_id: NodeSensor(n) for n in nodes}
     appliers = {
@@ -183,11 +190,14 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--rou", type=Path, default=DEFAULT_ROU)
     ap.add_argument("--larco", action="store_true",
                     help="controlar SOLO los 2 TLS de Larco (validación del wiring)")
+    ap.add_argument("--additional", type=Path, default=None,
+                    help="add-file de SUMO (-a), p.ej. edgeData de zonas PMU (F4)")
     args = ap.parse_args(argv)
 
     tls_ids = _LARCO_TLS if args.larco else None
     stats = run_adaptive_red(seed=args.seed, end_s=args.end, out_dir=args.out,
-                             net=args.net, rou=args.rou, tls_ids=tls_ids)
+                             net=args.net, rou=args.rou, tls_ids=tls_ids,
+                             additional=args.additional)
     _summarize(stats)
     return 0
 

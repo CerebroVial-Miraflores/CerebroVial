@@ -34,8 +34,11 @@ EXP_DIR="$SIM_ROOT/conf/miraflores_red_completa"
 VERSIONED_ROU="$EXP_DIR/routes/miraflores_seed051_laborable.rou.xml"
 RUNS="$EXP_DIR/runs"
 SEEDP="$(printf "%03d" "$SEED")"
-OUT="$RUNS/fijo_seed${SEEDP}"
+# OUT_DIR_OVERRIDE / EDGEDATA_ADD: extensión F4 (medición por zona). Sin exportarlas, el
+# comportamiento es idéntico al de F5 (edgeData es pura medición, no perturba la dinámica).
+OUT="${OUT_DIR_OVERRIDE:-$RUNS/fijo_seed${SEEDP}}"
 mkdir -p "$OUT"
+ADD_ARGS=(); [ -n "${EDGEDATA_ADD:-}" ] && ADD_ARGS=(-a "$EDGEDATA_ADD")
 
 # 1) Localizar / regenerar la demanda del seed (mismos parámetros que F1: ratio 5, scale 1.1).
 if [ "$SEED" -eq 51 ] && [ -f "$VERSIONED_ROU" ]; then
@@ -62,6 +65,7 @@ sumo -n "$NET" -r "$ROU" \
   --begin 0 --end 86400 --step-length 1 \
   --time-to-teleport 300 --collision.action warn --seed "$SEED" \
   --tripinfo-output "$OUT/tripinfo.parquet" --summary-output "$OUT/summary.parquet" \
+  "${ADD_ARGS[@]}" \
   --no-step-log --log "$OUT/sumo.log"
 
 # 3) Métrica de red + señales de salud (agnóstico; sin corredor).

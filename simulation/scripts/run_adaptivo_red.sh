@@ -40,9 +40,12 @@ VERSIONED_ROU="$EXP_DIR/routes/miraflores_seed051_laborable.rou.xml"
 RUNS="$EXP_DIR/runs"
 SEEDP="$(printf "%03d" "$SEED")"
 TAG="adaptivo_seed${SEEDP}"; [[ -n "$LARCO" ]] && TAG="adaptivo_larco_seed${SEEDP}"
-OUT="$RUNS/${TAG}_end${END}"
+# OUT_DIR_OVERRIDE / EDGEDATA_ADD: extensión F4 (medición por zona). Sin exportarlas, el
+# comportamiento es idéntico al de F5 (edgeData es pura medición, no perturba la dinámica).
+OUT="${OUT_DIR_OVERRIDE:-$RUNS/${TAG}_end${END}}"
 HEALTH="http://localhost:8001/control/health"
 mkdir -p "$OUT"
+ADD_ARGS=(); [ -n "${EDGEDATA_ADD:-}" ] && ADD_ARGS=(--additional "$EDGEDATA_ADD")
 
 # --- motor: levantar solo si no está; bajar al final solo si lo levantamos nosotros ---
 STARTED_MOTOR=0
@@ -88,7 +91,7 @@ fi
 # --- brazo adaptativo (TraCI) ---
 echo ">> adaptativo per-node (seed=$SEED end=$END ${LARCO:-54-nodos}) -> $OUT"
 "$VENV_PY" -m cerebrovial_simulation.traci_adapter.red_adaptive \
-  --seed "$SEED" --end "$END" --out "$OUT" --net "$NET" --rou "$ROU" $LARCO
+  --seed "$SEED" --end "$END" --out "$OUT" --net "$NET" --rou "$ROU" $LARCO "${ADD_ARGS[@]}"
 
 # --- métrica de red (misma que el fijo) ---
 echo ">> métrica de red"
