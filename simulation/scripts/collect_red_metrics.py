@@ -37,7 +37,10 @@ def collect_red(out_dir: Path) -> dict:
             raise FileNotFoundError(f"falta output: {p}")
 
     S = pq.read_table(str(summary))
-    col = lambda c: [_f(x) for x in S.column(c).to_pylist()]
+
+    def col(c):
+        return [_f(x) for x in S.column(c).to_pylist()]
+
     loaded, inserted = col("step_loaded"), col("step_inserted")
     running, ended = col("step_running"), col("step_ended")
     teleports, discarded = col("step_teleports"), col("step_discarded")
@@ -56,7 +59,9 @@ def collect_red(out_dir: Path) -> dict:
     tls = [_f(x) for x in T.column("tripinfo_timeLoss").to_pylist()]
     dds = [_f(x) for x in T.column("tripinfo_departDelay").to_pylist()]
     n_completed = len(durs)
-    mean = lambda xs: sum(xs) / len(xs) if xs else 0.0
+
+    def mean(xs):
+        return sum(xs) / len(xs) if xs else 0.0
 
     return {
         "out_dir": str(out_dir),
