@@ -3182,10 +3182,10 @@ No hay solape: ninguna HU del Gerente representa la congestión geográfica por 
 
 ---
 
-## DHU-030 — Alcance del experimento de validación del control adaptativo sobre la red completa de Miraflores (ABIERTA — en ejecución)
+## DHU-030 — Alcance del experimento de validación del control adaptativo sobre la red completa de Miraflores (CERRADA)
 
-**Fecha:** 2026-06-04.
-**Estado:** Abierta (en ejecución). Las decisiones de alcance P1–P5 quedan fijadas en esta entrada; la ejecución corre en las fases F1–F10 acordadas (registradas en el plan operativo, no en este ADR).
+**Fecha:** 2026-06-04. **Cerrada:** 2026-06-05 (ver *Cierre* al final de la entrada).
+**Estado:** **Cerrada.** El experimento se completó controlando los **54 TLS bifásicos** (~55% de la red); resultado **+20,67% ± 1,81** (10 seeds, día completo). El alcance ejecutado difiere del planeado (los 99 por etapas): ver *Cierre*. Las decisiones de alcance P1–P5 quedan como registro de lo decidido; la ejecución corrió en las fases F1–F10 (rama `feature/validacion-red-completa`).
 **TTH afectada:** módulo de simulación SUMO (`simulation/`). El núcleo P1–P4 **no** toca el motor (`core_management_api/`); solo el scope opcional P5 (MP-red) lo tocaría si llegara a activarse.
 **Decisiones relacionadas:** continúa la línea de validación de IE05 reformulada a **métrica de red** en DHU-027 (entonces sobre el corredor Larco, 3 cruces); corre sobre la red completa de Miraflores que D-012 fijó como escenario; es la **línea de CONTROL** (Max Pressure fijo-vs-adaptativo), distinta del **track de PREDICCIÓN STGNN** (D-011/D-012/D-015) que opera sobre la misma red.
 
@@ -3214,6 +3214,36 @@ Una auditoría read-only del adaptador TraCI y del net (2026-06-04) fija el terr
 - **Salvedad de escenario (net v2):** D-012 fijó "Miraflores completo" citando **47 cruces semaforizados / ~590 edges** (el net previo a la reconstrucción). El net fue **reconstruido a v2** (PR #44, 2026-06-03; contexto en D-015), y el `miraflores.net.xml` vigente tiene **99 TLS / 1664 edges vehiculares** (verificado contra el net y contra `mapeo_pmu_edges_v2.yaml`, `n_traffic_light: 99`). Este experimento corre sobre el **net v2 vigente (99 TLS)**; la cifra "47" de D-012 corresponde al net anterior y no se reusa.
 - **Plan de ejecución:** las decisiones aquí registradas son el **qué** y el **por qué**; el **cómo** son las fases **F1–F10** acordadas (infraestructura `.sumocfg` + runner agnóstico, corrida fija de diagnóstico, etapa 2-fases, generalización a N fases, KPIs, scopes opcionales), que viven en el plan operativo de la rama `feature/validacion-red-completa`, no en este ADR.
 - **Antecedente de regeneración:** la demanda B2 que alimenta el experimento se regenera determinísticamente según `simulation/scripts/REGENERACION_DEMANDA_B2.md` (no se versiona el `.rou.xml`).
+
+### Cierre (enmienda 2026-06-05)
+
+Esta sección registra **lo que se hizo realmente**, que difiere del alcance planeado en la
+Decisión 1 (los 99 TLS por etapas). Reporte completo en
+`documentation/docs/INVESTIGACION_VALIDACION_CONTROL_MIRAFLORES.md`.
+
+- **Alcance ejecutado: los 54 TLS bifásicos (~55% de la red), NO los 99 por etapas.** La etapa
+  segura (2 fases) se completó y se cerró ahí. La generalización del núcleo a N fases —que la
+  Decisión 1 contemplaba como segundo escalón— **no se ejecutó**; se difiere a trabajo futuro.
+  Clasificación de los 99 (verificada contra `miraflores.net.xml`): **54 bifásicos**
+  (controlados), **31 mono-fase** (quedan **fijos** por no tener fases en conflicto → nada que
+  optimizar), **14 multifase de 3–4 fases** (**diferidos** por requerir ingeniería de derivación
+  con solape de movimientos protegido+permisivo).
+- **Resultado: RD% = +20,67% ± 1,81** (10 seeds pareados, día completo), 10/10 favorables, IC95%
+  [+21,30%, +24,21%], Wilcoxon p = 0,00195. Supera el umbral RD% ≥ 15%. Fuente:
+  `multiseed_54tls_resultado.{csv,json}`.
+- **KPI (Decisión 2) — resuelto a `net_timeLoss`.** El diagnóstico de censura dio ~0% (1
+  never-inserted de 33 557 por corrida), así que no hizo falta puerta-a-puerta. La medición por
+  zona sobre los 3 cruces PMU saturados que caen en los 54 (arequipa_angamos E/H, 28julio_lapaz
+  D/F, ricardopalma_paseo D/F) se hizo vía `edgeData` (F4); 5 cruces saturados quedan fuera del
+  alcance (4 multifase + 1 mono-fase) y se declaran como zonas críticas no cubiertas.
+- **Caracterización del control:** a la demanda real de Miraflores el sistema operó como
+  **Webster adaptativo per-node** — 23 de 1 468 193 decisiones (0,0016%) fueron Max Pressure. El
+  resultado valida el lazo adaptativo-online, no el término Max Pressure.
+- **Scopes opcionales P4 (onda verde) y P5 (MP-red): no se activaron.** No hubo señal que los
+  motivara a escala distrito; siguen apagados (consistente con su descarte en Larco, DHU-027).
+- **Hallazgo (heterogeneidad por zona):** el beneficio se concentra en arequipa (E/H, +30,7%);
+  los dos D/F tienen costo local en `timeLoss` (−17,5%, −14,0%) pero mejora de `waitingTime` en
+  los tres cruces. Detalle en el reporte de investigación.
 
 ### Lo que NO cambia con DHU-030
 
