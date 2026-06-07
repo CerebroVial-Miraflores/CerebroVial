@@ -12,8 +12,9 @@ import {
 
 describe('TABS_BY_ROLE', () => {
   // HU-22 / CA-22.1: operator gana 'congestion' (mapa de congestión, operator-only).
-  it('operator tiene dashboard, control, alerts y congestion', () => {
-    expect([...TABS_BY_ROLE.operator]).toEqual(['dashboard', 'control', 'alerts', 'congestion']);
+  // Track feature/tomtom (EXPERIMENTAL): operator gana también 'tomtom' (tráfico en vivo).
+  it('operator tiene dashboard, control, alerts, congestion y tomtom', () => {
+    expect([...TABS_BY_ROLE.operator]).toEqual(['dashboard', 'control', 'alerts', 'congestion', 'tomtom']);
   });
   it('manager tiene solo analytics', () => {
     expect([...TABS_BY_ROLE.manager]).toEqual(['analytics']);

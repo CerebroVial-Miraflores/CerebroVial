@@ -16,6 +16,7 @@ export const Header = ({ activeTab, currentTime }: HeaderProps) => {
                     {activeTab === 'alerts' && 'Gestión de Incidentes'}
                     {activeTab === 'admin' && 'Configuración del Sistema'}
                     {activeTab === 'control' && 'Motor Adaptativo de Semáforos'}
+                    {activeTab === 'tomtom' && 'Tráfico en vivo (TomTom)'}
                 </h1>
                 <p className="text-slate-400 text-sm flex items-center gap-2">
                     <MapIcon size={14} /> Distrito de Miraflores, Lima - {currentTime.toLocaleDateString()}
