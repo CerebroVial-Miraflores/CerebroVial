@@ -23,6 +23,7 @@
 | D-015 | Cerrada | 2026-06-03 | Revalidación del veredicto STGNN sobre v2 (1660): STGNN supera al GRU en severo; D-011/Fase 5 revertido (adopción abierta) |
 | D-016 | Cerrada | 2026-06-05 | `intersections` como entidad de primera clase; cámara accesorio; puente al grafo vía `intersection_edges` (Fase A) |
 | D-017 | Cerrada | 2026-06-07 | Refundación del módulo de visión (contenido refundado, tubería reusada previo saneamiento) |
+| D-018 | Cerrada | 2026-06-07 | Arquitectura del muestreador de visión (scheduler único, modelo compartido, instancia dueña de cámaras) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -645,6 +646,47 @@ CLAUDE.md rotula al subsistema de visión como *"subsistema mejor armado, con te
 **Consecuencias.** **CLAUDE.md debe corregirse:** su rótulo del módulo de visión (*"subsistema mejor armado, con tests reales"*) refleja el estado **pre-refundación** y contradice este record. La corrección va en la **limpieza transversal de documentación** — junto con los `DATA_MODEL.md` obsoletos que aún documentan `vision_aggregates` como tabla *"a crear"* y `vision_tracks`/`vision_flows` ya dropeadas. Esta tarea **no toca CLAUDE.md ni `DATA_MODEL.md`**; solo deja registrada la acción pendiente.
 
 **Referencias.** Auditorías read-only de esta sesión (tubería + esquema de visión). Componentes citados: `edge_device/src/vision/application/services/multi_camera.py`, `.../pipelines/async_pipeline.py`, `.../aggregators/async_aggregator.py`, `.../infrastructure/persistence/postgres_repository.py`, `.../infrastructure/broadcast/realtime_broadcaster.py`, `.../domain/entities.py` (`FrameAnalysis`); ORM `shared/cerebrovial_shared/database/models.py` (`VisionAggregateDB`, `CameraDB`); seed `scripts/seed_intersections.py`; config `edge_device/conf/vision/default.yaml`. Decisiones relacionadas: D-005 (honestidad de datos), D-007 (visión como componente demostrable), D-016 (cámara como accesorio de intersección). Cierre previo: `documentation/docs/CIERRE-metricas-vision-flujo.md`.
+
+---
+
+## D-018 — Arquitectura del muestreador de visión (scheduler único, modelo compartido, instancia dueña de cámaras)
+**Fecha:** 2026-06-07 · **Estado:** Cerrada
+
+**Contexto.** Resuelve la decisión de arquitectura que el D-017 dejó como núcleo de Fase 0. Tres fuerzas la motivan:
+1. **El bug B1** — el event loop se bloquea porque `_run_camera_pipeline` itera un generador síncrono (`queue.get` + `time.sleep`) en el thread del loop, y el cableado actual monta **11 pipelines independientes** (11 modelos, 22 threads, 11 aggregators).
+2. **El requisito de muestreo permanente** — las 11 cámaras deben muestrear de forma continua, no on-demand.
+3. **La visión de producto escalable** — a futuro, muchas más cámaras que las 11.
+
+Una auditoría read-only de Fase 0 estableció que el modelo YOLO es **stateless por llamada** (modo predict, no `track(persist=)`), por lo que un único modelo puede inferir frames de varias cámaras en secuencia **sin contaminación de estado**. Un spike de carga sostenida (5 min, 11 clips reales, 1 modelo, 1 thread, con persistencia) confirmó la premisa física.
+
+**Validación por spike (números medidos, no asumidos).**
+- 11 cámaras a 1 Hz @imgsz 320, sostenido: **ciclo medio 0.118 s (~12 % del presupuesto de 1 s)**, p95 0.123 s, **0/300 desbordes**.
+- **Sin deriva temporal** en 5 min (Δ entre primeros y últimos 30 ciclos ≈ −0.002 s).
+- **Persistencia no es cuello:** 11 escrituras/ventana ≈ 18 ms con engine pooleado (~1.7 ms c/u).
+- **Margen** (extrapolación conservadora con el peor caso del Benchmark 1, 26 ms/inf @320): techo holgado en torno a **varias decenas de cámaras por instancia** a 320.
+- A **640 también entra** (0.324 s, ~32 % del presupuesto).
+
+**Decisión.**
+1. **Un scheduler único con UN modelo YOLO compartido por instancia de edge.** El scheduler recorre sus cámaras a 1 Hz e infiere con el modelo único en secuencia. Reemplaza los 11 pipelines independientes y el generador síncrono bloqueante (**sanea B1**: el scheduler cede el loop correctamente).
+2. **La instancia de edge es dueña de un CONJUNTO CONFIGURABLE de cámaras** (hoy las 11). El código asume *"mis cámaras"*, no *"todas las cámaras"* — costura para escalar horizontalmente a K instancias sin reescritura.
+3. **Dos salidas por cámara:** tap vivo por-frame (conteo instantáneo, SSE, sin DB) y agregado por-ventana (persistido). Ambas derivan del mismo muestreo.
+4. **Estado por-cámara LIVIANO** (tracker ByteTrack, buffer de ventana) se mantiene por-cámara; **el modelo NO se duplica**.
+5. **El MJPEG a 640 con boxes visibles es un consumidor adicional single-slot** sobre la cámara que el operador está mirando. Las 11 muestrean a 320 sin render (background); solo la activa renderiza a 640. No compiten.
+6. **`imgsz` y frecuencia de muestreo CONFIGURABLES, no horneados** (hoy no existe `imgsz`, corre a 640 default). Son las palancas de densidad de cámaras por modelo.
+7. **CONJUNTO DE CÁMARAS MUTABLE EN CALIENTE:** agregar o quitar una cámara del muestreo activo es operación de primera clase — el scheduler la incluye/excluye en el ciclo siguiente, **sin reiniciar ni reconstruir el modelo**. La cámara nueva aporta su propio estado liviano. (Contraparte runtime del conjunto configurable.)
+
+**Advertencia para la implementación de B1 (mordida anticipada, contemplar sí o sí).** El `POST /cameras/{id}` actual (del track de cámaras, modelo single-slot) hoy significa *"activá la única cámara, bajá las demás"*. Al pasar al scheduler debe **redefinirse** como *"sumá esta cámara al conjunto del scheduler"*, sin afectar a las otras. Si el diseño de B1 no contempla este cambio de semántica, hay choque seguro entre un endpoint que asume single-slot y un scheduler multi-cámara.
+
+**Riesgos conocidos con trigger (lo que el spike NO cubrió).**
+- **Captura HLS en vivo NO medida.** El spike usó `.mp4` local (captura 10 ms/11 frames). En producción son 11 streams HLS de Claro en vivo, con latencia y jitter de red. **Conclusión clave: el cuello de botella de escala de esta arquitectura es la I/O de red, NO el cómputo** (la inferencia tiene margen de sobra). **Trigger:** spike de captura HLS concurrente en vivo antes de producción. La palanca ante desborde de red no es `imgsz` (la inferencia no es el problema) sino el manejo de captura/concurrencia de red.
+- **RSS creció +388 MB en 5 min** (~1.3 MB/ciclo); el Δ por corrida decrece (388→152→27), consistente con caché de arranque que se aplana, y el tiempo de ciclo **NO derivó**. No concluyente: 5 min no descartan un leak lento. **Trigger:** corrida larga (horas) antes de deploy 24/7.
+- **Sesión-por-escritura del aggregator:** barata hoy con pool caliente (1.7 ms c/u), pero escala con cámaras × zonas. Revisar a mayor densidad.
+
+**Diferido con trigger.**
+- **Orquestación multi-instancia** (qué instancia maneja qué cámaras, balanceo, descubrimiento): **trigger** = cuando una sola instancia no alcance. Las costuras (instancia-dueña-de-cámaras, `imgsz`/frecuencia configurables) quedan listas ahora; el orquestador no se construye todavía.
+- **Alta de cámara ENTIDAD-NUEVA** (URL de stream nueva + datos de calibración, no sembrada en `cameras`): depende del modelo de datos (Fase 1) y del CRUD de calibración (Fase 3). El hot-reload de **runtime** (que el scheduler tome una cámara sin reiniciar) se diseña ahora; el alta de entidad completa llega con esas fases.
+
+**Relación.** Implementa el saneamiento de **B1 del D-017**. Precede al modelo de datos de **Fase 1** (el scheduler define dónde viven las zonas indexadas por cámara, lo que condiciona el hot-reload de zonas — ver auditoría de Fase 0). **Referencias:** auditoría de Fase 0 (ZoneCounter + acoplamiento del loop) y spike de carga sostenida, ambos de esta sesión. Benchmark 1 (costo de inferencia) en `documentation/docs/CIERRE-metricas-vision-flujo.md`.
 
 ---
 
