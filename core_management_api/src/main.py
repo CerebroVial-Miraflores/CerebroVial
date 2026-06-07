@@ -25,6 +25,7 @@ from src.congestion.infrastructure import init_congestion_broadcaster
 from src.congestion.infrastructure.repositories import WazeJamsRepo
 from src.congestion.infrastructure.gru_inference_adapter import load_gru_adapter
 from src.congestion.infrastructure.prediction_day_source import PredictionDaySource
+from src.corridors.presentation.api.routes import router as corridors_router
 from src.auth.domain import Role
 from src.auth.presentation.api.dependencies import require_role
 from src.auth.presentation.api.routes import auth_router
@@ -117,6 +118,7 @@ app.include_router(prediction_router)
 app.include_router(control_router)
 app.include_router(auth_router)
 app.include_router(congestion_router)
+app.include_router(corridors_router)
 
 
 @app.get("/api/intersections")
