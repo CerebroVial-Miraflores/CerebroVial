@@ -22,11 +22,35 @@ contenedor hay que rebuildear la imagen (`invoke up-build --service=core_managem
 o copiarlo a mano. Mientras no se haga, la opción "host" de arriba es la que
 funciona.
 
-## seed.py — datos iniciales de Miraflores
+## Siembra reproducible completa — `invoke seed-all`
 
-Idempotente (usa `session.merge()`). Inserta 5 nodos, 6 edges, 4 cámaras y 1
-admin. Reaplicar tras cualquier `invoke down --volumes` que recree el volumen
-de la DB:
+Orquestador idempotente que corre toda la cadena en el orden obligado por las FK.
+Es la forma canónica de dejar la BD con datos mostrables tras recrear el volumen:
+
+```bash
+invoke seed-all                 # estructura + 10 días de tráfico (~16 GB)
+invoke seed-all --traffic=False # solo estructura (rápido, sin tráfico)
+```
+
+Cadena (cada paso es idempotente; `seed-all` salta el build estructural si el mapa
+ya está cargado, detectándolo por los nodos `sumo_`):
+
+1. `seed.py`                  → 5 nodos de control + admin
+2. `build_graph_geometry.py`  → mapa OSM: 1660 edges + 904 nodos `sumo_`
+3. `seed_intersections.py`    → 11 intersecciones + puente + 11 cámaras (cableadas a edges)
+4. `seed_rbac_smoke.py`       → 3 usuarios operator/manager/admin
+5. `seed_congestion_calendar.py --execute` → 10 días de tráfico (jun 1–10 2026)
+
+**Auto-seed**: `invoke up` corre `seed-all` solo cuando detecta la BD vacía (volumen
+recreado). `invoke db-reset` también termina con `seed-all`. Nota: los `day_seed*.parquet`
+(fuente del tráfico) NO están versionados — reproducible en esta máquina; en un clon
+limpio hay que regenerarlos por SUMO.
+
+## seed.py — datos iniciales de Miraflores (paso 1 de la cadena)
+
+Idempotente (usa `session.merge()`). Inserta 5 nodos de control, 6 edges sintéticos
+y 1 admin (los 6 edges los reemplaza luego `build_graph_geometry.py` por el mapa OSM
+real). Para la siembra completa preferí `invoke seed-all`; para solo este paso:
 
 ```bash
 invoke seed
