@@ -22,6 +22,24 @@ vi.mock('../../widgets/TrafficHistoryWidget', () => ({
     TrafficHistoryWidget: () => <div data-testid="traffic-history-widget">History Chart</div>
 }));
 
+// Mock HlsPlayer (lo usa el carril de cámaras). No corre hls en jsdom.
+vi.mock('../../HlsPlayer', () => ({
+    HlsPlayer: ({ src }: { src: string }) => <div data-testid="hls-player">{src}</div>,
+}));
+
+// Mock de IntersectionObserver (jsdom no lo trae): los tiles del carril lo usan para el
+// lazy. Acá no simulamos visibilidad — basta con que el constructor exista.
+class MockIntersectionObserver {
+    observe = vi.fn();
+    disconnect = vi.fn();
+    unobserve = vi.fn();
+    takeRecords = vi.fn();
+}
+Object.defineProperty(globalThis, 'IntersectionObserver', {
+    writable: true,
+    value: MockIntersectionObserver,
+});
+
 // Mock Prediction Service
 vi.mock('../../../services/predictionService', () => ({
     predictionService: {
@@ -200,5 +218,66 @@ describe('CameraDetailView', () => {
             (c) => (c[1] as RequestInit)?.method === 'POST',
         );
         expect(posted).toBe(false);
+    });
+
+    // ---- Carril de otras cámaras + reemplazo del detalle ------------------
+
+    // fetch que sirve la lista de intersecciones (para el carril) y OK para el resto.
+    const fetchWithIntersections = (cameras: Array<{ id: string; name: string; stream_url: string | null }>) =>
+        vi.fn((url: RequestInfo | URL) => {
+            if (typeof url === 'string' && url.includes('/api/intersections')) {
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(cameras) } as Response);
+            }
+            return Promise.resolve({ ok: true, status: 200 } as Response);
+        });
+
+    it('el carril muestra las OTRAS cámaras (excluye la activa)', async () => {
+        fetchMock = fetchWithIntersections([
+            { id: mockCameraId, name: mockCameraName, stream_url: mockStreamUrl },
+            { id: 'cam_otra', name: 'Otra Cámara', stream_url: 'http://x/otra.m3u8' },
+        ]);
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+        renderView();
+
+        // La activa NO aparece como tile; la otra sí.
+        await waitFor(() => {
+            expect(screen.getByText('Otra Cámara')).toBeInTheDocument();
+        });
+        const tiles = screen.getAllByTestId('strip-tile');
+        expect(tiles).toHaveLength(1);
+    });
+
+    it('al clickear otra cámara en el carril, el detalle se reemplaza (nueva alta en el edge)', async () => {
+        fetchMock = fetchWithIntersections([
+            { id: mockCameraId, name: mockCameraName, stream_url: mockStreamUrl },
+            { id: 'cam_otra', name: 'Otra Cámara', stream_url: 'http://x/otra.m3u8' },
+        ]);
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+        renderView();
+
+        // Alta inicial sobre la cámara activa.
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                `${EDGE}/cameras/${mockCameraId}`,
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+
+        // Click en el tile de la otra cámara.
+        await waitFor(() => expect(screen.getByText('Otra Cámara')).toBeInTheDocument());
+        fireEvent.click(screen.getByTestId('strip-tile'));
+
+        // El panel se re-monta (key) → nueva alta on-demand para la cámara elegida.
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                `${EDGE}/cameras/cam_otra`,
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+
+        // Y el header pasa a mostrar el nombre de la cámara elegida.
+        expect(screen.getByRole('heading', { name: 'Otra Cámara' })).toBeInTheDocument();
     });
 });
