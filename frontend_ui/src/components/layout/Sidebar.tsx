@@ -6,6 +6,7 @@ import {
     Settings,
     SlidersHorizontal,
     Network,
+    Navigation,
     Cpu,
     FileText,
     LogOut,
@@ -34,6 +35,7 @@ const TAB_DESCRIPTORS: readonly TabDescriptor[] = [
     { id: 'admin', label: 'Administración', icon: Settings },
     { id: 'control', label: 'Motor Adaptativo', icon: SlidersHorizontal },
     { id: 'congestion', label: 'Mapa de congestión', icon: Network },
+    { id: 'tomtom', label: 'Tráfico en vivo', icon: Navigation },
 ];
 
 export const Sidebar = ({ activeTab, setActiveTab, setShowThesis }: SidebarProps) => {

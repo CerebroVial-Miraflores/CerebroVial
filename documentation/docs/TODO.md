@@ -170,3 +170,13 @@ DEUDAS FASE A — modelo de datos de intersecciones (D-016, 2026-06-05)
 
  [ ] **DEUDA-CAM-GEO** — La asociación cámara-Claro ↔ intersección es **nominal**: en `scripts/seed_intersections.py` los 11 `stream_url` de Claro se asignan 1:1 a las 11 intersecciones **arbitrariamente** (por orden del mapeo), sin concordancia geográfica real. Falta verificar qué stream de Claro corresponde geográficamente a cada intersección de Miraflores y reasignar. El modelo (`cameras.intersection_id` + `cameras.stream_url`) ya lo soporta; es solo cuestión de datos. **Cross-ref:** D-016; `documentation/contracts/intersections_contract.md`.
  [ ] **DEUDA-CTRL-TLS** — 10 de 11 intersecciones quedan **sin `tls_id`** (solo `larco_benavides` lo tiene, verificado contra `corredor_adaptive.py`). El modelo (`intersections.tls_id` nullable) soporta poblarlo; falta una fase de control futura que verifique el `tls_id` SUMO de cada intersección antes de cargarlo (no se mete a la base un `tls_id` sin verificar). **`arequipa_angamos` es el caso "casi listo":** ya es nodo de control sembrado en `graph_nodes` (el motor genérico puede apuntarlo); falta solo verificar que su `tls_id` SUMO es su `junction_id` del mapeo. Las otras 9 no tienen nodo de control sembrado. **Cross-ref:** D-016; `documentation/contracts/intersections_contract.md`.
+
+
+DEUDA FRONTEND — switch de modos del mapa (track feature/tomtom, 2026-06-07)
+
+ [ ] **DEUDA-SWITCH-MODE** — El switch de modos de `CongestionMapView.tsx` (`live`/`historic`/`prediction`) es un **union inline** en el `useState` (`frontend_ui/src/components/views/CongestionMapView.tsx:249`) + **patrón disperso**: 7 `useEffect` con guard `if (mode !== X) return;` y acoples de UI condicionales (leyendas, paneles, slider, título). Candidato a extracción a un `type Mode` nombrado + un componente de control de modo reutilizable, para que vistas nuevas con modos (p. ej. el track TomTom) no repliquen el patrón ad-hoc. **NO se sanea en este track** (sería un san-NN aparte). Solo registrado.
+
+
+DEUDA BD — índice GiST fuera de Alembic (track feature/tomtom, 2026-06-07)
+
+ [x] **DEUDA-GIST-MIGRACION** — **CERRADA** por la revisión `29ae3a133d00` (Fase B-1). El índice GiST sobre `graph_edges.geom` existía en la BD de dev viva pero estaba **comentado** en la migración inicial (`775d2d1db8b4:59`), así que una BD recreada desde Alembic NO lo tenía → el matching geométrico de Fase B haría seq scan. La revisión lo crea con `CREATE INDEX IF NOT EXISTS ... USING gist` y guard de dialecto (PostgreSQL-only), idempotente contra la BD que ya lo tiene. El downgrade NO lo dropea (preexistía fuera de Alembic).

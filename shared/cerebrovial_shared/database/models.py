@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     Index,
     CheckConstraint,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -301,4 +302,46 @@ class PredictionDB(Base):
             "intersection_id",
             "generated_at",
         ),
+    )
+
+
+# --- TomTom corridors (track feature/tomtom, Fase B) ---
+
+class CorridorDB(Base):
+    """Corredor dibujado por el operador: cadena ordenada y dirigida de aristas.
+
+    El SENTIDO del corredor vive en la secuencia de aristas (``corridor_edges.sequence``),
+    no en un campo aparte: las aristas de ``graph_edges`` ya son dirigidas (par ``-id``/``id``
+    por calzada). Entidad propia (dato nuestro, persistible); NADA de tráfico de TomTom
+    vive acá.
+    """
+    __tablename__ = "corridors"
+
+    corridor_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_by = Column(String, nullable=True)  # operator; sin FK (patrón engine_active_state.activated_by)
+
+
+class CorridorEdgeDB(Base):
+    """Puente corredor → arista (dirigido). Molde: ``intersection_edges``.
+
+    ``tomtom_openlr`` es un IDENTIFICADOR de segmento (OpenLR, estándar abierto), NO un
+    Result de tráfico de TomTom. Los valores de tráfico (currentSpeed, nivel, travel-time)
+    y la GEOMETRÍA de TomTom JAMÁS se persisten (ToS 11.6.1). NULL = arista sin cobertura
+    TomTom → se pinta "sin dato".
+
+    PK compuesta ``(corridor_id, edge_id)``: una arista puede estar en varios corredores,
+    una sola vez por corredor. ``UniqueConstraint(corridor_id, sequence)`` garantiza orden
+    sin colisiones en la cadena (dos aristas con la misma posición es un estado imposible).
+    """
+    __tablename__ = "corridor_edges"
+
+    corridor_id = Column(String, ForeignKey("corridors.corridor_id"), primary_key=True)
+    edge_id = Column(String, ForeignKey("graph_edges.edge_id"), primary_key=True)
+    sequence = Column(Integer, nullable=False)
+    tomtom_openlr = Column(String, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("corridor_id", "sequence", name="uq_corridor_edges_corridor_sequence"),
     )
