@@ -29,6 +29,13 @@ MIN_OVERLAP_RATIO = 0.70
 # sentido. Descarta el segmento de la calzada opuesta (~180° de diferencia).
 MAX_BEARING_DIFF_DEG = 90.0
 
+# DEUDA-MATCHING-CALIBRACION (ampliada): además de calibrar estos 3 umbrales con corredores
+# reales, vigilar el caso de calzadas paralelas cercanas en óvalos/cruces (las 11
+# intersecciones): puede no resolverse con buffer y requerir lógica de desempate por MEJOR
+# alineación de bearing (no sólo el umbral binario MAX_BEARING_DIFF_DEG). Probar primero sobre
+# un óvalo (caso difícil) en Fase B-front. Hoy, ante empate de overlap entre candidatos del
+# mismo sentido, match_corridor toma el de mayor overlap; el desempate fino por bearing no está.
+
 
 # --- Estructuras de entrada del matching ---
 
