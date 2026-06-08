@@ -10,6 +10,7 @@ import { CameraGrid } from '../CameraGrid';
 import type { PlayerStatus } from '../HlsPlayer';
 import { openCongestionStream } from '../../services/congestionSseClient';
 import { markerVisual, type MarkerVisual } from '../../utils/markerVisual';
+import { HlsPlayer } from '../HlsPlayer';
 
 // Fix for default marker icon in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -54,13 +55,12 @@ function MapUpdater({ center, zoom }: { center: [number, number], zoom: number }
 // re-renderiza el padre) no recrea el divIcon ni reinicia el animate-ping ni huérfana el
 // tooltip nativo. El resaltado por hover se aplica como box-shadow sobre el contenedor del
 // icono ya montado (sin setIcon), replicando el ring anterior.
-function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onSelectCamera, onHover, onUnhover }: {
+function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onHover, onUnhover }: {
     int: IntersectionData;
     visual: MarkerVisual;
     selected: boolean;
     speedFlow: { speed: number; flow: number } | undefined;
     onSelect: () => void;
-    onSelectCamera: () => void;
     onHover: () => void;
     onUnhover: () => void;
 }) {
@@ -115,38 +115,47 @@ function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onSele
                     </div>
                 </div>
             </Tooltip>
-            <Popup className="custom-popup">
-                <div className="p-1 min-w-[120px]">
-                    <h4 className="font-bold text-slate-900 text-xs mb-1">{int.name}</h4>
-                    <div className="flex flex-col text-[10px] text-slate-600 gap-1">
-                        <div className="flex justify-between border-b border-slate-100 pb-1">
-                            <span>Velocidad:</span>
-                            <span className="font-bold text-indigo-600">{speedFlow?.speed ?? int.speed} km/h</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-100 pb-1">
-                            <span>Flujo:</span>
-                            <span className="font-bold text-indigo-600">{speedFlow?.flow ?? int.flow} vpm</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Estado:</span>
-                            <span className={`font-bold uppercase ${
-                                int.status === 'critical' ? 'text-red-500' :
-                                int.status === 'moderate' ? 'text-amber-500' : 'text-emerald-500'
-                            }`}>
-                                {int.status === 'critical' ? 'Crítico' :
-                                 int.status === 'moderate' ? 'Moderado' : 'Fluido'}
-                            </span>
-                        </div>
-                    </div>
+        </Marker>
+    );
+}
+
+// F3 — miniplayer HLS anclado al marcador. Es un Popup HIJO DEL MAPA (no del Marker): con
+// `position` Leaflet lo auto-abre al montar y lo remueve al desmontar. `autoClose=false` deja
+// que varios convivan; `closeButton=false` desactiva el ✕ nativo de Leaflet (que cerraría el
+// popup SIN desmontar React → dejaría el <video> vivo en background) y se usa un ✕ propio que
+// quita el id del set → desmonta este Popup → HlsPlayer corre su cleanup (hls.destroy()).
+// El HLS se monta SOLO acá: si el id no está en el set, este componente no se renderiza.
+function MiniPlayerPopup({ int, onClose }: { int: IntersectionData; onClose: () => void }) {
+    return (
+        <Popup
+            position={[int.lat, int.lng]}
+            autoClose={false}
+            closeOnClick={false}
+            closeButton={false}
+            className="miniplayer-popup"
+        >
+            <div className="w-64">
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <span className="font-bold text-slate-900 text-xs truncate">{int.name}</span>
                     <button
-                        onClick={onSelectCamera}
-                        className="mt-2 w-full bg-indigo-600 text-white text-[10px] py-1 rounded hover:bg-indigo-700"
+                        onClick={onClose}
+                        aria-label="Cerrar miniplayer"
+                        className="shrink-0 text-slate-500 hover:text-slate-900 text-sm leading-none px-1"
                     >
-                        Ver Cámara
+                        ✕
                     </button>
                 </div>
-            </Popup>
-        </Marker>
+                <div className="aspect-video bg-black rounded overflow-hidden">
+                    {int.stream_url ? (
+                        <HlsPlayer src={int.stream_url} />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-rose-400 text-[11px] font-bold tracking-wide">
+                            SIN STREAM
+                        </div>
+                    )}
+                </div>
+            </div>
+        </Popup>
     );
 }
 
@@ -182,8 +191,10 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
 
     const [intersections, setIntersections] = useState<IntersectionData[]>([]);
 
-    const [mapCenter, setMapCenter] = useState<[number, number]>([-12.122, -77.028]);
-    const [mapZoom, setMapZoom] = useState(14);
+    // Centro/zoom inicial del encuadre (FitBounds ajusta al cargar; MapUpdater haría flyTo solo
+    // ante un cambio — hoy no cambian, el miniplayer no recentra). Constantes, sin setters.
+    const [mapCenter] = useState<[number, number]>([-12.122, -77.028]);
+    const [mapZoom] = useState(14);
     const [viewMode, setViewMode] = useState<'leaflet' | 'waze'>('leaflet');
 
     // Carga la lista (incluye la congestión REAL por intersección en `status`). Elevada a
@@ -269,15 +280,33 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
         setCameraHealth(prev => (prev[id] === status ? prev : { ...prev, [id]: status }));
     }, []);
 
-    const handleCameraSelect = (id: string) => {
-        const camera = intersections.find(c => c.id === id);
-        if (camera) {
-            setMapCenter([camera.lat, camera.lng]);
-            setMapZoom(16);
-            if (viewMode === 'waze') setViewMode('leaflet');
-            onSelectCamera(id, camera.name, camera.stream_url);
+    // F3: ids con miniplayer abierto en el mapa. Vacío al montar (todos cerrados). El HLS se
+    // monta SOLO dentro del Popup de un id en este set; quitar el id desmonta el Popup → cleanup.
+    const [openPlayers, setOpenPlayers] = useState<Set<string>>(new Set());
+
+    // Click en marcador: si NO tiene miniplayer → lo abre; si YA lo tiene → navega al detalle
+    // embebido (F2). Varios miniplayers pueden estar abiertos a la vez (Popup autoClose=false).
+    const handleMarkerClick = useCallback((id: string) => {
+        if (openPlayers.has(id)) {
+            const camera = intersections.find(c => c.id === id);
+            if (camera) onSelectCamera(camera.id, camera.name, camera.stream_url);
+        } else {
+            setOpenPlayers(prev => {
+                const next = new Set(prev);
+                next.add(id);
+                return next;
+            });
         }
-    };
+    }, [openPlayers, intersections, onSelectCamera]);
+
+    const closePlayer = useCallback((id: string) => {
+        setOpenPlayers(prev => {
+            if (!prev.has(id)) return prev;
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
+    }, []);
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -410,12 +439,24 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                                         visual={markerVisual(int.status, cameraHealth[int.id])}
                                         selected={int.id === selectedId}
                                         speedFlow={realData[int.id]}
-                                        onSelect={() => handleCameraSelect(int.id)}
-                                        onSelectCamera={() => onSelectCamera(int.id, int.name, int.stream_url)}
+                                        onSelect={() => handleMarkerClick(int.id)}
                                         onHover={() => setSelectedId(int.id)}
                                         onUnhover={() => setSelectedId(null)}
                                     />
                                 ))}
+
+                                {/* F3: miniplayers HLS abiertos — uno por id en openPlayers, a nivel de
+                                    mapa (no del marcador). Montar auto-abre el Popup; cerrar lo quita del
+                                    set → desmonta → hls.destroy(). Lazy: cerrado = NO montado. */}
+                                {intersections
+                                    .filter((int) => openPlayers.has(int.id))
+                                    .map((int) => (
+                                        <MiniPlayerPopup
+                                            key={`mp-${int.id}`}
+                                            int={int}
+                                            onClose={() => closePlayer(int.id)}
+                                        />
+                                    ))}
                             </MapContainer>
                         ) : (
                             <iframe
