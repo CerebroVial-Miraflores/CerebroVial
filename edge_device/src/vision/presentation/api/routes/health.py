@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from ....domain.value_objects import SensorStatus
 from .cameras import get_manager
 
 app = FastAPI()
@@ -39,6 +40,23 @@ def _camera_telemetry(camera) -> dict:
     aggregation_errors = aggregator.aggregation_errors if aggregator else 0
     data_dropped = aggregator.data_dropped if aggregator else 0
 
+    # B1 Paso 1b (seam §3, opción ii): la cámara por scheduler no corre pipeline,
+    # así que `get_latest()` no aplica. Reporta el SensorStatus REAL del scheduler
+    # (más preciso que "edad del último frame procesado": distingue
+    # FUENTE_NO_DISPONIBLE de SIN_FRAME_FRESCO). Sin fachada get_latest()-compatible.
+    sensor_status = getattr(camera.state, "sensor_status", None)
+    if isinstance(sensor_status, str):
+        return {
+            "running": bool(camera.state.is_running),
+            "sensor_status": sensor_status,
+            "last_frame_age_seconds": getattr(
+                camera.state, "last_frame_age_seconds", None
+            ),
+            "aggregation_errors": int(aggregation_errors),
+            "data_dropped": int(data_dropped),
+        }
+
+    # Path viejo (pipeline.run()): frescura por edad del último frame procesado.
     latest = camera.state.pipeline.get_latest() if camera.state.pipeline else None
     last_frame_age: float | None = None
     if latest is not None:
@@ -58,6 +76,10 @@ def _camera_telemetry(camera) -> dict:
 def _is_camera_healthy(telemetry: dict) -> bool:
     if not telemetry["running"]:
         return False
+    # Cámara scheduled (1b): sana sii el sensor está en OK (frame fresco → infiere).
+    status = telemetry.get("sensor_status")
+    if status is not None:
+        return status == SensorStatus.OK.value
     age = telemetry["last_frame_age_seconds"]
     return age is not None and age < _LAST_FRAME_FRESHNESS_SECONDS
 

@@ -23,6 +23,7 @@ from ...domain.protocols import FrameRenderer
 from ...infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
 from ..aggregators.async_aggregator import AsyncTrafficAggregator
 from ..builders.pipeline_builder import VisionApplicationBuilder, create_detector
+from .camera_scheduler import CameraScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,14 @@ class CameraState:
     # vía broadcaster.subscribed_cameras(); el MJPEG no tiene registro propio,
     # así que lo lleva el generador de video.py (inc al entrar, dec en finally).
     mjpeg_consumers: int = 0
+    # B1 Paso 1b: si la cámara corre por el scheduler (captura threaded + inferencia
+    # secuencial a 1 Hz), acá vive su instancia; None = path viejo (pipeline.run()).
+    scheduler: Optional[Any] = None  # CameraScheduler
+    # Estado de sensor del último tick del scheduler (D-018, NULL-con-motivo) +
+    # edad del último frame. Solo se pueblan en cámaras scheduled; health los lee
+    # (seam §3, opción ii). None en el path viejo.
+    sensor_status: Optional[str] = None
+    last_frame_age_seconds: Optional[float] = None
 
 
 class CameraInstance:
@@ -177,9 +186,18 @@ class MultiCameraManager:
             return
 
         camera.state.is_running = True
-        task = asyncio.create_task(self._run_camera_pipeline(camera))
+        # B1 Paso 1b: convivencia. La cámara designada por config corre por el
+        # scheduler (captura threaded + inferencia secuencial 1 Hz); las demás
+        # siguen por el pipeline viejo. Flag per-cámara → no toca a las otras.
+        if camera.state.config.vision.get('use_scheduler', False):
+            scheduler = CameraScheduler(camera, self.broadcaster)
+            camera.state.scheduler = scheduler
+            task = asyncio.create_task(scheduler.run())
+            logger.info("Started camera (scheduler 1b): %s", camera_id)
+        else:
+            task = asyncio.create_task(self._run_camera_pipeline(camera))
+            logger.info("Started camera: %s", camera_id)
         self._tasks[camera_id] = task
-        logger.info("Started camera: %s", camera_id)
 
     async def _run_camera_pipeline(self, camera: CameraInstance):
         """Main loop: drena TrafficData del aggregator y los publica al broadcaster.
@@ -249,7 +267,15 @@ class MultiCameraManager:
 
         camera = self.cameras[camera_id]
         camera.state.is_running = False
-        camera.state.pipeline.stop()
+        # B1 Paso 1b: la cámara scheduled dueña su teardown (captura + B2: aggregator
+        # force_flush+stop). El pipeline viejo NUNCA arrancó sus threads para esa
+        # cámara, así que NO se llama pipeline.stop() (evita doble release del source,
+        # que ya libera el ThreadedCapture).
+        if camera.state.scheduler is not None:
+            camera.state.scheduler.stop()
+            camera.state.scheduler = None
+        else:
+            camera.state.pipeline.stop()
 
         if camera_id in self._tasks:
             self._tasks[camera_id].cancel()
