@@ -84,10 +84,12 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
     return (
         // Detalle EMBEBIDO en el área de contenido (no overlay full-screen): vive dentro del
         // <main>, a la derecha del sidebar y debajo del Header transversal, que quedan visibles.
-        // Altura acotada al viewport menos el chrome de App (padding + Header) para que el panel
-        // interno (flex-1 overflow-y-auto) conserve su scroll propio. El back-flow (onBack →
-        // setSelectedCamera(null)) lo maneja App y no cambia.
-        <div className="flex flex-col h-[calc(100vh-7rem)] rounded-xl border border-white/10 bg-[#0A0A0A] overflow-hidden animate-in fade-in duration-200">
+        // SIN marco/borde/fondo propio: llena el área directamente sobre el slate-950 de la app
+        // (como DashboardView en el mismo slot), sin verse como "caja dentro de caja". El header
+        // y el carril conservan su bg-[#0A0A0A] propio (chrome de barra/divisor). Altura acotada
+        // al viewport menos el chrome de App para que el panel interno (flex-1 overflow-y-auto)
+        // conserve su scroll propio. El back-flow (onBack → setSelectedCamera(null)) no cambia.
+        <div className="flex flex-col h-[calc(100vh-7rem)] overflow-hidden animate-in fade-in duration-200">
             {/* Header */}
             <div className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#0A0A0A]">
                 <div className="flex items-center gap-4">
