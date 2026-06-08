@@ -16,7 +16,10 @@ from unittest.mock import MagicMock, patch
 
 from omegaconf import OmegaConf
 
-from src.vision.application.builders.pipeline_builder import VisionApplicationBuilder
+from src.vision.application.builders.pipeline_builder import (
+    VisionApplicationBuilder,
+    create_detector,
+)
 
 
 def _base_cfg() -> OmegaConf:
@@ -134,3 +137,75 @@ def test_builder_builds_postgres_aggregator():
 
         assert builder.aggregator is not None
         MockRepo.assert_called_once()
+
+
+# ---- B1 Paso 1a: costura de inyección del detector (la que 1b consume) -------
+
+
+def test_create_detector_standalone():
+    """`create_detector` construye el detector SIN un builder (factory compartible).
+
+    Es la mitad de la costura que 1b usa para construir UN modelo una vez."""
+    cfg = _base_cfg()
+    with patch(
+        'src.vision.application.builders.pipeline_builder.YoloDetector'
+    ) as MockYolo:
+        sentinel = MagicMock()
+        MockYolo.return_value = sentinel
+
+        detector = create_detector(cfg.vision)
+
+        assert detector is sentinel
+        MockYolo.assert_called_once_with(model_path='yolo11n.pt', conf_threshold=0.5)
+
+
+def test_build_pipeline_accepts_injected_detector():
+    """`build_pipeline(detector=X)` usa X y NO construye uno propio.
+
+    Otra mitad de la costura: el chain RECIBE el detector inyectado (camino que
+    el scheduler de 1b usa para compartir un modelo entre cámaras)."""
+    cfg = _base_cfg()
+    fake_supervision = MagicMock()
+    fake_supervision.ByteTrack = MagicMock(return_value=MagicMock())
+    fake_supervision.Detections = MagicMock()
+    sys.modules['supervision'] = fake_supervision
+
+    injected = MagicMock()
+    with patch('cv2.VideoCapture') as mock_cap, patch(
+        'src.vision.application.builders.pipeline_builder.create_detector'
+    ) as mock_factory:
+        mock_cap.return_value.isOpened.return_value = True
+
+        builder = VisionApplicationBuilder(cfg)
+        pipeline = builder.build_pipeline(detector=injected)
+
+        assert pipeline is not None
+        assert builder.detector is injected
+        assert builder.get_components()['detector'] is injected
+        # No se cayó al fallback: el detector inyectado evitó construir uno propio.
+        mock_factory.assert_not_called()
+
+
+def test_build_pipeline_builds_own_detector_when_none():
+    """Sin inyección, `build_pipeline()` cae al fallback y construye su propio
+    detector — preserva el comportamiento de los llamadores viejos (scripts,
+    integración)."""
+    cfg = _base_cfg()
+    fake_supervision = MagicMock()
+    fake_supervision.ByteTrack = MagicMock(return_value=MagicMock())
+    fake_supervision.Detections = MagicMock()
+    sys.modules['supervision'] = fake_supervision
+
+    own = MagicMock()
+    with patch('cv2.VideoCapture') as mock_cap, patch(
+        'src.vision.application.builders.pipeline_builder.create_detector',
+        return_value=own,
+    ) as mock_factory:
+        mock_cap.return_value.isOpened.return_value = True
+
+        builder = VisionApplicationBuilder(cfg)
+        pipeline = builder.build_pipeline()
+
+        assert pipeline is not None
+        mock_factory.assert_called_once()
+        assert builder.detector is own

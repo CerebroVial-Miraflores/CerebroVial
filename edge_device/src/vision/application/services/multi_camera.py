@@ -22,7 +22,7 @@ from omegaconf import DictConfig
 from ...domain.protocols import FrameRenderer
 from ...infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
 from ..aggregators.async_aggregator import AsyncTrafficAggregator
-from ..builders.pipeline_builder import VisionApplicationBuilder
+from ..builders.pipeline_builder import VisionApplicationBuilder, create_detector
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,12 @@ class CameraInstance:
         builder: VisionApplicationBuilder,
         renderer: Optional[FrameRenderer] = None,
     ) -> None:
-        pipeline = builder.build_pipeline()
+        # B1 Paso 1a: construcción del detector desacoplada del chain. Se
+        # construye UNA vez acá y se inyecta vía build_pipeline(detector=...) —
+        # costura única que el scheduler de 1b hereda para compartir UN modelo
+        # entre cámaras. NO se usa build_detector() (vía legacy de llamadores viejos).
+        detector = create_detector(config.vision)
+        pipeline = builder.build_pipeline(detector=detector)
         components = builder.get_components()
         self.state = CameraState(
             camera_id=camera_id,

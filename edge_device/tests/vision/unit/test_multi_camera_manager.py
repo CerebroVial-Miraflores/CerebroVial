@@ -3,6 +3,21 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from omegaconf import DictConfig
 from src.vision.application.services.multi_camera import MultiCameraManager, CameraInstance
 
+
+@pytest.fixture(autouse=True)
+def stub_create_detector():
+    """B1 Paso 1a: CameraInstance ahora construye el detector vía `create_detector`
+    e inyecta el resultado en `build_pipeline(detector=...)`. Estos tests mockean
+    el builder entero y usan cfgs sin `model` key, así que stubeamos la factory
+    para no cargar YOLO real. Es scaffolding: refleja la dependencia nueva del
+    caller, no cambia la sustancia de ninguna aserción."""
+    with patch(
+        'src.vision.application.services.multi_camera.create_detector',
+        return_value=MagicMock(),
+    ):
+        yield
+
+
 @pytest.fixture
 def mock_broadcaster():
     """Mock del broadcaster Protocol-conforme (§6.10/§6.11): publish/subscriber_count/is_subscribed."""
