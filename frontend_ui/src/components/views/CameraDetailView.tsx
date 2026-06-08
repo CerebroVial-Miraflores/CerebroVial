@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    X,
     Users,
     Activity,
     Car,
@@ -85,14 +84,16 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
         // Detalle EMBEBIDO en el área de contenido (no overlay full-screen): vive dentro del
         // <main>, a la derecha del sidebar y debajo del Header transversal, que quedan visibles.
         // SIN marco/borde/fondo propio: llena el área directamente sobre el slate-950 de la app
-        // (como DashboardView en el mismo slot), sin verse como "caja dentro de caja". El header y
-        // el carril son transparentes (solo su divisor border-b), sobre el slate-950 uniforme.
-        // `h-full` hereda la altura exacta del wrapper flex-1 de App (sin número mágico): el panel
-        // interno (flex-1 min-h-0 overflow-y-auto) queda como ÚNICO scroll. El back-flow (onBack →
+        // (como DashboardView en el mismo slot), sin verse como "caja dentro de caja". El detalle
+        // CRECE con su contenido (sin h-full/overflow-hidden); el scroll lo toma el wrapper externo
+        // de <main> (flex-1 min-h-0 overflow-y-auto) → un solo scroll, el externo. La barra de
+        // título se fija con `sticky top-0` (ver header). El back-flow (onBack →
         // setSelectedCamera(null)) no cambia.
-        <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-200">
-            {/* Header */}
-            <div className="h-16 border-b border-white/10 flex items-center justify-between px-6">
+        <div className="flex flex-col animate-in fade-in duration-200">
+            {/* Barra de título FIJA: sticky top-0 dentro del scroll del wrapper de <main>.
+                bg-slate-950 (mismo color del área, no #0A0A0A) la hace opaca para ocluir el
+                carril/contenido que scrollea por detrás, sin reintroducir la caja negra. */}
+            <div className="h-16 border-b border-white/10 flex items-center justify-between sticky top-0 z-10 bg-slate-950">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
@@ -166,18 +167,12 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
                             </div>
                         </>
                     )}
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
                 </div>
             </div>
 
             {/* Carril de las otras cámaras: navegación horizontal, lazy HLS. Click → reemplaza
                 el panel de detalle por la cámara elegida (y sus métricas). */}
-            <div className="border-b border-white/10 px-4 pt-2">
+            <div className="border-b border-white/10 pt-2">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1 px-1">
                     Otras cámaras en vivo
                 </div>
@@ -356,7 +351,7 @@ const CameraDetailPanel: React.FC<{
     const congestionStyle = getCongestionStyles(metrics.congestionLevel);
 
     return (
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Left Panel: Stream or Chart */}
             <div className="lg:col-span-2 flex flex-col gap-6">
