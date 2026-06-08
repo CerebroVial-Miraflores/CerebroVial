@@ -52,7 +52,9 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
 
     useEffect(() => {
         let cancelled = false;
-        fetch(`${CORE_API_URL}/api/intersections`)
+        // Carril liviano: /api/cameras (solo CameraDB, sin agregado Waze). El detalle no usa
+        // `status`, así que no debe pagar el query de congestión que sí necesita el dashboard.
+        fetch(`${CORE_API_URL}/api/cameras`)
             .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`core ${res.status}`))))
             .then((data: Array<{ id: string; name: string; stream_url: string | null }>) => {
                 if (!cancelled && Array.isArray(data)) {
