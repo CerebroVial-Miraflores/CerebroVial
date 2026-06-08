@@ -29,6 +29,18 @@ from cerebrovial_shared.database.models import IntersectionEdgeDB, WazeJamDB
 
 from ..application.feed import DayCongestionSeries, EdgeCongestion, EdgeSeries
 
+# Ventana de frescura del read-path del feed (``latest_per_edge``). El "último estado por
+# arista" se acota a este intervalo anclado al snapshot más reciente de la tabla (NO a now():
+# el seed son fechas fijas 1–8 jun). Sin esto, el GROUP BY + MAX barría las ~19M filas de los
+# 8 días → 5-8s por request. Con el filtro, TimescaleDB excluye chunks y toca solo el último
+# tramo. CONSECUENCIA SEMÁNTICA: una arista cuyo último reporte sea anterior a (ancla − ventana)
+# desaparece del resultado en vez de mostrar su nivel viejo. Con el seed sintético (grilla
+# alineada) toda arista tiene fila en el max global → resultado idéntico, solo más rápido. Con
+# Waze real disperso impone frescura de 5 min (un nivel de hace >5 min no es "estado actual").
+# Esto matiza la robustez CT-12.7 de GET /congestion/state ("feed detenido devuelve lo último"):
+# con feed detenido se devuelve el último corte, pero solo las aristas dentro de los 5 min finales.
+LATEST_WINDOW = timedelta(minutes=5)
+
 # Columnas escritas explícitamente (geom queda NULL y se puebla por UPDATE-join).
 _COLS = (
     "event_uuid",
@@ -149,12 +161,23 @@ class WazeJamsRepo:
         Portátil (subconsulta max por arista + join), no usa ``DISTINCT ON`` para
         correr igual en PostgreSQL y en el SQLite de los tests. Selecciona solo
         columnas escalares (no toca ``geom``).
+
+        Acotado a ``LATEST_WINDOW`` anclado a ``latest_timestamp()`` (ver la nota de la
+        constante): el filtro temporal va en AMBOS scans —el subquery (para podar el
+        GROUP BY + MAX) y el outer join (para que TimescaleDB excluya chunks también
+        ahí)—. Tabla vacía → ``[]`` (sin ancla no hay ventana que calcular).
         """
+        anchor = self.latest_timestamp()
+        if anchor is None:
+            return []
+        floor = anchor - LATEST_WINDOW
+
         latest = (
             select(
                 WazeJamDB.edge_id.label("edge_id"),
                 func.max(WazeJamDB.snapshot_timestamp).label("mx"),
             )
+            .where(WazeJamDB.snapshot_timestamp >= floor)
             .group_by(WazeJamDB.edge_id)
             .subquery()
         )
@@ -164,6 +187,7 @@ class WazeJamsRepo:
                 WazeJamDB.congestion_level,
                 WazeJamDB.snapshot_timestamp,
             )
+            .where(WazeJamDB.snapshot_timestamp >= floor)
             .join(
                 latest,
                 and_(
