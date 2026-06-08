@@ -24,3 +24,13 @@ body {
 .leaflet-popup.miniplayer-popup .leaflet-popup-tip-container {
   display: none;
 }
+
+/* Oculta la scrollbar nativa manteniendo el scroll (rueda/trackpad/drag). Scopeada a la clase
+   para no afectar otros contenedores con scroll (p. ej. el wrapper de contenido de <main>). */
+.scrollbar-hide {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge legacy */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari/Edge */
+}

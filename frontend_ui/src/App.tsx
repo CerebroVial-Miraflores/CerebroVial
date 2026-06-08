@@ -61,9 +61,14 @@ const CerebroVialApp = () => {
         setShowThesis={setShowThesis}
       />
 
-      <main className="ml-20 md:ml-64 p-4 md:p-8 relative min-h-screen">
+      {/* <main> acotado al viewport como flex column: el Header es hermano de alto automático
+          y el wrapper de abajo (flex-1 min-h-0 overflow-y-auto) toma el alto restante y es el
+          ÚNICO scroll del área de contenido — el body no scrollea (overflow-hidden). Robusto a
+          cambios de alto del Header (sin número mágico): el wrapper se reajusta solo. */}
+      <main className="ml-20 md:ml-64 p-4 md:p-8 relative h-screen flex flex-col overflow-hidden">
         <Header activeTab={activeTab} currentTime={currentTime} />
 
+        <div className="flex-1 min-h-0 overflow-y-auto">
         <RoleGate allowed={['operator']}>
           {activeTab === ('dashboard' as Tab) && (
             selectedCamera ? (
@@ -106,6 +111,7 @@ const CerebroVialApp = () => {
         <RoleGate allowed={['operator']}>
           {activeTab === 'tomtom' && <TomTomView />}
         </RoleGate>
+        </div>
       </main>
 
       {showThesis && <ThesisModal onClose={() => setShowThesis(false)} />}
