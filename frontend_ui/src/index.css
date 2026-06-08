@@ -34,3 +34,27 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;                  /* Chrome/Safari/Edge */
 }
+
+/* Scrollbar fina y gris tenue (slate-400 ~40%), discreta. Scopeada a la clase para aplicarla
+   solo al wrapper de scroll de <main>. slate-400 = rgb(148,163,184).
+   - Props ESTÁNDAR (scrollbar-width/-color): las lee Chrome moderno y Firefox; en macOS colorean
+     el thumb del scrollbar overlay (aparece al scrollear) en gris tenue.
+   - ::-webkit-scrollbar: fallback para Chrome viejo y para configs NO-overlay (Linux/Windows o
+     "mostrar siempre"), donde pinta un bar clásico gris de 8px siempre visible. */
+.scrollbar-thin-grey {
+  scrollbar-width: thin;                                   /* Firefox / Chrome moderno */
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;  /* thumb / track */
+}
+.scrollbar-thin-grey::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-thin-grey::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin-grey::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.scrollbar-thin-grey::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
