@@ -33,6 +33,13 @@ class CameraState:
     config: DictConfig
     pipeline: Any  # AsyncVisionPipeline
     is_running: bool = False
+    # Separación muestreo/render (B1 Paso 0). El MUESTREO (loop del pipeline +
+    # aggregator.flush()→publish) es permanente y NO depende de este flag. El
+    # RENDER MJPEG (escritura de `latest_frame_*`, on-demand, visual) sí: solo
+    # corre con `render_enabled=True`. Default True para preservar el
+    # comportamiento de hoy (render activo al activar). Lo prende
+    # `add_mjpeg_consumer` y lo apaga el watchdog tras quedar sin consumidor MJPEG.
+    render_enabled: bool = True
     latest_frame_raw: Optional[Any] = None
     latest_frame_processed: Optional[Any] = None
     renderer: Optional[FrameRenderer] = None  # Inyectado opcionalmente; Fase 6 lo cablea.
@@ -130,13 +137,16 @@ class MultiCameraManager:
         config: DictConfig,
         renderer: Optional[FrameRenderer] = None,
     ) -> CameraInstance:
-        """Alta on-demand con garantía de UN solo YOLO vivo (C1, D2).
+        """Alta on-demand de una cámara.
 
         - Idempotente sobre el mismo `source`: si la cámara ya existe y corre con
           la misma fuente, no recrea (devuelve la instancia viva).
         - Si la fuente cambió, baja+alta.
-        - Antes de dar de alta, libera CUALQUIER otra cámara on-demand viva, de
-          modo que nunca haya más de un modelo YOLO en memoria.
+
+        B1 Paso 0: se retiró el sweep single-slot. Activar una cámara YA NO baja
+        las demás; varias pueden convivir. La garantía de "un solo YOLO vivo"
+        (antes C1/D2) deja de imponerse acá y pasa al scheduler único con modelo
+        compartido (D-018, Paso 1).
         """
         new_source = config.vision.source
         existing = self.cameras.get(camera_id)
@@ -146,11 +156,6 @@ class MultiCameraManager:
                 logger.info("Camera %s ya activa con la misma fuente; no-op", camera_id)
                 return existing
             await self.remove_camera(camera_id)
-
-        # Single-slot: soltar las demás antes de cargar la nueva.
-        for other_id in list(self.cameras.keys()):
-            if other_id != camera_id:
-                await self.remove_camera(other_id)
 
         camera = self.add_camera(camera_id, config, renderer=renderer)
         await self.start_camera(camera_id)
@@ -197,20 +202,25 @@ class MultiCameraManager:
                 if not camera.state.is_running:
                     break
 
+                # MUESTREO (permanente, independiente del render): drenar el
+                # aggregator y publicar al broadcaster. Es la ÚNICA fuente de
+                # métricas/persistencia; corre siempre, haya o no render MJPEG.
                 if camera.state.aggregator is not None:
                     for td in camera.state.aggregator.flush():
                         await self.broadcaster.publish(td)
 
-                # Elegir qué análisis dibujar: el real si corrió detección este
-                # frame (y actualizar el cache), o el último inferido en skip frames.
-                render_analysis = analysis
-                if analysis is not None and analysis.detection_ran:
-                    last_render_analysis = analysis
-                elif last_render_analysis is not None:
-                    render_analysis = last_render_analysis
+                # RENDER MJPEG (on-demand, visual): solo si hay alguien mirando.
+                # B1 Paso 0: gateado por `render_enabled` para no copiar/anotar
+                # frames que nadie consume. NO afecta al muestreo de arriba.
+                if camera.state.render_enabled and hasattr(frame, 'image') and frame.image is not None:
+                    # Elegir qué análisis dibujar: el real si corrió detección este
+                    # frame (y actualizar el cache), o el último inferido en skip frames.
+                    render_analysis = analysis
+                    if analysis is not None and analysis.detection_ran:
+                        last_render_analysis = analysis
+                    elif last_render_analysis is not None:
+                        render_analysis = last_render_analysis
 
-                # Store frames for video streaming (ALWAYS update).
-                if hasattr(frame, 'image') and frame.image is not None:
                     camera.state.latest_frame_raw = frame.image.copy()
 
                     processed_frame = frame.image.copy()
@@ -304,10 +314,16 @@ class MultiCameraManager:
     # ---- Conteo de consumidores + auto-liberación (C1, E4) ------------
 
     def add_mjpeg_consumer(self, camera_id: str) -> None:
-        """Registra un consumidor MJPEG activo del feed `/video/{id}`."""
+        """Registra un consumidor MJPEG activo del feed `/video/{id}`.
+
+        Reenciende el render (B1 Paso 0): si el watchdog lo había apagado por
+        ociosidad, un nuevo espectador MJPEG lo vuelve a prender. El SSE NO pasa
+        por acá: consume el agregado, no frames.
+        """
         camera = self.cameras.get(camera_id)
         if camera is not None:
             camera.state.mjpeg_consumers += 1
+            camera.state.render_enabled = True
             self._idle_since.pop(camera_id, None)
 
     def remove_mjpeg_consumer(self, camera_id: str) -> None:
@@ -316,28 +332,37 @@ class MultiCameraManager:
         if camera is not None and camera.state.mjpeg_consumers > 0:
             camera.state.mjpeg_consumers -= 1
 
-    def _has_consumers(self, camera_id: str) -> bool:
-        """True si la cámara tiene al menos un consumidor MJPEG o SSE.
+    def _has_mjpeg_consumer(self, camera_id: str) -> bool:
+        """True si la cámara tiene al menos un consumidor MJPEG.
 
-        SSE: vía `broadcaster.subscribed_cameras()` (registro ya existente).
-        MJPEG: vía el contador propio `CameraState.mjpeg_consumers`.
+        B1 Paso 0: el watchdog decide apagar el RENDER, que solo lo consume el
+        MJPEG. El SSE recibe el agregado (no usa frames) y es irrelevante para
+        esta decisión; por eso NO se consulta `broadcaster.subscribed_cameras()`.
         """
         camera = self.cameras.get(camera_id)
         if camera is None:
             return False
-        if camera.state.mjpeg_consumers > 0:
-            return True
-        return camera_id in self.broadcaster.subscribed_cameras()
+        return camera.state.mjpeg_consumers > 0
 
     async def _sweep_idle(self, now: float) -> list[str]:
-        """Una pasada del watchdog: libera cámaras inactivas hace > timeout.
+        """Una pasada del watchdog: apaga el RENDER MJPEG ocioso hace > timeout.
+
+        B1 Paso 0: la acción ya NO es bajar la cámara (`remove_camera`), sino
+        apagar solo su render. El MUESTREO (is_running, loop del pipeline,
+        aggregator→broadcaster) sobrevive: la cámara sigue contando y
+        persistiendo. Ociosidad medida por MJPEG (no SSE), ver `_has_mjpeg_consumer`.
 
         Aislada del loop para testearla con un `now` controlado (sin wall-clock).
-        Devuelve los camera_id liberados en esta pasada.
+        Devuelve los camera_id cuyo render se apagó en esta pasada.
         """
-        released: list[str] = []
+        disabled: list[str] = []
         for camera_id in list(self.cameras.keys()):
-            if self._has_consumers(camera_id):
+            camera = self.cameras[camera_id]
+            if self._has_mjpeg_consumer(camera_id):
+                self._idle_since.pop(camera_id, None)
+                continue
+            if not camera.state.render_enabled:
+                # Render ya apagado: nada que hacer, no re-marcar idle.
                 self._idle_since.pop(camera_id, None)
                 continue
             since = self._idle_since.get(camera_id)
@@ -345,14 +370,17 @@ class MultiCameraManager:
                 self._idle_since[camera_id] = now
             elif now - since >= self.idle_timeout_s:
                 logger.info(
-                    "Camera %s sin consumidores hace %.0fs; auto-liberando",
+                    "Camera %s sin consumidor MJPEG hace %.0fs; apagando render "
+                    "(el muestreo sigue)",
                     camera_id,
                     now - since,
                 )
-                await self.remove_camera(camera_id)
+                camera.state.render_enabled = False
+                camera.state.latest_frame_raw = None
+                camera.state.latest_frame_processed = None
                 self._idle_since.pop(camera_id, None)
-                released.append(camera_id)
-        return released
+                disabled.append(camera_id)
+        return disabled
 
     async def _watchdog_loop(self) -> None:
         try:
