@@ -29,6 +29,15 @@ from . import FrameProcessor
 
 logger = logging.getLogger(__name__)
 
+# B1 1c — ÚNICA política de imgsz del producto, en un solo lugar. El spike validó
+# 11 cámaras a 1 Hz @320 con margen holgado (D-018). La aplica el scheduler
+# (relectura per-tick de cfg.vision.model.imgsz, fallback a esta constante).
+# El path viejo (_run_camera_pipeline) NO la usa: corre con imgsz=None (nativo de
+# ultralytics) porque no toca la palanca — no porque tenga una política propia.
+# DEUDA Paso 2: al migrar las 11 al scheduler y retirar el path viejo, la rama
+# imgsz=None/nativo desaparece con él y queda solo esta política (320).
+DEFAULT_IMGSZ = 320
+
 
 class SmartDetectionProcessor(FrameProcessor):
     """Llama al detector cada `detect_every_n` frames; el resto, vacío."""
@@ -38,6 +47,7 @@ class SmartDetectionProcessor(FrameProcessor):
         detector: VehicleDetector,
         detect_every_n: int = 3,
         metrics_collector: Optional[MetricsCollector] = None,
+        imgsz: Optional[int] = None,
     ) -> None:
         super().__init__()
         if detect_every_n < 1:
@@ -45,6 +55,10 @@ class SmartDetectionProcessor(FrameProcessor):
         self.detector = detector
         self.detect_every_n = detect_every_n
         self.metrics_collector = metrics_collector
+        # Resolución de inferencia por-llamada (B1 1c). None = no especifica →
+        # nativo de ultralytics. El scheduler la sobreescribe per-tick con la
+        # política (hot-reload); el path viejo la deja en None.
+        self.imgsz = imgsz
         # Frame ID del último frame en el que se ejecutó la detección.
         # Sentinel -1: aún no se detectó nada → el primer frame detecta.
         self._last_detection_frame: int = -1
@@ -62,7 +76,7 @@ class SmartDetectionProcessor(FrameProcessor):
 
         if should_detect:
             start = time.time()
-            detections = self.detector.detect(frame.image, frame.id)
+            detections = self.detector.detect(frame.image, frame.id, imgsz=self.imgsz)
             duration_ms = (time.time() - start) * 1000.0
 
             if self.metrics_collector:

@@ -37,6 +37,7 @@ from ...domain.entities import FrameAnalysis, FrameSnapshot
 from ...domain.protocols import LiveFrameSource
 from ...domain.value_objects import SensorStatus
 from ...infrastructure.sources.threaded_capture import ThreadedCapture
+from ..processors.smart_detection import DEFAULT_IMGSZ
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,11 @@ class CameraScheduler:
         self._publish_status(snap)
 
         if fresh:
+            # Hot-reload (B1 1c): releemos imgsz del cfg per-tick y lo aplicamos al
+            # head de la chain (SmartDetectionProcessor). Si el valor cambió entre
+            # ticks, el próximo tick lo usa sin reconstruir nada (imgsz va
+            # por-llamada a detect()). El punto de relectura es `self._camera`.
+            self._chain.imgsz = self._read_imgsz()
             # Inferencia fuera del event loop (executor serializado).
             analysis = await loop.run_in_executor(
                 self._infer_executor, self._chain.process, snap.frame, self._prev_analysis
@@ -146,6 +152,12 @@ class CameraScheduler:
             # Sin-señal sostenido: solo entregar lo que el worker ya computó (inocente).
             for td in self._aggregator.flush():
                 await self._broadcaster.publish(td)
+
+    def _read_imgsz(self) -> int:
+        """Política de imgsz para este tick: cfg.vision.model.imgsz, fallback a la
+        ÚNICA constante de política DEFAULT_IMGSZ (320). Leído per-tick → hot-reload."""
+        model_cfg = self._camera.state.config.vision.get("model", {})
+        return model_cfg.get("imgsz", DEFAULT_IMGSZ)
 
     def _decide(self, snap: FrameSnapshot) -> tuple[bool, SensorStatus]:
         """Decide fresco-vs-motivo desde el snapshot (sin distinguir archivo/stream)."""

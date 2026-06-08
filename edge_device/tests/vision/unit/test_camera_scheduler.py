@@ -11,7 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
+from omegaconf import OmegaConf
 
+from src.vision.application.processors.smart_detection import DEFAULT_IMGSZ
 from src.vision.application.services.camera_scheduler import CameraScheduler
 from src.vision.application.services.multi_camera import MultiCameraManager
 from src.vision.domain.entities import Frame, FrameAnalysis, FrameSnapshot
@@ -39,9 +41,13 @@ class _FakeCapture:
         self.stopped = True
 
 
-def _make_camera(chain, aggregator, *, render_enabled=False, renderer=None):
+def _make_camera(chain, aggregator, *, render_enabled=False, renderer=None, imgsz=None):
+    # config real (DictConfig): el scheduler relee cfg.vision.model.imgsz per-tick.
+    model = {} if imgsz is None else {"imgsz": imgsz}
+    config = OmegaConf.create({"vision": {"model": model}})
     state = SimpleNamespace(
         camera_id="camX",
+        config=config,
         pipeline=SimpleNamespace(source=MagicMock(), processor_chain=chain),
         aggregator=aggregator,
         is_running=True,
@@ -141,6 +147,43 @@ async def test_infiere_y_publica_si_frame_fresco():
     chain.process.assert_called_once_with(frame, None)   # inferencia con prev=None
     broadcaster.publish.assert_awaited_once_with("td-1")  # drenó aggregator→SSE
     assert cam.state.sensor_status == SensorStatus.OK.value
+
+
+# ---- imgsz: hot-reload per-tick + default de política -----------------
+
+@pytest.mark.asyncio
+async def test_imgsz_default_policy_cuando_ausente():
+    """Sin imgsz en el cfg → el scheduler aplica la ÚNICA política DEFAULT_IMGSZ."""
+    chain = MagicMock()
+    chain.process.return_value = _analysis(1)
+    agg = MagicMock()
+    agg.flush.return_value = []
+    cam = _make_camera(chain, agg)  # cfg sin model.imgsz
+    sch = _scheduler(cam, _FakeCapture(_fresh()))
+
+    await sch._tick(asyncio.get_running_loop())
+
+    assert chain.imgsz == DEFAULT_IMGSZ
+
+
+@pytest.mark.asyncio
+async def test_hot_reload_imgsz_entre_ticks():
+    """Cambiar cfg.vision.model.imgsz entre ticks → el próximo tick lo usa, sin
+    reconstruir nada (imgsz va por-llamada)."""
+    chain = MagicMock()
+    chain.process.return_value = _analysis(1)
+    agg = MagicMock()
+    agg.flush.return_value = []
+    cam = _make_camera(chain, agg, imgsz=320)
+    sch = _scheduler(cam, _FakeCapture(_fresh()))
+    loop = asyncio.get_running_loop()
+
+    await sch._tick(loop)
+    assert chain.imgsz == 320
+
+    cam.state.config.vision.model.imgsz = 640  # mutación en caliente
+    await sch._tick(loop)
+    assert chain.imgsz == 640
 
 
 # ---- Honestidad de ventana: force_flush en la transición -------------
