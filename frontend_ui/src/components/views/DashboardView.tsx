@@ -119,41 +119,39 @@ function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onHove
     );
 }
 
-// F3 — miniplayer HLS anclado al marcador. Es un Popup HIJO DEL MAPA (no del Marker): con
-// `position` Leaflet lo auto-abre al montar y lo remueve al desmontar. `autoClose=false` deja
-// que varios convivan; `closeButton=false` desactiva el ✕ nativo de Leaflet (que cerraría el
-// popup SIN desmontar React → dejaría el <video> vivo en background) y se usa un ✕ propio que
-// quita el id del set → desmonta este Popup → HlsPlayer corre su cleanup (hls.destroy()).
-// El HLS se monta SOLO acá: si el id no está en el set, este componente no se renderiza.
-function MiniPlayerPopup({ int, onClose }: { int: IntersectionData; onClose: () => void }) {
+// F3 — miniplayer HLS anclado al marcador. Popup HIJO DEL MAPA (no del Marker): con `position`
+// Leaflet lo auto-abre al montar y lo remueve al desmontar. `autoClose=false` deja que varios
+// convivan; `closeButton=false` mata el ✕ nativo de Leaflet. La INTERACCIÓN:
+//   · cerrar = reclick del marcador (toggle puro en handleMarkerClick) — NO hay ✕ propio.
+//   · click sobre el VIDEO = navegar al detalle embebido (onOpenDetail → onSelectCamera).
+// El HLS se monta SOLO acá: id fuera del set → este componente no se renderiza → desmonta →
+// HlsPlayer corre su cleanup (hls.destroy()). Solo el video flotando (sin nombre, sin marco
+// blanco — el card/tip de Leaflet se neutraliza por CSS scopeado a `.miniplayer-popup`).
+// `position` MEMOIZADO en lat/lng primitivos: sin esto, un array literal nuevo por render (cada
+// tick SSE re-renderiza DashboardView) re-corre el effect del Popup → remove/re-add de la capa
+// → flicker (el "temblor", que era esto y NO el pulse del marker, que vive en otro pane).
+function MiniPlayerPopup({ int, onOpenDetail }: { int: IntersectionData; onOpenDetail: () => void }) {
+    const position = useMemo<[number, number]>(() => [int.lat, int.lng], [int.lat, int.lng]);
     return (
         <Popup
-            position={[int.lat, int.lng]}
+            position={position}
             autoClose={false}
             closeOnClick={false}
             closeButton={false}
             className="miniplayer-popup"
         >
-            <div className="w-64">
-                <div className="flex items-center justify-between mb-1.5 gap-2">
-                    <span className="font-bold text-slate-900 text-xs truncate">{int.name}</span>
-                    <button
-                        onClick={onClose}
-                        aria-label="Cerrar miniplayer"
-                        className="shrink-0 text-slate-500 hover:text-slate-900 text-sm leading-none px-1"
-                    >
-                        ✕
-                    </button>
-                </div>
-                <div className="aspect-video bg-black rounded overflow-hidden">
-                    {int.stream_url ? (
-                        <HlsPlayer src={int.stream_url} />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-rose-400 text-[11px] font-bold tracking-wide">
-                            SIN STREAM
-                        </div>
-                    )}
-                </div>
+            <div
+                onClick={onOpenDetail}
+                title={int.name}
+                className="w-52 aspect-video bg-black rounded-lg overflow-hidden cursor-pointer"
+            >
+                {int.stream_url ? (
+                    <HlsPlayer src={int.stream_url} controls={false} />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-rose-400 text-[11px] font-bold tracking-wide">
+                        SIN STREAM
+                    </div>
+                )}
             </div>
         </Popup>
     );
@@ -284,26 +282,15 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
     // monta SOLO dentro del Popup de un id en este set; quitar el id desmonta el Popup → cleanup.
     const [openPlayers, setOpenPlayers] = useState<Set<string>>(new Set());
 
-    // Click en marcador: si NO tiene miniplayer → lo abre; si YA lo tiene → navega al detalle
-    // embebido (F2). Varios miniplayers pueden estar abiertos a la vez (Popup autoClose=false).
+    // Click en marcador = TOGGLE puro: si no tiene miniplayer → lo abre; si ya lo tiene → lo
+    // cierra (quita del set → desmonta el Popup → hls.destroy()). La navegación al detalle NO
+    // vive acá: la dispara el click sobre el video del miniplayer (onOpenDetail → onSelectCamera).
+    // Varios miniplayers pueden estar abiertos a la vez (Popup autoClose=false).
     const handleMarkerClick = useCallback((id: string) => {
-        if (openPlayers.has(id)) {
-            const camera = intersections.find(c => c.id === id);
-            if (camera) onSelectCamera(camera.id, camera.name, camera.stream_url);
-        } else {
-            setOpenPlayers(prev => {
-                const next = new Set(prev);
-                next.add(id);
-                return next;
-            });
-        }
-    }, [openPlayers, intersections, onSelectCamera]);
-
-    const closePlayer = useCallback((id: string) => {
         setOpenPlayers(prev => {
-            if (!prev.has(id)) return prev;
             const next = new Set(prev);
-            next.delete(id);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             return next;
         });
     }, []);
@@ -454,7 +441,7 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                                         <MiniPlayerPopup
                                             key={`mp-${int.id}`}
                                             int={int}
-                                            onClose={() => closePlayer(int.id)}
+                                            onOpenDetail={() => onSelectCamera(int.id, int.name, int.stream_url)}
                                         />
                                     ))}
                             </MapContainer>

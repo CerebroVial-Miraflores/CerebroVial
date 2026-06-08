@@ -7,3 +7,20 @@ body {
   padding: 0;
   height: 100%;
 }
+
+/* Miniplayer del mapa (F3): neutraliza el card/tip/sombra default de Leaflet — solo el video
+   flotando con sus propios bordes redondeados. Scopeado a `.miniplayer-popup` (la className del
+   Popup) para no afectar otros popups (CongestionMapView, futuros). */
+.leaflet-popup.miniplayer-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+.leaflet-popup.miniplayer-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+.leaflet-popup.miniplayer-popup .leaflet-popup-tip-container {
+  display: none;
+}
