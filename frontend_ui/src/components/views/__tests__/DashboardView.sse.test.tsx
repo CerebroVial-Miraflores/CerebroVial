@@ -51,6 +51,15 @@ describe('DashboardView — refresco por SSE de congestión (B2)', () => {
     }
     // @ts-expect-error inyección del stub global
     globalThis.EventSource = FakeEventSource;
+    // IntersectionObserver: jsdom no lo trae; la grilla de cámaras (tab default 'cameras')
+    // lo usa para el lazy-por-viewport. Stub no-op: este test verifica el refresco SSE, no el lazy.
+    class FakeIntersectionObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    // @ts-expect-error inyección del stub global
+    globalThis.IntersectionObserver = FakeIntersectionObserver;
     globalThis.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => INTERSECTIONS,

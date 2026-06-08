@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Car, TrendingDown, Activity, ShieldCheck, AlertTriangle, Filter, Download } from 'lucide-react';
+import { Car, TrendingDown, Activity, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { LoadingOverlay } from '../ui/LoadingStates';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
@@ -176,9 +176,9 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
     const [cameraHealth, setCameraHealth] = useState<Record<string, PlayerStatus>>({});
     // B2: cross-selección hover (mapa↔lista↔grilla). Resalta el elemento que matchea.
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    // B1: sub-pestañas del tab dashboard. 'map' = el mapa/dashboard que YA existe (sin cambios,
-    // B2 lo mejora). 'cameras' = la grilla de previews HLS.
-    const [dashTab, setDashTab] = useState<'map' | 'cameras'>('map');
+    // B1: sub-pestañas del tab dashboard. 'cameras' = la grilla de previews HLS (default,
+    // vista primaria de monitoreo). 'map' = el mapa con markers de congestión.
+    const [dashTab, setDashTab] = useState<'map' | 'cameras'>('cameras');
 
     const [intersections, setIntersections] = useState<IntersectionData[]>([]);
 
@@ -281,52 +281,24 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
 
     return (
         <div className="space-y-6 animate-fade-in">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Centro de Control de Tráfico</h1>
-                    <p className="text-slate-400">Monitoreo en tiempo real y gestión de incidentes</p>
-                </div>
-                <div className="flex gap-3">
-                    <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-slate-700">
-                        <Filter size={18} />
-                        Filtros
-                    </button>
-                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-indigo-500/20">
-                        <Download size={18} />
-                        Exportar Reporte
-                    </button>
-                </div>
-            </div>
-
-            {/* B1: toggle Mapa | Cámaras dentro del tab dashboard (operator-only). 'Mapa' es
-                el dashboard/mapa que YA existe, sin cambios (B2 lo mejora). 'Cámaras' = la grilla. */}
+            {/* B1: toggle Cámaras | Mapa dentro del tab dashboard (operator-only). 'Cámaras' =
+                la grilla de previews HLS (default). 'Mapa' = el mapa con markers de congestión. */}
             <div className="flex gap-2">
-                <button
-                    onClick={() => setDashTab('map')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'map' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
-                >
-                    Mapa
-                </button>
                 <button
                     onClick={() => setDashTab('cameras')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'cameras' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
                 >
                     Cámaras
                 </button>
+                <button
+                    onClick={() => setDashTab('map')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'map' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+                >
+                    Mapa
+                </button>
             </div>
 
-            {dashTab === 'cameras' ? (
-                <CameraGrid
-                    cameras={intersections.map(i => ({ id: i.id, name: i.name, stream_url: i.stream_url }))}
-                    onSelectCamera={onSelectCamera}
-                    onStatusChange={reportCameraHealth}
-                    selectedId={selectedId}
-                    onHover={setSelectedId}
-                />
-            ) : (
-            <>
-            {/* FILA DE KPIs */}
+            {/* FILA DE KPIs — transversal a Cámaras y Mapa (valores estáticos por ahora). */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-gradient-to-br from-indigo-900/40 to-slate-800/40 border-indigo-500/20">
                     <div className="flex justify-between items-start mb-2">
@@ -362,6 +334,16 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                 </Card>
             </div>
 
+            {dashTab === 'cameras' ? (
+                <CameraGrid
+                    cameras={intersections.map(i => ({ id: i.id, name: i.name, stream_url: i.stream_url }))}
+                    onSelectCamera={onSelectCamera}
+                    onStatusChange={reportCameraHealth}
+                    selectedId={selectedId}
+                    onHover={setSelectedId}
+                />
+            ) : (
+            <>
             {/* Main Grid */}
             <div className="grid grid-cols-12 gap-6 h-[600px]">
                 {/* Map Section — mapa a todo el ancho (la lista lateral rica con previews es
