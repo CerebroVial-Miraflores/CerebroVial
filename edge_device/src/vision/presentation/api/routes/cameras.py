@@ -1,6 +1,8 @@
 """
 API for managing multiple cameras.
 """
+import os
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel
@@ -10,6 +12,21 @@ from ....infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaste
 from ...visualization import build_visualizer_from_vision_cfg
 
 app = FastAPI()
+
+# B1 Paso 2-A1: gate de estreno del scheduler (1b) en vivo. Env var con una lista
+# CSV de camera_id; las cámaras listadas corren por el CameraScheduler, el resto
+# sigue por el path viejo (_run_camera_pipeline). Default vacío → TODAS por el
+# path viejo (comportamiento idéntico al previo, byte por byte). Se lee
+# por-llamada (no a import-time) para que un restart con la env cambiada la tome
+# sin tocar código. Revert: vaciar la env + restart (ruteo) o DELETE /cameras/{id}
+# (apaga la cámara scheduled en vivo).
+_SCHEDULER_CAMERA_IDS_ENV = "VISION_SCHEDULER_CAMERA_IDS"
+
+
+def _scheduler_camera_ids() -> set[str]:
+    """IDs designados al scheduler, leídos de la env por-llamada (CSV, trim, sin vacíos)."""
+    raw = os.environ.get(_SCHEDULER_CAMERA_IDS_ENV, "")
+    return {cid.strip() for cid in raw.split(",") if cid.strip()}
 
 
 def _build_camera_config(
@@ -37,6 +54,11 @@ def _build_camera_config(
             "source_type": source_type,
             "camera_id": camera_id,
             "zones": zones,
+            # B1 Paso 2-A1: ruteo per-cámara al scheduler vía gate de env. Solo
+            # las cámaras listadas en VISION_SCHEDULER_CAMERA_IDS corren por el
+            # scheduler (1b); el dispatch lo lee en multi_camera.start_camera.
+            # Default (env vacía) → False → path viejo, como hasta ahora.
+            "use_scheduler": camera_id in _scheduler_camera_ids(),
             "model": {
                 "path": "yolo11n.pt",  # match default.yaml
                 # OVERRIDE-LIVE: 0.2 (default.yaml usa 0.3). yolo11n sobre cámara
