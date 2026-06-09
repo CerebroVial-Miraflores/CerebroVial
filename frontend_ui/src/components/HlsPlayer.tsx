@@ -13,11 +13,14 @@ interface HlsPlayerProps {
   onStatusChange?: (status: PlayerStatus) => void;
   /** ms sin primer frame antes de marcar offline (timeout de carga). Default 9000. */
   offlineTimeoutMs?: number;
+  /** Muestra los controles nativos del <video> (play/timeline/fullscreen). Default true
+   *  (grilla/strip/detalle). El miniplayer del mapa pasa false: solo el preview, sin UI. */
+  controls?: boolean;
 }
 
 type Engine = 'native' | 'hlsjs' | 'unsupported';
 
-export function HlsPlayer({ src, onStatusChange, offlineTimeoutMs = 9000 }: HlsPlayerProps) {
+export function HlsPlayer({ src, onStatusChange, offlineTimeoutMs = 9000, controls = true }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<PlayerStatus>('loading');
 
@@ -121,7 +124,7 @@ export function HlsPlayer({ src, onStatusChange, offlineTimeoutMs = 9000 }: HlsP
   return (
     <video
       ref={videoRef}
-      controls
+      controls={controls}
       muted
       playsInline
       style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#000' }}

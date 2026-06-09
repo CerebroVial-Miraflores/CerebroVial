@@ -28,7 +28,7 @@ export function CameraStrip({ cameras, onSelect }: CameraStripProps) {
   return (
     <div
       data-testid="camera-strip"
-      className="flex gap-3 overflow-x-auto pb-2 px-1 snap-x scroll-smooth"
+      className="flex gap-3 overflow-x-auto pb-2 px-1 snap-x scroll-smooth scrollbar-hide"
     >
       {cameras.map((cam) => (
         <StripTile key={cam.id} camera={cam} onSelect={onSelect} />

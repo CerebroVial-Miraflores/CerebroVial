@@ -8,7 +8,7 @@ interface HeaderProps {
 
 export const Header = ({ activeTab, currentTime }: HeaderProps) => {
     return (
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex justify-between items-center mb-8 pr-4 md:pr-8">
             <div>
                 <h1 className="text-2xl font-bold text-white mb-1">
                     {activeTab === 'dashboard' && 'Centro de Control de Tráfico'}

@@ -7,3 +7,54 @@ body {
   padding: 0;
   height: 100%;
 }
+
+/* Miniplayer del mapa (F3): neutraliza el card/tip/sombra default de Leaflet — solo el video
+   flotando con sus propios bordes redondeados. Scopeado a `.miniplayer-popup` (la className del
+   Popup) para no afectar otros popups (CongestionMapView, futuros). */
+.leaflet-popup.miniplayer-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+.leaflet-popup.miniplayer-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+.leaflet-popup.miniplayer-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+/* Oculta la scrollbar nativa manteniendo el scroll (rueda/trackpad/drag). Scopeada a la clase
+   para no afectar otros contenedores con scroll (p. ej. el wrapper de contenido de <main>). */
+.scrollbar-hide {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge legacy */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari/Edge */
+}
+
+/* Scrollbar fina y gris tenue (slate-400 ~40%), discreta. Scopeada a la clase para aplicarla
+   solo al wrapper de scroll de <main>. slate-400 = rgb(148,163,184).
+   - Props ESTÁNDAR (scrollbar-width/-color): las lee Chrome moderno y Firefox; en macOS colorean
+     el thumb del scrollbar overlay (aparece al scrollear) en gris tenue.
+   - ::-webkit-scrollbar: fallback para Chrome viejo y para configs NO-overlay (Linux/Windows o
+     "mostrar siempre"), donde pinta un bar clásico gris de 8px siempre visible. */
+.scrollbar-thin-grey {
+  scrollbar-width: thin;                                   /* Firefox / Chrome moderno */
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;  /* thumb / track */
+}
+.scrollbar-thin-grey::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-thin-grey::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin-grey::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.scrollbar-thin-grey::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Car, TrendingDown, Activity, ShieldCheck, AlertTriangle, Filter, Download } from 'lucide-react';
+import { Car, TrendingDown, Activity, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { LoadingOverlay } from '../ui/LoadingStates';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
@@ -10,6 +10,7 @@ import { CameraGrid } from '../CameraGrid';
 import type { PlayerStatus } from '../HlsPlayer';
 import { openCongestionStream } from '../../services/congestionSseClient';
 import { markerVisual, type MarkerVisual } from '../../utils/markerVisual';
+import { HlsPlayer } from '../HlsPlayer';
 
 // Fix for default marker icon in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -54,13 +55,12 @@ function MapUpdater({ center, zoom }: { center: [number, number], zoom: number }
 // re-renderiza el padre) no recrea el divIcon ni reinicia el animate-ping ni huérfana el
 // tooltip nativo. El resaltado por hover se aplica como box-shadow sobre el contenedor del
 // icono ya montado (sin setIcon), replicando el ring anterior.
-function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onSelectCamera, onHover, onUnhover }: {
+function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onHover, onUnhover }: {
     int: IntersectionData;
     visual: MarkerVisual;
     selected: boolean;
     speedFlow: { speed: number; flow: number } | undefined;
     onSelect: () => void;
-    onSelectCamera: () => void;
     onHover: () => void;
     onUnhover: () => void;
 }) {
@@ -115,38 +115,45 @@ function IntersectionMarker({ int, visual, selected, speedFlow, onSelect, onSele
                     </div>
                 </div>
             </Tooltip>
-            <Popup className="custom-popup">
-                <div className="p-1 min-w-[120px]">
-                    <h4 className="font-bold text-slate-900 text-xs mb-1">{int.name}</h4>
-                    <div className="flex flex-col text-[10px] text-slate-600 gap-1">
-                        <div className="flex justify-between border-b border-slate-100 pb-1">
-                            <span>Velocidad:</span>
-                            <span className="font-bold text-indigo-600">{speedFlow?.speed ?? int.speed} km/h</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-100 pb-1">
-                            <span>Flujo:</span>
-                            <span className="font-bold text-indigo-600">{speedFlow?.flow ?? int.flow} vpm</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Estado:</span>
-                            <span className={`font-bold uppercase ${
-                                int.status === 'critical' ? 'text-red-500' :
-                                int.status === 'moderate' ? 'text-amber-500' : 'text-emerald-500'
-                            }`}>
-                                {int.status === 'critical' ? 'Crítico' :
-                                 int.status === 'moderate' ? 'Moderado' : 'Fluido'}
-                            </span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onSelectCamera}
-                        className="mt-2 w-full bg-indigo-600 text-white text-[10px] py-1 rounded hover:bg-indigo-700"
-                    >
-                        Ver Cámara
-                    </button>
-                </div>
-            </Popup>
         </Marker>
+    );
+}
+
+// F3 — miniplayer HLS anclado al marcador. Popup HIJO DEL MAPA (no del Marker): con `position`
+// Leaflet lo auto-abre al montar y lo remueve al desmontar. `autoClose=false` deja que varios
+// convivan; `closeButton=false` mata el ✕ nativo de Leaflet. La INTERACCIÓN:
+//   · cerrar = reclick del marcador (toggle puro en handleMarkerClick) — NO hay ✕ propio.
+//   · click sobre el VIDEO = navegar al detalle embebido (onOpenDetail → onSelectCamera).
+// El HLS se monta SOLO acá: id fuera del set → este componente no se renderiza → desmonta →
+// HlsPlayer corre su cleanup (hls.destroy()). Solo el video flotando (sin nombre, sin marco
+// blanco — el card/tip de Leaflet se neutraliza por CSS scopeado a `.miniplayer-popup`).
+// `position` MEMOIZADO en lat/lng primitivos: sin esto, un array literal nuevo por render (cada
+// tick SSE re-renderiza DashboardView) re-corre el effect del Popup → remove/re-add de la capa
+// → flicker (el "temblor", que era esto y NO el pulse del marker, que vive en otro pane).
+function MiniPlayerPopup({ int, onOpenDetail }: { int: IntersectionData; onOpenDetail: () => void }) {
+    const position = useMemo<[number, number]>(() => [int.lat, int.lng], [int.lat, int.lng]);
+    return (
+        <Popup
+            position={position}
+            autoClose={false}
+            closeOnClick={false}
+            closeButton={false}
+            className="miniplayer-popup"
+        >
+            <div
+                onClick={onOpenDetail}
+                title={int.name}
+                className="w-52 aspect-video bg-black rounded-lg overflow-hidden cursor-pointer"
+            >
+                {int.stream_url ? (
+                    <HlsPlayer src={int.stream_url} controls={false} />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-rose-400 text-[11px] font-bold tracking-wide">
+                        SIN STREAM
+                    </div>
+                )}
+            </div>
+        </Popup>
     );
 }
 
@@ -176,14 +183,16 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
     const [cameraHealth, setCameraHealth] = useState<Record<string, PlayerStatus>>({});
     // B2: cross-selección hover (mapa↔lista↔grilla). Resalta el elemento que matchea.
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    // B1: sub-pestañas del tab dashboard. 'map' = el mapa/dashboard que YA existe (sin cambios,
-    // B2 lo mejora). 'cameras' = la grilla de previews HLS.
-    const [dashTab, setDashTab] = useState<'map' | 'cameras'>('map');
+    // B1: sub-pestañas del tab dashboard. 'cameras' = la grilla de previews HLS (default,
+    // vista primaria de monitoreo). 'map' = el mapa con markers de congestión.
+    const [dashTab, setDashTab] = useState<'map' | 'cameras'>('cameras');
 
     const [intersections, setIntersections] = useState<IntersectionData[]>([]);
 
-    const [mapCenter, setMapCenter] = useState<[number, number]>([-12.122, -77.028]);
-    const [mapZoom, setMapZoom] = useState(14);
+    // Centro/zoom inicial del encuadre (FitBounds ajusta al cargar; MapUpdater haría flyTo solo
+    // ante un cambio — hoy no cambian, el miniplayer no recentra). Constantes, sin setters.
+    const [mapCenter] = useState<[number, number]>([-12.122, -77.028]);
+    const [mapZoom] = useState(14);
     const [viewMode, setViewMode] = useState<'leaflet' | 'waze'>('leaflet');
 
     // Carga la lista (incluye la congestión REAL por intersección en `status`). Elevada a
@@ -269,64 +278,43 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
         setCameraHealth(prev => (prev[id] === status ? prev : { ...prev, [id]: status }));
     }, []);
 
-    const handleCameraSelect = (id: string) => {
-        const camera = intersections.find(c => c.id === id);
-        if (camera) {
-            setMapCenter([camera.lat, camera.lng]);
-            setMapZoom(16);
-            if (viewMode === 'waze') setViewMode('leaflet');
-            onSelectCamera(id, camera.name, camera.stream_url);
-        }
-    };
+    // F3: ids con miniplayer abierto en el mapa. Vacío al montar (todos cerrados). El HLS se
+    // monta SOLO dentro del Popup de un id en este set; quitar el id desmonta el Popup → cleanup.
+    const [openPlayers, setOpenPlayers] = useState<Set<string>>(new Set());
+
+    // Click en marcador = TOGGLE puro: si no tiene miniplayer → lo abre; si ya lo tiene → lo
+    // cierra (quita del set → desmonta el Popup → hls.destroy()). La navegación al detalle NO
+    // vive acá: la dispara el click sobre el video del miniplayer (onOpenDetail → onSelectCamera).
+    // Varios miniplayers pueden estar abiertos a la vez (Popup autoClose=false).
+    const handleMarkerClick = useCallback((id: string) => {
+        setOpenPlayers(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
 
     return (
         <div className="space-y-6 animate-fade-in">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Centro de Control de Tráfico</h1>
-                    <p className="text-slate-400">Monitoreo en tiempo real y gestión de incidentes</p>
-                </div>
-                <div className="flex gap-3">
-                    <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-slate-700">
-                        <Filter size={18} />
-                        Filtros
-                    </button>
-                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-indigo-500/20">
-                        <Download size={18} />
-                        Exportar Reporte
-                    </button>
-                </div>
-            </div>
-
-            {/* B1: toggle Mapa | Cámaras dentro del tab dashboard (operator-only). 'Mapa' es
-                el dashboard/mapa que YA existe, sin cambios (B2 lo mejora). 'Cámaras' = la grilla. */}
+            {/* B1: toggle Cámaras | Mapa dentro del tab dashboard (operator-only). 'Cámaras' =
+                la grilla de previews HLS (default). 'Mapa' = el mapa con markers de congestión. */}
             <div className="flex gap-2">
-                <button
-                    onClick={() => setDashTab('map')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'map' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
-                >
-                    Mapa
-                </button>
                 <button
                     onClick={() => setDashTab('cameras')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'cameras' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
                 >
                     Cámaras
                 </button>
+                <button
+                    onClick={() => setDashTab('map')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${dashTab === 'map' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+                >
+                    Mapa
+                </button>
             </div>
 
-            {dashTab === 'cameras' ? (
-                <CameraGrid
-                    cameras={intersections.map(i => ({ id: i.id, name: i.name, stream_url: i.stream_url }))}
-                    onSelectCamera={onSelectCamera}
-                    onStatusChange={reportCameraHealth}
-                    selectedId={selectedId}
-                    onHover={setSelectedId}
-                />
-            ) : (
-            <>
-            {/* FILA DE KPIs */}
+            {/* FILA DE KPIs — transversal a Cámaras y Mapa (valores estáticos por ahora). */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-gradient-to-br from-indigo-900/40 to-slate-800/40 border-indigo-500/20">
                     <div className="flex justify-between items-start mb-2">
@@ -362,6 +350,16 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                 </Card>
             </div>
 
+            {dashTab === 'cameras' ? (
+                <CameraGrid
+                    cameras={intersections.map(i => ({ id: i.id, name: i.name, stream_url: i.stream_url }))}
+                    onSelectCamera={onSelectCamera}
+                    onStatusChange={reportCameraHealth}
+                    selectedId={selectedId}
+                    onHover={setSelectedId}
+                />
+            ) : (
+            <>
             {/* Main Grid */}
             <div className="grid grid-cols-12 gap-6 h-[600px]">
                 {/* Map Section — mapa a todo el ancho (la lista lateral rica con previews es
@@ -428,12 +426,24 @@ export const DashboardView = ({ onSelectCamera }: { onSelectCamera: (id: string,
                                         visual={markerVisual(int.status, cameraHealth[int.id])}
                                         selected={int.id === selectedId}
                                         speedFlow={realData[int.id]}
-                                        onSelect={() => handleCameraSelect(int.id)}
-                                        onSelectCamera={() => onSelectCamera(int.id, int.name, int.stream_url)}
+                                        onSelect={() => handleMarkerClick(int.id)}
                                         onHover={() => setSelectedId(int.id)}
                                         onUnhover={() => setSelectedId(null)}
                                     />
                                 ))}
+
+                                {/* F3: miniplayers HLS abiertos — uno por id en openPlayers, a nivel de
+                                    mapa (no del marcador). Montar auto-abre el Popup; cerrar lo quita del
+                                    set → desmonta → hls.destroy(). Lazy: cerrado = NO montado. */}
+                                {intersections
+                                    .filter((int) => openPlayers.has(int.id))
+                                    .map((int) => (
+                                        <MiniPlayerPopup
+                                            key={`mp-${int.id}`}
+                                            int={int}
+                                            onOpenDetail={() => onSelectCamera(int.id, int.name, int.stream_url)}
+                                        />
+                                    ))}
                             </MapContainer>
                         ) : (
                             <iframe
