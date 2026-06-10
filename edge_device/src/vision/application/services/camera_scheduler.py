@@ -72,6 +72,9 @@ class CameraScheduler:
 
         # Executor de inferencia: max_workers=1 → event loop libre + inferencia
         # serializada (modelo compartido seguro). Compartible entre cámaras (Paso 2).
+        # B1 Paso 4: en producción el manager SIEMPRE inyecta el executor compartido
+        # (`_owns_executor=False`); el self-create de abajo NO es un path de
+        # producción — existe solo para construir el scheduler aislado en tests.
         self._infer_executor = infer_executor or ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="vision-infer"
         )
@@ -177,8 +180,7 @@ class CameraScheduler:
     async def _route(self, frame, analysis: Optional[FrameAnalysis]) -> None:
         """Drena aggregator→broadcaster y escribe latest_frame_* (render gateado).
 
-        Mismo comportamiento que `_run_camera_pipeline` viejo (equivalencia):
-        muestreo permanente; render solo con `render_enabled` y persistencia visual
+        Muestreo permanente; render solo con `render_enabled` y persistencia visual
         de boxes en skip frames (`detection_ran=False`)."""
         if self._aggregator is not None:
             for td in self._aggregator.flush():

@@ -24,7 +24,7 @@ La secuencia de 2-A son seis sub-pasos. No es un cierre: marcamos el estado real
 | **1** | Andamio de memoria: subir el límite del contenedor edge a **4 GiB** en compose (temporal) | ✅ **Commiteado** (`35226f88`) |
 | **2** | Detector + executor compartidos: hoist de singletons al `MultiCameraManager` + lifecycle | ✅ **Commiteado** (`c7b81c7e`) — implementación en §8 |
 | **3** | Migrar las 11 al scheduler (nacen compartiendo detector) | ✅ **Hecho 10/11** (2026-06-09) — gate aprobado; `cam_benavides_panama` excluida por 404 upstream. Detalle en §9 |
-| **4** | Retirar path viejo: invertir dispatch a scheduler-por-default, borrar el gate | ⬜ Pendiente |
+| **4** | Retirar path viejo: invertir dispatch a scheduler-por-default, borrar el gate | ✅ **Hecho** (2026-06-09) — scheduler único path; gate de env borrado. Detalle en §10 |
 | **5** | Re-medir con detector compartido + 11 y bajar el límite de memoria al consumo real | ⬜ Pendiente |
 
 ---
@@ -309,6 +309,60 @@ frescura está en `GET /vision/health`. **Gates futuros deben usar estas dos, no
 El edge quedó **levantado con las 10 cámaras activas** tras el gate (no se bajó). Próximo: **Paso 4**
 (invertir dispatch a scheduler-por-default, borrar el gate de env, eliminar `_run_camera_pipeline` y la
 inyección condicional) y **Paso 5** (re-medir con la decisión render-on/render-off + creep ya tomada).
+
+---
+
+## 10. Paso 4 ejecutado — scheduler como único path, retiro de la coexistencia (2026-06-09)
+
+Paso 4 **borra la coexistencia** que los pasos 2-A1→3 sostenían. Principio: borrar, no
+generalizar — se elimina todo lo que existía SOLO para que el path viejo y el scheduler
+convivieran. No es rearquitectura: es deleción + reacomodo de tests al nivel correcto.
+
+### Qué se borró (producción)
+- **Gate de env** (`cameras.py`): `VISION_SCHEDULER_CAMERA_IDS`, `_scheduler_camera_ids()`, el flag
+  `use_scheduler` del cfg on-demand, `import os`. El ruteo por env desaparece.
+- **`_run_camera_pipeline`** (`multi_camera.py`): el loop async del path viejo, entero (−60 líneas).
+- **Inyección condicional del detector** → **incondicional**: todas las cámaras comparten el
+  singleton del manager (antes solo las `use_scheduler=True`).
+- **Dispatch condicional** en `start_camera` → **scheduler incondicional** (todas por `CameraScheduler`).
+- **`_owns_detector` + el guard de release** en `remove_camera`, y el **fallback de construcción de
+  detector** en `CameraInstance` (ahora el detector es **requerido**: un `CameraInstance` sin detector
+  es error de programación, no un modo de operación — falla fuerte y temprano).
+- **`else: pipeline.stop()`** de `stop_camera` (rama del path viejo, ya inalcanzable).
+
+### Qué NO se borró (bifurcaciones decididas en chat)
+- **`CameraScheduler._owns_executor`** y su fallback de executor: **se queda**. No es coexistencia
+  old/new — es self-containment del scheduler como unidad construible/testeable aislada (la suite del
+  scheduler lo construye sin inyectar executor). Se anotó un comentario que aclara que en producción el
+  manager siempre inyecta el compartido; el self-create existe solo para tests.
+
+### Nuevo invariante de release (F2) — el assert más valioso post-Paso 4
+`remove_camera` **NO libera** el detector: todas las cámaras comparten el mismo singleton, así que
+liberarlo por-cámara mataría el modelo de las demás (falla F2). El compartido se libera **una sola vez
+en `MultiCameraManager.shutdown()`** — única vía. El test que protege esto pasó a nombrarse por lo que
+protege: `test_remove_no_libera_shared_detector_shutdown_si` (remove no libera + shutdown sí).
+
+### Delta de suite (170 → 169 passed, 0 fallos)
+El grueso del Paso 4 fue en los tests, no en producción (`start_camera` era el seam de integración del
+loop viejo). Movimientos al **nivel correcto**:
+- **Manager 13→10:** 2 conductas (separación muestreo/render; persistencia visual de boxes en skip
+  frames) **movidas** a `test_camera_scheduler.py` como tests de `_route`; 1 (`muestreo-survives-watchdog`)
+  **disuelto** sin pérdida (sus mitades quedan cubiertas por el test de scheduler render-off + el
+  `test_sweep_idle` existente). Reescritos in-place: `start_stop` (assert por `scheduler.stop()`) y el de
+  release (invariante F2).
+- **Scheduler 10→12:** el viejo test de **equivalencia** (scheduler vs pipeline viejo) perdió su mitad
+  vieja → **convertido** a `test_route_render_on_escribe_mjpeg_y_publica` (conserva la integración
+  muestreo+render que nadie más cubría) + 2 nuevos movidos.
+- **`stub_scheduler` autouse** en la suite del manager: stubea `CameraScheduler` en el boundary para no
+  spinear `ThreadedCapture` sobre un source mockeado — isolación correcta (el scheduler tiene suite propia).
+
+### Estado resultante + smoke (rebuild con el código del Paso 4)
+**Scheduler único path; detector compartido incondicional; sin gate de env.** Smoke de runtime
+(`invoke up-build`, primer arranque del dispatch incondicional **sin** la env): boot limpio, sin
+traceback — nada dependía silenciosamente del gate. Alta de **10/10** (benavides sigue 404 upstream,
+PENDIENTE-BENAVIDES-11A), **`Loading model`=1**, `/vision/health` 10/10 `ok` (0 err / 0 drop),
+**~1.46 GiB render-off** (coherente con el gate del Paso 3). El Paso 5 (re-medir + bajar el límite) queda
+con su insumo abierto: la decisión render-on/render-off + ventana que muestre plateau del creep (ver §9).
 
 ---
 

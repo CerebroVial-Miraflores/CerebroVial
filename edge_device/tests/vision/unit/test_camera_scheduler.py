@@ -15,7 +15,6 @@ from omegaconf import OmegaConf
 
 from src.vision.application.processors.smart_detection import DEFAULT_IMGSZ
 from src.vision.application.services.camera_scheduler import CameraScheduler
-from src.vision.application.services.multi_camera import MultiCameraManager
 from src.vision.domain.entities import Frame, FrameAnalysis, FrameSnapshot
 from src.vision.domain.value_objects import SensorStatus
 from src.vision.infrastructure.sources.threaded_capture import ThreadedCapture
@@ -308,54 +307,74 @@ def test_stop_cierra_aggregator_y_captura_b2():
     agg.stop.assert_called_once()         # B2: worker no queda colgado
 
 
-# ---- Equivalencia con el pipeline viejo ------------------------------
+# ---- Ruteo: muestreo + render (movido de test_multi_camera_manager) --
+# B1 Paso 4: estas conductas las ejercía el path viejo a nivel manager
+# (_run_camera_pipeline). Retirado el path viejo, son invariantes del `_route`
+# del scheduler y se prueban acá, en su nivel. El viejo test de equivalencia
+# (scheduler vs pipeline viejo) se retiró: ya no hay con qué equivaler.
 
 @pytest.mark.asyncio
-async def test_equivalencia_ruteo_scheduler_vs_pipeline_viejo():
-    """Mismo (frame, analysis) + mismo aggregator.flush → mismo TrafficData
-    publicado por ambos caminos, y ambos escriben latest_frame_raw (MJPEG)."""
-    from unittest.mock import patch
-    from omegaconf import DictConfig
-
-    img = np.zeros((4, 4, 3), dtype=np.uint8)
-    frame = Frame(id=0, timestamp=0.0, image=img)
-    analysis = _analysis(0, detection_ran=True)
-
-    # --- Camino VIEJO (MultiCameraManager._run_camera_pipeline) ---
-    old_broadcaster = MagicMock()
-    old_broadcaster.publish = AsyncMock()
-    old_agg = MagicMock()
-    old_agg.flush.return_value = ["TD"]
-    manager = MultiCameraManager(old_broadcaster)
-    cfg = DictConfig({"vision": {"source": "s", "zones": {}}})
-    with patch("src.vision.application.services.multi_camera.VisionApplicationBuilder") as MB, \
-         patch("src.vision.application.services.multi_camera.create_detector", return_value=MagicMock()):
-        pipeline = MagicMock()
-        pipeline.run.return_value = iter([(frame, analysis)])
-        MB.return_value.build_pipeline.return_value = pipeline
-        MB.return_value.get_components.return_value = {"detector": MagicMock(), "aggregator": old_agg}
-        manager.add_camera("cam1", cfg)
-        manager.cameras["cam1"].state.render_enabled = True
-        await manager.start_camera("cam1")
-        await manager._tasks["cam1"]
-    old_published = [c.args[0] for c in old_broadcaster.publish.await_args_list]
-    old_raw_written = manager.cameras["cam1"].state.latest_frame_raw is not None
-
-    # --- Camino NUEVO (CameraScheduler) ---
-    new_broadcaster = MagicMock()
-    new_broadcaster.publish = AsyncMock()
-    new_agg = MagicMock()
-    new_agg.flush.return_value = ["TD"]
+async def test_route_render_off_muestreo_sigue():
+    """Con render_enabled=False el `_route` NO escribe latest_frame_* (render off),
+    PERO el muestreo sigue: drena el aggregator y publica al broadcaster. Es la
+    separación muestreo/render del Paso 0, ahora a nivel scheduler."""
     chain = MagicMock()
-    chain.process.return_value = analysis
-    cam = _make_camera(chain, new_agg, render_enabled=True)
-    sch = _scheduler(cam, _FakeCapture(_fresh(frame=frame, age=0.5)), new_broadcaster)
-    await sch._tick(asyncio.get_running_loop())
-    new_published = [c.args[0] for c in new_broadcaster.publish.await_args_list]
-    new_raw_written = cam.state.latest_frame_raw is not None
+    agg = MagicMock()
+    agg.flush.return_value = ["td-1"]
+    cam = _make_camera(chain, agg, render_enabled=False)
+    broadcaster = _broadcaster()
+    sch = _scheduler(cam, _FakeCapture(_dead()), broadcaster)
 
-    # Equivalencia: mismo TrafficData publicado (SSE/persistencia) + MJPEG escrito.
-    assert old_published == ["TD"]
-    assert new_published == old_published
-    assert old_raw_written is True
-    assert new_raw_written == old_raw_written
+    await sch._route(_frame(), _analysis(detection_ran=True))
+
+    broadcaster.publish.assert_awaited_once_with("td-1")  # muestreo ON
+    assert cam.state.latest_frame_raw is None             # render OFF
+    assert cam.state.latest_frame_processed is None
+
+
+@pytest.mark.asyncio
+async def test_route_render_on_escribe_mjpeg_y_publica():
+    """Con render_enabled=True el `_route` publica el TD del aggregator Y escribe el
+    frame procesado vía renderer. Integra muestreo + render en un tick (convertido
+    del viejo test de equivalencia, conservando su mitad nueva)."""
+    chain = MagicMock()
+    agg = MagicMock()
+    agg.flush.return_value = ["TD"]
+    renderer = MagicMock()
+    img = np.zeros((2, 2, 3), dtype=np.uint8)
+    renderer.render.return_value = img
+    cam = _make_camera(chain, agg, render_enabled=True, renderer=renderer)
+    broadcaster = _broadcaster()
+    sch = _scheduler(cam, _FakeCapture(_dead()), broadcaster)
+
+    await sch._route(_frame(), _analysis(detection_ran=True))
+
+    broadcaster.publish.assert_awaited_once_with("TD")    # muestreo
+    renderer.render.assert_called_once()                  # render ON
+    assert cam.state.latest_frame_raw is not None
+    assert cam.state.latest_frame_processed is img         # frame anotado escrito
+
+
+@pytest.mark.asyncio
+async def test_route_persistencia_visual_boxes_sin_doble_conteo():
+    """En skip frames (detection_ran=False) el render persiste los boxes del último
+    frame inferido, PERO esos boxes NUNCA tocan métricas: el `_route` solo hace
+    flush, nunca add (movido de test_multi_camera_manager)."""
+    chain = MagicMock()
+    agg = MagicMock()
+    agg.flush.return_value = []
+    renderer = MagicMock()
+    renderer.render.return_value = np.zeros((2, 2, 3), dtype=np.uint8)
+    cam = _make_camera(chain, agg, render_enabled=True, renderer=renderer)
+    sch = _scheduler(cam, _FakeCapture(_dead()))
+
+    analysis_detect = _analysis(fid=0, detection_ran=True)
+    analysis_skip = _analysis(fid=1, detection_ran=False)
+    await sch._route(_frame(0), analysis_detect)
+    await sch._route(_frame(1), analysis_skip)
+
+    # En el skip frame el renderer recibió el análisis PERSISTIDO (detect), no el vacío.
+    rendered = [call.args[1] for call in renderer.render.call_args_list]
+    assert rendered == [analysis_detect, analysis_detect]
+    # Los boxes persistidos NUNCA tocan métricas.
+    agg.add.assert_not_called()

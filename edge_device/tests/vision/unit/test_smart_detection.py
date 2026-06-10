@@ -97,7 +97,10 @@ def test_passes_imgsz_to_detect():
 
 
 def test_imgsz_none_by_default():
-    """B1 1c: sin imgsz (path viejo) → None → detect no especifica → nativo."""
+    """Capacidad del processor: sin imgsz → None → detect no especifica → nativo de
+    ultralytics. B1 Paso 4: ya no hay caller de producción que use imgsz=None (el
+    scheduler siempre aplica DEFAULT_IMGSZ); esto prueba la API del processor, que
+    sigue aceptando None como entrada válida."""
     detector = MagicMock()
     detector.detect.return_value = []
     processor = SmartDetectionProcessor(detector=detector, detect_every_n=1)

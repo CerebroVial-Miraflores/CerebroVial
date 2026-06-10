@@ -32,10 +32,10 @@ logger = logging.getLogger(__name__)
 # B1 1c — ÚNICA política de imgsz del producto, en un solo lugar. El spike validó
 # 11 cámaras a 1 Hz @320 con margen holgado (D-018). La aplica el scheduler
 # (relectura per-tick de cfg.vision.model.imgsz, fallback a esta constante).
-# El path viejo (_run_camera_pipeline) NO la usa: corre con imgsz=None (nativo de
-# ultralytics) porque no toca la palanca — no porque tenga una política propia.
-# DEUDA Paso 2: al migrar las 11 al scheduler y retirar el path viejo, la rama
-# imgsz=None/nativo desaparece con él y queda solo esta política (320).
+# B1 Paso 4: con el path viejo retirado, ya NO hay caller de producción que
+# infiera con imgsz=None — el scheduler siempre aplica esta política. `imgsz=None`
+# sigue siendo una entrada válida del processor (nativo de ultralytics), pero
+# nadie la usa en producción; se conserva como capacidad de la API (ejercida en tests).
 DEFAULT_IMGSZ = 320
 
 
