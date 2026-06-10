@@ -25,7 +25,7 @@ La secuencia de 2-A son seis sub-pasos. No es un cierre: marcamos el estado real
 | **2** | Detector + executor compartidos: hoist de singletons al `MultiCameraManager` + lifecycle | ✅ **Commiteado** (`c7b81c7e`) — implementación en §8 |
 | **3** | Migrar las 11 al scheduler (nacen compartiendo detector) | ✅ **Hecho 10/11** (2026-06-09) — gate aprobado; `cam_benavides_panama` excluida por 404 upstream. Detalle en §9 |
 | **4** | Retirar path viejo: invertir dispatch a scheduler-por-default, borrar el gate | ✅ **Hecho** (2026-06-09) — scheduler único path; gate de env borrado. Detalle en §10 |
-| **5** | Re-medir con detector compartido + 11 y bajar el límite de memoria al consumo real | ⬜ Pendiente |
+| **5** | Re-medir con detector compartido + 11 y bajar el límite de memoria al consumo real | ✅ **Hecho** (2026-06-10) — límite validado en 4 GiB por medición (no bajó: la aritmética lo confirma). Detalle en §11. **B1 Paso 2 COMPLETO** |
 
 ---
 
@@ -363,6 +363,54 @@ traceback — nada dependía silenciosamente del gate. Alta de **10/10** (benavi
 PENDIENTE-BENAVIDES-11A), **`Loading model`=1**, `/vision/health` 10/10 `ok` (0 err / 0 drop),
 **~1.46 GiB render-off** (coherente con el gate del Paso 3). El Paso 5 (re-medir + bajar el límite) queda
 con su insumo abierto: la decisión render-on/render-off + ventana que muestre plateau del creep (ver §9).
+
+---
+
+## 11. Paso 5 ejecutado — límite de memoria validado por medición (2026-06-10)
+
+Ventana de 90 min con **render-on parcial** (4 consumidores MJPEG persistentes:
+`28julio_lapaz`, `arequipa_angamos`, `larco_benavides`, `paseo_angamos`; 6 render-off),
+10 cámaras (benavides seguía 404), marcas cada 10 min + pendiente cada 60s + marca
+post-render-off a t+92. Durante la ventana hubo un **corte de internet real del proveedor
+(~04:50–05:08Z, ~18 min)** — el veredicto de chat lo declaró **señal, no ruido**: la ventana
+es **VÁLIDA** (51 min limpios + perturbación representativa de operación real).
+
+### La curva, por regímenes (no se promedia lo que no es comparable)
+| Régimen | Tramo | MEM | Lectura |
+|---|---|---|---|
+| Render-on limpio | t0–t51 | 1.478 → 1.565 GiB | creep **~1.7 MiB/min, decayendo** (3.4 inicial → ~1.5); mismo orden que el render-off del Paso 3 (2.1) — el render no multiplica el creep |
+| Salto pre-corte | t+52–53 | +221 MiB en 2 min | ~5 min ANTES del corte total; compatible con buffers HLS hinchándose en la degradación previa — **no atribuible con certeza**, no es creep |
+| Corte de red | t+60–76 | **plano** (1.701–1.702, 17 muestras) | experimento natural: **sin frames no hay creep** → el creep es **workload-driven**, no time-driven |
+| Recuperación | t+77–92 | 1.702 → **2.022 GiB** (pico) | las 10 reconectando a la vez (~20 MiB/min); a t+92 (post-kill de consumidores) no cedió — dato **contaminado** por la recuperación aún asentándose |
+
+### Aritmética del límite (fórmula: pico + creep×(8h−ventana) + pico/10 [11ª] + 20%, ½ GiB ↑)
+```
+Variante A — creep residual render-on limpio (1.6 MiB/min):
+  (2.022 + 0.609 + 0.202) × 1.20 = 3.40 → 3.5 GiB
+Variante B — creep peor-medido sostenido (Paso 3, 2.1 MiB/min):
+  (2.022 + 0.800 + 0.202) × 1.20 = 3.63 → 4.0 GiB
+```
+**Elegida la B (4.0 GiB)** en chat: absorbe el creep peor-medido y otro evento red+recuperación
+apilado. Coincide numéricamente con el andamio del Paso 1 → **el compose no cambia de valor,
+cambia de estatus: de provisional a MEDIDO** (comentario en `docker-compose.yml`). No hubo
+recreate: el límite vigente ya era ese.
+
+### Veredicto y observaciones abiertas
+- **Plateau NO demostrado**: la pendiente decae pero no llega a cero en 51 min bajo carga.
+  Registrado como **DEUDA-CREEP-MEMORIA** en `TODO.md` (trigger: caza del leak o restart
+  programado antes de 24/7), con el hallazgo workload-driven que acota la caza al path de
+  procesamiento de frames.
+- **Costo real del render: observación abierta.** El delta render-on quedó sin aislar del todo:
+  t92 (la marca diseñada para ver si la memoria cede al apagar render) quedó contaminada por la
+  recuperación del corte. El tramo limpio sugiere que el render no domina el footprint, pero la
+  marca limpia post-render-off no existe.
+- **Resiliencia probada de punta a punta (no planeada, pero real):** corte total de los 10
+  streams → **0 crash, 0 `aggregation_errors`, 0 `data_dropped`**, las 10 marcadas honestamente
+  `sin_frame_fresco` (pico de edad: 1320s), **auto-recuperación 10/10** sin intervención
+  (t92: edades < 2.7s), y el watchdog apagó el render de **exactamente las 4** con consumidor
+  muerto al cierre. El mecanismo de honestidad de D-018 funcionó completo en una falla real.
+
+**Con esto, la secuencia 2-A queda completa (sub-pasos 0–5) y B1 Paso 2 CERRADO ENTERO.**
 
 ---
 

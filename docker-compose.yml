@@ -66,6 +66,8 @@ services:
     deploy:
       resources:
         limits:
+          # Límite MEDIDO (B1 Paso 5, 2026-06-10): pico 2.022 GiB a 10 cámaras con
+          # evento de red real + creep proyectado a 8h + 11ª cámara + 20% margen.
           memory: 4G
 
   # ------------------------------------
