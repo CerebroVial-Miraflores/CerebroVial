@@ -2,11 +2,10 @@
 
 **Rama**: `feature/refundacion-vision`.
 **Fecha**: 2026-06-09.
-**Estado**: **track EN VUELO, no es un cierre.** Paso 0 (medición de memoria) hecho y
-2-A1 (gate de ruteo al scheduler) commiteado; sub-pasos 1–5 pendientes. Este handoff
-fija la **secuencia** y su **rationale** ahora que el orden quedó decidido — se venía
-difiriendo a propósito para no versionar un orden que la medición del paso 0 podía dar
-vuelta (y que finalmente no dio).
+**Estado**: **track EN VUELO, no es un cierre.** Pasos 0 (medición), 2-A1 (gate de ruteo),
+1 (andamio 4 GiB) y 2 (detector + executor compartidos) hechos y commiteados; sub-pasos 3–5
+pendientes. Este handoff fija la **secuencia** y su **rationale**; el §8 documenta la
+implementación del Paso 2 (orden b→c→a + inyección condicional).
 **Implementa en ejecución**: D-018 (scheduler único, modelo compartido, instancia dueña
 de cámaras) — ver `documentation/lean-inception/4-decisiones/DECISIONS.md` § D-018.
 **Contrasta con**: `documentation/docs/CIERRE-metricas-vision-flujo.md` (Benchmark 1,
@@ -22,8 +21,8 @@ La secuencia de 2-A son seis sub-pasos. No es un cierre: marcamos el estado real
 |---|---|---|
 | **0** | Medición de memoria (base + marginal por cámara) para resolver el fork de orden | ✅ **Hecho** (2026-06-09) — números en §3 |
 | **2-A1** | Gate de ruteo: env `VISION_SCHEDULER_CAMERA_IDS` rutea cámaras designadas al `CameraScheduler`; el resto sigue por el path viejo | ✅ **Commiteado** (`ad42ee04`) |
-| **1** | Andamio de memoria: subir el límite del contenedor edge a **4 GiB** en compose (temporal) | ⬜ Pendiente |
-| **2** | Detector + executor compartidos: hoist de singletons al `MultiCameraManager` + lifecycle | ⬜ Pendiente |
+| **1** | Andamio de memoria: subir el límite del contenedor edge a **4 GiB** en compose (temporal) | ✅ **Commiteado** (`35226f88`) |
+| **2** | Detector + executor compartidos: hoist de singletons al `MultiCameraManager` + lifecycle | ✅ **Commiteado** (`c7b81c7e`) — implementación en §8 |
 | **3** | Migrar las 11 al scheduler (nacen compartiendo detector) | ⬜ Pendiente |
 | **4** | Retirar path viejo: invertir dispatch a scheduler-por-default, borrar el gate | ⬜ Pendiente |
 | **5** | Re-medir con detector compartido + 11 y bajar el límite de memoria al consumo real | ⬜ Pendiente |
@@ -172,6 +171,71 @@ Justificación: sobre la proyección peor-caso de 11-separados (~2.9 GiB con ren
 38–66 % de headroom; con el host de 24 GiB cualquier valor razonable es seguro. **Es temporal**:
 el Paso 5 re-mide con detector compartido + 11 y baja el límite al consumo real. Anotar en el
 commit del andamio que el número es provisional para que no quede como techo mágico permanente.
+
+---
+
+## 8. Paso 2 implementado — orden b→c→a + inyección condicional (`c7b81c7e`)
+
+Paso 2 aterrizó en `multi_camera.py` (+ una línea de wiring en `api/__init__.py`). **Alcance
+real: NO fueron "tres archivos"** — `camera_scheduler.py` y `pipeline_builder.py` no cambiaron
+(sus seams de Paso 1a ya recibían el parámetro inyectado). Tres cambios: **(a)** detector
+singleton del manager, inyectado condicionalmente; **(b)** executor `max_workers=1` singleton,
+global; **(c)** guard de release en `remove_camera` vía `_owns_detector`.
+
+### Orden b→c→a — por qué (a) aterriza ÚLTIMO
+**(a) es el único cambio que introduce el riesgo** (compartir el modelo). Sin protección, dos fallas:
+- **F1 (concurrencia):** modelo compartido + executors por-cámara → inferencia concurrente sobre
+  el mismo modelo desde threads distintos → corrupción silenciosa. **Lo previene (b)**, no (c).
+- **F2 (release-kill):** modelo compartido + release por-cámara → bajar una cámara mata el modelo
+  bajo las otras. **Lo previene (c)**.
+
+Por eso el orden es **(b) → (c) → (a)**: (a) entra en un entorno ya doblemente protegido.
+"a+c sin b" todavía tendría F1. Y (b), (c) son seguros de aterrizar solos: (b) serializa modelos
+aún separados (correcto, y por §B.3 del Benchmark es el óptimo anti-oversubscription); (c) con
+`_owns_detector=True` por defecto es andamio dormido hasta que (a) lo ponga en False. Ningún
+estado de runtime inseguro, ni durante el desarrollo.
+
+### Inyección condicional — el aislamiento estructural de Q3
+El detector compartido se inyecta **solo si `use_scheduler=True`** (`add_camera`); las cámaras del
+path viejo pasan `detector=None` y construyen el suyo (`CameraInstance`). Resuelve un riesgo que la
+auditoría destapó: una cámara con id **fuera de la env** (typo, cámara nueva, POST de un id no
+listado) cae al path viejo e infiere **fuera** del executor global. Si se hubiera inyectado el
+compartido a TODAS, esa cámara accidental inferiría sobre el modelo compartido fuera del executor
+→ corrupción silenciosa (F1).
+
+Con la condicional, una cámara fuera del scheduler **nunca recibe el modelo compartido** → no puede
+tocarlo. **Refina el invariante del §5:** la garantía "nada infiere sobre el compartido fuera del
+executor" se sostiene durante la ventana de coexistencia **por la inyección condicional, no por
+matar el path viejo**. Por eso el Paso 2 (compartir) y el Paso 3 (migrar las 11) conviven con
+seguridad **mientras el path viejo sigue presente pero dormido**. El Paso 4 después lo borra
+(limpieza estructural definitiva), pero 2+3 ya son seguros sin él.
+
+### Lifecycle, teardown y carrera
+- El guard `_owns_detector` libera el modelo en `remove_camera` **solo si es propio** (path viejo).
+  Las scheduled (`_owns_detector=False`) no liberan el compartido al bajar.
+- `MultiCameraManager.shutdown()` libera el detector compartido + apaga el executor **una vez**,
+  cableado a `@app.on_event("shutdown")` en `api/__init__.py` — contrapeso de haber sacado el
+  release por-cámara. En contenedor el stop es SIGKILL y no corre; queda para shutdown graceful y
+  deploys no-contenedor. (`on_event` está deprecado pero es consistente con el archivo, que no usa
+  lifespan; meter lifespan sería refactor colado.)
+- **Singletons lazy race-free:** `if X is None: X = create()` es seguro porque los helpers son
+  síncronos y se invocan sin `await` entre el check y el set (el event loop no interleavea).
+  Invariante anotada en sus docstrings: si un refactor los vuelve async, hace falta lock.
+
+### Validación en vivo (gate de 5 criterios, 2026-06-09)
+Edge **rebuildeado** (`invoke up-build` — el código va COPIADO a la imagen, no montado; correr con
+`up` a secas habría validado código viejo), env con 2 cámaras scheduler:
+- **C1 (comparten, duro):** 2 scheduler → **1 solo `Loading model`**.
+- **C2 (baja-no-rompe, duro):** DELETE de una scheduled → la otra sigue tickeando
+  (`sensor_status:ok`, age 1.12s), modelo no reconstruido.
+- **C4 (condicional, duro):** cámara fuera de env → **+1 `Loading model` propio** (1→2), path
+  viejo aislado del compartido.
+- **C5 (release rama owns):** DELETE de la owns=True liberó (~60 MiB de vuelta, RSS parcial en
+  torch); el compartido sobrevivió a esa baja.
+- **C3 (confirmatorio):** sin blowup, bajo el andamio de 4 GiB. El sharing lo prueba C1, no el
+  número de memoria (delta mezclado scheduler@320 + viejo@nativo, en el ruido).
+
+Suite `edge_device/tests/vision`: **170 passed**.
 
 ---
 
