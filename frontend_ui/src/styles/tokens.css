@@ -35,9 +35,12 @@
   --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
-  /* Radios */
+  /* Radios. Regla: radio repetido en ≥3 componentes = token; caso único = arbitrario.
+     ctl 12px (toasts/legend/rail); btn 9px (Button, botón .x de Modal y Drawer). */
   --radius-card: 14px;
   --radius-panel: 16px;
+  --radius-ctl: 12px;
+  --radius-btn: 9px;
 
   /* Easing */
   --ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
@@ -45,6 +48,7 @@
   /* Animaciones (define las clases animate-fade-in / animate-in que hoy son inertes) */
   --animate-fade-in: fade-in 0.5s var(--ease-fluid) both;
   --animate-in: rise-in 0.6s var(--ease-fluid) both;
+  --animate-halo-ping: halo-ping 1.6s ease-out infinite;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -54,6 +58,11 @@
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: none; }
   }
+  /* Halo del NodeMarker crítico (equivale al <animate> SMIL r 9→20 del prototipo) */
+  @keyframes halo-ping {
+    from { opacity: 0.8; transform: scale(1); }
+    to { opacity: 0; transform: scale(2.2); }
+  }
 }
 
 :root {
@@ -61,4 +70,10 @@
   --h-topbar: 60px;
   --w-rail: 66px;
   --h-bottomnav: 64px;
+
+  /* Escala z de overlays (prototipo: drawer 90 < modal 100 < toasts 120).
+     El shell usa z-40 y ThesisModal z-50: siempre por debajo. */
+  --z-drawer: 90;
+  --z-modal: 100;
+  --z-toast: 120;
 }

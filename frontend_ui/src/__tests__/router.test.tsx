@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { RouterProvider, createMemoryRouter, type RouteObject } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 import { appRoutes } from '../router';
@@ -144,5 +144,19 @@ describe('catch-all y autenticación', () => {
     const router = renderAt(null, '/control');
     expect(router.state.location.pathname).toBe('/login');
     expect(screen.getByTestId('view-login')).toBeInTheDocument();
+  });
+});
+
+describe('ruta /ui-lab (galería del design system)', () => {
+  // Bajo vitest import.meta.env.DEV === true → la ruta existe. En el build de
+  // producción el ternario se elimina y /ui-lab cae al catch-all (la ausencia
+  // en el bundle se verifica con grep sobre dist/ en el cierre de fase).
+  it('existe en DEV', () => {
+    const collectPaths = (routes: RouteObject[]): string[] =>
+      routes.flatMap((route) => [
+        ...(route.path ? [route.path] : []),
+        ...(route.children ? collectPaths(route.children) : []),
+      ]);
+    expect(collectPaths(appRoutes)).toContain('ui-lab');
   });
 });

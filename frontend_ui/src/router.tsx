@@ -91,6 +91,21 @@ export const appRoutes: RouteObject[] = [
                   </RoleRoute>
                 ),
               },
+              // Galería del design system — SOLO DEV. El ternario se elimina
+              // estáticamente en build (import.meta.env.DEV → false): el chunk
+              // no se emite y /ui-lab cae al catch-all → default del rol.
+              // Sin RoleRoute: no es un Tab (cualquier rol autenticado, solo DEV).
+              ...(import.meta.env.DEV
+                ? [
+                    {
+                      path: 'ui-lab',
+                      lazy: () =>
+                        import('./components/views/UiLabView').then((m) => ({
+                          Component: m.default,
+                        })),
+                    },
+                  ]
+                : []),
               { path: '*', element: <DefaultTabRedirect /> },
             ],
           },

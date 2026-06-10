@@ -35,3 +35,21 @@ Object.defineProperty(globalThis, 'EventSource', {
   writable: true,
   value: StubEventSource,
 });
+
+// jsdom no implementa window.matchMedia; lo usa prefers-reduced-motion (useCountUp).
+// matches: false = sin reducción de movimiento; los tests que necesiten el camino
+// reducido lo pisan localmente.
+Object.defineProperty(window, 'matchMedia', {
+  configurable: true,
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent: () => false,
+  }),
+});

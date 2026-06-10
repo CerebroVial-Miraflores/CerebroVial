@@ -356,7 +356,8 @@ important information, read the current plan at `specs/001-cerebrovial-mvp/plan.
   tenga backend real se mockea SEÑALIZADO con badge "Demo · datos simulados" (no verde con
   asterisco). El edge (EventSource y POST /cameras) queda como está: su auth es deuda backend.
 - ThesisModal y su acceso en la navegación: zona protegida. Migra, nunca se elimina.
-- Tests: componente nuevo = test nuevo. Mock de react-leaflet y stubs (IntersectionObserver,
-  EventSource) globales en setupTests.ts.
+- Tests: componente nuevo = test nuevo. Stubs de entorno (IntersectionObserver,
+  EventSource, matchMedia) globales en setupTests.ts; mock de react-leaflet per-file
+  con captura de props, patrón CongestionMapView.test.
 - Disciplina de fases: plan mode antes de ejecutar; commit por fase completa validada, en
   español, sin Co-Authored-By; PARAR al cerrar cada fase; sin push/PR sin pedido explícito.
