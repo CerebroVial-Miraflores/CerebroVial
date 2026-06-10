@@ -151,7 +151,7 @@ Migraciones:
 ## Reglas para Claude Code
 
 ### Zonas que NO se tocan sin pedirlo
-- **ThesisModal + su botón en `Sidebar.tsx`** — documentación viva de la tesis
+- **ThesisModal + su acceso en AppShell (rail ≥md / botón en topbar <md)** — documentación viva de la tesis
   (autores, objetivo, stack, KPIs). NO es parte de la arquitectura de control;
   NO marcar como componente huérfano ni proponer su remoción.
 - **`CerebroVial/.gemini/settings.json`** — configuración intencional del flujo
@@ -339,3 +339,24 @@ important information, read the current plan at `specs/001-cerebrovial-mvp/plan.
 - `specs/001-cerebrovial-mvp/tasks.md` (dependency-ordered tasks)
 - `.specify/memory/constitution.md` (project constitution)
 <!-- SPECKIT END -->
+
+## Rediseño UI (feature/rediseno-ui)
+- Spec visual: design/cerebrovial-ui-concept.html. Antes de construir cualquier vista o
+  componente, leer la sección equivalente del prototipo y calcar estética e interacciones.
+- Mobile-first OBLIGATORIO: primero layout 390px, después md:/lg:. Rail solo ≥md; <md usa
+  bottom-nav. Drawers = sheet de pantalla completa en <md. Prohibido h-[calc(100vh-*)]:
+  alturas por flex/grid con min-h-0 y las vars --h-topbar/--w-rail/--h-bottomnav.
+- Tokens: todo color/radio/animación sale de src/styles/tokens.css (@theme). Prohibido hex
+  inline y paleta slate/indigo default en código nuevo. Única escala de estado: ok/warn/bad/
+  sev/info.
+- Reusar sin reescribir: services/*, auth/* (SessionContext, RoleGate, roles, authBridge),
+  utils/* (congestion, markerVisual, trafficLabels), HlsPlayer, TrafficLightCycle, Slider,
+  TimingBar, types/*.
+- Datos: todo acceso al core vía httpClient (JWT). Hooks de datos en src/hooks/. Lo que no
+  tenga backend real se mockea SEÑALIZADO con badge "Demo · datos simulados" (no verde con
+  asterisco). El edge (EventSource y POST /cameras) queda como está: su auth es deuda backend.
+- ThesisModal y su acceso en la navegación: zona protegida. Migra, nunca se elimina.
+- Tests: componente nuevo = test nuevo. Mock de react-leaflet y stubs (IntersectionObserver,
+  EventSource) globales en setupTests.ts.
+- Disciplina de fases: plan mode antes de ejecutar; commit por fase completa validada, en
+  español, sin Co-Authored-By; PARAR al cerrar cada fase; sin push/PR sin pedido explícito.

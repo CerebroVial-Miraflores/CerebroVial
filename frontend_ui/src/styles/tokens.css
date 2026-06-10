@@ -1,0 +1,64 @@
+/* CerebroVial · Design tokens — fuente de verdad: design/cerebrovial-ui-concept.html
+   Tailwind v4 CSS-first. PROHIBIDO usar hex inline o paleta slate/indigo default
+   en componentes nuevos: todo color/radio/animación sale de acá. */
+
+@theme {
+  /* Fondos */
+  --color-canvas: #06080f;
+  --color-canvas-2: #0b101d;
+  --color-panel: rgba(255, 255, 255, 0.035);
+  --color-panel-2: rgba(255, 255, 255, 0.07);
+
+  /* Líneas y bordes */
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-2: rgba(255, 255, 255, 0.16);
+
+  /* Tinta */
+  --color-ink: #e9edf7;
+  --color-ink-2: #8b93a7;
+  --color-ink-3: #5b6275;
+
+  /* Marca */
+  --color-brand: #7c6cff;
+  --color-brand-2: #a99cff;
+  --color-accent: #5b8cff;
+
+  /* Escala semántica de tráfico (única escala de estado en la app) */
+  --color-ok: #10b981;
+  --color-ok-road: #0fae79;
+  --color-warn: #f59e0b;
+  --color-bad: #ef4444;
+  --color-sev: #a855f7;
+  --color-info: #38bdf8;
+
+  /* Tipografía */
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* Radios */
+  --radius-card: 14px;
+  --radius-panel: 16px;
+
+  /* Easing */
+  --ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Animaciones (define las clases animate-fade-in / animate-in que hoy son inertes) */
+  --animate-fade-in: fade-in 0.5s var(--ease-fluid) both;
+  --animate-in: rise-in 0.6s var(--ease-fluid) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+:root {
+  /* Métricas de layout (evitan alturas calc() frágiles) */
+  --h-topbar: 60px;
+  --w-rail: 66px;
+  --h-bottomnav: 64px;
+}

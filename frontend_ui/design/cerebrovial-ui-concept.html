@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CerebroVial · Centro de Comando — Concepto UI v1</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg0:#06080f; --bg1:#0b101d;
+  --panel:rgba(255,255,255,.035); --panel2:rgba(255,255,255,.07);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --txt:#e9edf7; --mut:#8b93a7; --mut2:#5b6275;
+  --brand:#7c6cff; --brand2:#a99cff; --blue:#5b8cff;
+  --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --sev:#a855f7; --info:#38bdf8;
+  --r:14px;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  font-size:14px;color:var(--txt);
+  background:
+    radial-gradient(1100px 700px at 78% -12%, rgba(124,108,255,.13), transparent 60%),
+    radial-gradient(900px 600px at -8% 112%, rgba(16,185,129,.06), transparent 55%),
+    linear-gradient(180deg,var(--bg0),var(--bg1));
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.num{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg{display:block}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--brand2);outline-offset:2px;border-radius:8px}
+body.lock{overflow:hidden}
+.hidden{display:none!important}
+
+/* ============ TOPBAR ============ */
+.topbar{position:fixed;inset:0 0 auto 0;height:60px;z-index:60;display:flex;align-items:center;gap:13px;padding:0 18px;
+  background:rgba(7,10,18,.74);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;margin-right:2px}
+.logo{width:31px;height:31px;border-radius:9px;background:linear-gradient(135deg,var(--brand),#4f7cff);
+  display:grid;place-items:center;box-shadow:0 4px 18px rgba(124,108,255,.45);color:#fff}
+.brand b{font-size:14.5px;letter-spacing:.2px;display:block;line-height:1.1}
+.brand small{display:block;color:var(--mut);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+.tag{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand2);
+  border:1px solid rgba(124,108,255,.4);background:rgba(124,108,255,.1);padding:4px 9px;border-radius:999px}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg button{padding:5px 13px;border-radius:999px;font-size:12.5px;color:var(--mut);font-weight:600;transition:.25s var(--ease)}
+.seg button:hover{color:var(--txt)}
+.seg button.active{background:linear-gradient(135deg,var(--brand),var(--blue));color:#fff;box-shadow:0 3px 12px rgba(110,100,255,.4)}
+.spacer{flex:1}
+.tb-btn{display:flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--panel);color:var(--mut);font-size:12.5px;transition:.2s}
+.tb-btn:hover{border-color:var(--line2);color:var(--txt)}
+.tb-btn kbd{font:600 10px ui-monospace,monospace;background:rgba(255,255,255,.08);padding:2px 6px;border-radius:5px;border:1px solid var(--line)}
+.pill{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;border:1px solid rgba(16,185,129,.35);
+  background:rgba(16,185,129,.1);color:#34d399;font-size:11.5px;font-weight:700;letter-spacing:.04em}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.8s infinite}
+.clock{font-size:14.5px;color:var(--txt);font-weight:600;min-width:74px;text-align:right}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);
+  display:grid;place-items:center;font-size:11px;font-weight:800;color:#1a1206}
+
+/* ============ RAIL ============ */
+.rail{position:fixed;left:0;top:60px;bottom:0;width:66px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:14px 0;border-right:1px solid var(--line);background:rgba(7,10,18,.5);backdrop-filter:blur(12px);z-index:50}
+.rail button{position:relative;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:var(--mut);transition:.2s}
+.rail button:hover{color:var(--txt);background:var(--panel2)}
+.rail button.active{color:#fff;background:linear-gradient(135deg,rgba(124,108,255,.95),rgba(91,140,255,.95));box-shadow:0 4px 16px rgba(110,100,255,.45)}
+.rail .bdg{position:absolute;top:5px;right:5px;min-width:15px;height:15px;border-radius:8px;background:var(--bad);
+  font-size:9px;font-weight:800;display:grid;place-items:center;padding:0 3px;color:#fff;border:2px solid #0a0e19}
+.rail .tt{position:absolute;left:54px;top:50%;transform:translateY(-50%) translateX(-6px);white-space:nowrap;
+  background:#121731;border:1px solid var(--line2);padding:5px 10px;border-radius:8px;font-size:11.5px;color:var(--txt);
+  opacity:0;pointer-events:none;transition:.18s var(--ease);z-index:5}
+.rail button:hover .tt{opacity:1;transform:translateY(-50%) translateX(0)}
+.rail .sep{width:26px;height:1px;background:var(--line);margin:6px 0}
+
+/* ============ LAYOUT ============ */
+.main{padding:76px 18px 18px 84px;max-width:1680px;margin:0 auto}
+.foot{margin-top:12px;text-align:center;font-size:10.5px;color:var(--mut2);letter-spacing:.06em}
+
+/* ============ KPIs ============ */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:11px;margin-bottom:13px}
+#kpisGe{grid-template-columns:repeat(5,1fr)}
+.kpi{position:relative;text-align:left;padding:13px 15px 11px;border-radius:var(--r);overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  border:1px solid var(--line);transition:.28s var(--ease)}
+.kpi:hover{transform:translateY(-3px);border-color:rgba(124,108,255,.45);box-shadow:0 12px 34px rgba(0,0,0,.45)}
+.kpi-top{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.kpi-lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:700;flex:1;line-height:1.3}
+.delta{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.delta.neg{color:#f87171;background:rgba(239,68,68,.12)}
+.delta.pos{color:#34d399;background:rgba(16,185,129,.12)}
+.delta.neu{color:var(--mut);background:rgba(255,255,255,.06)}
+.kpi-val{display:flex;align-items:baseline;gap:6px}
+.kpi-val .num{font-size:25px;font-weight:700;letter-spacing:-.02em}
+.kpi-unit{color:var(--mut);font-size:11.5px;font-weight:600}
+.spark{width:100%;height:32px;margin-top:8px}
+.kpi .glowbar{position:absolute;inset:auto 0 0 0;height:2px;background:linear-gradient(90deg,transparent,var(--brand),transparent);opacity:0;transition:.3s}
+.kpi:hover .glowbar{opacity:1}
+.kpi.warn-k{border-color:rgba(245,158,11,.4)}
+.kpi.warn-k:hover{border-color:rgba(245,158,11,.7)}
+.conf{height:4px;border-radius:2px;background:rgba(255,255,255,.09);overflow:hidden;flex:1}
+.conf i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#34d399,#10b981);transition:width 1s var(--ease)}
+
+/* ============ CONTENT ROW ============ */
+.content{display:flex;gap:13px;align-items:stretch}
+.map-card{flex:1;min-width:0;border-radius:16px;border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;position:relative;
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));transition:box-shadow .4s}
+.map-card.flash{box-shadow:0 0 0 2px rgba(245,158,11,.55),0 0 40px rgba(245,158,11,.25)}
+.map-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.map-title{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:9px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:ring 2s infinite}
+.upd{font-size:10.5px;color:var(--mut)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:11px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--mut);transition:.2s;display:flex;gap:6px;align-items:center}
+.chip:hover{color:var(--txt);border-color:var(--line2)}
+.chip.on{border-color:rgba(124,108,255,.5);background:rgba(124,108,255,.13);color:#c9c3ff}
+.chip.on::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--brand2)}
+.hchips{display:flex;gap:5px;overflow:hidden;max-width:0;opacity:0;transition:.4s var(--ease)}
+.hchips.show{max-width:300px;opacity:1}
+.hchip{font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+.hchip.on{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.13);color:#fbbf24}
+
+.map-body{position:relative;flex:1;min-height:520px;background:radial-gradient(900px 500px at 60% 40%, rgba(124,140,255,.04), transparent 70%)}
+.map-body>svg{position:absolute;inset:0;width:100%;height:100%}
+.legend{position:absolute;left:13px;bottom:13px;background:rgba(9,12,22,.8);backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:12px;padding:10px 13px;font-size:11px;z-index:5;transition:.3s}
+.legend b{display:block;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:7px;font-weight:700}
+.lg{display:flex;align-items:center;gap:8px;margin:4px 0;color:var(--mut)}
+.lg i{width:18px;height:4px;border-radius:2px;display:inline-block}
+.modebadge{position:absolute;right:13px;top:12px;z-index:5;font-size:11px;font-weight:700;letter-spacing:.05em;
+  padding:6px 12px;border-radius:999px;border:1px solid var(--line2);background:rgba(9,12,22,.8);backdrop-filter:blur(10px);
+  display:flex;align-items:center;gap:8px;transition:.3s}
+.modebadge.pred{border-color:rgba(245,158,11,.5);color:#fbbf24}
+.modebadge.hist{border-color:rgba(56,189,248,.5);color:#7dd3fc}
+.coachtip{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) translateY(10px);z-index:6;
+  font-size:11.5px;color:#d6d1ff;background:rgba(124,108,255,.16);border:1px solid rgba(124,108,255,.5);
+  padding:8px 16px;border-radius:999px;backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:.5s var(--ease)}
+.coachtip.show{opacity:1;transform:translateX(-50%)}
+
+/* ---- SVG map ---- */
+.road{fill:none;stroke-linecap:round;transition:stroke .6s,opacity .6s,filter .6s}
+.road.ok{stroke:#0fae79;opacity:.85}
+.road.warn{stroke:#f59e0b;opacity:.92}
+.road.bad{stroke:#ef4444;filter:drop-shadow(0 0 7px rgba(239,68,68,.55))}
+.road.sev{stroke:#a855f7;filter:drop-shadow(0 0 9px rgba(168,85,247,.6))}
+svg.roads-off .road{stroke:#2b3349!important;filter:none!important;opacity:.8}
+.flowline{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;opacity:.38;stroke-dasharray:3 17;animation:dash 1.1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.lbl{fill:#5e6680;font-size:10px;letter-spacing:.04em}
+.lbl2{fill:#3d4663;font-size:11px;font-style:italic;letter-spacing:.08em}
+.node{cursor:pointer}
+.node .ring{fill:#0b0f1c;stroke-width:2.6;transition:.25s}
+.node:hover .ring{stroke-width:4}
+.node.ok .ring{stroke:#10b981}
+.node.warn .ring{stroke:#f59e0b}
+.node.bad .ring{stroke:#ef4444}
+.node .core{fill:#e9edf7}
+.camic{opacity:.9}
+
+/* ============ SIDE PANEL ============ */
+.side{width:356px;flex-shrink:0;display:flex;flex-direction:column;gap:12px}
+.panel{border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012))}
+.panel-h{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.panel-h b{font-size:12.5px;font-weight:700}
+.panel-h .pcount{font-size:10px;font-weight:800;background:rgba(239,68,68,.16);color:#f87171;border:1px solid rgba(239,68,68,.35);
+  padding:2px 8px;border-radius:999px}
+.panel-h .mini{margin-left:auto;font-size:10.5px;color:var(--mut)}
+.alist{padding:9px;display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:620px}
+
+.al{border:1px solid var(--line);border-left-width:3px;border-radius:11px;background:rgba(255,255,255,.025);transition:.25s var(--ease)}
+.al:hover{border-color:var(--line2);border-left-width:3px}
+.al.s-crit{border-left-color:var(--bad)}
+.al.s-pred{border-left-color:var(--sev)}
+.al.s-hw{border-left-color:var(--warn)}
+.al.s-info{border-left-color:var(--info)}
+.al-h{display:flex;gap:10px;padding:11px 12px;cursor:pointer;align-items:flex-start;width:100%;text-align:left}
+.al-ic{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.s-crit .al-ic{background:rgba(239,68,68,.14);color:#f87171}
+.s-pred .al-ic{background:rgba(168,85,247,.14);color:#c084fc}
+.s-hw .al-ic{background:rgba(245,158,11,.14);color:#fbbf24}
+.s-info .al-ic{background:rgba(56,189,248,.12);color:#7dd3fc}
+.al .t{font-size:12.5px;font-weight:650;line-height:1.35}
+.al .m{font-size:10.5px;color:var(--mut);margin-top:4px;display:flex;gap:9px;flex-wrap:wrap}
+.al .chev{margin-left:auto;color:var(--mut2);transition:.3s var(--ease);flex-shrink:0;margin-top:2px}
+.al.open .chev{transform:rotate(180deg)}
+.al .more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s var(--ease)}
+.al.open .more{grid-template-rows:1fr}
+.al .more>div{overflow:hidden}
+.more-in{padding:2px 12px 12px;font-size:11.5px;color:var(--mut)}
+.mstat{display:flex;gap:16px;margin:4px 0 11px}
+.mstat div small{display:block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut2);font-weight:700}
+.mstat div b{font-size:13.5px;color:var(--txt)}
+.confrow{display:flex;align-items:center;gap:8px;margin:2px 0 11px;font-size:10.5px;color:var(--mut)}
+.acts{display:flex;gap:7px;flex-wrap:wrap}
+.btn{padding:7px 12px;border-radius:9px;font-size:11.5px;font-weight:650;border:1px solid var(--line);background:var(--panel);transition:.2s;color:var(--txt)}
+.btn:hover{border-color:var(--line2);transform:translateY(-1px)}
+.btn.pri{background:linear-gradient(135deg,var(--brand),var(--blue));border-color:transparent;box-shadow:0 4px 14px rgba(110,100,255,.35);color:#fff}
+.btn.pri:hover{filter:brightness(1.12)}
+.btn.done{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.45);color:#34d399;pointer-events:none}
+.al.new{animation:newpulse 2.6s var(--ease)}
+@keyframes newpulse{0%{box-shadow:0 0 0 0 rgba(168,85,247,.55);transform:translateY(-5px);opacity:0}14%{opacity:1;transform:none}100%{box-shadow:0 0 0 16px transparent}}
+
+/* ============ GERENCIA SIDE ============ */
+.gsec{padding:14px}
+.gauge-wrap{position:relative;width:124px;height:124px;margin:4px auto 8px}
+.gtxt{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.gtxt b{font-size:21px;letter-spacing:-.02em}
+.gtxt small{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-top:2px}
+.gnote{text-align:center;font-size:11px;color:var(--mut);line-height:1.5}
+.tleg{display:flex;gap:14px;justify-content:center;font-size:10.5px;color:var(--mut);margin-top:6px}
+.tleg i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px}
+.corr-row{display:flex;align-items:center;gap:10px;font-size:11.5px;margin:9px 0}
+.corr-row span{width:86px;color:var(--mut)}
+.corr-row b{width:44px;text-align:right;color:#34d399}
+.bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#34d399,#10b981);width:0;transition:width 1s var(--ease)}
+
+/* ============ DRAWER ============ */
+.scrim{position:fixed;inset:0;background:rgba(4,6,12,.55);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.3s;z-index:80}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(452px,94vw);z-index:90;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#0d1222,#0a0e1a);border-left:1px solid var(--line2);
+  transform:translateX(106%);transition:transform .45s var(--ease);box-shadow:-30px 0 90px rgba(0,0,0,.55)}
+.drawer.open{transform:none}
+.dr-h{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:11px}
+.dr-h h2{font-size:15px;font-weight:700;flex:1;line-height:1.3}
+.stchip{font-size:9.5px;font-weight:800;letter-spacing:.1em;padding:4px 9px;border-radius:999px}
+.stchip.bad{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.4)}
+.stchip.ok{background:rgba(16,185,129,.13);color:#34d399;border:1px solid rgba(16,185,129,.4)}
+.stchip.warn{background:rgba(245,158,11,.13);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
+.good{color:#34d399!important}
+.ck-empty{padding:16px;text-align:center;font-size:12px;color:var(--mut2)}
+.x{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;color:var(--mut);border:1px solid var(--line);transition:.2s;flex-shrink:0}
+.x:hover{color:var(--txt);border-color:var(--line2)}
+.dr-body{flex:1;overflow:auto;padding:16px 18px 22px;display:flex;flex-direction:column;gap:15px}
+.sec-t{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:800;display:flex;align-items:center;gap:9px}
+.sec-t::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.cam{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  background:radial-gradient(130% 130% at 28% 18%,#1b2338,#0a0f1f 62%)}
+.cam::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px)}
+.cam .sweep{position:absolute;inset:0;background:linear-gradient(78deg,transparent 32%,rgba(124,140,255,.09) 50%,transparent 68%);animation:sweep 4.6s linear infinite}
+@keyframes sweep{from{transform:translateX(-65%)}to{transform:translateX(65%)}}
+.bbox{position:absolute;border:1.5px solid;border-radius:4px;animation:bb 2.2s ease-in-out infinite}
+@keyframes bb{0%,100%{opacity:1}50%{opacity:.55}}
+.bbox span{position:absolute;top:-15px;left:-1.5px;padding:1px 5px;border-radius:4px 4px 4px 0;color:#06080f;white-space:nowrap;
+  font:800 8.5px ui-monospace,monospace}
+.bbox.r{border-color:#f87171}.bbox.r span{background:#f87171}
+.bbox.c{border-color:#22d3ee}.bbox.c span{background:#22d3ee}
+.bbox.a{border-color:#fbbf24}.bbox.a span{background:#fbbf24}
+.cam .clive{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;letter-spacing:.1em;color:#fff;
+  background:rgba(239,68,68,.85);padding:3px 8px;border-radius:6px;display:flex;align-items:center;gap:5px}
+.cam .clive::before{content:"";width:5px;height:5px;border-radius:50%;background:#fff;animation:pulse 1.4s infinite}
+.cam .ts{position:absolute;bottom:7px;right:9px;font:600 9.5px ui-monospace,monospace;color:rgba(255,255,255,.65)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.025)}
+.stat small{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:700}
+.stat .v{font-size:18px;font-weight:700;margin-top:3px;display:flex;align-items:baseline;gap:5px}
+.stat .v em{font-style:normal;font-size:10.5px;color:var(--mut);font-weight:600}
+.trend{font-size:10px;font-weight:800;margin-left:auto}
+.trend.up{color:#f87171}.trend.dn{color:#34d399}
+
+.cyc{display:flex;gap:16px;align-items:center}
+.ring-wrap{position:relative;width:118px;height:118px;flex-shrink:0}
+.needle{transform-origin:59px 59px;animation:spin 9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.xnote{font-size:9px;color:var(--mut2);text-align:center;margin-top:4px;letter-spacing:.08em}
+.ph{display:flex;flex-direction:column;gap:7px;font-size:11.5px;flex:1;color:var(--mut)}
+.ph .row{display:flex;align-items:center;gap:8px}
+.ph i{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
+.ph b{color:var(--txt);font-weight:650}
+
+.ai{border:1px solid rgba(124,108,255,.42);border-radius:14px;padding:14px;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(124,108,255,.14),rgba(91,140,255,.05))}
+.ai::before{content:"";position:absolute;top:-45%;right:-18%;width:210px;height:210px;border-radius:50%;
+  background:radial-gradient(circle,rgba(124,108,255,.28),transparent 65%);pointer-events:none}
+.ai-h{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#cbc4ff;font-weight:800;margin-bottom:9px}
+.ai .rec{font-size:14px;font-weight:650;line-height:1.45}
+.imp{display:flex;gap:7px;margin:11px 0 4px;flex-wrap:wrap}
+.ich{font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.4);color:#34d399}
+.why{margin-top:9px}
+.why-h{font-size:11.5px;color:#b9b1ff;font-weight:650;display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:4px 0}
+.why-h .chev{transition:.3s var(--ease)}
+.why.open .why-h .chev{transform:rotate(180deg)}
+.why .more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s var(--ease)}
+.why.open .more{grid-template-rows:1fr}
+.why .more>div{overflow:hidden}
+.why ul{margin:7px 0 4px 16px;display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--mut)}
+.ai .acts{margin-top:13px}
+.calmbox{border:1px dashed rgba(16,185,129,.4);border-radius:12px;padding:13px 14px;font-size:12px;color:#9adfc4;background:rgba(16,185,129,.05);line-height:1.5}
+.hist .hrow{display:flex;gap:11px;font-size:11px;color:var(--mut);padding:8px 2px;border-bottom:1px dashed rgba(255,255,255,.07);line-height:1.4}
+.hist .hrow:last-child{border:0}
+.hrow .ht{font-family:ui-monospace,monospace;color:var(--mut2);flex-shrink:0;font-size:10.5px;padding-top:1px}
+
+/* ============ MODAL ============ */
+.modal-wrap{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:24px;opacity:0;pointer-events:none;transition:.3s}
+.modal-wrap.show{opacity:1;pointer-events:auto}
+.mscrim{position:absolute;inset:0;background:rgba(4,6,12,.62);backdrop-filter:blur(4px)}
+.modal{position:relative;width:min(780px,100%);border-radius:18px;border:1px solid var(--line2);padding:20px 22px;
+  background:linear-gradient(180deg,#111631,#0b0f1e);transform:translateY(16px) scale(.97);transition:.38s var(--ease);
+  box-shadow:0 40px 110px rgba(0,0,0,.65)}
+.modal-wrap.show .modal{transform:none}
+.m-h{display:flex;align-items:flex-start;gap:12px}
+.m-h h2{font-size:16px;font-weight:700}
+.m-h p{font-size:11.5px;color:var(--mut);margin-top:3px}
+.m-h .x{margin-left:auto}
+.bigchart{width:100%;height:248px;margin:14px 0 8px}
+.mstats{display:flex;gap:26px;padding-top:10px;border-top:1px solid var(--line)}
+.mstats div small{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:700}
+.mstats div b{font-size:15px}
+.mlist{display:flex;flex-direction:column;gap:9px;margin:14px 0 6px}
+.mrow{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.02);font-size:12.5px}
+.mrow small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+.mrow .btn{margin-left:auto}
+
+/* ============ CMDK ============ */
+.cmdk{position:fixed;inset:0;z-index:110;display:flex;justify-content:center;align-items:flex-start;padding-top:13vh;opacity:0;pointer-events:none;transition:.25s}
+.cmdk.show{opacity:1;pointer-events:auto}
+.cscrim{position:absolute;inset:0;background:rgba(4,6,12,.6);backdrop-filter:blur(4px)}
+.ck{position:relative;width:min(580px,92vw);border-radius:16px;border:1px solid rgba(124,108,255,.4);background:#0e1328;
+  box-shadow:0 30px 100px rgba(0,0,0,.7);overflow:hidden;transform:translateY(-10px);transition:.3s var(--ease)}
+.cmdk.show .ck{transform:none}
+.ck input{width:100%;padding:15px 17px;background:none;border:0;border-bottom:1px solid var(--line);color:var(--txt);font-size:14.5px;outline:none;font-family:inherit}
+.ck input::placeholder{color:var(--mut2)}
+.ck-list{max-height:308px;overflow:auto;padding:7px}
+.ck-it{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;border-radius:9px;font-size:13px;color:var(--mut);transition:.15s}
+.ck-it:hover{background:rgba(124,108,255,.13);color:var(--txt)}
+.ck-it svg{flex-shrink:0;opacity:.7}
+.ck-it kbd{margin-left:auto;font:600 9.5px ui-monospace,monospace;color:var(--mut2);border:1px solid var(--line);padding:2px 6px;border-radius:5px}
+
+/* ============ TOASTS ============ */
+.toasts{position:fixed;right:18px;bottom:18px;z-index:120;display:flex;flex-direction:column;gap:9px;width:324px}
+.toast{border:1px solid var(--line2);border-radius:12px;background:rgba(13,17,32,.93);backdrop-filter:blur(14px);
+  padding:12px 14px;transform:translateX(24px);opacity:0;transition:.4s var(--ease);box-shadow:0 16px 44px rgba(0,0,0,.55)}
+.toast.in{transform:none;opacity:1}
+.toast b{display:flex;font-size:12.5px;gap:8px;align-items:center;font-weight:700}
+.toast span{display:block;font-size:11px;color:var(--mut);margin-top:4px;line-height:1.45}
+.toast.tok{border-color:rgba(16,185,129,.45)}
+.toast.tpred{border-color:rgba(168,85,247,.5)}
+.toast.twarn{border-color:rgba(245,158,11,.5)}
+.tic{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tok .tic{background:#34d399}.tpred .tic{background:#c084fc}.twarn .tic{background:#fbbf24}.tinfo .tic{background:#7dd3fc}
+
+/* ============ MOTION ============ */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.reveal{opacity:0;transform:translateY(14px)}
+body.ready .reveal{opacity:1;transform:none;transition:opacity .7s var(--ease),transform .7s var(--ease)}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+}
+@media(max-width:1240px){
+  .kpis,#kpisGe{grid-template-columns:repeat(3,1fr)}
+  .content{flex-direction:column}
+  .side{width:100%}
+  .clock{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="4"/><circle cx="12" cy="8.4" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="15.6" r="1.7" fill="currentColor" stroke="none"/></svg></div>
+    <div><b>CerebroVial</b><small>Centro de comando</small></div>
+  </div>
+  <span class="tag">Concepto UI · v1</span>
+  <div class="seg" id="viewSeg">
+    <button class="active" data-view="op">Operación</button>
+    <button data-view="ge">Gerencia</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="tb-btn" id="ckBtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> Buscar o ejecutar… <kbd>⌘K</kbd></button>
+  <div class="pill"><span class="dot"></span> IA ACTIVA</div>
+  <div class="clock num" id="clock">--:--:--</div>
+  <div class="avatar">OP</div>
+</header>
+
+<nav class="rail">
+  <button class="active"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="tt">Centro de comando</span></button>
+  <button><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tt">Intersecciones</span></button>
+  <button><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="7" width="13" height="10" rx="2.5"/><path d="M15.5 11l6-3.4v8.8l-6-3.4z"/></svg><span class="tt">Cámaras</span></button>
+  <button><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2.5"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg><span class="tt">Motor adaptativo</span></button>
+  <button><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="bdg" id="railBadge">3</span><span class="tt">Alertas</span></button>
+  <span class="sep"></span>
+  <button><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="M8 15l3-4 3 2 4-6"/></svg><span class="tt">Analítica</span></button>
+  <button><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg><span class="tt">Configuración</span></button>
+</nav>
+
+<main class="main">
+  <section class="kpis" id="kpisOp">
+    <button class="kpi reveal" data-kpi="idx" style="transition-delay:.02s">
+      <div class="kpi-top"><span class="kpi-lbl">Índice de congestión · red</span><span class="delta neg">▲ +9</span></div>
+      <div class="kpi-val"><span class="num" data-count="62">0</span><span class="kpi-unit">/100</span></div>
+      <svg class="spark" data-spark="idx" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
+      <i class="glowbar"></i>
+    </button>
+    <button class="kpi reveal" data-kpi="vel" style="transition-delay:.07s">
+      <div class="kpi-top"><span class="kpi-lbl">Velocidad media</span><span class="delta neg">▼ −3.2</span></div>
+      <div class="kpi-val"><span class="num" data-count="22.4" data-dec="1">0</span><span class="kpi-unit">km/h</span></div>
+      <svg class="spark" data-spark="vel" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
+      <i class="glowbar"></i>
+    </button>
+    <button class="kpi reveal" data-kpi="dem" style="transition-delay:.12s">
+      <div class="kpi-top"><span class="kpi-lbl">Demora media · críticos</span><span class="delta neg">▲ +6</span></div>
+      <div class="kpi-val"><span class="num" data-count="38">0</span><span class="kpi-unit">s/veh</span></div>
+      <svg class="spark" data-spark="dem" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
+      <i class="glowbar"></i>
+    </button>
+    <button class="kpi reveal" data-kpi="flu" style="transition-delay:.17s">
+      <div class="kpi-top"><span class="kpi-lbl">Flujo total</span><span class="delta neu">＋4% vs ayer</span></div>
+      <div class="kpi-val"><span class="num" data-count="1245">0</span><span class="kpi-unit">veh/h</span></div>
+      <svg class="spark" data-spark="flu" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
+      <i class="glowbar"></i>
+    </button>
+    <button class="kpi reveal" data-kpi="sem" style="transition-delay:.22s">
+      <div class="kpi-top"><span class="kpi-lbl">Cruces en modo adaptativo</span><span class="delta neu">3 en plan fijo</span></div>
+      <div class="kpi-val"><span class="num" data-count="31">0</span><span class="kpi-unit">/34</span></div>
+      <svg class="spark" data-spark="sem" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
+      <i class="glowbar"></i>
+    </button>
+    <button class="kpi warn-k reveal" data-kpi="pred" style="transition-delay:.27s">
+      <div class="kpi-top"><span class="kpi-lbl">Predicción 15 min · red</span><span class="delta neg">CNN-LSTM</span></div>
+      <div class="kpi-val"><span class="num" style="font-size:23px;color:#fbbf24">ALTA</span></div>
+      <div class="confrow"><span>conf.</span><div class="conf"><i style="width:94%"></i></div><span class="num">94%</span></div>
+      <i class="glowbar"></i>
+    </button>
+  </section>
+
+  <section class="kpis hidden" id="kpisGe">
+    <div class="kpi"><div class="kpi-top"><span class="kpi-lbl">Δ demora vs plan fijo</span><span class="delta pos">meta −15%</span></div>
+      <div class="kpi-val"><span class="num good" data-count="-18.3" data-dec="1">0</span><span class="kpi-unit">%</span></div><i class="glowbar"></i></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-lbl">Tiempo de viaje · Av. Larco</span><span class="delta pos">▼ −2.4 min</span></div>
+      <div class="kpi-val"><span class="num" data-count="8.4" data-dec="1">0</span><span class="kpi-unit">min</span></div><i class="glowbar"></i></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-lbl">Horas-persona ahorradas · mes</span><span class="delta pos">estimado</span></div>
+      <div class="kpi-val"><span class="num" data-count="1240">0</span><span class="kpi-unit">h</span></div><i class="glowbar"></i></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-lbl">CO₂ evitado · mes</span><span class="delta pos">estimado</span></div>
+      <div class="kpi-val"><span class="num" data-count="0.8" data-dec="1">0</span><span class="kpi-unit">t</span></div><i class="glowbar"></i></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-lbl">Disponibilidad / F1 modelo</span><span class="delta pos">SLA 99%</span></div>
+      <div class="kpi-val"><span class="num" data-count="99.2" data-dec="1">0</span><span class="kpi-unit">% · F1 94.3</span></div><i class="glowbar"></i></div>
+  </section>
+
+  <div class="content">
+    <section class="map-card reveal" style="transition-delay:.1s">
+      <div class="map-head">
+        <div class="map-title"><span class="live-dot"></span>Mapa operativo · Miraflores <span class="upd num" id="upd"></span></div>
+        <div class="chips">
+          <button class="chip on" data-layer="traffic">Tráfico</button>
+          <button class="chip on" data-layer="nodes">Semáforos</button>
+          <button class="chip" data-layer="cams">Cámaras</button>
+          <button class="chip on" data-layer="inc">Incidentes</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="hchips" id="histChips">
+          <button class="hchip">08:00</button><button class="hchip on">16:00</button><button class="hchip">20:00</button>
+        </div>
+        <div class="hchips" id="hchips">
+          <button class="hchip on" data-hz="15">+15 min</button>
+          <button class="hchip" data-hz="30">+30</button>
+          <button class="hchip" data-hz="60">+60</button>
+        </div>
+        <div class="seg" id="modeSeg">
+          <button data-mode="h">Histórico</button>
+          <button class="active" data-mode="n">● Ahora</button>
+          <button data-mode="p">Predicción</button>
+        </div>
+      </div>
+      <div class="map-body">
+        <svg viewBox="0 0 920 560" preserveAspectRatio="xMidYMid slice" id="mapSvg">
+          <defs>
+            <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#0c2438"/><stop offset="1" stop-color="#0a1626"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,250 C120,300 220,360 320,430 C400,485 470,520 560,560 L0,560 Z" fill="url(#sea)"/>
+          <ellipse cx="430" cy="225" rx="34" ry="20" fill="#0e2b22" opacity=".85"/>
+          <text class="lbl" x="430" y="228" text-anchor="middle">P. Kennedy</text>
+
+          <g id="roads">
+            <path class="road ok" data-h="ok" data-n="ok" data-p15="ok" data-p60="warn" d="M14,242 C130,290 230,350 330,418 C405,470 470,505 545,545" stroke-width="5"/>
+            <path class="road warn" data-h="warn" data-n="warn" data-p15="warn" data-p60="bad" d="M70,96 L905,128" stroke-width="6"/>
+            <path class="road warn" data-h="ok" data-n="warn" data-p15="bad" data-p60="bad" d="M150,222 L455,250" stroke-width="6"/>
+            <path class="road ok" data-h="ok" data-n="ok" data-p15="warn" data-p60="warn" d="M185,302 L905,338" stroke-width="6"/>
+            <path class="road warn" data-h="warn" data-n="warn" data-p15="bad" data-p60="bad" d="M135,382 L905,420" stroke-width="7"/>
+            <path class="road warn" data-h="ok" data-n="warn" data-p15="warn" data-p60="warn" d="M340,66 L462,242" stroke-width="5"/>
+            <path class="road warn" data-h="warn" data-n="warn" data-p15="warn" data-p60="bad" d="M505,62 L478,246" stroke-width="6"/>
+            <path class="road ok" data-h="ok" data-n="ok" data-p15="ok" data-p60="warn" d="M560,62 L520,418" stroke-width="5"/>
+            <path class="road bad" id="larcoRoad" data-h="warn" data-n="bad" data-p15="sev" data-p60="sev" d="M468,272 C462,340 452,420 438,500" stroke-width="7"/>
+            <path class="road warn" data-h="ok" data-n="warn" data-p15="warn" data-p60="warn" d="M522,300 C512,380 502,440 492,498" stroke-width="5"/>
+            <path class="road ok" data-h="ok" data-n="ok" data-p15="warn" data-p60="warn" d="M458,268 L298,420" stroke-width="6"/>
+            <path class="road ok" data-h="ok" data-n="ok" data-p15="warn" data-p60="warn" d="M762,52 C742,210 716,380 668,548" stroke-width="8"/>
+            <path class="road ok" data-h="ok" data-n="ok" data-p15="ok" data-p60="ok" d="M848,58 C836,220 824,400 812,548" stroke-width="5"/>
+            <circle class="road warn" data-h="warn" data-n="warn" data-p15="bad" data-p60="bad" cx="468" cy="258" r="15" stroke-width="6"/>
+          </g>
+          <path class="flowline" d="M468,272 C462,340 452,420 438,500"/>
+
+          <text class="lbl" x="795" y="90">Av. Angamos</text>
+          <text class="lbl" x="560" y="120">Av. Arequipa</text>
+          <text class="lbl" x="240" y="212">Av. Pardo</text>
+          <text class="lbl" x="790" y="296">Av. 28 de Julio</text>
+          <text class="lbl" x="790" y="376">Av. Benavides</text>
+          <text class="lbl" x="478" y="452">Av. Larco</text>
+          <text class="lbl" x="340" y="330">Diagonal</text>
+          <text class="lbl" x="688" y="520">Vía Expresa</text>
+          <text class="lbl" x="120" y="300">Malecón</text>
+          <text class="lbl2" x="150" y="480">Océano Pacífico</text>
+
+          <g id="layerInc">
+            <g transform="translate(430,386)"><path d="M0,-8 L7,5 L-7,5 Z" fill="#f59e0b" stroke="#0b101d" stroke-width="1.5"/><text x="0" y="3.4" text-anchor="middle" font-size="8" font-weight="800" fill="#0b101d">!</text></g>
+          </g>
+
+          <g id="nodes">
+            <g class="node warn" data-id="n1" data-name="Óvalo Miraflores" transform="translate(468,258)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+            <g class="node bad" data-id="n2" data-name="Av. Larco × Av. Benavides" data-crit="1" transform="translate(451,398)">
+              <circle id="haloN2" r="9" fill="none" stroke="#ef4444" stroke-width="2" opacity=".8">
+                <animate attributeName="r" values="9;20" dur="1.6s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values=".8;0" dur="1.6s" repeatCount="indefinite"/>
+              </circle>
+              <circle class="ring" r="9"/><circle class="core" r="3.4"/>
+            </g>
+            <g class="node ok" data-id="n3" data-name="Av. Pardo × Libertadores" transform="translate(300,236)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+            <g class="node warn" data-id="n4" data-name="Av. Arequipa × Av. Angamos" transform="translate(492,112)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+            <g class="node ok" data-id="n5" data-name="28 de Julio × Vía Expresa" transform="translate(737,322)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+            <g class="node warn" data-id="n6" data-name="Av. Benavides × Vía Expresa" transform="translate(712,408)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+            <g class="node ok" data-id="n7" data-name="Diagonal × 28 de Julio" transform="translate(352,368)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+            <g class="node warn" data-id="n8" data-name="Av. Larco × 28 de Julio" transform="translate(458,316)"><circle class="ring" r="9"/><circle class="core" r="3.4"/></g>
+          </g>
+
+          <g id="layerCams" class="hidden">
+            <g class="camic" transform="translate(482,244)"><rect x="-6" y="-5" width="12" height="10" rx="2" fill="#7c6cff"/><circle r="1.8" fill="#0b101d"/></g>
+            <g class="camic" transform="translate(465,412)"><rect x="-6" y="-5" width="12" height="10" rx="2" fill="#7c6cff"/><circle r="1.8" fill="#0b101d"/></g>
+            <g class="camic" transform="translate(506,124)"><rect x="-6" y="-5" width="12" height="10" rx="2" fill="#7c6cff"/><circle r="1.8" fill="#0b101d"/></g>
+            <g class="camic" transform="translate(726,420)"><rect x="-6" y="-5" width="12" height="10" rx="2" fill="#7c6cff"/><circle r="1.8" fill="#0b101d"/></g>
+          </g>
+        </svg>
+        <div class="legend" id="legend">
+          <b id="legTitle">Observado</b>
+          <div class="lg"><i style="background:#0fae79"></i> Fluido</div>
+          <div class="lg"><i style="background:#f59e0b"></i> Lento</div>
+          <div class="lg"><i style="background:#ef4444"></i> Congestionado</div>
+          <div class="lg"><i style="background:#a855f7"></i> Crítico</div>
+        </div>
+        <div class="modebadge num" id="modeBadge">EN VIVO</div>
+        <div class="coachtip" id="coach">✨ Probá: clic en el nodo rojo del mapa</div>
+      </div>
+    </section>
+
+    <aside class="side reveal" id="sideOp" style="transition-delay:.18s">
+      <div class="panel">
+        <div class="panel-h"><b>Alertas priorizadas por IA</b><span class="pcount num" id="alCount">3</span><span class="mini">orden: impacto × confianza</span></div>
+        <div class="alist" id="alist">
+          <div class="al s-crit">
+            <button class="al-h">
+              <span class="al-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18.2v.1"/></svg></span>
+              <div><div class="t">Congestión crítica</div><div class="m"><span>Larco × Benavides</span><span>hace 2 min</span><span class="num">conf. 94%</span></div></div>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="more"><div><div class="more-in">
+              <div class="mstat"><div><small>Cola</small><b class="num">142 m</b></div><div><small>Velocidad</small><b class="num">6 km/h</b></div><div><small>Demora</small><b class="num">96 s</b></div></div>
+              <div class="confrow"><span>conf. IA</span><div class="conf"><i style="width:94%"></i></div><span class="num">94%</span></div>
+              <div class="acts">
+                <button class="btn pri" data-act="see">Ver intersección</button>
+                <button class="btn" data-act="applymini">Aplicar plan IA</button>
+                <button class="btn">Escalar</button>
+              </div>
+            </div></div></div>
+          </div>
+          <div class="al s-pred">
+            <button class="al-h">
+              <span class="al-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 6-8 3 3"/></svg></span>
+              <div><div class="t">IA · Bloqueo probable en ~10 min</div><div class="m"><span>Av. Pardo</span><span>tendencia de cola</span><span class="num">conf. 91%</span></div></div>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="more"><div><div class="more-in">
+              <div class="confrow"><span>conf. IA</span><div class="conf"><i style="width:91%"></i></div><span class="num">91%</span></div>
+              <div class="acts">
+                <button class="btn pri" data-act="predview">Ver predicción</button>
+                <button class="btn">Preparar plan</button>
+              </div>
+            </div></div></div>
+          </div>
+          <div class="al s-hw">
+            <button class="al-h">
+              <span class="al-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2.5"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></span>
+              <div><div class="t">Hardware · Latencia alta</div><div class="m"><span>Nodo Edge #4</span><span>hace 12 min</span><span class="num">312 ms</span></div></div>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="more"><div><div class="more-in">
+              <div class="acts">
+                <button class="btn pri" data-act="restart">Reiniciar nodo</button>
+                <button class="btn">Diagnóstico</button>
+              </div>
+            </div></div></div>
+          </div>
+          <div class="al s-info">
+            <button class="al-h">
+              <span class="al-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4 10-10"/></svg></span>
+              <div><div class="t">Modo adaptativo reactivado</div><div class="m"><span>3 cruces</span><span>hace 25 min</span></div></div>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="more"><div><div class="more-in">Sin acciones pendientes. Registrado en bitácora del turno.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="side hidden" id="sideGe">
+      <div class="panel"><div class="panel-h"><b>Impacto vs plan de tiempos fijos</b></div>
+        <div class="gsec">
+          <div class="gauge-wrap">
+            <svg width="124" height="124" viewBox="0 0 124 124">
+              <circle cx="62" cy="62" r="48" fill="none" stroke="#1c2742" stroke-width="10"/>
+              <circle id="gaugeArc" cx="62" cy="62" r="48" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="302" stroke-dashoffset="302" transform="rotate(-90 62 62)" style="transition:stroke-dashoffset 1.4s cubic-bezier(.22,1,.36,1)"/>
+            </svg>
+            <div class="gtxt"><b class="good num">−18.3%</b><small>demora media<br/>vs plan fijo</small></div>
+          </div>
+          <p class="gnote">Métrica núcleo de la tesis · 8 cruces instrumentados · últimos 7 días.</p>
+          <svg id="trend7" viewBox="0 0 280 84" preserveAspectRatio="none" style="width:100%;height:84px;margin-top:10px"></svg>
+          <div class="tleg"><span><i style="background:#475569"></i>Plan fijo (baseline)</span><span><i style="background:#10b981"></i>Adaptativo</span></div>
+        </div>
+      </div>
+      <div class="panel"><div class="panel-h"><b>Corredores · Δ tiempo de viaje</b></div>
+        <div class="gsec">
+          <div class="corr-row"><span>Av. Larco</span><div class="bar"><i data-v="22"></i></div><b class="num">−22%</b></div>
+          <div class="corr-row"><span>Av. Benavides</span><div class="bar"><i data-v="15"></i></div><b class="num">−15%</b></div>
+          <div class="corr-row"><span>Av. Arequipa</span><div class="bar"><i data-v="11"></i></div><b class="num">−11%</b></div>
+          <div class="corr-row"><span>Av. Pardo</span><div class="bar"><i data-v="9"></i></div><b class="num">−9%</b></div>
+          <div class="acts" style="margin-top:15px">
+            <button class="btn pri" data-act="pdf">Exportar PDF</button>
+            <button class="btn">Compartir</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <footer class="foot">Prototipo navegable — datos simulados · Concepto de rediseño CerebroVial · ⌘K para acciones</footer>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawer">
+  <div class="dr-h">
+    <h2 id="drTitle">Intersección</h2>
+    <span class="stchip bad num" id="drChip">CRÍTICO</span>
+    <button class="x" id="drX" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="dr-body">
+    <div class="cam">
+      <div class="sweep"></div>
+      <div class="bbox r" style="left:12%;top:38%;width:24%;height:34%"><span>bus · 4 km/h</span></div>
+      <div class="bbox c" style="left:55%;top:30%;width:16%;height:26%"><span>auto · 9 km/h</span></div>
+      <div class="bbox a" style="left:74%;top:52%;width:14%;height:22%"><span>moto · 11 km/h</span></div>
+      <div class="clive">EN VIVO</div>
+      <div class="ts" id="camTs">--:--:--</div>
+    </div>
+
+    <div class="sec-t">Estado actual</div>
+    <div class="grid2">
+      <div class="stat"><small>Cola</small><div class="v num"><span id="stCola">142</span><em>m</em><span class="trend up" id="stColaT">▲ +18/5min</span></div></div>
+      <div class="stat"><small>Demora</small><div class="v num"><span>96</span><em>s</em><span class="trend up">▲ +12</span></div></div>
+      <div class="stat"><small>Flujo</small><div class="v num"><span>820</span><em>veh/h</em><span class="trend">·</span></div></div>
+      <div class="stat"><small>Ocupación</small><div class="v num"><span>87</span><em>%</em><span class="trend up">▲</span></div></div>
+    </div>
+
+    <div class="sec-t">Ciclo semafórico · 90 s</div>
+    <div class="cyc">
+      <div class="ring-wrap">
+        <svg width="118" height="118" viewBox="0 0 118 118">
+          <g transform="rotate(-90 59 59)">
+            <circle cx="59" cy="59" r="40" fill="none" stroke="#10b981" stroke-width="12" stroke-dasharray="117.3 251.3" stroke-dashoffset="0"/>
+            <circle cx="59" cy="59" r="40" fill="none" stroke="#f59e0b" stroke-width="12" stroke-dasharray="11.2 251.3" stroke-dashoffset="-117.3"/>
+            <circle cx="59" cy="59" r="40" fill="none" stroke="#3b82f6" stroke-width="12" stroke-dasharray="78.2 251.3" stroke-dashoffset="-128.5"/>
+            <circle cx="59" cy="59" r="40" fill="none" stroke="#8b5cf6" stroke-width="12" stroke-dasharray="44.7 251.3" stroke-dashoffset="-206.7"/>
+          </g>
+          <g class="needle"><line x1="59" y1="59" x2="59" y2="23" stroke="#e9edf6" stroke-width="2.5" stroke-linecap="round"/><circle cx="59" cy="59" r="3.5" fill="#e9edf6"/></g>
+        </svg>
+        <div class="xnote">reproducción ×10</div>
+      </div>
+      <div class="ph">
+        <div class="row"><i style="background:#10b981"></i><span>Verde N–S</span><b class="num" style="margin-left:auto">42 s</b></div>
+        <div class="row"><i style="background:#f59e0b"></i><span>Ámbar</span><b class="num" style="margin-left:auto">4 s</b></div>
+        <div class="row"><i style="background:#3b82f6"></i><span>Verde E–O</span><b class="num" style="margin-left:auto">28 s</b></div>
+        <div class="row"><i style="background:#8b5cf6"></i><span>Fase peatonal</span><b class="num" style="margin-left:auto">16 s</b></div>
+      </div>
+    </div>
+
+    <div class="ai" id="aiCard">
+      <div class="ai-h">✦ Recomendación del motor adaptativo</div>
+      <p class="rec">Extender fase <b>N–S +12 s</b> durante <b>3 ciclos</b></p>
+      <div class="imp"><span class="ich">−23% cola</span><span class="ich">−18 s demora</span></div>
+      <div class="confrow"><span>conf.</span><div class="conf"><i style="width:94%"></i></div><span class="num">94%</span></div>
+      <div class="why">
+        <button class="why-h">¿Por qué esta decisión? <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="more"><div><ul>
+          <li>La cola creció 38% en los últimos 5 min</li>
+          <li>Flujo aguas arriba (Óvalo) +14%</li>
+          <li>Patrón histórico: martes, hora pico</li>
+          <li>Sin demanda peatonal elevada registrada</li>
+        </ul></div></div>
+      </div>
+      <div class="acts">
+        <button class="btn pri" id="btnApply">Aplicar</button>
+        <button class="btn">Simular</button>
+        <button class="btn">Rechazar</button>
+      </div>
+    </div>
+
+    <div class="calmbox hidden" id="calmBox">✓ Operando en plan adaptativo · sin acciones pendientes para este cruce.</div>
+
+    <div class="sec-t">Historial reciente</div>
+    <div class="hist">
+      <div class="hrow"><span class="ht">15:42</span><div><b>Plan IA aplicado</b> · operador OP · −15% cola</div></div>
+      <div class="hrow"><span class="ht">14:10</span><div><b>Cambio a modo adaptativo</b> · automático</div></div>
+      <div class="hrow"><span class="ht">09:30</span><div><b>Calibración de cámara</b> · mantenimiento</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="modal-wrap" id="kpiModal">
+  <div class="mscrim"></div>
+  <div class="modal">
+    <div class="m-h"><div><h2 id="mTitle">KPI</h2><p id="mSub">Últimas 3 h + predicción 45 min</p></div><button class="x" id="mX">✕</button></div>
+    <svg id="bigChart" class="bigchart" viewBox="0 0 720 248" preserveAspectRatio="none"></svg>
+    <div class="mstats" id="mStats">
+      <div><small>Actual</small><b class="num" id="mS1">—</b></div>
+      <div><small>Pico del día</small><b class="num" id="mS2">—</b></div>
+      <div><small>Predicción +45 min</small><b class="num" id="mS3">—</b></div>
+    </div>
+    <div class="mlist hidden" id="mList">
+      <div class="mrow"><div><b>Pardo × Comandante Espinar</b><small>fallback por latencia · Nodo Edge #4</small></div><button class="btn">Reactivar</button></div>
+      <div class="mrow"><div><b>Angamos × Petit Thouars</b><small>mantenimiento programado</small></div><button class="btn">Reactivar</button></div>
+      <div class="mrow"><div><b>28 de Julio × La Paz</b><small>plan fijo por obra civil</small></div><button class="btn">Reactivar</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="cmdk" id="cmdk">
+  <div class="cscrim"></div>
+  <div class="ck">
+    <input id="ckInput" placeholder="Buscar intersección, cámara o ejecutar acción…" autocomplete="off"/>
+    <div class="ck-list" id="ckList"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const state={mode:'n',horizon:15,view:'op'};
+
+/* ---------- clock ---------- */
+function tickClock(){
+  const t=new Date().toLocaleTimeString('es-PE',{hour12:false});
+  $('#clock').textContent=t; const ts=$('#camTs'); if(ts) ts.textContent=t;
+}
+setInterval(tickClock,1000); tickClock();
+
+function updBadge(){
+  const b=$('#modeBadge');
+  if(state.mode==='n'){b.textContent='EN VIVO'; b.className='modebadge num';}
+  else if(state.mode==='p'){b.textContent='PREDICCIÓN · +'+state.horizon+' min · conf 94%'; b.className='modebadge num pred';}
+  else {b.textContent='HISTÓRICO · hoy 16:00'; b.className='modebadge num hist';}
+}
+
+/* ---------- numbers & sparklines ---------- */
+const fmt=(n,d=0)=>{const s=Math.abs(n).toFixed(d);const[i,f]=s.split('.');return (n<0?'−':'')+i.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(f?'.'+f:'');};
+function countUp(el,target,dur=900,dec=0){
+  const from=parseFloat(el.dataset.cur||0), t0=performance.now();
+  function fr(t){const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3), v=from+(target-from)*e;
+    el.textContent=fmt(v,dec);
+    if(p<1)requestAnimationFrame(fr); else el.dataset.cur=target;}
+  requestAnimationFrame(fr);
+}
+function sparkline(svg,data,color){
+  const w=120,h=36,min=Math.min(...data),max=Math.max(...data),r=max-min||1;
+  const pts=data.map((v,i)=>[(i/(data.length-1)*w).toFixed(1),(h-4-((v-min)/r)*(h-10)).toFixed(1)]);
+  const line=pts.map(p=>p.join(',')).join(' ');
+  svg.innerHTML=`<polyline points="${line} ${w},${h} 0,${h}" fill="${color}18" stroke="none"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${pts.at(-1)[0]}" cy="${pts.at(-1)[1]}" r="2.6" fill="${color}"/>`;
+}
+const S={
+  idx:[38,40,44,47,52,55,58,60,61,62],
+  vel:[31,30,29,27.5,26,25,24,23.2,22.8,22.4],
+  dem:[22,24,26,28,30,32,34,36,37,38],
+  flu:[760,820,900,980,1040,1100,1160,1200,1230,1245],
+  sem:[34,34,34,33,33,32,32,31,31,31],
+};
+const SC={idx:'#f59e0b',vel:'#ef4444',dem:'#f59e0b',flu:'#7c6cff',sem:'#10b981'};
+
+/* ---------- map: time mode ---------- */
+function setMode(m){
+  state.mode=m;
+  $$('#roads [data-n]').forEach(r=>{
+    let k;
+    if(m==='p') k=(state.horizon>=45?(r.dataset.p60||r.dataset.p15):r.dataset.p15);
+    else k=r.dataset[m]||r.dataset.n;
+    r.setAttribute('class','road '+k);
+  });
+  $('#legTitle').textContent=(m==='p'?'Demora prevista':m==='h'?'Histórico · 16:00':'Observado');
+  $$('#modeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  $('#hchips').classList.toggle('show',m==='p');
+  $('#histChips').classList.toggle('show',m==='h');
+  updBadge();
+}
+$('#modeSeg').addEventListener('click',e=>{const b=e.target.closest('[data-mode]'); if(b) setMode(b.dataset.mode);});
+$('#hchips').addEventListener('click',e=>{const b=e.target.closest('[data-hz]'); if(!b)return;
+  $$('#hchips .hchip').forEach(c=>c.classList.toggle('on',c===b));
+  state.horizon=+b.dataset.hz; setMode('p');
+});
+$('#histChips').addEventListener('click',e=>{const b=e.target.closest('.hchip'); if(!b)return;
+  $$('#histChips .hchip').forEach(c=>c.classList.toggle('on',c===b));
+});
+
+/* ---------- map: layers ---------- */
+$('.chips').addEventListener('click',e=>{
+  const b=e.target.closest('[data-layer]'); if(!b)return;
+  b.classList.toggle('on'); const on=b.classList.contains('on'), L=b.dataset.layer;
+  if(L==='traffic') $('#mapSvg').classList.toggle('roads-off',!on);
+  if(L==='nodes') $('#nodes').classList.toggle('hidden',!on);
+  if(L==='cams') $('#layerCams').classList.toggle('hidden',!on);
+  if(L==='inc') $('#layerInc').classList.toggle('hidden',!on);
+});
+
+/* ---------- drawer ---------- */
+function openDrawer(g){
+  const crit=g.dataset.crit==='1';
+  $('#drTitle').textContent=g.dataset.name;
+  const chip=$('#drChip');
+  if(crit){chip.textContent='CRÍTICO · ADAPTATIVO EN PAUSA'; chip.className='stchip bad num';}
+  else{chip.textContent='ADAPTATIVO · NORMAL'; chip.className='stchip ok num';}
+  $('#aiCard').classList.toggle('hidden',!crit);
+  $('#calmBox').classList.toggle('hidden',crit);
+  $('#drawer').classList.add('open'); $('#scrim').classList.add('show');
+  document.body.classList.add('lock');
+  $('#coach').classList.remove('show');
+}
+function closeDrawer(){$('#drawer').classList.remove('open');$('#scrim').classList.remove('show');document.body.classList.remove('lock');}
+$('#nodes').addEventListener('click',e=>{const g=e.target.closest('.node'); if(g) openDrawer(g);});
+$('#drX').addEventListener('click',closeDrawer);
+$('#scrim').addEventListener('click',closeDrawer);
+
+/* ---------- accordions ---------- */
+document.addEventListener('click',e=>{
+  if(e.target.closest('.acts')) return;
+  const h=e.target.closest('.al-h'); if(h){h.closest('.al').classList.toggle('open'); return;}
+  const w=e.target.closest('.why-h'); if(w){w.closest('.why').classList.toggle('open'); return;}
+});
+
+/* ---------- actions ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const a=b.dataset.act;
+  if(a==='see'){openDrawer($('[data-id="n2"]'));}
+  else if(a==='predview'){setMode('p'); const mc=$('.map-card'); mc.classList.add('flash'); setTimeout(()=>mc.classList.remove('flash'),900);}
+  else if(a==='restart'){toast('Comando enviado','Reinicio de Nodo Edge #4 en curso…','tinfo'); setTimeout(()=>toast('Nodo Edge #4 en línea','Latencia 38 ms · operación normal','tok'),2800);}
+  else if(a==='applymini'){toast('Plan IA aplicado','Extensión N–S +12 s · Larco × Benavides','tok');}
+  else if(a==='pdf'){toast('Generando reporte','PDF del turno · demo','tinfo');}
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.btn'); if(!b||b.dataset.act||b.id==='btnApply')return;
+  if(b.closest('.mrow')){toast('Reactivación solicitada','El cruce volverá a modo adaptativo al validar latencia','tinfo'); return;}
+  toast('Acción de demo','«'+b.textContent.trim()+'» · sin efecto en el prototipo','tinfo');
+});
+
+/* ---------- apply flow (the thesis moment) ---------- */
+$('#btnApply').addEventListener('click',()=>{
+  const btn=$('#btnApply');
+  btn.textContent='✓ Aplicado · ciclo 1/3'; btn.classList.remove('pri'); btn.classList.add('done');
+  toast('Plan aplicado','Extender N–S +12 s · monitoreando efecto…','tok');
+  setTimeout(()=>{
+    const larco=$('#larcoRoad'); larco.dataset.n='warn'; larco.dataset.p15='warn'; larco.dataset.p60='bad';
+    const n2=$('[data-id="n2"]'); n2.setAttribute('class','node warn');
+    const halo=$('#haloN2'); if(halo) halo.style.display='none';
+    setMode(state.mode);
+    countUp($('[data-kpi="idx"] .num'),57,900,0);
+    countUp($('[data-kpi="dem"] .num'),34,900,0);
+    countUp($('[data-kpi="vel"] .num'),24.1,900,1);
+    $('#stCola').textContent='129';
+    const tr=$('#stColaT'); tr.textContent='▼ −13'; tr.className='trend dn';
+    const chip=$('#drChip'); chip.textContent='EN RECUPERACIÓN'; chip.className='stchip warn num';
+    toast('Efecto detectado','Cola Larco −9% · demora −6 s en 2 ciclos','tok');
+  },2600);
+});
+
+/* ---------- KPI modal ---------- */
+const KCFG={
+  idx:{t:'Índice de congestión · red',u:'/100',d:0,data:S.idx,fc:[63,64,66],c:'#f59e0b'},
+  vel:{t:'Velocidad media de la red',u:'km/h',d:1,data:S.vel,fc:[22,21.4,20.8],c:'#ef4444'},
+  dem:{t:'Demora media · cruces críticos',u:'s/veh',d:0,data:S.dem,fc:[40,42,44],c:'#f59e0b'},
+  flu:{t:'Flujo total de la red',u:'veh/h',d:0,data:S.flu,fc:[1255,1262,1270],c:'#7c6cff'},
+  sem:{t:'Cruces en modo adaptativo',u:'/34',d:0,data:S.sem,fc:[],c:'#10b981',list:true},
+};
+function bigChart(svg,data,fc,color){
+  const w=720,h=248,P=26,all=data.concat(fc),min=Math.min(...all),max=Math.max(...all),r=max-min||1;
+  const n=data.length+fc.length-1;
+  const X=i=>(P+i/n*(w-2*P)).toFixed(1), Y=v=>(h-P-((v-min)/r)*(h-2*P)).toFixed(1);
+  let g='';
+  for(let i=0;i<4;i++){const y=(P+i/3*(h-2*P)).toFixed(1);g+=`<line x1="${P}" y1="${y}" x2="${w-P}" y2="${y}" stroke="#1c2742" stroke-width="1"/>`;}
+  const pts=data.map((v,i)=>[X(i),Y(v)]);
+  const line=pts.map(p=>p.join(',')).join(' ');
+  const last=pts.at(-1);
+  let fcl='';
+  if(fc.length){const fpts=[last,...fc.map((v,i)=>[X(data.length+i),Y(v)])];
+    fcl=`<polyline points="${fpts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="6 6" opacity=".75"/>`;}
+  svg.innerHTML=g
+    +`<polyline points="${line} ${last[0]},${h-P} ${pts[0][0]},${h-P}" fill="${color}20" stroke="none"/>`
+    +`<polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`
+    +fcl
+    +`<line x1="${last[0]}" y1="${P-6}" x2="${last[0]}" y2="${h-P}" stroke="#2a3858" stroke-width="1" stroke-dasharray="3 4"/>`
+    +`<circle cx="${last[0]}" cy="${last[1]}" r="4" fill="${color}"/>`
+    +`<text x="${last[0]}" y="${P-10}" text-anchor="middle" fill="#9aa7c2" font-size="10" font-weight="700">ahora</text>`
+    +['−3h','−2h','−1h','ahora','+45m'].map((l,i)=>`<text x="${(P+i/4*(w-2*P)).toFixed(0)}" y="${h-7}" text-anchor="middle" fill="#5b6884" font-size="10">${l}</text>`).join('');
+}
+function openKpiModal(key){
+  if(key==='pred'){setMode('p'); const mc=$('.map-card'); mc.classList.add('flash'); setTimeout(()=>mc.classList.remove('flash'),900); return;}
+  const c=KCFG[key]; if(!c)return;
+  $('#mTitle').textContent=c.t;
+  $('#mSub').textContent=c.list?'3 cruces operando en plan fijo — clic para reactivar':'Últimas 3 h · línea punteada = predicción del modelo';
+  $('#bigChart').classList.toggle('hidden',!!c.list);
+  $('#mList').classList.toggle('hidden',!c.list);
+  $('#mStats').classList.toggle('hidden',!!c.list);
+  if(!c.list){
+    bigChart($('#bigChart'),c.data,c.fc,c.c);
+    $('#mS1').textContent=fmt(c.data.at(-1),c.d)+' '+c.u;
+    $('#mS2').textContent=fmt(Math.max(...c.data),c.d)+' '+c.u;
+    $('#mS3').textContent=(c.fc.length?fmt(c.fc.at(-1),c.d)+' '+c.u:'—');
+  }
+  $('#kpiModal').classList.add('show');
+}
+function closeModal(){$('#kpiModal').classList.remove('show');}
+$('#kpisOp').addEventListener('click',e=>{const k=e.target.closest('[data-kpi]'); if(k) openKpiModal(k.dataset.kpi);});
+$('#mX').addEventListener('click',closeModal);
+$('#kpiModal .mscrim').addEventListener('click',closeModal);
+
+/* ---------- view toggle ---------- */
+let geInit=false;
+$('#viewSeg').addEventListener('click',e=>{
+  const b=e.target.closest('[data-view]'); if(!b)return;
+  state.view=b.dataset.view;
+  $$('#viewSeg button').forEach(x=>x.classList.toggle('active',x===b));
+  const ge=state.view==='ge';
+  $('#kpisOp').classList.toggle('hidden',ge); $('#sideOp').classList.toggle('hidden',ge);
+  $('#kpisGe').classList.toggle('hidden',!ge); $('#sideGe').classList.toggle('hidden',!ge);
+  if(ge&&!geInit){
+    geInit=true;
+    $$('#kpisGe [data-count]').forEach((el,i)=>setTimeout(()=>countUp(el,parseFloat(el.dataset.count),900,+(el.dataset.dec||0)),i*90));
+    requestAnimationFrame(()=>{ $('#gaugeArc').style.strokeDashoffset='118'; });
+    const base=[46,47,45,48,46,47,46], ad=[41,40,38,39,37,38,37.5];
+    const svg=$('#trend7'),w=280,h=84,all=base.concat(ad),mn=Math.min(...all)-1,mx=Math.max(...all)+1,r=mx-mn;
+    const L=(d,col,dash)=>`<polyline points="${d.map((v,i)=>[(8+i/(d.length-1)*(w-16)).toFixed(1),(h-8-((v-mn)/r)*(h-16)).toFixed(1)].join(',')).join(' ')}" fill="none" stroke="${col}" stroke-width="2"${dash?' stroke-dasharray="5 5"':''}/>`;
+    svg.innerHTML=L(base,'#475569',1)+L(ad,'#10b981',0);
+    setTimeout(()=>$$('.bar i').forEach(i=>{i.style.width=(+i.dataset.v/25*100)+'%';}),150);
+  }
+});
+
+/* ---------- command palette ---------- */
+const CK=[
+  {l:'Abrir intersección crítica · Larco × Benavides',h:'navegar',f:()=>openDrawer($('[data-id="n2"]'))},
+  {l:'Cambiar a vista Predicción +30 min',h:'mapa',f:()=>{state.horizon=30;$$('#hchips .hchip').forEach(c=>c.classList.toggle('on',c.dataset.hz==='30'));setMode('p');}},
+  {l:'Ver vista Gerencia',h:'vista',f:()=>$('#viewSeg [data-view="ge"]').click()},
+  {l:'Silenciar alertas de hardware · 1 h',h:'alertas',f:()=>toast('Alertas silenciadas','Hardware · se reactivan a las 17:00','tinfo')},
+  {l:'Exportar reporte del turno (PDF)',h:'reporte',f:()=>toast('Generando reporte','PDF del turno · demo','tinfo')},
+  {l:'Reiniciar Nodo Edge #4',h:'hardware',f:()=>{toast('Comando enviado','Reinicio en curso…','tinfo');setTimeout(()=>toast('Nodo Edge #4 en línea','Latencia 38 ms','tok'),2800);}},
+];
+function renderCk(q=''){
+  const items=CK.map((it,i)=>({...it,i})).filter(it=>it.l.toLowerCase().includes(q.toLowerCase()));
+  $('#ckList').innerHTML=items.map(it=>`<button class="ck-it" data-i="${it.i}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>${it.l}</span><kbd>${it.h}</kbd></button>`).join('')||'<div class="ck-empty">Sin resultados</div>';
+}
+function openCk(){ $('#cmdk').classList.add('show'); renderCk(); $('#ckInput').value=''; setTimeout(()=>$('#ckInput').focus(),60); }
+function closeCk(){ $('#cmdk').classList.remove('show'); }
+$('#ckBtn').addEventListener('click',openCk);
+$('#ckInput').addEventListener('input',e=>renderCk(e.target.value));
+$('#ckList').addEventListener('click',e=>{const b=e.target.closest('.ck-it'); if(!b)return; closeCk(); CK[+b.dataset.i].f();});
+$('#cmdk .cscrim').addEventListener('click',closeCk);
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault(); $('#cmdk').classList.contains('show')?closeCk():openCk();}
+  if(e.key==='Escape'){closeDrawer(); closeModal(); closeCk();}
+});
+
+/* ---------- toasts ---------- */
+function toast(t,m,type='tinfo'){
+  const el=document.createElement('div'); el.className='toast '+type;
+  el.innerHTML=`<b><i class="tic"></i>${t}</b><span>${m}</span>`;
+  $('#toasts').appendChild(el);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('in')));
+  setTimeout(()=>{el.classList.remove('in'); setTimeout(()=>el.remove(),420);},5200);
+}
+
+/* ---------- scheduled incoming alert ---------- */
+setTimeout(()=>{
+  toast('Nueva alerta IA','Cola creciente · Pardo × Libertadores · conf 88%','tpred');
+  const al=document.createElement('div'); al.className='al s-pred new';
+  al.innerHTML=`<button class="al-h"><span class="al-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 6-8 3 3"/></svg></span>
+    <div><div class="t">IA · Cola creciente</div><div class="m"><span>Pardo × Libertadores</span><span>ahora</span><span class="num">conf. 88%</span></div></div>
+    <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+    <div class="more"><div><div class="more-in"><div class="acts"><button class="btn pri" data-act="predview">Ver predicción</button><button class="btn">Preparar plan</button></div></div></div></div>`;
+  $('#alist').prepend(al);
+  $('#railBadge').textContent='4'; $('#alCount').textContent='4';
+},9000);
+
+/* ---------- live updates ---------- */
+let secs=0;
+setInterval(()=>{secs=(secs+5)%35; $('#upd').textContent='· hace '+secs+' s';
+  if(state.view!=='op')return;
+  const el=$('[data-kpi="vel"] .num'); const cur=parseFloat(el.dataset.cur||22.4);
+  const v=Math.max(20,Math.min(25,cur+(Math.random()-.5)*.5));
+  el.textContent=fmt(v,1); el.dataset.cur=v;
+},5000);
+
+/* ---------- boot ---------- */
+window.addEventListener('load',()=>{
+  document.body.classList.add('ready');
+  $$('.spark').forEach(s=>sparkline(s,S[s.dataset.spark],SC[s.dataset.spark]));
+  $$('#kpisOp [data-count]').forEach((el,i)=>setTimeout(()=>countUp(el,parseFloat(el.dataset.count),950,+(el.dataset.dec||0)),120+i*90));
+  updBadge(); $('#upd').textContent='· hace 0 s';
+  setTimeout(()=>$('#coach').classList.add('show'),1600);
+  setTimeout(()=>$('#coach').classList.remove('show'),9500);
+});
+</script>
+</body>
+</html>
