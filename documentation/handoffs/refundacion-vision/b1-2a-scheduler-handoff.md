@@ -23,7 +23,7 @@ La secuencia de 2-A son seis sub-pasos. No es un cierre: marcamos el estado real
 | **2-A1** | Gate de ruteo: env `VISION_SCHEDULER_CAMERA_IDS` rutea cámaras designadas al `CameraScheduler`; el resto sigue por el path viejo | ✅ **Commiteado** (`ad42ee04`) |
 | **1** | Andamio de memoria: subir el límite del contenedor edge a **4 GiB** en compose (temporal) | ✅ **Commiteado** (`35226f88`) |
 | **2** | Detector + executor compartidos: hoist de singletons al `MultiCameraManager` + lifecycle | ✅ **Commiteado** (`c7b81c7e`) — implementación en §8 |
-| **3** | Migrar las 11 al scheduler (nacen compartiendo detector) | ⬜ Pendiente |
+| **3** | Migrar las 11 al scheduler (nacen compartiendo detector) | ✅ **Hecho 10/11** (2026-06-09) — gate aprobado; `cam_benavides_panama` excluida por 404 upstream. Detalle en §9 |
 | **4** | Retirar path viejo: invertir dispatch a scheduler-por-default, borrar el gate | ⬜ Pendiente |
 | **5** | Re-medir con detector compartido + 11 y bajar el límite de memoria al consumo real | ⬜ Pendiente |
 
@@ -236,6 +236,79 @@ Edge **rebuildeado** (`invoke up-build` — el código va COPIADO a la imagen, n
   número de memoria (delta mezclado scheduler@320 + viejo@nativo, en el ruido).
 
 Suite `edge_device/tests/vision`: **170 passed**.
+
+---
+
+## 9. Paso 3 ejecutado — migración a 10/11 + gate de validación (2026-06-09)
+
+Paso 3 **NO cambió código**: fue env (los 11 `camera_id` en `VISION_SCHEDULER_CAMERA_IDS`),
+recreate del edge (cambio de env, sin rebuild), alta on-demand de las cámaras y una ventana de
+observación de 30 min con gate. El veredicto del gate se cerró en chat (**APROBADO, alcance 10/11
+declarado**). Lo que sigue es la evidencia, no checkmarks.
+
+### Alcance — 10/11, declarado sin asteriscos escondidos
+Validado a **10 streams concurrentes, NO 11**. `cam_benavides_panama` quedó **excluida** por
+**FUENTE_NO_DISPONIBLE upstream**: su `.m3u8` (`panamericana_peaje1`) devolvió **404 persistente
+(3/3 + un reintento único al cierre del gate)**, ajeno al código y al gate de env (el id estaba
+correcto en la env, verificado in-container). La apertura sincrónica de la fuente hace que esa
+fuente muerta **reviente el alta con HTTP 500** en vez de registrar la cámara degradada (ver
+`TODO.md` § DEUDA-ALTA-SINCRONICA). **Pendiente con trigger:** cuando el stream reviva, alta en
+caliente y verificar que `Loading model` **NO** incrementa — prueba de que una cámara nueva en
+caliente toma el detector compartido (la evidencia bonus que el gate no pudo obtener con el stream
+muerto). Registrado en `TODO.md` § PENDIENTE-BENAVIDES-11A.
+
+### C1 — Detector único ✅
+`grep -c "Loading model"` desde el recreate = **1**, con **10 cámaras scheduled**. Un solo modelo
+YOLO cargado y compartido por las 10. El criterio C1 del Paso 2 (probado allí con 2 cámaras) queda
+confirmado formalmente a escala 10.
+
+### Memoria — 4 muestras (uso / % de 4 GiB / CPU)
+| Marca | MEM | % de 4 GiB | CPU |
+|---|---|---|---|
+| **t0**  | 1.471 GiB | 36.77 % | 166 % |
+| **t10** | 1.498 GiB | 37.45 % | 125 % |
+| **t20** | 1.512 GiB | 37.80 % | 179 % |
+| **t30** | 1.535 GiB | 38.37 % | 167 % |
+
+Creep **lineal, sin escalones ni sawtooth** (muestreo cada 60s): +64 MiB en 30 min ≈ **~2.1 MiB/min**.
+El **trigger de leak lento de D-018 pasó de hipótesis a medición**: presente, **benigno a 30 min**, a
+38 % del cap. **Pero 30 min no distinguen creep-que-platea de creep-ilimitado** — la magnitud quedó
+**insuficientemente caracterizada para el Paso 5**. Consecuencia directa para el Paso 5: el límite real
+**no puede ser "consumo observado + epsilon"**; necesita margen explícito para el creep, o una ventana
+más larga que muestre plateau.
+
+### Condición de medición — render-off (insumo crítico para el Paso 5)
+La ventana corrió con el **render MJPEG apagado**: el watchdog lo apagó en las 10 cámaras a los ~50s
+por **falta de consumidores** (`"sin consumidor MJPEG … apagando render (el muestreo sigue)"`). Es
+correcto y esperado (config de fondo de D-018), pero significa que **1.53 GiB es el consumo render-off
+— sin nadie mirando**. Con operadores conectados al dashboard (miniplayers HLS del frontend) el render
+enciende y el perfil cambia. **El Paso 5 debe decidir**: medir el escenario **render-on**, o **documentar
+que el límite asume render-off + headroom**. Esta decisión (render-on/render-off + creep) se cierra
+**antes** de medir el Paso 5, con el insumo de este gate.
+
+### Observación HLS (D-018) — cierre parcial de la observación (b) de 2-A1
+- **(a) Pendiente de memoria:** creep lineal ~2.1 MiB/min, sin saltos (arriba).
+- **(b) Edad de frames:** t0/t10/t20 → **10/10 `sensor_status:ok`**, edades < 2s, 0 errores, 0 drops.
+  Al **t30** el snapshot marcó `"Degradado"` con **blip transitorio `sin_frame_fresco`** en
+  `cam_28julio_reducto` (2.69s) y `cam_paseo_angamos` (5.03s), **auto-recuperado** (post-ventana las
+  10 volvieron a `ok` < 1.4s, `status:OK`), con **`aggregation_errors:0` y `data_dropped:0`**.
+  **Hallazgo positivo:** el mecanismo de frescura funciona como **detector transitorio, no como falla**
+  — cierra parcialmente la observación (b) que 2-A1 dejó abierta.
+- **(c) Logs de captura:** ventana limpia salvo lo upstream-ajeno. `reconnect`: 0 · `timeout` (evento):
+  0 · `drop/descart`: 0 · `SourceError`: 1 (benavides, ya contado). El apagado de render por falta de
+  consumidor es comportamiento esperado, no anomalía.
+
+### Matiz de endpoints (trampa para gates futuros)
+`GET /cameras` (`streaming.py:51`) devuelve `broadcaster.subscribed_cameras()` + `latest_states()` —
+**cuenta suscriptores SSE, no cámaras corriendo**; da `[]` aunque las 10 corran si no hay cliente SSE.
+La **vista autoritativa de running es `GET /cameras/status`** (registro + `running`) y la telemetría de
+frescura está en `GET /vision/health`. **Gates futuros deben usar estas dos, no `GET /cameras`.**
+
+### Estado resultante
+10/10 cámaras `running`, `status global: OK`, 0 errores / 0 drops, ~1.53 GiB (38 % del cap de 4 GiB).
+El edge quedó **levantado con las 10 cámaras activas** tras el gate (no se bajó). Próximo: **Paso 4**
+(invertir dispatch a scheduler-por-default, borrar el gate de env, eliminar `_run_camera_pipeline` y la
+inyección condicional) y **Paso 5** (re-medir con la decisión render-on/render-off + creep ya tomada).
 
 ---
 
