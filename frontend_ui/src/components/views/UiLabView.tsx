@@ -22,6 +22,7 @@ import { MapModeBadge, type MapMode } from '../map/MapModeBadge';
 import { LayerChips } from '../map/LayerChips';
 import { jamLevelPathOptions } from '../map/edgeStyle';
 import { MIRAFLORES_CENTER, MOCK_EDGES } from '../map/mockGeo';
+import { LiveDataSection } from './uilab/LiveDataSection';
 
 // FASE 1 rediseño UI — galería del design system (/ui-lab). SOLO existe en DEV
 // (router: import.meta.env.DEV + route.lazy → fuera del bundle de producción).
@@ -41,6 +42,7 @@ const SECTIONS = [
   { id: 'modal', label: 'Modal' },
   { id: 'drawer', label: 'Drawer' },
   { id: 'mapa', label: 'Mapa' },
+  { id: 'live', label: 'Datos en vivo' },
 ] as const;
 
 const COLOR_SWATCHES = [
@@ -371,6 +373,12 @@ function LabContent() {
             Tramos por jam_level (mapping provisional de edgeStyle) y nodos ok/warn/bad — el rojo
             es crítico (halo) y abre el Drawer.
           </p>
+        </Section>
+
+        {/* FASE 2 — datos REALES del backend local (sin DemoBadge: ver intro
+            de la sección). Verificación manual de la capa de hooks. */}
+        <Section id="live" title="Datos en vivo (backend local)">
+          <LiveDataSection />
         </Section>
       </div>
     </div>

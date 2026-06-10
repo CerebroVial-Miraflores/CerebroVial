@@ -84,3 +84,46 @@ describe('controlActiveStateService — CA-01.6 lap (401 → onUnauthorized)', (
     });
   });
 });
+
+// FASE 2 rediseño UI — passthrough del signal de cancelación (firma extendida
+// con `opts?: { signal? }` trailing, backward-compatible). Mismo patrón de
+// adapter real de este archivo: se captura el config que llega al adapter.
+describe('controlActiveStateService — passthrough de signal (FASE 2)', () => {
+  beforeEach(() => {
+    authBridge.reset();
+    vi.restoreAllMocks();
+  });
+
+  it('pasa el signal hasta el config de la request', async () => {
+    const captured: InternalAxiosRequestConfig[] = [];
+    httpClient.defaults.adapter = vi.fn(async (config: InternalAxiosRequestConfig) => {
+      captured.push(config);
+      return {
+        data: {
+          node_id: 'larco_schell',
+          strategy_mode: 'webster',
+          cycle_seconds: 90,
+          phase_timings: [],
+          decided_at: '2026-06-10T14:00:00',
+          activated_at: '2026-06-10T14:00:01',
+          activated_by: null,
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        request: {},
+      };
+    }) as unknown as AdapterMock;
+    authBridge.register({ getToken: () => null, onUnauthorized: vi.fn() });
+
+    const controller = new AbortController();
+    const result = await controlActiveStateService.getActiveState('larco_schell', {
+      signal: controller.signal,
+    });
+
+    expect(result.node_id).toBe('larco_schell');
+    expect(captured).toHaveLength(1);
+    expect(captured[0].signal).toBe(controller.signal);
+  });
+});

@@ -1,4 +1,8 @@
 import { httpClient } from './httpClient';
+import type {
+    PredictionHistoryInterval,
+    PredictionHistoryResponse,
+} from '../types/predictionHistory';
 
 // Interfaces matching the backend
 export interface PredictionInput {
@@ -44,5 +48,22 @@ export const predictionService = {
             console.error('Error calling prediction API:', error);
             throw error;
         }
-    }
+    },
+
+    /**
+     * FASE 2 rediseño UI — historial + forecast de una cámara. Normaliza el
+     * fetch crudo de TrafficHistoryWidget (v1, intacto hasta morir) vía
+     * httpClient (JWT). Acepta signal para cancelación desde hooks.
+     */
+    async getHistory(
+        cameraId: string,
+        interval: PredictionHistoryInterval,
+        opts?: { signal?: AbortSignal },
+    ): Promise<PredictionHistoryResponse> {
+        const response = await httpClient.get<PredictionHistoryResponse>(
+            `/predictions/history/${cameraId}`,
+            { params: { interval }, ...(opts?.signal ? { signal: opts.signal } : {}) },
+        );
+        return response.data;
+    },
 };

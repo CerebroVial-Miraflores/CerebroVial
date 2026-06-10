@@ -19,6 +19,12 @@ vi.mock('leaflet', () => ({
   divIcon: vi.fn(() => ({})),
 }));
 
+// FASE 2: la sección "Datos en vivo" consume hooks de datos REALES
+// (axios/SSE) — se mockea para que este smoke no dispare red en jsdom.
+vi.mock('../uilab/LiveDataSection', () => ({
+  LiveDataSection: () => <div data-testid="live-data-section" />,
+}));
+
 describe('UiLabView', () => {
   it('monta todas las secciones de la galería', () => {
     render(<UiLabView />);
@@ -36,10 +42,12 @@ describe('UiLabView', () => {
       'Modal',
       'Drawer',
       'Mapa (MapCanvas + mockGeo)',
+      'Datos en vivo (backend local)',
     ]) {
       expect(screen.getByRole('heading', { name: section })).toBeInTheDocument();
     }
     expect(screen.getByTestId('geojson-layer')).toBeInTheDocument();
     expect(screen.getAllByTestId('marker').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByTestId('live-data-section')).toBeInTheDocument();
   });
 });
