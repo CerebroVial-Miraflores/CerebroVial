@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -50,6 +51,12 @@ class CameraState:
     # Detector YOLO de esta cámara. Conservado para liberarlo en la baja
     # dinámica (C1): tras `remove_camera` el modelo NO debe quedar en memoria.
     detector: Optional[Any] = None
+    # B1 Paso 2: dueñidad del detector, para el guard de release. True = modelo
+    # PROPIO (path viejo / id fuera del scheduler) → `remove_camera` lo libera.
+    # False = comparte el detector singleton del manager → `remove_camera` NO lo
+    # libera (lo usan las otras); el compartido se libera una vez en el teardown
+    # del manager. Análogo a `CameraScheduler._owns_executor`.
+    _owns_detector: bool = True
     # Consumidores MJPEG activos del feed `/video/{id}` (C1). El SSE se cuenta
     # vía broadcaster.subscribed_cameras(); el MJPEG no tiene registro propio,
     # así que lo lleva el generador de video.py (inc al entrar, dec en finally).
@@ -73,12 +80,18 @@ class CameraInstance:
         config: DictConfig,
         builder: VisionApplicationBuilder,
         renderer: Optional[FrameRenderer] = None,
+        detector: Optional[Any] = None,
     ) -> None:
-        # B1 Paso 1a: construcción del detector desacoplada del chain. Se
-        # construye UNA vez acá y se inyecta vía build_pipeline(detector=...) —
-        # costura única que el scheduler de 1b hereda para compartir UN modelo
-        # entre cámaras. NO se usa build_detector() (vía legacy de llamadores viejos).
-        detector = create_detector(config.vision)
+        # B1 Paso 2: el detector se INYECTA condicionalmente desde el manager.
+        # Si viene un `detector` (cámara del scheduler), se comparte el singleton
+        # del manager → esta cámara NO es dueña (no lo libera en su baja). Si NO
+        # viene (path viejo / id fuera del scheduler), construye el suyo acá → ES
+        # dueña. El fallback preserva el aislamiento de Q3: una cámara fuera del
+        # scheduler NUNCA infiere sobre el modelo compartido. (Paso 1a dejó la
+        # costura `build_pipeline(detector=...)`; acá se decide qué detector va.)
+        owns_detector = detector is None
+        if detector is None:
+            detector = create_detector(config.vision)
         pipeline = builder.build_pipeline(detector=detector)
         components = builder.get_components()
         self.state = CameraState(
@@ -88,6 +101,7 @@ class CameraInstance:
             renderer=renderer,
             aggregator=components.get("aggregator"),
             detector=components.get("detector"),
+            _owns_detector=owns_detector,
         )
 
 
@@ -114,6 +128,46 @@ class MultiCameraManager:
         self.watchdog_interval_s = watchdog_interval_s
         self._idle_since: dict[str, float] = {}
         self._watchdog_task: Optional[asyncio.Task] = None
+        # B1 Paso 2: singletons compartidos por las cámaras del scheduler (D-018:
+        # UN modelo YOLO + UN worker de inferencia por instancia de edge). Lazy:
+        # se crean con la primera cámara scheduled y se liberan una vez en
+        # `shutdown()`. Las cámaras del path viejo NO los usan (detector propio).
+        self._shared_detector: Optional[Any] = None
+        self._shared_executor: Optional[ThreadPoolExecutor] = None
+
+    def _shared_detector_for(self, config: DictConfig) -> Any:
+        """Detector YOLO singleton de las cámaras del scheduler (D-018: UN modelo
+        por instancia). Lazy: se construye con la config de la primera cámara
+        scheduled (todas usan el mismo yolo11n del alta on-demand). Se libera una
+        vez en `shutdown()`.
+
+        INVARIANTE DE CARRERA: race-free SOLO si este helper permanece síncrono y
+        sin `await` entre el check (`is None`) y el set. Hoy lo es (`create_detector`
+        es síncrona y los callers lo invocan sin ceder el loop), así que el event
+        loop no puede interleavear dos creaciones. Si un refactor vuelve esto async
+        o mete un `await` en el medio, hace falta un lock — si no, doble creación.
+        """
+        if self._shared_detector is None:
+            self._shared_detector = create_detector(config.vision)
+        return self._shared_detector
+
+    def _shared_infer_executor(self) -> ThreadPoolExecutor:
+        """Executor de inferencia singleton: UN worker que serializa TODA la
+        inferencia del scheduler. Es el invariante de concurrencia del modelo
+        compartido y, por el Benchmark §B.3 (cv2 colapsa torch a 1 thread; forzar
+        multi-thread oversubscribe), también el óptimo. Lazy; se apaga una vez en
+        `shutdown()`.
+
+        INVARIANTE DE CARRERA: race-free SOLO si este helper permanece síncrono y
+        sin `await` entre el check (`is None`) y el set. Si un refactor lo vuelve
+        async o mete un `await` en el medio, hace falta un lock — si no, dos
+        executors creados en paralelo.
+        """
+        if self._shared_executor is None:
+            self._shared_executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="vision-infer-shared"
+            )
+        return self._shared_executor
 
     def add_camera(
         self,
@@ -139,7 +193,19 @@ class MultiCameraManager:
                     zone_cfg['camera_id'] = camera_id
 
         builder = VisionApplicationBuilder(config)
-        camera = CameraInstance(camera_id, config, builder, renderer=renderer)
+        # B1 Paso 2: inyección condicional del detector compartido. Solo las
+        # cámaras del scheduler (`use_scheduler=True`) comparten el singleton del
+        # manager; las del path viejo pasan `detector=None` y construyen el suyo
+        # en `CameraInstance`. Garantiza que un id fuera de la env (path viejo)
+        # nunca toque el modelo compartido (seguridad estructural de Q3).
+        shared_detector = (
+            self._shared_detector_for(config)
+            if config.vision.get("use_scheduler", False)
+            else None
+        )
+        camera = CameraInstance(
+            camera_id, config, builder, renderer=renderer, detector=shared_detector
+        )
 
         self.cameras[camera_id] = camera
         logger.info("Added camera: %s", camera_id)
@@ -190,7 +256,14 @@ class MultiCameraManager:
         # scheduler (captura threaded + inferencia secuencial 1 Hz); las demás
         # siguen por el pipeline viejo. Flag per-cámara → no toca a las otras.
         if camera.state.config.vision.get('use_scheduler', False):
-            scheduler = CameraScheduler(camera, self.broadcaster)
+            # B1 Paso 2: el scheduler recibe el executor de inferencia COMPARTIDO
+            # (max_workers=1 global) → toda la inferencia del modelo compartido se
+            # serializa en un solo worker. `_owns_executor=False` (porque se
+            # inyecta) hace que `scheduler.stop()` NO lo apague: lo apaga el
+            # `shutdown()` del manager, una vez.
+            scheduler = CameraScheduler(
+                camera, self.broadcaster, infer_executor=self._shared_infer_executor()
+            )
             camera.state.scheduler = scheduler
             task = asyncio.create_task(scheduler.run())
             logger.info("Started camera (scheduler 1b): %s", camera_id)
@@ -304,7 +377,17 @@ class MultiCameraManager:
         camera = self.cameras.pop(camera_id, None)
         if camera is not None:
             detector = camera.state.detector
-            if detector is not None and hasattr(detector, "release"):
+            # B1 Paso 2: SOLO liberamos el modelo si es PROPIO de esta cámara
+            # (path viejo, `_owns_detector=True`). Si comparte el singleton del
+            # manager (`_owns_detector=False`), NO se libera: lo siguen usando las
+            # otras cámaras del scheduler. El compartido se libera una vez en
+            # `shutdown()`. Sin este guard, bajar una cámara mataría el modelo de
+            # todas las demás.
+            if (
+                camera.state._owns_detector
+                and detector is not None
+                and hasattr(detector, "release")
+            ):
                 detector.release()
             camera.state.detector = None
             camera.state.latest_frame_raw = None
@@ -320,6 +403,21 @@ class MultiCameraManager:
         """Stops all cameras."""
         tasks = [self.stop_camera(cam_id) for cam_id in list(self.cameras.keys())]
         await asyncio.gather(*tasks)
+
+    async def shutdown(self) -> None:
+        """Teardown del manager (B1 Paso 2): para todas las cámaras y libera los
+        singletons compartidos UNA vez — el detector YOLO y el executor de
+        inferencia. Es el contrapeso de haber sacado el release por-cámara en
+        `remove_camera` (las scheduled ya no son dueñas de su detector). En
+        contenedor el stop suele ser SIGKILL y esto no corre; queda para shutdown
+        graceful, tests y deploys no-contenedor."""
+        await self.stop_all()
+        if self._shared_detector is not None and hasattr(self._shared_detector, "release"):
+            self._shared_detector.release()
+        self._shared_detector = None
+        if self._shared_executor is not None:
+            self._shared_executor.shutdown(wait=False)
+            self._shared_executor = None
 
     def get_status(self) -> dict:
         """Returns status of all cameras."""

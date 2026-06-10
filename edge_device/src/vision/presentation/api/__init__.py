@@ -30,6 +30,15 @@ broadcaster = RealtimeBroadcaster()
 cameras.init_manager(broadcaster)
 streaming.init_broadcaster(broadcaster)
 
+
+@app.on_event("shutdown")
+async def _shutdown_vision_manager() -> None:
+    """B1 Paso 2: teardown del manager al bajar la app — libera el detector
+    compartido y apaga el executor de inferencia una vez (contrapeso del release
+    por-cámara que se sacó en `remove_camera`). En contenedor el stop suele ser
+    SIGKILL (no corre); queda para shutdown graceful y deploys no-contenedor."""
+    await cameras.get_manager().shutdown()
+
 # Compatibility wrapper for run_server.py
 def set_pipeline(pipeline, visualizer):
     """
