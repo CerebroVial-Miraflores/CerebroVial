@@ -3,6 +3,7 @@ YOLO-based vehicle detector.
 """
 import logging
 import time
+from typing import Optional
 
 import numpy as np
 
@@ -82,10 +83,20 @@ class YoloDetector(VehicleDetector):
                 self.logger.warning("empty_cache falló al liberar el modelo", exc_info=True)
 
     @log_execution_time(logging.getLogger(__name__))
-    def detect(self, frame: np.ndarray, frame_id: int = 0) -> list[DetectedVehicle]:
-        """Detect vehicles in a single frame, returning domain entities."""
+    def detect(
+        self, frame: np.ndarray, frame_id: int = 0, imgsz: Optional[int] = None
+    ) -> list[DetectedVehicle]:
+        """Detect vehicles in a single frame, returning domain entities.
+
+        `imgsz` (B1 1c): resolución de inferencia por-llamada. `None` = no se pasa
+        a ultralytics → corre su nativo (no escribimos un literal de política acá).
+        Cuando viene un valor (el scheduler lo aplica), se pasa a `predict`.
+        """
         try:
-            results = self._model(frame, verbose=False, conf=self.conf_threshold)[0]
+            kwargs = {"verbose": False, "conf": self.conf_threshold}
+            if imgsz is not None:
+                kwargs["imgsz"] = imgsz
+            results = self._model(frame, **kwargs)[0]
 
             vehicles: list[DetectedVehicle] = []
             for box in results.boxes:

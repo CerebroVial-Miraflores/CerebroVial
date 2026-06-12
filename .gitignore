@@ -14,12 +14,18 @@ build/
 dist/
 __pycache__/
 *.pyc
+# Node.js deps de la raíz (frontend_ui/node_modules ya lo cubre frontend_ui/.gitignore).
+/node_modules/
 .DS_Store
 **/.DS_Store
 compose-*.log
 # Logs de la siembra del calendario de congestión (scripts/seed_congestion_calendar.py).
 logs/
 videos/
+# Clips de benchmark de visión (binarios reproducibles vía el README del dir).
+# Se versionan el README y la metodología, NO los .mp4.
+edge_device/benchmarks/clips/*.mp4
+edge_device/benchmarks/clips/**/*.mp4
 # Debris descartable (corridas SUMO, datasets crudos, calibración). Cuelga de repo-root.
 # Lo versionable se promueve fuera de scratch/ (p.ej. simulation/data/datasets/).
 scratch/
@@ -31,3 +37,5 @@ scratch/
 # Outputs regenerables del experimento de validación red-completa (F1, DHU-030): SUMO
 # escribe tripinfo/summary.parquet acá. Se versionan demanda + sumocfg + README, NO los runs.
 simulation/conf/miraflores_red_completa/runs/
+# Capturas masivas de los streams Claro (monitoreo 24h, NO material curado de benchmark).
+capturas_claro/

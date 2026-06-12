@@ -69,6 +69,29 @@ class Frame:
 
 
 @dataclass(frozen=True)
+class FrameSnapshot:
+    """Snapshot no-bloqueante del último frame disponible + su frescura (B1 1b).
+
+    Es el contrato de frescura/liveness agnóstico que el scheduler consulta para
+    decidir inferir-o-marcar-sin-señal, SIN esperar a un `read()` que pueda
+    colgar. Lo produce una captura threaded (`ThreadedCapture`) que envuelve un
+    `FrameProducer` pull; un archivo y un stream responden según su naturaleza
+    sin que el scheduler los distinga.
+
+    - `frame`: último frame capturado (poll, no consume cola). `None` si nunca hubo.
+    - `age_seconds`: edad por reloj MONOTÓNICO (no wall-clock, para que un salto de
+      reloj NTP no falsee la frescura). `None` si nunca hubo frame.
+    - `live`: `True` si la captura está sana entregando; `False` si detectó fin de
+      stream / fuente muerta (EOF / max-retries / excepción). Un read() colgado deja
+      `live=True` con `age_seconds` creciendo → el scheduler lo lee como no-fresco
+      igual (no espera): el read-colgado queda contenido, no arreglado (deuda).
+    """
+    frame: Optional["Frame"]
+    age_seconds: Optional[float]
+    live: bool
+
+
+@dataclass(frozen=True)
 class TrafficData:
     """Aggregated traffic metrics for a single zone over a closed time window.
 

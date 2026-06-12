@@ -84,6 +84,33 @@ def test_smart_detection_rejects_invalid_n():
         SmartDetectionProcessor(detector=detector, detect_every_n=-1)
 
 
+def test_passes_imgsz_to_detect():
+    """B1 1c: el processor pasa su `imgsz` por-llamada a detector.detect()."""
+    detector = MagicMock()
+    detector.detect.return_value = []
+    processor = SmartDetectionProcessor(detector=detector, detect_every_n=1, imgsz=320)
+
+    processor._process(_frame(0), None)
+
+    _, kwargs = detector.detect.call_args
+    assert kwargs.get("imgsz") == 320
+
+
+def test_imgsz_none_by_default():
+    """Capacidad del processor: sin imgsz → None → detect no especifica → nativo de
+    ultralytics. B1 Paso 4: ya no hay caller de producción que use imgsz=None (el
+    scheduler siempre aplica DEFAULT_IMGSZ); esto prueba la API del processor, que
+    sigue aceptando None como entrada válida."""
+    detector = MagicMock()
+    detector.detect.return_value = []
+    processor = SmartDetectionProcessor(detector=detector, detect_every_n=1)
+
+    processor._process(_frame(0), None)
+
+    _, kwargs = detector.detect.call_args
+    assert kwargs.get("imgsz") is None
+
+
 def test_detect_every_n_one_runs_detector_every_frame():
     """N=1: caso degenerado, detección en cada frame, sin skip."""
     detector = MagicMock()

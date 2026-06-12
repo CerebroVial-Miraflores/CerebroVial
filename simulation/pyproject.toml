@@ -9,6 +9,9 @@ dependencies = [
     "traci==1.26.0",
     # sumolib es transitivo de traci==1.26.0 (requires >=1.26.0) y resuelve a 1.27.0 — F0 documentó el gap PyPI 1.22-1.26.
     "sumolib>=1.26.0",
+    # Geo-proyección UTM↔lon/lat: sumolib.net.convertLonLat2XY/convertXY2LonLat la
+    # requiere (sin pyproj lanza RuntimeError). La usa validate_pmu_coverage.py.
+    "pyproj>=3.7",
     # Lectura de salidas Parquet de SUMO (edgeData, laneArea, summary, tripinfo).
     "pyarrow>=15.0",
     "pyyaml>=6.0",

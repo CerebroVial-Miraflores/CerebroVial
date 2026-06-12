@@ -9,6 +9,7 @@ from .entities import (
     DetectedVehicle,
     Frame,
     FrameAnalysis,
+    FrameSnapshot,
     TrafficData,
     ZoneVehicleCount,
 )
@@ -16,8 +17,18 @@ from .value_objects import ZoneId
 
 
 class VehicleDetector(Protocol):
-    """Protocol for vehicle detection in a single frame."""
-    def detect(self, frame: np.ndarray, frame_id: int) -> list[DetectedVehicle]: ...
+    """Protocol for vehicle detection in a single frame.
+
+    `imgsz` (B1 1c): resolución de inferencia POR LLAMADA (no estado del detector,
+    para que un detector compartido entre cámaras —D-018/Paso 2— pueda inferir con
+    imgsz distinto por cámara). `None` = "no especifico → el backend decide su
+    nativo"; NO es una política de 640. La única política de producto es
+    `DEFAULT_IMGSZ` (ver `application/processors/smart_detection.py`), que el
+    scheduler aplica.
+    """
+    def detect(
+        self, frame: np.ndarray, frame_id: int, imgsz: Optional[int] = None
+    ) -> list[DetectedVehicle]: ...
 
 
 class VehicleTracker(Protocol):
@@ -34,6 +45,23 @@ class FrameProducer(Protocol):
     """Protocol for a source of frames (file, webcam, stream)."""
     def read(self) -> Optional[Frame]: ...
     def release(self) -> None: ...
+
+
+class LiveFrameSource(Protocol):
+    """Captura viva con frescura agnóstica, no-bloqueante (B1 1b, D-018).
+
+    El scheduler programa contra ESTE contrato, no contra el `read()` pull (que
+    puede colgar). Una captura threaded (`ThreadedCapture`) envuelve un
+    `FrameProducer`, absorbe el `read()` bloqueante en su propio thread, y expone
+    el último frame + su frescura por `snapshot()` sin que el scheduler espere.
+
+    Nota de diseño (A1, plan 1b): el wrapper es **push-based** (start/stop/snapshot),
+    no pull — por eso NO reexpone `read()`. El `FrameProducer` envuelto conserva
+    su `read()/release()` (lo consume el thread de captura, no el scheduler).
+    """
+    def start(self) -> None: ...
+    def snapshot(self) -> FrameSnapshot: ...
+    def stop(self) -> None: ...
 
 
 class ZoneCounter(Protocol):

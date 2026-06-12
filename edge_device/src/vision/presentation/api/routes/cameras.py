@@ -116,10 +116,11 @@ async def add_camera(camera_id: str, config: CameraConfig):
     """
     Alta on-demand de una cámara (C1, D3): registra Y arranca el pipeline YOLO.
 
-    Single-slot: garantiza un solo YOLO vivo a la vez (libera cualquier otra
-    cámara activa). Idempotente sobre el mismo `source`. El frontend la llama al
-    entrar al detalle, pasando el id real (`cam_<intersection>`) y la URL de
-    Claro como `source` (`source_type: "hls"`).
+    Aditiva (post-#56): activar una cámara NO baja las demás — varias conviven.
+    La garantía de un solo modelo YOLO la da el scheduler con detector compartido
+    (D-018), no este endpoint. Idempotente sobre el mismo `source` para el mismo
+    `camera_id`. El frontend la llama al entrar al detalle, pasando el id real
+    (`cam_<intersection>`) y la URL de Claro como `source` (`source_type: "hls"`).
 
     Body example:
     {

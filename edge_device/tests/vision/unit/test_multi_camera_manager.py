@@ -3,6 +3,36 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from omegaconf import DictConfig
 from src.vision.application.services.multi_camera import MultiCameraManager, CameraInstance
 
+
+@pytest.fixture(autouse=True)
+def stub_create_detector():
+    """B1 Paso 1a: CameraInstance ahora construye el detector vía `create_detector`
+    e inyecta el resultado en `build_pipeline(detector=...)`. Estos tests mockean
+    el builder entero y usan cfgs sin `model` key, así que stubeamos la factory
+    para no cargar YOLO real. Es scaffolding: refleja la dependencia nueva del
+    caller, no cambia la sustancia de ninguna aserción."""
+    with patch(
+        'src.vision.application.services.multi_camera.create_detector',
+        return_value=MagicMock(),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def stub_scheduler():
+    """B1 Paso 4: `start_camera` arma SIEMPRE un `CameraScheduler`. Los tests de
+    nivel manager (registro, flags de render, lifecycle) NO ejercen el loop del
+    scheduler — eso vive en test_camera_scheduler.py. Stubeamos la clase en el
+    boundary del manager para no spinear threads reales (`ThreadedCapture` sobre un
+    `pipeline.source` mockeado). Devuelve el mock de la clase para inspección;
+    `.run` es awaitable (el task se crea con él) y `.stop` observable."""
+    with patch('src.vision.application.services.multi_camera.CameraScheduler') as MockSched:
+        instance = MockSched.return_value
+        instance.run = AsyncMock()
+        instance.stop = MagicMock()
+        yield MockSched
+
+
 @pytest.fixture
 def mock_broadcaster():
     """Mock del broadcaster Protocol-conforme (§6.10/§6.11): publish/subscriber_count/is_subscribed."""
@@ -44,33 +74,30 @@ def test_add_duplicate_camera(manager):
             manager.add_camera("cam1", config)
 
 @pytest.mark.asyncio
-async def test_start_stop_camera(manager):
-    """C1.6 migrado: is_running vive en state.is_running (no atributo directo).
-
-    Sin OpenCVVisualizer hardcoded (Caso B roto): el pipeline_mock yield
-    MagicMocks sin tocar cv2.putText, porque el render condicional solo se
-    ejecuta si `state.renderer is not None`.
-    """
+async def test_start_stop_camera(manager, stub_scheduler):
+    """B1 Paso 4: start arma el scheduler y registra el task; stop lo para vía
+    `scheduler.stop()` (ya NO `pipeline.stop()` — el path viejo se retiró) y limpia
+    el task. El loop del scheduler está stubeado: este test cubre el lifecycle del
+    manager, no la conducta del scheduler (esa vive en test_camera_scheduler.py)."""
     config = DictConfig({'vision': {'zones': {}}})
 
-    pipeline_mock = MagicMock()
-    pipeline_mock.run.return_value = iter([(MagicMock(), MagicMock())])
-
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
-        MockBuilder.return_value.build_pipeline.return_value = pipeline_mock
+        MockBuilder.return_value.build_pipeline.return_value = MagicMock()
 
         manager.add_camera("cam1", config)
 
-        # Start.
+        # Start: scheduler creado, task registrado.
         await manager.start_camera("cam1")
         assert manager.cameras["cam1"].state.is_running
         assert "cam1" in manager._tasks
+        assert manager.cameras["cam1"].state.scheduler is stub_scheduler.return_value
 
-        # Stop.
+        # Stop: el scheduler se para y el task se limpia.
         await manager.stop_camera("cam1")
         assert not manager.cameras["cam1"].state.is_running
         assert "cam1" not in manager._tasks
-        pipeline_mock.stop.assert_called_once()
+        stub_scheduler.return_value.stop.assert_called_once()
+        assert manager.cameras["cam1"].state.scheduler is None
 
 @pytest.mark.asyncio
 async def test_start_camera_not_found(manager):
@@ -113,27 +140,37 @@ def _patch_builder(MockBuilder, detector=None):
 
 
 @pytest.mark.asyncio
-async def test_remove_camera_releases_model_and_unregisters(manager):
-    config = DictConfig({'vision': {'source': 's1', 'zones': {}}})
-    detector = _FakeDetector()
-    with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
-        _patch_builder(MockBuilder, detector=detector)
+async def test_remove_no_libera_shared_detector_shutdown_si(manager):
+    """B1 Paso 4 (invariante nuevo): `remove_camera` NO libera el detector — es el
+    singleton compartido, liberarlo mataría el modelo de las demás (F2). El
+    compartido se libera UNA sola vez en `shutdown()`. Este par de asserts protege
+    exactamente la falla que el guard `_owns_detector` prevenía."""
+    shared_det = _FakeDetector()
+    cfg = DictConfig({'vision': {'source': 's1', 'zones': {}}})
+    with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder, \
+         patch('src.vision.application.services.multi_camera.create_detector', return_value=shared_det):
+        _patch_builder(MockBuilder)
 
-        manager.add_camera("cam1", config)
-        assert manager.cameras["cam1"].state.detector is detector
+        manager.add_camera("cam1", cfg)
+        assert manager._shared_detector is shared_det   # el singleton compartido
 
         await manager.remove_camera("cam1")
+        assert "cam1" not in manager.cameras            # sacada del registro
+        assert shared_det.released is False             # NO liberado en remove (F2)
 
-        assert "cam1" not in manager.cameras          # sacada del registro
-        assert detector.released is True              # modelo liberado
+        await manager.shutdown()
+        assert shared_det.released is True              # liberado UNA vez en shutdown
 
     # Idempotente: remover algo inexistente no rompe.
     await manager.remove_camera("cam1")
 
 
 @pytest.mark.asyncio
-async def test_activate_camera_single_slot(manager):
-    """Un solo YOLO vivo (D2): activar cam2 libera cam1."""
+async def test_activate_camera_keeps_others_alive(manager):
+    """B1 Paso 0: sin single-slot, activar cam2 NO baja cam1 (abrir B no mata A).
+
+    Reemplaza al viejo `test_activate_camera_single_slot`: el contrato se invirtió
+    a propósito. La garantía "un solo YOLO" pasa al scheduler (Paso 1)."""
     cfg1 = DictConfig({'vision': {'source': 's1', 'zones': {}}})
     cfg2 = DictConfig({'vision': {'source': 's2', 'zones': {}}})
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
@@ -143,8 +180,11 @@ async def test_activate_camera_single_slot(manager):
         assert "cam1" in manager.cameras
 
         await manager.activate_camera("cam2", cfg2)
+        # Ambas vivas: activar la segunda no liberó la primera.
         assert "cam2" in manager.cameras
-        assert "cam1" not in manager.cameras  # single-slot liberó la anterior
+        assert "cam1" in manager.cameras
+        assert manager.cameras["cam1"].state.is_running
+        assert manager.cameras["cam2"].state.is_running
 
 
 @pytest.mark.asyncio
@@ -162,27 +202,40 @@ async def test_activate_camera_idempotent_same_source(manager):
 
 
 @pytest.mark.asyncio
-async def test_sweep_idle_releases_camera_without_consumers(manager, mock_broadcaster):
-    """Watchdog (E4): una cámara sin consumidores se libera al superar el timeout."""
-    mock_broadcaster.subscribed_cameras.return_value = []  # 0 consumidores SSE
+async def test_sweep_idle_disables_render_without_mjpeg(manager, mock_broadcaster):
+    """B1 Paso 0: el watchdog apaga el RENDER (no baja la cámara) sin MJPEG.
+
+    Reemplaza al viejo `test_sweep_idle_releases_camera_without_consumers`: la
+    acción cambió de `remove_camera` a apagar render; el muestreo sobrevive.
+    Incluye el caso clave: con SSE pero sin MJPEG el render igual se apaga (el
+    SSE no consume frames)."""
+    mock_broadcaster.subscribed_cameras.return_value = ["cam1"]  # SSE activo, sin MJPEG
     cfg = DictConfig({'vision': {'source': 's1', 'zones': {}}})
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
         _patch_builder(MockBuilder)
         await manager.activate_camera("cam1", cfg)
+        assert manager.cameras["cam1"].state.render_enabled is True
 
-        # Primera pasada: marca idle, NO libera todavía.
+        # Primera pasada: marca idle, NO apaga todavía.
         assert await manager._sweep_idle(now=1000.0) == []
-        assert "cam1" in manager.cameras
+        assert manager.cameras["cam1"].state.render_enabled is True
 
-        # Pasada superado el timeout: libera.
-        released = await manager._sweep_idle(now=1000.0 + manager.idle_timeout_s + 1)
-        assert released == ["cam1"]
-        assert "cam1" not in manager.cameras
+        # Pasada superado el timeout: apaga SOLO el render.
+        disabled = await manager._sweep_idle(now=1000.0 + manager.idle_timeout_s + 1)
+        assert disabled == ["cam1"]
+        # La cámara sigue viva y muestreando; solo se apagó el render.
+        assert "cam1" in manager.cameras
+        assert manager.cameras["cam1"].state.is_running
+        assert manager.cameras["cam1"].state.render_enabled is False
+        assert manager.cameras["cam1"].state.latest_frame_raw is None
 
 
 @pytest.mark.asyncio
-async def test_mjpeg_consumer_keeps_camera_alive(manager, mock_broadcaster):
-    """Un consumidor MJPEG activo impide la auto-liberación; al irse, se libera."""
+async def test_mjpeg_consumer_keeps_render_on_then_watchdog_disables(manager, mock_broadcaster):
+    """Con consumidor MJPEG el render se mantiene; al irse, el watchdog lo apaga.
+
+    Reemplaza al viejo `test_mjpeg_consumer_keeps_camera_alive`: la cámara NO se
+    baja en ningún caso; lo que se gestiona es el render."""
     mock_broadcaster.subscribed_cameras.return_value = []
     cfg = DictConfig({'vision': {'source': 's1', 'zones': {}}})
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
@@ -190,63 +243,16 @@ async def test_mjpeg_consumer_keeps_camera_alive(manager, mock_broadcaster):
         await manager.activate_camera("cam1", cfg)
 
         manager.add_mjpeg_consumer("cam1")
-        # Con consumidor MJPEG, ni siquiera un `now` enorme la libera.
+        # Con consumidor MJPEG, ni un `now` enorme apaga el render.
         assert await manager._sweep_idle(now=10_000.0) == []
-        assert "cam1" in manager.cameras
+        assert manager.cameras["cam1"].state.render_enabled is True
 
         manager.remove_mjpeg_consumer("cam1")
-        # Sin consumidores: marca idle y libera tras el timeout.
+        # Sin MJPEG: marca idle y apaga el render tras el timeout.
         await manager._sweep_idle(now=20_000.0)
-        released = await manager._sweep_idle(now=20_000.0 + manager.idle_timeout_s + 1)
-        assert released == ["cam1"]
-        assert "cam1" not in manager.cameras
-
-
-@pytest.mark.asyncio
-async def test_visual_box_persistence_without_double_count(manager):
-    """C1: en skip frames (detection_ran=False) la visualización persiste los boxes
-    del último frame inferido, PERO esos boxes nunca tocan métricas — el aggregator
-    solo recibe el análisis real aguas arriba (acá: _run_camera_pipeline solo hace
-    flush, nunca add)."""
-    import numpy as np
-    from src.vision.domain.entities import DetectedVehicle, Frame, FrameAnalysis
-
-    img = np.zeros((4, 4, 3), dtype=np.uint8)
-    frame_detect = Frame(id=0, timestamp=0.0, image=img)
-    frame_skip = Frame(id=1, timestamp=0.01, image=img)
-
-    vehicle = DetectedVehicle(id="1", type="car", confidence=0.9, bbox=(0, 0, 2, 2), timestamp=0.0)
-    analysis_detect = FrameAnalysis(
-        frame_id=0, timestamp=0.0, vehicles=[vehicle], unique_vehicles=1,
-        zones={}, detection_ran=True,
-    )
-    analysis_skip = FrameAnalysis(
-        frame_id=1, timestamp=0.01, vehicles=[], unique_vehicles=0,
-        zones={}, detection_ran=False,
-    )
-
-    renderer = MagicMock()
-    renderer.render.return_value = img
-    aggregator = MagicMock()
-    aggregator.flush.return_value = []
-
-    cfg = DictConfig({'vision': {'source': 's1', 'zones': {}}})
-    with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
-        pipeline = MagicMock()
-        pipeline.run.return_value = iter([(frame_detect, analysis_detect), (frame_skip, analysis_skip)])
-        MockBuilder.return_value.build_pipeline.return_value = pipeline
-        MockBuilder.return_value.get_components.return_value = {
-            'detector': _FakeDetector(), 'aggregator': aggregator,
-        }
-
-        manager.add_camera("cam1", cfg, renderer=renderer)
-        await manager.start_camera("cam1")
-        await manager._tasks["cam1"]  # el pipeline es finito → el task termina solo
-
-    # En el skip frame el renderer recibió el análisis PERSISTIDO (detect), no el vacío.
-    rendered = [call.args[1] for call in renderer.render.call_args_list]
-    assert rendered == [analysis_detect, analysis_detect]
-
-    # Los boxes persistidos NUNCA tocan métricas: el loop solo hace flush, nunca add.
-    aggregator.add.assert_not_called()
-    assert aggregator.flush.called
+        disabled = await manager._sweep_idle(now=20_000.0 + manager.idle_timeout_s + 1)
+        assert disabled == ["cam1"]
+        # La cámara sigue viva; solo se apagó el render.
+        assert "cam1" in manager.cameras
+        assert manager.cameras["cam1"].state.is_running
+        assert manager.cameras["cam1"].state.render_enabled is False
