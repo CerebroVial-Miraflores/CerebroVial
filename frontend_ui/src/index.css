@@ -23,6 +23,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Foco visible SOLO con teclado (B0, migrado del prototipo — faltaba): anillo
+   brand consistente en toda la app; el click de mouse no deja ring persistente
+   (:focus-visible no se activa por puntero en botones). */
+:focus-visible {
+  outline: 2px solid var(--color-brand-2);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 /* Miniplayer del mapa (F3): neutraliza el card/tip/sombra default de Leaflet — solo el video
    flotando con sus propios bordes redondeados. Scopeado a `.miniplayer-popup` (la className del
    Popup) para no afectar otros popups (CongestionMapView, futuros). */

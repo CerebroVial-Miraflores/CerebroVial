@@ -165,13 +165,14 @@ describe('CommandView — KPIs (política de paridad)', () => {
     ).toBeInTheDocument();
   });
 
-  it('vel/flu sin señal de visión → "—" honesto + caveats REAL-CON-CAVEAT siempre visibles', () => {
+  it('vel/flu sin señal → "—" + caveat colapsado a UNA línea con title (B0)', () => {
     mount();
-    expect(screen.getAllByText('sin señal de visión')).toHaveLength(2);
-    // Caveats de limitación (DEUDA-SPEED-CALIB / spike de flujo): SIN DemoBadge,
-    // presentes aunque no haya dato.
-    expect(screen.getByText('visión · sin calibrar')).toBeInTheDocument();
-    expect(screen.getByText('visión · presencia extrapolada')).toBeInTheDocument();
+    // Empty deliberado: una sola línea corta por card; el texto completo va en
+    // el title (tooltip). Caveats de limitación SIN DemoBadge (no es mock).
+    const velCaveat = screen.getByText('sin señal · sin calibrar');
+    expect(velCaveat).toHaveAttribute('title', expect.stringContaining('DEUDA-SPEED-CALIB'));
+    const fluCaveat = screen.getByText('sin señal · presencia extrapolada');
+    expect(fluCaveat).toHaveAttribute('title', expect.stringContaining('line-crossing'));
   });
 
   it('vel/flu con señal → media y suma del agregado de visión', () => {
@@ -190,7 +191,7 @@ describe('CommandView — KPIs (política de paridad)', () => {
     expect(screen.getByText('km/h')).toBeInTheDocument();
     expect(screen.getByText('1,000')).toBeInTheDocument();
     expect(screen.getByText('veh/h')).toBeInTheDocument();
-    // Los caveats no desaparecen con dato presente.
+    // Los caveats real-con-caveat no desaparecen con dato presente.
     expect(screen.getByText('visión · sin calibrar')).toBeInTheDocument();
     expect(screen.getByText('visión · presencia extrapolada')).toBeInTheDocument();
   });

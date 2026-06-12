@@ -61,7 +61,9 @@ export function KpiCard({
   return (
     <Root
       {...(onClick ? { type: 'button' as const, onClick } : {})}
-      className={`group relative overflow-hidden rounded-card border bg-linear-to-b from-white/5 to-white/2 px-[15px] pb-[11px] pt-[13px] text-left transition-all duration-300 ease-fluid hover:-translate-y-[3px] hover:shadow-xl hover:shadow-black/45 ${
+      // flex-col + mt-auto del pie (FASE 3 B0): el contenido variable (caveats,
+      // badges, ConfBar) se ancla abajo y la fila queda nivelada (grid stretch).
+      className={`group relative flex flex-col overflow-hidden rounded-card border bg-linear-to-b from-white/5 to-white/2 px-[15px] pb-[11px] pt-[13px] text-left transition-all duration-300 ease-fluid hover:-translate-y-[3px] hover:shadow-xl hover:shadow-black/45 ${
         warn ? 'border-warn/40 hover:border-warn/70' : 'border-line hover:border-brand/45'
       } ${className}`}
     >
@@ -83,9 +85,11 @@ export function KpiCard({
         {unit != null && <span className="text-[11.5px] font-semibold text-ink-2">{unit}</span>}
       </div>
 
-      {footer ?? (spark && spark.length > 1 ? (
-        <Sparkline data={spark} className={`mt-2 h-8 w-full ${sparkClassName}`} />
-      ) : null)}
+      <div className="mt-auto">
+        {footer ?? (spark && spark.length > 1 ? (
+          <Sparkline data={spark} className={`mt-2 h-8 w-full ${sparkClassName}`} />
+        ) : null)}
+      </div>
 
       <i
         aria-hidden="true"

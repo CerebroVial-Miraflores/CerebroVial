@@ -31,15 +31,33 @@ import {
   networkCongestionIndex,
   predictionLabelAt,
   pushSample,
+  seriesToNetworkIndex,
+  todayIsoLocal,
   type PredictionHorizon,
 } from './derive';
 
 /**
  * Buffer del sparkline acumulado en render (render-guard, patrón
  * useVisionStream): appendea solo cuando el valor cambia, sin effects.
+ *
+ * `seed` (B0): historia inicial opcional — el índice de red se siembra desde
+ * la serie del día actual (useCongestionSeries) cuando existe; se aplica solo
+ * si aporta más puntos que lo acumulado en vivo. Las sparks de visión (vel/
+ * flu) NO tienen fuente histórica directa: se llenan en sesión, muestra a
+ * muestra — comportamiento esperado, el placeholder del strip cubre el inicio.
  */
-function useSparkBuffer(value: number | null): readonly number[] {
+function useSparkBuffer(
+  value: number | null,
+  seed: readonly number[] | null = null,
+): readonly number[] {
   const [hist, setHist] = useState<readonly number[]>([]);
+  const [prevSeed, setPrevSeed] = useState<readonly number[] | null>(null);
+  if (seed !== prevSeed) {
+    setPrevSeed(seed);
+    if (seed !== null && seed.length > hist.length) {
+      setHist(seed);
+    }
+  }
   const [prev, setPrev] = useState<number | null>(null);
   if (value !== prev) {
     setPrev(value);
@@ -66,6 +84,10 @@ export function CommandView() {
   const series = useCongestionSeries(url.mode === 'historico' ? url.dia : '');
   const prediction = useCongestionPrediction();
   const adaptive = useAdaptiveNodes();
+  // B0: serie del día ACTUAL (one-shot) para sembrar la spark del índice con
+  // historia real cuando la ventana del día ya tiene datos.
+  const [today] = useState(() => todayIsoLocal());
+  const todaySeries = useCongestionSeries(today);
 
   const cameraIds = useMemo(
     () => (intersections.data ?? []).map((i) => i.id),
@@ -94,7 +116,11 @@ export function CommandView() {
   const idxValue = networkCongestionIndex(congestionState.data);
   const velValue = vision.aggregate.meanSpeedKmh;
   const fluValue = vision.aggregate.totalFlowVph;
-  const idxSpark = useSparkBuffer(idxValue);
+  const idxSeed = useMemo(() => {
+    const networkIndex = seriesToNetworkIndex(todaySeries.data);
+    return networkIndex ? networkIndex.points.slice(-24) : null;
+  }, [todaySeries.data]);
+  const idxSpark = useSparkBuffer(idxValue, idxSeed);
   const velSpark = useSparkBuffer(velValue);
   const fluSpark = useSparkBuffer(fluValue);
 
