@@ -290,6 +290,82 @@ def seed_rbac_smoke(c):
     c.run(f"{py} scripts/seed_rbac_smoke.py", pty=False)
 
 
+@task(pre=[check_env])
+def build_graph(c):
+    """Cargar el mapa real de Miraflores en graph_nodes / graph_edges.
+
+    Corre scripts/build_graph_geometry.py: puebla las 1660 aristas del LCC
+    (desde simulation/conf/network/miraflores.net.xml + el mapping canónico) y
+    sus junctions SUMO (node_id prefijado `sumo_`). Pisa las 6 edges sintéticas
+    de `invoke seed` (hace DELETE FROM graph_edges y reinserta). Los 5 nodos de
+    control quedan intactos.
+
+    POSICIÓN EN LA CADENA: después de `invoke seed`, antes de
+    `invoke seed-intersections` (cuyos edge_id son FK→graph_edges, que esta task
+    carga).
+
+    GUARDS DE ABORTO ESPERADOS (el script se protege de borrar edges con FK
+    apuntándolas; si corta, el motivo es uno de estos, NO un bug):
+      - aborta si `intersection_edges` tiene filas (FK→graph_edges; truncala
+        antes de re-correr, o usá `invoke db-reset`).
+      - aborta si `waze_jams` / `waze_alerts` tienen filas (congestión sembrada;
+        limpiala antes de re-correr).
+
+    Idempotente sobre base sin esos datos colgando. Corre desde el venv local.
+    """
+    py = _venv_python()
+    c.run(f"{py} scripts/build_graph_geometry.py", pty=False)
+    print("\n✓ Mapa real cargado (graph_nodes + graph_edges).")
+
+
+@task(pre=[check_env])
+def seed_all(c):
+    """Sembrar la base completa para onboarding, en orden, parando al primer fallo.
+
+    Orquesta los 4 pasos en su orden obligatorio por FK:
+      1. seed              → 5 nodos de control + admin
+      2. build-graph       → mapa real (1660 edges del LCC + junctions sumo_)
+      3. seed-intersections→ 11 intersecciones PMU + puente + 11 cámaras
+      4. seed-rbac-smoke   → 3 usuarios de prueba (operator/manager/admin)
+
+    RBAC va último (solo toca `users`, sin dependencia FK de 2-3): así no deja el
+    mapa a medio construir si falla.
+
+    ASUME BASE RECIÉN MIGRADA / VOLUMEN NUEVO (Opción 1): NO resetea ni trunca
+    nada. Sobre base ya sembrada, el paso 2 abortará por sus guards (ver abajo).
+    Para arrancar de cero, usá `invoke db-reset`.
+
+    HEREDA LOS GUARDS DE build-graph: aborta si `intersection_edges` o
+    `waze_jams` / `waze_alerts` tienen filas. Si re-corrés sobre una base que ya
+    pasó por seed-all (intersection_edges poblada) o con congestión sembrada, el
+    paso 2 corta — es esperado, no un bug.
+
+    Para al primer fallo (sin warn): si un paso revienta, la cadena se detiene.
+    """
+    steps = [
+        ("1/4 seed (nodos de control + admin)", seed),
+        ("2/4 build-graph (mapa real)", build_graph),
+        ("3/4 seed-intersections (PMU + puente + cámaras)", seed_intersections),
+        ("4/4 seed-rbac-smoke (usuarios de prueba)", seed_rbac_smoke),
+    ]
+    for label, step in steps:
+        print(f"\n=== seed-all · paso {label} ===")
+        try:
+            step(c)
+        except Exception:
+            _print_box(f"FALLÓ en el paso {label}", [
+                "La base puede haber quedado PARCIALMENTE sembrada.",
+                "Corregí la causa (ver el error de arriba) y re-corré:",
+                "  invoke seed-all",
+                "Cada paso es idempotente, así que re-correr converge.",
+            ])
+            raise
+    _print_box("seed-all completo", [
+        "Base sembrada: control + mapa real + intersecciones + cámaras + usuarios.",
+        "Datos de simulación/predicción NO se siembran (son derivados).",
+    ])
+
+
 @task
 def db_reset(c):
     """⚠ Borra la DB, la levanta de cero, aplica migraciones y siembra.

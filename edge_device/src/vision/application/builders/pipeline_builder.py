@@ -54,6 +54,21 @@ logger = logging.getLogger(__name__)
 _DEFAULT_VEHICLE_CLASSES = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
 
 
+def create_detector(vision_cfg: DictConfig) -> VehicleDetector:
+    """Construye el detector/modelo a partir de la config de visión.
+
+    Factory standalone (independiente de un builder por-cámara): permite
+    construir el modelo UNA vez y compartirlo. B1 Paso 1a deja esta costura
+    para que el scheduler de 1b inyecte el mismo detector a N cámaras vía
+    `VisionApplicationBuilder.build_pipeline(detector=...)`.
+    """
+    logger.info("Loading model: %s", vision_cfg.model.path)
+    return YoloDetector(
+        model_path=vision_cfg.model.path,
+        conf_threshold=vision_cfg.model.conf_threshold,
+    )
+
+
 class VisionApplicationBuilder:
     """Builder pattern del pipeline de visión.
 
@@ -83,11 +98,13 @@ class VisionApplicationBuilder:
     # ---- Component builders --------------------------------------------
 
     def build_detector(self) -> 'VisionApplicationBuilder':
-        logger.info("Loading model: %s", self.vision_cfg.model.path)
-        self.detector = YoloDetector(
-            model_path=self.vision_cfg.model.path,
-            conf_threshold=self.vision_cfg.model.conf_threshold,
-        )
+        """Construye el detector dentro del builder (vía legacy / fallback).
+
+        Lo usan los llamadores viejos con cadena fluida (scripts, integración) y
+        el fallback de `build_pipeline`. El código nuevo NO llama acá: inyecta el
+        detector con `build_pipeline(detector=...)` (ver `create_detector`).
+        """
+        self.detector = create_detector(self.vision_cfg)
         return self
 
     def build_source(self) -> 'VisionApplicationBuilder':
@@ -189,8 +206,19 @@ class VisionApplicationBuilder:
 
     # ---- Pipeline assembly --------------------------------------------
 
-    def build_pipeline(self) -> AsyncVisionPipeline:
-        """Orquesta la construcción completa si algún componente falta."""
+    def build_pipeline(
+        self, detector: Optional[VehicleDetector] = None
+    ) -> AsyncVisionPipeline:
+        """Orquesta la construcción del chain por-cámara.
+
+        `detector` (B1 Paso 1a): costura ÚNICA de inyección. Si se pasa, el chain
+        usa ESE detector (lo que el scheduler de 1b aprovecha para compartir UN
+        modelo entre cámaras). Si es None, se cae al fallback `build_detector()`
+        — pensado SOLO para los llamadores viejos que no inyectan (scripts,
+        integración). Construye los demás componentes que falten.
+        """
+        if detector is not None:
+            self.detector = detector
         if not self.detector:
             self.build_detector()
         if not self.source:

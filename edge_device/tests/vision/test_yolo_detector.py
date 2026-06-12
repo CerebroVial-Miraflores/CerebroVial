@@ -17,12 +17,18 @@ def _box(class_id, xyxy, conf):
 
 
 class FakeModel:
-    """Mimics ultralytics: model(frame, ...) -> [result_with_boxes]."""
+    """Mimics ultralytics: model(frame, ...) -> [result_with_boxes].
+
+    Captura los kwargs de la llamada para verificar el pasaje de imgsz (B1 1c):
+    `imgsz` solo debe aparecer cuando se especifica (None → no se pasa → nativo).
+    """
 
     def __init__(self, boxes):
         self._boxes = boxes
+        self.last_kwargs = None
 
-    def __call__(self, frame, verbose=False, conf=0.5):
+    def __call__(self, frame, verbose=False, conf=0.5, **kwargs):
+        self.last_kwargs = kwargs
         return [SimpleNamespace(boxes=self._boxes)]
 
 
@@ -80,6 +86,22 @@ def test_injected_model_skips_weight_loading():
     det = YoloDetector(model=FakeModel([]))
     assert det.conf_threshold == 0.5
     assert det.detect(np.zeros((10, 10, 3), dtype=np.uint8)) == []
+
+
+def test_detect_omits_imgsz_when_none():
+    """B1 1c: imgsz=None (default) → NO se pasa al modelo → nativo de ultralytics."""
+    model = FakeModel([])
+    det = YoloDetector(model=model, conf_threshold=0.5)
+    det.detect(np.zeros((10, 10, 3), dtype=np.uint8))
+    assert "imgsz" not in model.last_kwargs
+
+
+def test_detect_passes_imgsz_when_given():
+    """B1 1c: imgsz explícito → se pasa por-llamada al modelo (sin reconstruir)."""
+    model = FakeModel([])
+    det = YoloDetector(model=model, conf_threshold=0.5)
+    det.detect(np.zeros((10, 10, 3), dtype=np.uint8), imgsz=320)
+    assert model.last_kwargs.get("imgsz") == 320
 
 
 def test_release_drops_model_reference():
