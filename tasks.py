@@ -25,16 +25,45 @@ def _print_box(title, lines):
     print()
 
 
+def _venv_python_path():
+    """Path al python del venv local (sin validar existencia)."""
+    is_windows = platform.system() == "Windows"
+    return ".venv\\Scripts\\python.exe" if is_windows else ".venv/bin/python"
+
+
+def _has_venv():
+    """True si el venv local existe (chequeo blando, no aborta)."""
+    return os.path.exists(_venv_python_path())
+
+
 def _venv_python():
     """Path al python del venv local. Lanza error si no existe."""
-    is_windows = platform.system() == "Windows"
-    path = ".venv\\Scripts\\python.exe" if is_windows else ".venv/bin/python"
+    path = _venv_python_path()
     if not os.path.exists(path):
         _print_box("ERROR: no hay venv local", [
             "Crealo primero: invoke setup-dev",
         ])
         sys.exit(1)
     return path
+
+
+def _psql_scalar(c, sql):
+    """Corre un SELECT escalar contra la DB del compose.
+
+    Devuelve un int, o None si la DB no responde o la consulta falla (p. ej. la
+    tabla aún no existe porque las migraciones no corrieron). Usa -tA para salida
+    cruda sin alineación ni encabezados.
+    """
+    res = c.run(
+        f'docker compose exec -T db psql -U cerebrovial -d cerebrovial -tAc "{sql}"',
+        pty=False, warn=True, hide=True,
+    )
+    if not res.ok:
+        return None
+    try:
+        return int(res.stdout.strip())
+    except (ValueError, AttributeError):
+        return None
 
 
 # El override de dev se compone con el compose principal cuando se invocan
@@ -129,9 +158,65 @@ def up(c, service=None):
         print("  - db (Postgres):       localhost:5432")
     print()
     print("Las tablas se crean solas (alembic corre en el entrypoint del core).")
-    print("Para cargar datos iniciales de Miraflores: invoke seed")
     print()
-    print("Otros: invoke logs · invoke ps · invoke down")
+
+    # Auto-seed: si se levantó el stack completo y la BD quedó vacía (volumen
+    # recreado), sembrarla sola con la receta reproducible. No-op si ya hay datos.
+    if not service:
+        _maybe_autoseed(c)
+
+    print("Otros: invoke logs · invoke ps · invoke down · invoke seed-all")
+
+
+def _maybe_autoseed(c):
+    """Tras `invoke up`, si la BD quedó vacía (volumen recreado), siembra sola.
+
+    Espera a que la DB responda y a que el core aplique migraciones (su entrypoint
+    corre `alembic upgrade head`); luego, si el mapa no está cargado, dispara
+    `seed_all`. No-op silencioso cuando ya hay datos. Si falta el venv, avisa y
+    no aborta (el usuario puede correr `invoke seed-all` tras `invoke setup-dev`).
+    """
+    # 1. Esperar a que la DB acepte conexiones.
+    for _ in range(30):
+        if _psql_scalar(c, "select 1") == 1:
+            break
+        time.sleep(1)
+    else:
+        print("⚠ La DB no respondió a tiempo; salto el auto-seed.")
+        print("  Cuando esté lista, sembrá a mano: invoke seed-all")
+        return
+
+    # 2. Esperar a que las migraciones del core creen las tablas.
+    n = None
+    for _ in range(60):
+        n = _psql_scalar(c, "select count(*) from graph_edges")
+        if n is not None:
+            break
+        time.sleep(1)
+    else:
+        print("⚠ Las tablas no aparecieron a tiempo (¿migraciones del core?); salto el auto-seed.")
+        print("  Cuando el core esté arriba, sembrá a mano: invoke seed-all")
+        return
+
+    # 3. Si ya hay mapa cargado, no tocar nada.
+    if n and n > 0:
+        print("✓ La BD ya tiene datos. (Para re-sembrar desde cero: invoke db-reset.)")
+        return
+
+    # 4. BD vacía → auto-seed reproducible.
+    if not _has_venv():
+        _print_box("BD vacía detectada — pero falta el venv", [
+            "El volumen se recreó y la BD está vacía, pero no puedo sembrar sin venv.",
+            "Corré:  invoke setup-dev   y luego:  invoke seed-all",
+        ])
+        return
+
+    _print_box("BD vacía detectada — auto-seed reproducible", [
+        "El volumen se recreó. Sembrando datos…",
+        "Estructura (mapa + cámaras + usuarios): segundos.",
+        "10 días de tráfico (~16 GB): varios minutos.",
+    ])
+    seed_all(c)
 
 
 @task(pre=[check_lfs, check_env], help={
@@ -318,52 +403,74 @@ def build_graph(c):
     print("\n✓ Mapa real cargado (graph_nodes + graph_edges).")
 
 
-@task(pre=[check_env])
-def seed_all(c):
-    """Sembrar la base completa para onboarding, en orden, parando al primer fallo.
+# El calendario de congestión siembra 10 días fechados (jun 1–10 2026).
+_TRAFFIC_DAYS_EXPECTED = 10
 
-    Orquesta los 4 pasos en su orden obligatorio por FK:
-      1. seed              → 5 nodos de control + admin
-      2. build-graph       → mapa real (1660 edges del LCC + junctions sumo_)
-      3. seed-intersections→ 11 intersecciones PMU + puente + 11 cámaras
-      4. seed-rbac-smoke   → 3 usuarios de prueba (operator/manager/admin)
 
-    RBAC va último (solo toca `users`, sin dependencia FK de 2-3): así no deja el
-    mapa a medio construir si falla.
+@task(pre=[check_env], help={
+    "traffic": "Si es False, siembra solo lo estructural (mapa+cámaras+usuarios) y "
+               "salta los ~16 GB de tráfico (rápido). Default: True.",
+})
+def seed_all(c, traffic=True):
+    """Siembra reproducible COMPLETA de la BD, idempotente y en orden de FK.
 
-    ASUME BASE RECIÉN MIGRADA / VOLUMEN NUEVO (Opción 1): NO resetea ni trunca
-    nada. Sobre base ya sembrada, el paso 2 abortará por sus guards (ver abajo).
-    Para arrancar de cero, usá `invoke db-reset`.
+    Cadena (orden obligado por foreign keys):
+      1. scripts/seed.py                  → 5 nodos de control + admin
+      2. scripts/build_graph_geometry.py  → mapa OSM (1660 edges + 904 nodos sumo_)
+      3. scripts/seed_intersections.py    → 11 intersecciones + puente + 11 cámaras
+      4. scripts/seed_rbac_smoke.py       → 3 usuarios operator/manager/admin
+      5. scripts/seed_congestion_calendar → 10 días de tráfico (~16 GB) [si traffic=True]
 
-    HEREDA LOS GUARDS DE build-graph: aborta si `intersection_edges` o
-    `waze_jams` / `waze_alerts` tienen filas. Si re-corrés sobre una base que ya
-    pasó por seed-all (intersection_edges poblada) o con congestión sembrada, el
-    paso 2 corta — es esperado, no un bug.
-
-    Para al primer fallo (sin warn): si un paso revienta, la cadena se detiene.
+    Idempotente: detecta lo ya sembrado y salta el build estructural cuando el mapa
+    ya está cargado (build_graph aborta si waze_jams≠0, por eso NUNCA se re-corre con
+    tráfico presente). El tráfico se siembra con ON CONFLICT DO NOTHING y se salta si
+    ya hay 10 días fechados. Corre los scripts desde el venv local contra la DB del
+    compose. Requiere `invoke setup-dev` y la DB arriba.
     """
-    steps = [
-        ("1/4 seed (nodos de control + admin)", seed),
-        ("2/4 build-graph (mapa real)", build_graph),
-        ("3/4 seed-intersections (PMU + puente + cámaras)", seed_intersections),
-        ("4/4 seed-rbac-smoke (usuarios de prueba)", seed_rbac_smoke),
-    ]
-    for label, step in steps:
-        print(f"\n=== seed-all · paso {label} ===")
-        try:
-            step(c)
-        except Exception:
-            _print_box(f"FALLÓ en el paso {label}", [
-                "La base puede haber quedado PARCIALMENTE sembrada.",
-                "Corregí la causa (ver el error de arriba) y re-corré:",
-                "  invoke seed-all",
-                "Cada paso es idempotente, así que re-correr converge.",
-            ])
-            raise
-    _print_box("seed-all completo", [
-        "Base sembrada: control + mapa real + intersecciones + cámaras + usuarios.",
-        "Datos de simulación/predicción NO se siembran (son derivados).",
-    ])
+    py = _venv_python()
+
+    # Detección de mapa OSM cargado: los NODOS del net SUMO llevan prefijo `sumo_`
+    # (las aristas NO — su edge_id es el id SUMO crudo, p. ej. `129466113#3`). El
+    # build es transaccional, así que este count es 0 (BD fresca) o 904 (cargado).
+    sumo_nodes = _psql_scalar(
+        c, "select count(*) from graph_nodes where node_id ~ '^sumo_'"
+    )
+    if sumo_nodes is None:
+        _print_box("ERROR: la DB no responde (o faltan migraciones)", [
+            "Levantá la DB y el core primero: invoke up",
+        ])
+        sys.exit(1)
+
+    if sumo_nodes > 0:
+        print(f"✓ Estructura ya presente ({sumo_nodes} nodos sumo_). Salto el build estructural.")
+    else:
+        print("→ Sembrando estructura (control + mapa OSM + intersecciones + cámaras)…")
+        c.run(f"{py} scripts/seed.py", pty=False)
+        c.run(f"{py} scripts/build_graph_geometry.py", pty=False)
+        c.run(f"{py} scripts/seed_intersections.py", pty=False)
+
+    # Usuarios de smoke (idempotente: salta los emails que ya existen).
+    c.run(f"{py} scripts/seed_rbac_smoke.py", pty=False)
+
+    if not traffic:
+        _print_box("✓ Seed estructural completo (sin tráfico)", [
+            "Para sembrar los 10 días de tráfico: invoke seed-all",
+        ])
+        return
+
+    days = _psql_scalar(
+        c, "select count(distinct date(snapshot_timestamp)) from waze_jams"
+    ) or 0
+    if days >= _TRAFFIC_DAYS_EXPECTED:
+        print(f"✓ Tráfico ya presente ({days} días en waze_jams). Nada que sembrar.")
+    else:
+        _print_box("Sembrando 10 días de tráfico (~16 GB, varios minutos)", [
+            f"Días presentes ahora: {days}/{_TRAFFIC_DAYS_EXPECTED}.",
+            "Logs por día en logs/seed_calendar/. Idempotente (ON CONFLICT DO NOTHING).",
+        ])
+        c.run(f"{py} scripts/seed_congestion_calendar.py --execute", pty=False)
+
+    print("\n✓ Seed completo y reproducible.")
 
 
 @task
@@ -397,9 +504,17 @@ def db_reset(c):
     # Levantar core: su entrypoint correrá alembic upgrade head al arrancar.
     c.run("docker compose up -d core_management_api", pty=False)
     print("Esperando que core_management_api termine las migraciones...")
-    time.sleep(5)
-    seed(c)
-    print("\n✓ DB reseteada, migrada y sembrada.")
+    for _ in range(60):
+        if _psql_scalar(c, "select count(*) from graph_edges") is not None:
+            break
+        time.sleep(1)
+    else:
+        print("✗ Las migraciones no terminaron a tiempo.")
+        sys.exit(1)
+
+    # Siembra reproducible completa (estructura + 10 días de tráfico).
+    seed_all(c)
+    print("\n✓ DB reseteada, migrada y sembrada (estructura + 10 días de tráfico).")
     print("  Para levantar el resto del sistema: invoke up")
 
 

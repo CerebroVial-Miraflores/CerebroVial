@@ -38,8 +38,21 @@ Setup primer-uso:
 2. `cp .env.example .env` y completar valores.
 3. `pip install invoke`
 4. `invoke setup-dev` (crea venv local con deps de dev)
-5. `invoke up` (las tablas se crean solas — alembic corre en el entrypoint del core)
-6. `invoke seed` (carga datos iniciales de Miraflores)
+5. `invoke up` (las tablas se crean solas — alembic corre en el entrypoint del core).
+   **Auto-seed**: si la BD está vacía (volumen recién creado), `invoke up` detecta
+   eso y siembra sola la receta reproducible completa (`invoke seed-all`): mapa OSM,
+   intersecciones, cámaras, usuarios y 10 días de tráfico (~16 GB; tarda varios
+   minutos). No-op si la BD ya tiene datos. No necesitás un paso de seed manual.
+6. (opcional) Si saltaste el auto-seed o querés re-sembrar: `invoke seed-all`.
+
+**Siembra reproducible (`invoke seed-all`)**: orquesta la cadena completa, idempotente
+y en orden de FK — `seed.py` (control+admin) → `build_graph_geometry.py` (mapa OSM,
+1660 edges) → `seed_intersections.py` (11 intersecciones + 11 cámaras cableadas a edges)
+→ `seed_rbac_smoke.py` (3 usuarios) → `seed_congestion_calendar.py --execute` (10 días
+de tráfico, jun 1–10 2026). Detecta lo ya sembrado y salta el rebuild estructural.
+`invoke seed-all --traffic=False` siembra solo lo estructural (rápido, sin los ~16 GB).
+Los `day_seed*.parquet` (fuente del tráfico) NO están en git — reproducible en esta
+máquina; en un clon limpio hay que regenerarlos por SUMO (deuda: versionar vía LFS).
 
 Día a día:
 - `invoke up` / `invoke down` / `invoke logs` / `invoke ps` / `invoke test`
@@ -50,7 +63,10 @@ Día a día:
 - `invoke up-dev` para hot-reload del core (usa docker-compose.dev.yml).
   En este modo alembic NO corre automáticamente; usar `invoke migrate` a mano.
 - `invoke migrate` después de un git pull con migraciones nuevas (sin rebuild)
-- `invoke db-reset` cuando el schema cambió de forma incompatible
+- `invoke db-reset` cuando el schema cambió de forma incompatible (borra el volumen,
+  re-migra y corre `invoke seed-all`: deja la BD con estructura + 10 días de tráfico)
+- `invoke seed-all` para re-sembrar sin borrar (idempotente); `--traffic=False` para
+  saltar los ~16 GB de tráfico y sembrar solo lo estructural
 - `invoke shell-api` / `invoke shell-db` para debugging interactivo
 
 NO usar `docker compose ...` directo — `invoke` agrega validaciones

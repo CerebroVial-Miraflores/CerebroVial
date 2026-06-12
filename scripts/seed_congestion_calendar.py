@@ -5,12 +5,13 @@ Itera un mapeo determinista fecha→seed e invoca el sembrador existente
 ni modifica el sembrador: es un loop alrededor del CLI. Cada subproceso ya hace
 ``preseed`` + ``populate_geom_from_edges`` + commit por su cuenta.
 
-El calendario son 8 días (1 jun → 8 jun 2026, inclusive) — el histórico observado de
-la semana de la demo + el día vivo (lunes 8). Decisión de alcance: 1 semana ≈ 19M
-filas ≈ ~13 GB en disco (manejable en BD local), histórico = visualización de
-observado. Findes (6–7 jun) con placeholder laborable (no hay perfil finde calibrado;
-deuda registrada). Lunes 8 = seed051 (día vivo + día de predicción de Fase 3;
-seed051 ∈ TEST/no-visto) — excepción fija fuera del secuencial.
+El calendario son 10 días (1 jun → 10 jun 2026, inclusive) — el histórico observado de
+la semana de la demo + el día vivo (lunes 8) + dos días extra (mar 9, mié 10). Decisión
+de alcance: 10 días ≈ 24M filas ≈ ~16 GB en disco (manejable en BD local), histórico =
+visualización de observado. Findes (6–7 jun) con placeholder laborable (no hay perfil
+finde calibrado; deuda registrada). Lunes 8 = seed051 (día vivo + día de predicción de
+Fase 3; seed051 ∈ TEST/no-visto) — excepción fija fuera del secuencial. Los días 9–10 se
+añadieron como extensión a 10 días con los siguientes seeds libres (049, 050).
 
 ──────────────────────────────────────────────────────────────────────────────
 COMANDO EXACTO (lo dispara Cesar, NO se lanza solo):
@@ -25,9 +26,9 @@ COMANDO EXACTO (lo dispara Cesar, NO se lanza solo):
     .venv/bin/python scripts/seed_congestion_calendar.py --execute --only 2026-06-01
 
 ESTIMACIÓN (base: 1 día = 2,390,400 filas = ~1.6 GB medido en la BD actual):
-    • Filas:  2,390,400/día × 8 ≈ 19M filas.
-    • Disco:  ~1.6 GB/día × 8 ≈ ~13 GB (hypertable TimescaleDB, tabla + índices).
-    • Tiempo: ~<T>/día × 8  (T = el medido en el stage-gate de un día).
+    • Filas:  2,390,400/día × 10 ≈ 24M filas.
+    • Disco:  ~1.6 GB/día × 10 ≈ ~16 GB (hypertable TimescaleDB, tabla + índices).
+    • Tiempo: ~<T>/día × 10  (T = el medido en el stage-gate de un día).
 ──────────────────────────────────────────────────────────────────────────────
 
 Idempotente: re-correr un día ya sembrado es no-op limpio (la fecha desambigua la PK
@@ -65,6 +66,8 @@ CALENDAR: dict[str, str] = {
     "2026-06-06": "seed047",  # sábado  (placeholder laborable)
     "2026-06-07": "seed048",  # domingo (placeholder laborable)
     "2026-06-08": "seed051",  # lunes   (día vivo + predicción Fase 3 — excepción fija)
+    "2026-06-09": "seed049",  # martes  (extensión a 10 días; siguiente seed libre)
+    "2026-06-10": "seed050",  # miércoles (extensión a 10 días; siguiente seed libre)
 }
 
 
