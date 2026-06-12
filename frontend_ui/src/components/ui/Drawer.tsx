@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 import { acquireBodyLock } from './bodyLock';
+import { pushOverlay } from './overlayStack';
 import { StatusChip, type Status } from './StatusChip';
 
 // FASE 1 rediseño UI — drawer lateral (spec: .drawer del prototipo). Mobile-first:
@@ -11,6 +12,10 @@ import { StatusChip, type Status } from './StatusChip';
 // cerrado queda aria-hidden + inert. Esc/scrim cierran; lock de body mientras
 // open. SIN focus-trap completo: deuda a11y — implementar antes de la evaluación
 // SUS / pruebas con usuarios de la tesis.
+// FASE 3 (B1): integrado al overlay-stack — con Modal encima, Esc cierra solo
+// el de arriba (deuda de Fase 1 saldada). onClose vive en un ref y el effect
+// depende solo de [open]: un cambio de identidad del callback con el overlay
+// abierto no debe re-pushearlo (rompería el orden del stack).
 
 interface DrawerProps {
   open: boolean;
@@ -24,22 +29,30 @@ interface DrawerProps {
 
 export function Drawer({ open, onClose, title, status, statusLabel, children, className = '' }: DrawerProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  // Sin deps: sincroniza la identidad vigente tras cada commit (el keydown la
+  // lee en tiempo de evento). No se escribe en render (regla refs de hooks v7).
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    const overlay = pushOverlay();
     const release = acquireBodyLock();
     panelRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && overlay.isTop()) onCloseRef.current();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
+      overlay.release();
       release();
       previous?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return createPortal(
     <>

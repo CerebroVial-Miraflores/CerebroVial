@@ -3,13 +3,16 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 import { acquireBodyLock } from './bodyLock';
+import { pushOverlay } from './overlayStack';
 
 // FASE 1 rediseño UI — modal genérico (spec: .modal-wrap/.mscrim/.modal del
 // prototipo). Scrim-click y Esc cierran; foco inicial al contenedor y restore al
 // cerrar; lock de scroll del body. SIN focus-trap completo: deuda a11y —
 // implementar antes de la evaluación SUS / pruebas con usuarios de la tesis.
-// Si conviven Modal y Drawer abiertos, Esc cierra ambos (overlay-stack es de
-// Fase 3; en Fase 1 solo coexisten en /ui-lab).
+// FASE 3 (B1): integrado al overlay-stack — con Drawer debajo, Esc cierra solo
+// este Modal (deuda de Fase 1 saldada). onClose en ref + deps [open], mismo
+// racional que Drawer (el orden del stack no debe depender de la identidad
+// del callback).
 
 interface ModalProps {
   open: boolean;
@@ -22,22 +25,30 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, subtitle, children, className = '' }: ModalProps) {
   const boxRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  // Sin deps: sincroniza la identidad vigente tras cada commit (el keydown la
+  // lee en tiempo de evento). No se escribe en render (regla refs de hooks v7).
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    const overlay = pushOverlay();
     const release = acquireBodyLock();
     boxRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && overlay.isTop()) onCloseRef.current();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
+      overlay.release();
       release();
       previous?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

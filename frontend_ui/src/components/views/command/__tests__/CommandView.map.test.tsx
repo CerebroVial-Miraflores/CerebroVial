@@ -46,6 +46,17 @@ vi.mock('react-leaflet', () => ({
 }));
 vi.mock('leaflet', () => ({ divIcon: vi.fn(() => ({})) }));
 
+// Overlays stubeados: el drawer real monta HLS + useActiveStrategy (servicios
+// reales) y tiene test propio (IntersectionDrawer.test); acá solo el cableado.
+vi.mock('../IntersectionDrawer', () => ({
+  IntersectionDrawer: (props: { cameraId: string | null }) =>
+    props.cameraId !== null ? <div data-testid="drawer-stub">{props.cameraId}</div> : null,
+}));
+vi.mock('../KpiModal', () => ({
+  KpiModal: (props: { kind: string | null }) =>
+    props.kind !== null ? <div data-testid="kpi-modal-stub">{props.kind}</div> : null,
+}));
+
 vi.mock('../../../../hooks/useIntersections', () => ({ useIntersections: vi.fn() }));
 vi.mock('../../../../hooks/useCongestionState', () => ({ useCongestionState: vi.fn() }));
 vi.mock('../../../../hooks/useCongestionGeometry', () => ({ useCongestionGeometry: vi.fn() }));
@@ -229,12 +240,16 @@ describe('modo Ahora (default)', () => {
     expect(screen.queryByTestId('marker')).not.toBeInTheDocument();
   });
 
-  it('click en un nodo navega al puente /camara/:id (costura 3A)', () => {
+  it('click en un nodo abre el drawer por ?nodo= (B3 — reemplaza la costura 3A)', () => {
     const { router } = mount();
     act(() => {
       captured.markerClicks[0]();
     });
-    expect(router.state.location.pathname).toBe('/camara/cam_larco_benavides');
+    expect(router.state.location.pathname).toBe('/');
+    expect(new URLSearchParams(router.state.location.search).get('nodo')).toBe(
+      'cam_larco_benavides',
+    );
+    expect(screen.getByTestId('drawer-stub')).toHaveTextContent('cam_larco_benavides');
   });
 });
 

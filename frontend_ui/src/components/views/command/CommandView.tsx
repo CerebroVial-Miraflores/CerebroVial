@@ -6,11 +6,10 @@
 // verdad de modo/dia/t/nodo/panel), orquestación de hooks de datos, buffers de
 // sparkline y composición KpiStrip + CommandMap + AlertsPanel.
 //
-// COSTURA TEMPORAL 3A (se recablea en 3B): click en nodo y "Ver intersección"
-// navegan al puente /camara/:id (flujo real existente). En 3B abren el drawer
-// de intersección por ?nodo=.
+// B3: click en nodo y "Ver intersección" abren el drawer de intersección por
+// ?nodo= (la costura 3A vía /camara/:id quedó reemplazada; el puente sigue
+// vivo como destino de "Detalle de cámara" del drawer). Click en KPI → modal.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useCongestionGeometry } from '../../../hooks/useCongestionGeometry';
 import { useCongestionPrediction } from '../../../hooks/useCongestionPrediction';
@@ -20,11 +19,14 @@ import { useIntersections } from '../../../hooks/useIntersections';
 import { useVisionAggregates } from '../../../hooks/useVisionAggregates';
 import { AlertsPanel } from './AlertsPanel';
 import { CommandMap } from './CommandMap';
-import { KpiStrip } from './KpiStrip';
+import { IntersectionDrawer } from './IntersectionDrawer';
+import { KpiModal } from './KpiModal';
+import { KpiStrip, type KpiKind } from './KpiStrip';
 import { useAdaptiveNodes } from './useAdaptiveNodes';
 import { useCommandUrlState } from './useCommandUrlState';
 import {
   clampIndex,
+  edgeLevelForNode,
   featuresForMode,
   geoJsonKeyFor,
   markersFrom,
@@ -71,7 +73,6 @@ const COACH_TIP_HIDE_MS = 9500;
 const FLASH_MS = 900;
 
 export function CommandView() {
-  const navigate = useNavigate();
   const url = useCommandUrlState();
 
   // ── Datos ────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ export function CommandView() {
   const [layers, setLayers] = useState({ traffic: true, nodes: true });
   const [flash, setFlash] = useState(false);
   const [coachVisible, setCoachVisible] = useState(false);
+  const [kpiOpen, setKpiOpen] = useState<KpiKind | null>(null);
   const flashTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -141,6 +143,22 @@ export function CommandView() {
         horizon,
       }),
     [url.mode, geometry.data, congestionState.data, series.data, tClamped, prediction.data, horizon],
+  );
+
+  // Drawer (B3): nivel real del tramo del nodo abierto (convención cam_<node_id>).
+  const drawerNodeId = url.nodo !== null ? url.nodo.replace(/^cam_/, '') : '';
+  const drawerEdgeLevel = useMemo(
+    () => edgeLevelForNode(geometry.data, congestionState.data, drawerNodeId),
+    [geometry.data, congestionState.data, drawerNodeId],
+  );
+
+  // KPI modal idx (B3): serie real del día en contexto (?dia en histórico,
+  // hoy en los demás modos — reusa el fetch del seed de la spark).
+  const idxModalSource = url.mode === 'historico' ? series : todaySeries;
+  const idxModalDay = url.mode === 'historico' ? url.dia : today;
+  const idxModalSeries = useMemo(
+    () => seriesToNetworkIndex(idxModalSource.data),
+    [idxModalSource.data],
   );
 
   const geoKey = geoJsonKeyFor(url.mode, {
@@ -206,9 +224,9 @@ export function CommandView() {
     flashTimerRef.current = window.setTimeout(() => setFlash(false), FLASH_MS);
   };
 
-  // COSTURA 3A: detalle real del nodo vía puente /camara/:id (en 3B → drawer ?nodo=).
+  // B3: click en nodo / "Ver intersección" → drawer por ?nodo= (URL, con back).
   const openNode = (cameraId: string) => {
-    navigate(`/camara/${cameraId}`);
+    url.openNode(cameraId);
   };
 
   // ?panel=alertas (D3.1a, /alertas → /?panel=alertas): one-shot scroll+focus
@@ -234,6 +252,7 @@ export function CommandView() {
           onRetry: () => void prediction.refetch(),
         }}
         onShowPrediction={showPrediction}
+        onOpenKpi={setKpiOpen}
       />
 
       <div className="flex flex-1 flex-col gap-[13px] min-[1240px]:flex-row min-[1240px]:items-stretch">
@@ -269,6 +288,30 @@ export function CommandView() {
           <AlertsPanel onOpenNode={openNode} onShowPrediction={showPrediction} />
         </div>
       </div>
+
+      {/* Overlays (B3): drawer por ?nodo= y modal por estado local. Si
+          conviven, Esc cierra el de arriba (overlay-stack de B1). */}
+      <IntersectionDrawer
+        cameraId={url.nodo}
+        intersections={intersections.data}
+        intersectionsLoading={intersections.loading}
+        vision={url.nodo !== null ? vision.byCamera[url.nodo] : undefined}
+        edgeLevel={drawerEdgeLevel}
+        onClose={url.closeNode}
+      />
+      <KpiModal
+        kind={kpiOpen}
+        onClose={() => setKpiOpen(null)}
+        idx={{
+          series: idxModalSeries,
+          loading: idxModalSource.loading,
+          error: idxModalSource.error,
+          onRetry: () => void idxModalSource.refetch(),
+          day: idxModalDay,
+          predictionUnavailable: prediction.error !== null,
+        }}
+        adaptive={adaptive}
+      />
     </div>
   );
 }

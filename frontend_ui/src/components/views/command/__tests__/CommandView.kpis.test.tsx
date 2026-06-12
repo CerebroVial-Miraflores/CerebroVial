@@ -30,6 +30,16 @@ vi.mock('react-leaflet', () => ({
 }));
 vi.mock('leaflet', () => ({ divIcon: vi.fn(() => ({})) }));
 
+// Overlays stubeados (tests propios en IntersectionDrawer.test / KpiModal.test).
+vi.mock('../IntersectionDrawer', () => ({
+  IntersectionDrawer: (props: { cameraId: string | null }) =>
+    props.cameraId !== null ? <div data-testid="drawer-stub">{props.cameraId}</div> : null,
+}));
+vi.mock('../KpiModal', () => ({
+  KpiModal: (props: { kind: string | null }) =>
+    props.kind !== null ? <div data-testid="kpi-modal-stub">{props.kind}</div> : null,
+}));
+
 vi.mock('../../../../hooks/useIntersections', () => ({ useIntersections: vi.fn() }));
 vi.mock('../../../../hooks/useCongestionState', () => ({ useCongestionState: vi.fn() }));
 vi.mock('../../../../hooks/useCongestionGeometry', () => ({ useCongestionGeometry: vi.fn() }));
@@ -263,5 +273,11 @@ describe('CommandView — KPIs (política de paridad)', () => {
     mount();
     const label = screen.getByText('Predicción 15 min · red');
     expect(label.closest('button')).toBeNull();
+  });
+
+  it('click en una card KPI abre su modal (B3)', () => {
+    mount();
+    fireEvent.click(screen.getByText('Índice de congestión · red'));
+    expect(screen.getByTestId('kpi-modal-stub')).toHaveTextContent('idx');
   });
 });
