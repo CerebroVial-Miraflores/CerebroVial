@@ -13,6 +13,11 @@ class SourceConfig(BaseModel):
     target_height: Optional[int] = Field(None, gt=0, description="Target height in pixels")
     format: str = Field("best", description="YouTube format")
     loop: bool = Field(True, description="Re-loop file sources at EOF (no aplica a streams/webcam)")
+    fresh_threshold_s: Optional[float] = Field(
+        None,
+        gt=0,
+        description="Override per-cámara del umbral de frescura (s); None → default de la fuente",
+    )
 
     @field_validator('target_width', 'target_height')
     @classmethod

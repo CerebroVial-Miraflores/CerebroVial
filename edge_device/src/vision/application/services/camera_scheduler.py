@@ -42,7 +42,7 @@ from ..processors.smart_detection import DEFAULT_IMGSZ
 logger = logging.getLogger(__name__)
 
 _DEFAULT_TICK_INTERVAL_S = 1.0   # 1 Hz (D-018); no el pacing de 30fps del run() viejo
-_DEFAULT_FRESH_THRESHOLD_S = 2.5  # ≥2 ticks de tolerancia; constante nombrada, no mágica
+_DEFAULT_FRESH_THRESHOLD_S = 2.5  # respaldo si la fuente no declara su umbral (B-fase1)
 
 
 class CameraScheduler:
@@ -56,14 +56,22 @@ class CameraScheduler:
         capture: Optional[LiveFrameSource] = None,
         infer_executor: Optional[ThreadPoolExecutor] = None,
         tick_interval_s: float = _DEFAULT_TICK_INTERVAL_S,
-        fresh_threshold_s: float = _DEFAULT_FRESH_THRESHOLD_S,
+        fresh_threshold_s: Optional[float] = None,
     ) -> None:
         self._camera = camera
         self._broadcaster = broadcaster
         self._tick_interval_s = tick_interval_s
-        self._fresh_threshold_s = fresh_threshold_s
 
         pipeline = camera.state.pipeline
+        # B-fase1: el umbral de frescura es propiedad de la FUENTE (una keyframe-only
+        # 0.5fps tolera ~4.5s; cv2 full-decode, 2.5s), no una constante del scheduler.
+        # El param explícito gana (tests); si no se deriva de la fuente, con
+        # _DEFAULT_FRESH_THRESHOLD_S de respaldo para fuentes que no lo declaran.
+        self._fresh_threshold_s = (
+            fresh_threshold_s
+            if fresh_threshold_s is not None
+            else getattr(pipeline.source, "fresh_threshold_s", _DEFAULT_FRESH_THRESHOLD_S)
+        )
         # Reusa source + chain del pipeline ya construido (su __init__ no arranca
         # threads). El scheduler NUNCA llama pipeline.start()/run().
         self._capture: LiveFrameSource = capture or ThreadedCapture(pipeline.source)

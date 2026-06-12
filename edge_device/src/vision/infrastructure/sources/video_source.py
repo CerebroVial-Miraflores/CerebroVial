@@ -57,10 +57,18 @@ class OpenCVSource(FrameProducer):
     injected for tests, in which case cv2 is never imported.
     """
 
+    # Umbral de frescura por-fuente (B-fase1): cv2 full-decode entrega sub-2.5s.
+    # Las subclases (Webcam/VideoFile) lo heredan; HlsKeyframeSource declara el suyo
+    # (0.5fps → ~4.5s). El scheduler lo lee de la fuente en vez de su constante.
+    fresh_threshold_s: float = 2.5
+
     def __init__(self, source, config: SourceConfig, capture=None):
         self.source = source
         self.config = config
         self.cap = capture
+        # Capa 3: override per-cámara desde config; si no, el default de clase.
+        if config.fresh_threshold_s is not None:
+            self.fresh_threshold_s = config.fresh_threshold_s
         self._injected = capture is not None
         self._cv2 = None
         self._frame_id = 0
