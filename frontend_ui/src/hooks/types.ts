@@ -15,6 +15,12 @@ export interface RestResource<T> {
   loading: boolean;
   /** Mensaje en español del último intento fallido; null tras el siguiente éxito. */
   error: string | null;
+  /**
+   * Status HTTP del último intento fallido (null si no fue HTTP o tras éxito).
+   * FASE 3: permite discriminar respuestas-contrato (p. ej. el 404
+   * `no_active_state` de /control/active-state) sin matchear strings de error.
+   */
+  errorStatus: number | null;
   /** Epoch ms del último éxito. NO avanza en error (mide antigüedad real). */
   lastUpdated: number | null;
   /** Refresh silencioso. Nunca rechaza: el resultado se refleja en data/error. */

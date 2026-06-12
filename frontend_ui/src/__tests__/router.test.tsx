@@ -19,23 +19,22 @@ vi.mock('../auth/SessionContext', () => ({
 vi.mock('../auth/LoginView', () => ({
   LoginView: () => <div data-testid="view-login" />,
 }));
-vi.mock('../components/views/DashboardRoute', () => ({
-  DashboardRoute: () => <div data-testid="view-dashboard" />,
+// FASE 3: el index es CommandView (Centro de Comando); /alertas y /congestion
+// son redirects (D3.1a) y /camara/:id es el puente temporal a CameraDetailView.
+vi.mock('../components/views/command/CommandView', () => ({
+  CommandView: () => <div data-testid="view-command" />,
+}));
+vi.mock('../components/views/CameraDetailRoute', () => ({
+  CameraDetailRoute: () => <div data-testid="view-camara" />,
 }));
 vi.mock('../components/views/AnalyticsView', () => ({
   AnalyticsView: () => <div data-testid="view-analytics" />,
-}));
-vi.mock('../components/views/AlertsView', () => ({
-  AlertsView: () => <div data-testid="view-alerts" />,
 }));
 vi.mock('../components/views/AdminView', () => ({
   AdminView: () => <div data-testid="view-admin" />,
 }));
 vi.mock('../components/views/control/ControlView', () => ({
   ControlView: () => <div data-testid="view-control" />,
-}));
-vi.mock('../components/views/CongestionMapView', () => ({
-  CongestionMapView: () => <div data-testid="view-congestion" />,
 }));
 vi.mock('../tomtom/TomTomView', () => ({
   TomTomView: () => <div data-testid="view-tomtom" />,
@@ -65,16 +64,16 @@ function renderAt(role: Role | null, path: string) {
 }
 
 describe('rutas por rol (HU-01 a nivel URL)', () => {
-  it('operator en / ve el dashboard', () => {
+  it('operator en / ve el Centro de Comando', () => {
     const router = renderAt('operator', '/');
     expect(router.state.location.pathname).toBe('/');
-    expect(screen.getByTestId('view-dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('view-command')).toBeInTheDocument();
   });
 
   it('operator en /analitica rebota a / (su default)', () => {
     const router = renderAt('operator', '/analitica');
     expect(router.state.location.pathname).toBe('/');
-    expect(screen.getByTestId('view-dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('view-command')).toBeInTheDocument();
     expect(screen.queryByTestId('view-analytics')).not.toBeInTheDocument();
   });
 
@@ -84,35 +83,23 @@ describe('rutas por rol (HU-01 a nivel URL)', () => {
     expect(screen.queryByTestId('view-admin')).not.toBeInTheDocument();
   });
 
-  it('operator accede a /congestion (HU-22)', () => {
-    const router = renderAt('operator', '/congestion');
-    expect(router.state.location.pathname).toBe('/congestion');
-    expect(screen.getByTestId('view-congestion')).toBeInTheDocument();
-  });
-
   it('operator accede a /trafico (track TomTom)', () => {
     const router = renderAt('operator', '/trafico');
     expect(router.state.location.pathname).toBe('/trafico');
     expect(screen.getByTestId('view-tomtom')).toBeInTheDocument();
   });
 
-  it('operator accede a /alertas', () => {
-    const router = renderAt('operator', '/alertas');
-    expect(router.state.location.pathname).toBe('/alertas');
-    expect(screen.getByTestId('view-alerts')).toBeInTheDocument();
+  it('operator accede al puente /camara/:id (temporal hasta F4)', () => {
+    const router = renderAt('operator', '/camara/cam_larco_benavides');
+    expect(router.state.location.pathname).toBe('/camara/cam_larco_benavides');
+    expect(screen.getByTestId('view-camara')).toBeInTheDocument();
   });
 
   it('manager en / rebota a /analitica (cubre el aterrizaje post-login)', () => {
     const router = renderAt('manager', '/');
     expect(router.state.location.pathname).toBe('/analitica');
     expect(screen.getByTestId('view-analytics')).toBeInTheDocument();
-    expect(screen.queryByTestId('view-dashboard')).not.toBeInTheDocument();
-  });
-
-  it('manager en /congestion rebota a /analitica', () => {
-    const router = renderAt('manager', '/congestion');
-    expect(router.state.location.pathname).toBe('/analitica');
-    expect(screen.queryByTestId('view-congestion')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('view-command')).not.toBeInTheDocument();
   });
 
   it('admin en / rebota a /admin (su default)', () => {
@@ -128,11 +115,39 @@ describe('rutas por rol (HU-01 a nivel URL)', () => {
   });
 });
 
+// FASE 3 — D3.1(a): redirects legacy con <Navigate replace>.
+describe('redirects legacy (D3.1a)', () => {
+  it('/alertas → /?panel=alertas (operator)', () => {
+    const router = renderAt('operator', '/alertas');
+    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.search).toBe('?panel=alertas');
+    expect(screen.getByTestId('view-command')).toBeInTheDocument();
+  });
+
+  it('/congestion → / (operator)', () => {
+    const router = renderAt('operator', '/congestion');
+    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.search).toBe('');
+    expect(screen.getByTestId('view-command')).toBeInTheDocument();
+  });
+
+  it('manager en /alertas termina en /analitica (dos saltos replace, sin loop)', () => {
+    const router = renderAt('manager', '/alertas');
+    expect(router.state.location.pathname).toBe('/analitica');
+    expect(screen.getByTestId('view-analytics')).toBeInTheDocument();
+  });
+
+  it('manager en /congestion termina en /analitica', () => {
+    const router = renderAt('manager', '/congestion');
+    expect(router.state.location.pathname).toBe('/analitica');
+  });
+});
+
 describe('catch-all y autenticación', () => {
   it('ruta desconocida aterriza en el default del rol (operator)', () => {
     const router = renderAt('operator', '/no-existe');
     expect(router.state.location.pathname).toBe('/');
-    expect(screen.getByTestId('view-dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('view-command')).toBeInTheDocument();
   });
 
   it('ruta desconocida aterriza en el default del rol (manager)', () => {

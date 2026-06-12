@@ -61,18 +61,17 @@ function bottomNav() {
 }
 
 describe('AppShell — render por rol (hereda los asserts de Sidebar.test)', () => {
-  it('operator ve sus 5 tabs y no ve Analítica ni Administración', () => {
+  // FASE 3: operator pasa de 5 tabs a 3 — Comando ("/", ex Monitoreo, ahora el
+  // Centro de Comando), Motor Adaptativo y Tráfico en vivo. Alertas y Mapa de
+  // congestión murieron como tabs (el comando los fusiona; redirects D3.1a).
+  it('operator ve sus 3 tabs y no ve Analítica ni Administración', () => {
     renderShell('operator');
     const nav = rail();
-    for (const label of [
-      'Monitoreo',
-      'Alertas',
-      'Motor Adaptativo',
-      'Mapa de congestión',
-      'Tráfico en vivo',
-    ]) {
+    for (const label of ['Comando', 'Motor Adaptativo', 'Tráfico en vivo']) {
       expect(within(nav).getByRole('button', { name: label })).toBeInTheDocument();
     }
+    expect(within(nav).queryByRole('button', { name: 'Alertas' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: 'Mapa de congestión' })).not.toBeInTheDocument();
     expect(within(nav).queryByRole('button', { name: 'Analítica e IA' })).not.toBeInTheDocument();
     expect(within(nav).queryByRole('button', { name: 'Administración' })).not.toBeInTheDocument();
   });
@@ -81,16 +80,16 @@ describe('AppShell — render por rol (hereda los asserts de Sidebar.test)', () 
     renderShell('manager');
     const nav = rail();
     expect(within(nav).getByRole('button', { name: 'Analítica e IA' })).toBeInTheDocument();
-    expect(within(nav).queryByRole('button', { name: 'Monitoreo' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: 'Comando' })).not.toBeInTheDocument();
     expect(within(nav).queryByRole('button', { name: 'Administración' })).not.toBeInTheDocument();
   });
 
-  it('admin ve Administración y Motor Adaptativo, no Monitoreo', () => {
+  it('admin ve Administración y Motor Adaptativo, no Comando', () => {
     renderShell('admin');
     const nav = rail();
     expect(within(nav).getByRole('button', { name: 'Administración' })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: 'Motor Adaptativo' })).toBeInTheDocument();
-    expect(within(nav).queryByRole('button', { name: 'Monitoreo' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: 'Comando' })).not.toBeInTheDocument();
   });
 
   it('la bottom-nav lleva los mismos tabs del rol', () => {
@@ -98,7 +97,7 @@ describe('AppShell — render por rol (hereda los asserts de Sidebar.test)', () 
     const nav = bottomNav();
     expect(within(nav).getByRole('button', { name: /administración/i })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: /motor adaptativo/i })).toBeInTheDocument();
-    expect(within(nav).queryByRole('button', { name: /monitoreo/i })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: /comando/i })).not.toBeInTheDocument();
   });
 
   it('muestra la pill de sesión con el rol en español', () => {
@@ -130,8 +129,8 @@ describe('AppShell — contrato responsive', () => {
 describe('AppShell — navegación e interacciones', () => {
   it('click en un tab del rail navega a su ruta (navigate, no setState)', () => {
     const { router } = renderShell('operator');
-    fireEvent.click(within(rail()).getByRole('button', { name: 'Alertas' }));
-    expect(router.state.location.pathname).toBe('/alertas');
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Tráfico en vivo' }));
+    expect(router.state.location.pathname).toBe('/trafico');
   });
 
   it('click en un tab de la bottom-nav navega a su ruta', () => {
@@ -141,13 +140,23 @@ describe('AppShell — navegación e interacciones', () => {
   });
 
   it('marca el tab activo desde la URL (aria-current)', () => {
-    renderShell('operator', '/alertas');
-    expect(within(rail()).getByRole('button', { name: 'Alertas' })).toHaveAttribute(
+    renderShell('operator', '/trafico');
+    expect(within(rail()).getByRole('button', { name: 'Tráfico en vivo' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(within(rail()).getByRole('button', { name: 'Monitoreo' })).not.toHaveAttribute(
+    expect(within(rail()).getByRole('button', { name: 'Comando' })).not.toHaveAttribute(
       'aria-current',
+    );
+  });
+
+  // FASE 3: el puente /camara/:id pertenece al flujo del comando — el rail
+  // mantiene Comando activo (alias camara→dashboard en tabForPath).
+  it('en /camara/:id el tab activo es Comando (puente temporal F4)', () => {
+    renderShell('operator', '/camara/cam_larco_benavides');
+    expect(within(rail()).getByRole('button', { name: 'Comando' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
   });
 

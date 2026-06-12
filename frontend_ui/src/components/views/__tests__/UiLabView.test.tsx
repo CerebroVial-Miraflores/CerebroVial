@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import UiLabView from '../UiLabView';
+import { ToastProvider } from '../../ui/Toast';
 
 // Smoke de la galería /ui-lab (solo DEV). Mock per-file de react-leaflet/leaflet
 // (patrón CongestionMapView.test): acá solo importa que todo monte.
@@ -27,7 +28,13 @@ vi.mock('../uilab/LiveDataSection', () => ({
 
 describe('UiLabView', () => {
   it('monta todas las secciones de la galería', () => {
-    render(<UiLabView />);
+    // FASE 3: el ToastProvider vive en AppShell; el harness lo repone porque
+    // la vista usa useToast y acá se monta standalone.
+    render(
+      <ToastProvider>
+        <UiLabView />
+      </ToastProvider>,
+    );
     expect(screen.getByRole('heading', { name: 'UI Lab' })).toBeInTheDocument();
     for (const section of [
       'Tokens',

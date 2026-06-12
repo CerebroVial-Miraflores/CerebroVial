@@ -12,7 +12,7 @@ import { Panel } from '../ui/Panel';
 import { Modal } from '../ui/Modal';
 import { Drawer } from '../ui/Drawer';
 import { DemoBadge } from '../ui/DemoBadge';
-import { ToastProvider, useToast, type ToastKind } from '../ui/Toast';
+import { useToast, type ToastKind } from '../ui/Toast';
 import { Sparkline } from '../ui/Sparkline';
 import { KpiCard } from '../ui/KpiCard';
 import { MapCanvas } from '../map/MapCanvas';
@@ -385,10 +385,8 @@ function LabContent() {
   );
 }
 
+// FASE 3: el ToastProvider global vive en AppShell (el ui-lab se monta dentro
+// del shell) — el wrapper local de Fase 1 quedó redundante y se eliminó.
 export default function UiLabView() {
-  return (
-    <ToastProvider>
-      <LabContent />
-    </ToastProvider>
-  );
+  return <LabContent />;
 }

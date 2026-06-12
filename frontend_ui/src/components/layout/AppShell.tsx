@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FileText, LogOut } from 'lucide-react';
 
 import { ThesisModal } from '../modals/ThesisModal';
+import { ToastProvider } from '../ui/Toast';
 import { useSession } from '../../auth/SessionContext';
 import { roleAllowsTab, roleLabel } from '../../auth/roles';
 import { NAV_DESCRIPTORS, tabForPath } from './navigation';
@@ -41,7 +42,11 @@ export function AppShell() {
   const activeTab = tabForPath(location.pathname);
   const navItems = NAV_DESCRIPTORS.filter((item) => roleAllowsTab(role, item.tab));
 
+  // FASE 3: ToastProvider envuelve TODO el shell (topbar incluida) — cualquier
+  // vista o control de la app puede disparar toasts. Cierra el pendiente de
+  // Fase 1 (el provider solo envolvía /ui-lab).
   return (
+    <ToastProvider>
     <div className="flex h-dvh flex-col selection:bg-brand selection:text-white">
       {/* Topbar 60px — marca, pill de sesión/rol, reloj es-PE, logout */}
       <header className="z-40 flex h-(--h-topbar) shrink-0 items-center gap-3 border-b border-line bg-canvas/75 px-3 backdrop-blur-xl sm:px-4">
@@ -174,5 +179,6 @@ export function AppShell() {
 
       {showThesis && <ThesisModal onClose={() => setShowThesis(false)} />}
     </div>
+    </ToastProvider>
   );
 }

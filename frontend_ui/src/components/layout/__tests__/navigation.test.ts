@@ -7,7 +7,7 @@ import { NAV_DESCRIPTORS, PATH_BY_TAB, pathForTab, rolesForTab, tabForPath } fro
 const ALL_TABS = Object.keys(PATH_BY_TAB) as Tab[];
 
 describe('navigation — mapeo tab ↔ ruta', () => {
-  it('round-trip: tabForPath(pathForTab(tab)) === tab para los 7 tabs', () => {
+  it('round-trip: tabForPath(pathForTab(tab)) === tab para los 5 tabs', () => {
     for (const tab of ALL_TABS) {
       expect(tabForPath(pathForTab(tab))).toBe(tab);
     }
@@ -16,6 +16,14 @@ describe('navigation — mapeo tab ↔ ruta', () => {
   it("'/' resuelve a dashboard y las rutas desconocidas a null", () => {
     expect(tabForPath('/')).toBe('dashboard');
     expect(tabForPath('/no-existe')).toBeNull();
+  });
+
+  // FASE 3: rutas legacy fuera del union → null (las maneja el redirect del
+  // router, D3.1a); el puente /camara/:id mantiene activo el tab del comando.
+  it('legacy /alertas y /congestion ya no mapean a tab; /camara alias a dashboard', () => {
+    expect(tabForPath('/alertas')).toBeNull();
+    expect(tabForPath('/congestion')).toBeNull();
+    expect(tabForPath('/camara/cam_larco_benavides')).toBe('dashboard');
   });
 
   it('resuelve por primer segmento (subrutas futuras no rompen el tab activo)', () => {

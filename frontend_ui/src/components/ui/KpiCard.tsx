@@ -18,7 +18,13 @@ const DELTA_CLASSES: Record<DeltaTone, string> = {
 
 interface KpiCardProps {
   label: string;
-  value: number;
+  /** null = sin dato (render "—" estático, sin countUp) — política de paridad F3. */
+  value: number | null;
+  /**
+   * Valor no-numérico que reemplaza al countUp (p. ej. "ALTA" del KPI de
+   * predicción). El caller lo estiliza (color/tamaño) si hace falta.
+   */
+  valueLabel?: ReactNode;
   unit?: string;
   decimals?: number;
   delta?: { text: string; tone: DeltaTone };
@@ -35,6 +41,7 @@ interface KpiCardProps {
 export function KpiCard({
   label,
   value,
+  valueLabel,
   unit,
   decimals = 0,
   delta,
@@ -45,8 +52,11 @@ export function KpiCard({
   onClick,
   className = '',
 }: KpiCardProps) {
-  const display = useCountUp(value, { decimals });
+  // useCountUp es hook (no condicional): con value null anima sobre 0 pero el
+  // render lo ignora y muestra el placeholder estático.
+  const display = useCountUp(value ?? 0, { decimals });
   const Root = onClick ? 'button' : 'div';
+  const shown = valueLabel ?? (value === null ? '—' : display);
 
   return (
     <Root
@@ -69,7 +79,7 @@ export function KpiCard({
       </div>
 
       <div className="flex items-baseline gap-1.5">
-        <span className="num text-[25px] font-bold tracking-[-0.02em]">{display}</span>
+        <span className="num text-[25px] font-bold tracking-[-0.02em]">{shown}</span>
         {unit != null && <span className="text-[11.5px] font-semibold text-ink-2">{unit}</span>}
       </div>
 

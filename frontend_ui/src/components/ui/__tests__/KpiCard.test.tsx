@@ -110,6 +110,28 @@ describe('KpiCard', () => {
     expect(container.firstChild).toHaveClass('border-warn/40');
   });
 
+  // FASE 3 — extensión para la política de paridad (CommandView).
+  it('value null muestra el placeholder — sin countUp', () => {
+    render(<KpiCard label="Índice" value={null} unit="/100" />);
+    expect(screen.getByText('—')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('valueLabel reemplaza al valor numérico', () => {
+    render(
+      <KpiCard
+        label="Predicción 15 min · red"
+        value={null}
+        valueLabel={<span className="text-warn">ALTA</span>}
+      />,
+    );
+    expect(screen.getByText('ALTA')).toHaveClass('text-warn');
+    expect(screen.queryByText('—')).not.toBeInTheDocument();
+  });
+
   it('con onClick es botón y dispara; sin onClick no es botón', () => {
     const onClick = vi.fn();
     const { rerender } = render(<KpiCard label="X" value={1} onClick={onClick} />);

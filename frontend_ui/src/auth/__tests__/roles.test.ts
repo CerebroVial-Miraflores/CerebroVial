@@ -11,10 +11,11 @@ import {
 } from '../roles';
 
 describe('TABS_BY_ROLE', () => {
-  // HU-22 / CA-22.1: operator gana 'congestion' (mapa de congestión, operator-only).
-  // Track feature/tomtom (EXPERIMENTAL): operator gana también 'tomtom' (tráfico en vivo).
-  it('operator tiene dashboard, control, alerts, congestion y tomtom', () => {
-    expect([...TABS_BY_ROLE.operator]).toEqual(['dashboard', 'control', 'alerts', 'congestion', 'tomtom']);
+  // FASE 3 rediseño UI: operator queda con 3 tabs — el Centro de Comando ("/",
+  // tab dashboard) fusiona dashboard + congestión + alertas; 'alerts' y
+  // 'congestion' murieron del union (sus rutas legacy redirigen, D3.1a).
+  it('operator tiene comando (dashboard), control y tomtom', () => {
+    expect([...TABS_BY_ROLE.operator]).toEqual(['dashboard', 'control', 'tomtom']);
   });
   it('manager tiene solo analytics', () => {
     expect([...TABS_BY_ROLE.manager]).toEqual(['analytics']);
@@ -49,13 +50,11 @@ describe('roleAllowsTab', () => {
   it('retorna true cuando la pestaña pertenece al rol', () => {
     expect(roleAllowsTab('operator', 'dashboard')).toBe(true);
     expect(roleAllowsTab('operator', 'control')).toBe(true);
-    expect(roleAllowsTab('operator', 'alerts')).toBe(true);
+    expect(roleAllowsTab('operator', 'tomtom')).toBe(true);
     expect(roleAllowsTab('manager', 'analytics')).toBe(true);
     expect(roleAllowsTab('admin', 'admin')).toBe(true);
     // HU-05 / DHU-020: admin recupera 'control' para llegar al playground.
     expect(roleAllowsTab('admin', 'control')).toBe(true);
-    // HU-22 / CA-22.1: solo el operator alcanza 'congestion'.
-    expect(roleAllowsTab('operator', 'congestion')).toBe(true);
   });
   it('retorna false cuando la pestaña no pertenece al rol', () => {
     expect(roleAllowsTab('operator', 'analytics')).toBe(false);
@@ -63,9 +62,9 @@ describe('roleAllowsTab', () => {
     expect(roleAllowsTab('manager', 'dashboard')).toBe(false);
     expect(roleAllowsTab('manager', 'control')).toBe(false);
     expect(roleAllowsTab('admin', 'analytics')).toBe(false);
-    // HU-22: 'congestion' es operator-only; manager y admin no lo alcanzan.
-    expect(roleAllowsTab('manager', 'congestion')).toBe(false);
-    expect(roleAllowsTab('admin', 'congestion')).toBe(false);
+    // FASE 3: el comando ("/") sigue siendo operator-only.
+    expect(roleAllowsTab('manager', 'dashboard')).toBe(false);
+    expect(roleAllowsTab('admin', 'dashboard')).toBe(false);
   });
   it('retorna false cuando el rol es null', () => {
     expect(roleAllowsTab(null, 'dashboard')).toBe(false);

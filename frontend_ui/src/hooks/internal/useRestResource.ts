@@ -23,7 +23,16 @@ interface ResourceRecord<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  errorStatus: number | null;
   lastUpdated: number | null;
+}
+
+/** Status HTTP de un error axios con respuesta; null para todo lo demás. */
+export function toErrorStatus(err: unknown): number | null {
+  if (axios.isAxiosError(err) && err.response) {
+    return err.response.status;
+  }
+  return null;
 }
 
 /**
@@ -61,6 +70,7 @@ export function useRestResource<T>(
     data: null,
     loading: enabled,
     error: null,
+    errorStatus: null,
     lastUpdated: null,
   }));
 
@@ -83,13 +93,13 @@ export function useRestResource<T>(
       if (signal.aborted) return;
 
       if (reset) {
-        setRecord({ data: null, loading: true, error: null, lastUpdated: null });
+        setRecord({ data: null, loading: true, error: null, errorStatus: null, lastUpdated: null });
       }
 
       try {
         const data = await fetcher(signal);
         if (signal.aborted) return;
-        setRecord({ data, loading: false, error: null, lastUpdated: Date.now() });
+        setRecord({ data, loading: false, error: null, errorStatus: null, lastUpdated: Date.now() });
       } catch (err) {
         // Cancelación ≠ error: un abort (unmount, cambio de params, last-call-
         // wins) no debe pintar "Error de red" fantasma.
@@ -100,6 +110,7 @@ export function useRestResource<T>(
           ...prev,
           loading: false,
           error: toErrorMessage(err),
+          errorStatus: toErrorStatus(err),
         }));
       }
     },
@@ -139,6 +150,7 @@ export function useRestResource<T>(
     data: record.data,
     loading: record.loading,
     error: record.error,
+    errorStatus: record.errorStatus,
     lastUpdated: record.lastUpdated,
     refetch,
   };

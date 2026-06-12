@@ -3,23 +3,20 @@
 // viviendo en auth/roles.ts (TABS_BY_ROLE se reusa tal cual, sin modificarlo).
 import type { ComponentType } from 'react';
 import {
-  Map as MapIcon,
+  LayoutGrid,
   BarChart3,
-  AlertTriangle,
   Settings,
   SlidersHorizontal,
-  Network,
   Navigation,
 } from 'lucide-react';
 
 import { TABS_BY_ROLE, type Tab } from '../../auth/roles';
 import type { Role } from '../../auth/types';
 
+// FASE 3: /alertas y /congestion ya no son tabs (redirects D3.1a en el router).
 export const PATH_BY_TAB: Record<Tab, string> = {
   dashboard: '/',
   control: '/control',
-  alerts: '/alertas',
-  congestion: '/congestion',
   tomtom: '/trafico',
   analytics: '/analitica',
   admin: '/admin',
@@ -34,6 +31,9 @@ export function pathForTab(tab: Tab): string {
 export function tabForPath(pathname: string): Tab | null {
   const segment = pathname.split('/').filter(Boolean)[0];
   if (!segment) return 'dashboard';
+  // FASE 3: el puente /camara/:id pertenece al flujo del comando — sin este
+  // alias el rail quedaría sin tab activo. El puente muere en Fase 4.
+  if (segment === 'camara') return 'dashboard';
   const entry = (Object.entries(PATH_BY_TAB) as [Tab, string][]).find(
     ([, path]) => path === `/${segment}`,
   );
@@ -54,14 +54,14 @@ export interface NavDescriptor {
   icon: ComponentType<{ size?: number; className?: string }>;
 }
 
-// Migrados de Sidebar.tsx (mismos labels e iconos, mismo orden). El badge '3'
-// hardcodeado de Alertas no migra: era un literal sin dato real detrás.
+// FASE 3: 'dashboard' pasa a ser el Centro de Comando (label "Comando", icono
+// grid 2×2 como el rail del prototipo). Las filas de Alertas y Mapa de
+// congestión mueren con sus tabs — el conteo de alertas mock NO migra al rail
+// (decisión D3: acoplar el feed demo al shell sería coupling sin dato real).
 export const NAV_DESCRIPTORS: readonly NavDescriptor[] = [
-  { tab: 'dashboard', path: PATH_BY_TAB.dashboard, label: 'Monitoreo', icon: MapIcon },
+  { tab: 'dashboard', path: PATH_BY_TAB.dashboard, label: 'Comando', icon: LayoutGrid },
   { tab: 'analytics', path: PATH_BY_TAB.analytics, label: 'Analítica e IA', icon: BarChart3 },
-  { tab: 'alerts', path: PATH_BY_TAB.alerts, label: 'Alertas', icon: AlertTriangle },
   { tab: 'admin', path: PATH_BY_TAB.admin, label: 'Administración', icon: Settings },
   { tab: 'control', path: PATH_BY_TAB.control, label: 'Motor Adaptativo', icon: SlidersHorizontal },
-  { tab: 'congestion', path: PATH_BY_TAB.congestion, label: 'Mapa de congestión', icon: Network },
   { tab: 'tomtom', path: PATH_BY_TAB.tomtom, label: 'Tráfico en vivo', icon: Navigation },
 ];

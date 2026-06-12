@@ -1,23 +1,24 @@
-import { Outlet, createBrowserRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router-dom';
 
 import { AppShell } from './components/layout/AppShell';
 import { LoginView } from './auth/LoginView';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { DefaultTabRedirect, RoleRoute } from './auth/RoleRoute';
 import { SessionProvider } from './auth/SessionContext';
-import { DashboardRoute } from './components/views/DashboardRoute';
+import { CommandView } from './components/views/command/CommandView';
+import { CameraDetailRoute } from './components/views/CameraDetailRoute';
 import { AnalyticsView } from './components/views/AnalyticsView';
-import { AlertsView } from './components/views/AlertsView';
 import { AdminView } from './components/views/AdminView';
 import { ControlView } from './components/views/control/ControlView';
-import { CongestionMapView } from './components/views/CongestionMapView';
 import { TomTomView } from './tomtom/TomTomView';
 
 // FASE 0 rediseño UI: navegación por rutas reales bajo el AppShell (layout con
 // Outlet). El shell deriva el tab activo de la URL; cada ruta protege su tab con
 // RoleRoute (ruta no permitida → redirect al default del rol, lo que cubre
-// también el aterrizaje post-login de LoginView en '/'). Las vistas existentes
-// se montan tal cual (su reemplazo es de fases posteriores).
+// también el aterrizaje post-login de LoginView en '/').
+// FASE 3: el index es CommandView (Centro de Comando, fusiona dashboard +
+// congestión + alertas); /alertas y /congestion son redirects legacy (D3.1a);
+// /camara/:id es el puente temporal al detalle v1 (muere en Fase 4).
 // Exportado como RouteObject[] para que los tests monten createMemoryRouter.
 export const appRoutes: RouteObject[] = [
   {
@@ -39,7 +40,7 @@ export const appRoutes: RouteObject[] = [
                 index: true,
                 element: (
                   <RoleRoute tab="dashboard">
-                    <DashboardRoute />
+                    <CommandView />
                   </RoleRoute>
                 ),
               },
@@ -51,19 +52,17 @@ export const appRoutes: RouteObject[] = [
                   </RoleRoute>
                 ),
               },
+              // D3.1(a) — redirects legacy SIN RoleRoute: el destino ("/") ya
+              // protege con su propio guard (manager rebota a /analitica).
+              { path: 'alertas', element: <Navigate to="/?panel=alertas" replace /> },
+              { path: 'congestion', element: <Navigate to="/" replace /> },
+              // PUENTE TEMPORAL Fase 3 → muere en Fase 4 (flujo de visión
+              // on-demand nuevo). Guard del tab dashboard: es flujo del comando.
               {
-                path: 'alertas',
+                path: 'camara/:id',
                 element: (
-                  <RoleRoute tab="alerts">
-                    <AlertsView />
-                  </RoleRoute>
-                ),
-              },
-              {
-                path: 'congestion',
-                element: (
-                  <RoleRoute tab="congestion">
-                    <CongestionMapView />
+                  <RoleRoute tab="dashboard">
+                    <CameraDetailRoute />
                   </RoleRoute>
                 ),
               },

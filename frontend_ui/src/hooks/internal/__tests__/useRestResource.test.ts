@@ -315,3 +315,33 @@ describe('toErrorMessage', () => {
     expect(axios.isCancel(new CanceledError('c'))).toBe(true); // sanity del guard
   });
 });
+
+// FASE 3 — errorStatus aditivo (discriminar el 404 no_active_state sin strings).
+describe('errorStatus', () => {
+  it('error HTTP expone el status; éxito posterior lo limpia; error no-HTTP → null', async () => {
+    const config = { headers: new AxiosHeaders() };
+    const http404 = new AxiosError('falló', 'ERR_BAD_REQUEST', config, {}, {
+      data: { code: 'no_active_state' },
+      status: 404,
+      statusText: 'Not Found',
+      headers: {},
+      config,
+    } as never);
+
+    const fetcher = vi.fn().mockRejectedValueOnce(http404).mockResolvedValueOnce('ok');
+    const { result } = renderHook(() => useRestResource(fetcher));
+    await act(async () => {});
+    expect(result.current.errorStatus).toBe(404);
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+    expect(result.current.errorStatus).toBeNull();
+
+    const plain = vi.fn().mockRejectedValue(new Error('sin HTTP'));
+    const { result: r2 } = renderHook(() => useRestResource(plain));
+    await act(async () => {});
+    expect(r2.current.error).toBe('sin HTTP');
+    expect(r2.current.errorStatus).toBeNull();
+  });
+});
