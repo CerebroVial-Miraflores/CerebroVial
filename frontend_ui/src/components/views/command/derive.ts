@@ -44,7 +44,7 @@ export function networkCongestionIndex(
 /**
  * Estado del marker desde el `status` real del REST (fluid|moderate|critical,
  * agregado Waze MAX por intersección). Valor desconocido → 'ok' (no alarmar
- * sin dato). Espeja la semántica de utils/markerVisual sin tocarlo.
+ * sin dato).
  */
 export function nodeStatusFor(status: IntersectionSummary['status']): NodeStatus {
   if (status === 'critical') return 'bad';

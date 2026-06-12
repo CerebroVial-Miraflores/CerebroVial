@@ -20,12 +20,12 @@ vi.mock('../auth/LoginView', () => ({
   LoginView: () => <div data-testid="view-login" />,
 }));
 // FASE 3: el index es CommandView (Centro de Comando); /alertas y /congestion
-// son redirects (D3.1a) y /camara/:id es el puente temporal a CameraDetailView.
+// son redirects (D3.1a). FASE 4: /camara/:id monta CameraDetailV2.
 vi.mock('../components/views/command/CommandView', () => ({
   CommandView: () => <div data-testid="view-command" />,
 }));
-vi.mock('../components/views/CameraDetailRoute', () => ({
-  CameraDetailRoute: () => <div data-testid="view-camara" />,
+vi.mock('../components/views/camera/CameraDetailV2', () => ({
+  CameraDetailV2: () => <div data-testid="view-camara" />,
 }));
 vi.mock('../components/views/AnalyticsView', () => ({
   AnalyticsView: () => <div data-testid="view-analytics" />,
@@ -89,7 +89,7 @@ describe('rutas por rol (HU-01 a nivel URL)', () => {
     expect(screen.getByTestId('view-tomtom')).toBeInTheDocument();
   });
 
-  it('operator accede al puente /camara/:id (temporal hasta F4)', () => {
+  it('operator accede al detalle de cámara /camara/:id (CameraDetailV2)', () => {
     const router = renderAt('operator', '/camara/cam_larco_benavides');
     expect(router.state.location.pathname).toBe('/camara/cam_larco_benavides');
     expect(screen.getByTestId('view-camara')).toBeInTheDocument();

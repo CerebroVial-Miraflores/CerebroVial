@@ -51,9 +51,9 @@ export const predictionService = {
     },
 
     /**
-     * FASE 2 rediseño UI — historial + forecast de una cámara. Normaliza el
-     * fetch crudo de TrafficHistoryWidget (v1, intacto hasta morir) vía
-     * httpClient (JWT). Acepta signal para cancelación desde hooks.
+     * FASE 2 rediseño UI — historial + forecast de una cámara vía httpClient
+     * (JWT). Lo consume usePredictionHistory (CameraHistoryPanel en F4). Acepta
+     * signal para cancelación desde hooks.
      */
     async getHistory(
         cameraId: string,

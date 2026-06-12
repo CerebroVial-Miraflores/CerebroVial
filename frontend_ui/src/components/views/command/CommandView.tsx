@@ -7,8 +7,9 @@
 // sparkline y composición KpiStrip + CommandMap + AlertsPanel.
 //
 // B3: click en nodo y "Ver intersección" abren el drawer de intersección por
-// ?nodo= (la costura 3A vía /camara/:id quedó reemplazada; el puente sigue
-// vivo como destino de "Detalle de cámara" del drawer). Click en KPI → modal.
+// ?nodo= (la costura 3A vía /camara/:id quedó reemplazada; /camara/:id queda
+// como destino de "Detalle de cámara" del drawer → CameraDetailV2 en F4). Click
+// en KPI → modal.
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCongestionGeometry } from '../../../hooks/useCongestionGeometry';

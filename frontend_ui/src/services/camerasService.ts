@@ -1,8 +1,7 @@
 // FASE 2 rediseño UI — Cliente REST de GET /api/cameras.
 //
-// Lista liviana (solo CameraDB, sin agregado Waze). Normaliza el fetch crudo
-// del carril de CameraDetailView (v1, intacto hasta morir) vía httpClient (JWT).
-// El hook useCameras se difiere a la fase de cámaras; el service queda listo.
+// Lista liviana (solo CameraDB, sin agregado Waze) vía httpClient (JWT). La
+// consume useCameras (detalle de cámara y su carril, F4).
 import { httpClient } from './httpClient';
 import type { CameraSummary } from '../types/cameras';
 

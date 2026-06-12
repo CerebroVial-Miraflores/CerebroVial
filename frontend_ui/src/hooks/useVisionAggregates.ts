@@ -11,9 +11,8 @@
 // ── POLÍTICA REAL-CON-CAVEAT (Fase 3) ──────────────────────────────────────
 // Ambas métricas son REALES pero limitadas; la UI que las muestre lleva el
 // caveat textual (sin DemoBadge — no son mock):
-// · `mean_speed_kmh`: velocidad experimental SIN CALIBRAR (DEUDA-SPEED-CALIB;
-//   v1 ya la señaliza con badge en CameraDetailView). Caveat UI:
-//   "visión · sin calibrar".
+// · `mean_speed_kmh`: velocidad experimental SIN CALIBRAR (DEUDA-SPEED-CALIB).
+//   Caveat UI: "visión · sin calibrar".
 // · `flow_vehicles_per_hour`: métrica de PRESENCIA extrapolada, no flujo por
 //   line-crossing (resultado negativo del spike de flujo: conteo por cruce de
 //   línea estructuralmente imposible a 1 Hz). Caveat UI:

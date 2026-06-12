@@ -1,8 +1,8 @@
 // FASE 2 rediseño UI — hook del SSE de visión del edge (TTH-08 §6.2).
 //
 // EventSource NATIVO a `${VITE_EDGE_API_URL}/stream/{cameraId}` escuchando
-// 'traffic_update' con parse tipado a VisionStreamPayload. Mismo patrón que
-// DashboardView/CameraDetailView v1 (que quedan intactas hasta morir).
+// 'traffic_update' con parse tipado a VisionStreamPayload. Lo consume el panel
+// en vivo del detalle de cámara (CameraLivePanel, F4).
 //
 // DEUDA BACKEND (documentada en CLAUDE.md §Rediseño UI): el edge NO exige JWT
 // y EventSource nativo no acepta headers custom — este hook NO resuelve esa

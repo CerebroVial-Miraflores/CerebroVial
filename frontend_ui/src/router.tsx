@@ -6,7 +6,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { DefaultTabRedirect, RoleRoute } from './auth/RoleRoute';
 import { SessionProvider } from './auth/SessionContext';
 import { CommandView } from './components/views/command/CommandView';
-import { CameraDetailRoute } from './components/views/CameraDetailRoute';
+import { CameraDetailV2 } from './components/views/camera/CameraDetailV2';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { AdminView } from './components/views/AdminView';
 import { ControlView } from './components/views/control/ControlView';
@@ -56,13 +56,13 @@ export const appRoutes: RouteObject[] = [
               // protege con su propio guard (manager rebota a /analitica).
               { path: 'alertas', element: <Navigate to="/?panel=alertas" replace /> },
               { path: 'congestion', element: <Navigate to="/" replace /> },
-              // PUENTE TEMPORAL Fase 3 → muere en Fase 4 (flujo de visión
-              // on-demand nuevo). Guard del tab dashboard: es flujo del comando.
+              // FASE 4: detalle de cámara rediseñado (CameraDetailV2) IN-PLACE.
+              // Guard del tab dashboard: es flujo del comando (operator).
               {
                 path: 'camara/:id',
                 element: (
                   <RoleRoute tab="dashboard">
-                    <CameraDetailRoute />
+                    <CameraDetailV2 />
                   </RoleRoute>
                 ),
               },

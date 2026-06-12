@@ -1,7 +1,7 @@
 // FASE 1 rediseño UI — builder puro del HTML del divIcon de nodos semáforo
 // (spec: .node del prototipo: ring + core por estado, halo pulsante si crítico).
-// Visual NUEVO del rediseño — NO confundir con utils/markerVisual.ts (marcadores
-// de cámaras), que no se toca.
+// Visual NUEVO del rediseño. (El viejo utils/markerVisual.ts de marcadores de
+// cámaras quedó huérfano y se eliminó en Fase 4.)
 //
 // Colores vía style inline: los inline styles SÍ procesan var(); los atributos
 // de presentación SVG no. El halo anima con la clase animate-halo-ping (token

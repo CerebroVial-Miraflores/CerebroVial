@@ -31,8 +31,8 @@ export function pathForTab(tab: Tab): string {
 export function tabForPath(pathname: string): Tab | null {
   const segment = pathname.split('/').filter(Boolean)[0];
   if (!segment) return 'dashboard';
-  // FASE 3: el puente /camara/:id pertenece al flujo del comando — sin este
-  // alias el rail quedaría sin tab activo. El puente muere en Fase 4.
+  // El detalle /camara/:id (FASE 4) pertenece al flujo del comando — sin este
+  // alias el rail quedaría sin tab activo al abrir una cámara.
   if (segment === 'camara') return 'dashboard';
   const entry = (Object.entries(PATH_BY_TAB) as [Tab, string][]).find(
     ([, path]) => path === `/${segment}`,
