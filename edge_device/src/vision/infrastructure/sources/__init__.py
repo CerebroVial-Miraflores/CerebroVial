@@ -7,6 +7,7 @@ from .base import SourceFactory, SourceConfig
 from .youtube_source import YouTubeSource
 from .webcam_source import WebcamSource
 from .video_source import VideoFileSource
+from .hls_keyframe_source import HlsKeyframeSource
 
 class YouTubeFactory(SourceFactory):
     def can_handle(self, config: str, source_type: str) -> bool:
@@ -42,18 +43,37 @@ class VideoFileFactory(SourceFactory):
         return VideoFileSource(config, source_config, capture=capture)
 
 
-class HlsFactory(SourceFactory):
-    """Streams HLS/HTTP genéricos (C1): la fuente YOLO on-demand del HLS de Claro.
+class HlsKeyframeFactory(SourceFactory):
+    """Productor HLS por defecto (B-fase1): keyframe-only sobre ffmpeg CLI.
 
-    Matchea SOLO por `source_type` explícito ("hls"/"stream") — aditivo, no toca el
-    ruteo de youtube/webcam/file/auto. Crea un `VideoFileSource`, que es el concreto
-    `OpenCVSource`: para URLs http(s) pasa por `_resolve_stream_url()` (Streamlink) +
-    `_open_capture()` (env ffmpeg con el Referer de Claro), y `read()` se comporta como
-    stream porque `_is_stream()` decide por el prefijo de la URL, no por la clase.
+    Matchea `source_type` "hls"/"stream" (lo que manda el front) y el alias explícito
+    "hls_keyframe". Reemplaza el decode completo para HLS: bajo CPU + frescura-a-vivo con
+    aislamiento de fallas por subproceso (benchmark Eje 1). El productor OpenCV queda como
+    escape hatch explícito en `HlsFactory` ("hls_opencv").
     """
 
     def can_handle(self, config: str, source_type: str) -> bool:
-        return source_type in ("hls", "stream")
+        return source_type in ("hls", "stream", "hls_keyframe")
+
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        capture = kwargs.pop("capture", None)
+        source_config = self._create_config(**kwargs)
+        return HlsKeyframeSource(config, source_config, capture=capture)
+
+
+class HlsFactory(SourceFactory):
+    """Escape hatch OpenCV para HLS (B-fase1): `source_type` EXPLÍCITO "hls_opencv".
+
+    Sigue registrado (no se borra) para fuentes que requieran la ruta cv2 + Streamlink +
+    Referer — p. ej. una URL HLS no-directa que necesite resolución Streamlink (las de
+    Claro son `.m3u8` directas y van por keyframe). El default de HLS pasó a
+    `HlsKeyframeFactory`; "hls"/"stream" ya no rutean acá. Crea un `VideoFileSource`
+    (concreto `OpenCVSource`): `_resolve_stream_url()` (Streamlink) + `_open_capture()`
+    (env ffmpeg con Referer), y `read()` se comporta como stream por el prefijo de la URL.
+    """
+
+    def can_handle(self, config: str, source_type: str) -> bool:
+        return source_type == "hls_opencv"
 
     def create(self, config: str, **kwargs) -> FrameProducer:
         capture = kwargs.pop("capture", None)
@@ -84,7 +104,11 @@ class SourceRegistry:
 _registry = SourceRegistry()
 _registry.register("youtube", YouTubeFactory())
 _registry.register("webcam", WebcamFactory())
-_registry.register("hls", HlsFactory())
+# B-fase1: keyframe-only es el productor HLS por defecto ("hls"/"stream"); el OpenCV
+# queda como escape hatch explícito ("hls_opencv"). Disjuntos en can_handle; se registra
+# keyframe antes por intención (default gana si algún día se solapan).
+_registry.register("hls_keyframe", HlsKeyframeFactory())
+_registry.register("hls_opencv", HlsFactory())
 _registry.register("file", VideoFileFactory())
 
 

@@ -12,6 +12,7 @@ import pytest
 
 from cerebrovial_shared.exceptions import SourceError
 from src.vision.infrastructure.sources import (
+    HlsKeyframeSource,
     VideoFileSource,
     WebcamSource,
     YouTubeSource,
@@ -93,20 +94,37 @@ def test_create_source_explicit_type():
     assert isinstance(src, WebcamSource)
 
 
-def test_create_source_hls_routes_to_streamlink_path():
-    """C1 fix: source_type="hls" (lo que manda el front) rutea a VideoFileSource,
-    el concreto OpenCVSource que pasa por Streamlink + Referer. Antes tiraba
-    ValueError ('No factory found') → 500 al abrir la cámara."""
+def test_create_source_hls_routes_to_keyframe():
+    """B-fase1: source_type="hls" (lo que manda el front) rutea al productor
+    keyframe-only por defecto (HlsKeyframeSource sobre ffmpeg CLI), no a OpenCV.
+    Construcción lazy → no spawnea ffmpeg."""
     src = create_source(
         "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
         source_type="hls",
+    )
+    assert isinstance(src, HlsKeyframeSource)
+
+
+def test_create_source_stream_alias_routes_to_keyframe():
+    src = create_source("https://cdn.example.com/live.m3u8", source_type="stream")
+    assert isinstance(src, HlsKeyframeSource)
+
+
+def test_create_source_hls_keyframe_explicit():
+    src = create_source(
+        "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
+        source_type="hls_keyframe",
+    )
+    assert isinstance(src, HlsKeyframeSource)
+
+
+def test_create_source_hls_opencv_escape_hatch():
+    """El productor OpenCV para HLS sigue alcanzable explícitamente ("hls_opencv")."""
+    src = create_source(
+        "https://live.smartechlatam.online/claro/escuela_pnp/index.m3u8",
+        source_type="hls_opencv",
         capture=FakeCapture(),
     )
-    assert isinstance(src, VideoFileSource)
-
-
-def test_create_source_stream_alias():
-    src = create_source("https://cdn.example.com/live.m3u8", source_type="stream", capture=FakeCapture())
     assert isinstance(src, VideoFileSource)
 
 
