@@ -22,6 +22,8 @@
 | D-014 | Cerrada | 2026-06-03 | Criterio de drenaje net-específico para v2: gate multi-señal por-día (reemplaza la racha sub-8 km/h, v1-específica) |
 | D-015 | Cerrada | 2026-06-03 | Revalidación del veredicto STGNN sobre v2 (1660): STGNN supera al GRU en severo; D-011/Fase 5 revertido (adopción abierta) |
 | D-016 | Cerrada | 2026-06-05 | `intersections` como entidad de primera clase; cámara accesorio; puente al grafo vía `intersection_edges` (Fase A) |
+| D-017 | Cerrada | 2026-06-07 | Refundación del módulo de visión (contenido refundado, tubería reusada previo saneamiento) |
+| D-018 | Cerrada | 2026-06-07 | Arquitectura del muestreador de visión (scheduler único, modelo compartido, instancia dueña de cámaras) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -584,6 +586,108 @@ El STGNN gana también en `test_all` y `test_normal` (los cuatro cortes), pero l
 **Consecuencias.** El único consumidor de `cameras.node_id` (`/api/intersections`) pasa a derivar el nombre de `intersection_id`. El frontend (`CameraDetailView.tsx`) y el edge (`run_server.py`) usan `camera_id`, no `node_id`: se ajustan en fases B/C. El control no se toca.
 
 **Referencias.** Migración `f3a9c1d2e4b7_intersections_cameras_bridge.py`; ORM `shared/cerebrovial_shared/database/models.py` (`IntersectionDB`, `IntersectionEdgeDB`, `CameraDB`); seed `scripts/seed_intersections.py`; contrato `documentation/contracts/intersections_contract.md`; schema `documentation/docs/DATA_MODEL.md`. Fuente: `documentation/contracts/mapeo_pmu_edges_v2.yaml`.
+
+---
+
+## D-017 — Refundación del módulo de visión (contenido refundado, tubería reusada previo saneamiento)
+**Fecha:** 2026-06-07 · **Estado:** Cerrada
+
+**Contexto.** El módulo de visión preexistente (TTH-08) fue **exploratorio**: sirvió para descubrir qué métricas eran viables sobre los streams, no para producir datos válidos. Dos auditorías read-only de esta sesión establecieron:
+- **`vision_aggregates` es write-only:** se escribe desde el edge, pero nadie la lee — ni endpoint, ni frontend, ni el GRU. Hoy está vacía salvo corridas en vivo.
+- **Computa y persiste cuatro métricas no confiables:** `mean_occupancy`, `density_vehicles_per_km`, `mean_speed_kmh`, `flow_vehicles_per_hour`. Todas dependen de una calibración que no existe. `flow_vehicles_per_hour` es **presencia disfrazada de flujo** (ya identificado en `documentation/docs/CIERRE-metricas-vision-flujo.md`).
+- **Las zonas son polígonos en píxeles sin normalizar**, definidos en el YAML del edge (`conf/vision/default.yaml`), con `camera_id` (`"CAM_001".."CAM_004"`) que ni siquiera matchea los `cam_<intersection_id>` reales de la BD.
+- **La tubería de infraestructura** (`MultiCameraManager`, `AsyncVisionPipeline`, `AsyncTrafficAggregator`, `PostgresTrafficRepository`, `RealtimeBroadcaster`, `FrameAnalysis`) es **estructuralmente sana pero arrastra 5 bugs confirmados** (B1–B5, abajo).
+
+CLAUDE.md rotula al subsistema de visión como *"subsistema mejor armado, con tests reales"* (regla protegida, levantada en TTH-08 Fase 2). La realidad auditada matiza fuerte ese rótulo: write-only, sin lector, métricas no confiables y un montaje frankenstein heredado de la fase exploratoria.
+
+**Decisión.** Se **refunda** el módulo de visión.
+
+1. **Contenido refundado (sale, no se difiere).**
+   - Las cuatro métricas no confiables (`occupancy`, `density`, `speed`, `flow_vph`) **salen del alcance y del cómputo**. No se persisten más. Cada una se reincorpora solo cuando se cumpla su precondición de calibración (ver *Decisiones diferidas*).
+   - Las zonas en YAML/píxeles sin normalizar **salen**. Las reemplaza una entidad **`vision_zones` en BD** (geometría normalizada, FK a cámara, estado de calibración). Diseño en fase posterior.
+   - El **código muerto** de la fase exploratoria se elimina (auditoría de código muerto pendiente; ya detectados: el CLI `edge_device/src/main.py` con `analysis.total_count` inexistente, y el stub no-op `set_pipeline`).
+   - En el **espíritu de D-005** (honestidad de datos: se reporta la realidad, no una versión inflada) y del **lema del equipo *«no verde con asterisco»***: no se persiste una magnitud física que el dato no entrega.
+
+2. **Tubería reusada *previo saneamiento* (no se reescribe lo sano; se arreglan los bugs confirmados).**
+   - **B1 (crítico):** `_run_camera_pipeline` **bloquea el event loop** — itera un generador síncrono con `queue.get`/`time.sleep` dentro del loop async. Impide multi-cámara real. Requiere re-arquitecturar el cruce sync/async.
+   - **B2:** `aggregator.stop()` **nunca se llama** → fuga de thread garantizada en cada baja de cámara.
+   - **B3:** `activate_camera` **sin lock** → la invariante de instancias (un solo modelo vivo) no se sostiene bajo requests concurrentes.
+   - **B4:** subscriber SSE **colgado/fugado** tras baja de cámara o ante excepción distinta de `CancelledError`.
+     - **Estado (2026-06-07, B1 Paso 0):** el **disparador por idle quedó eliminado** — el watchdog ya no llama `remove_camera` (ahora solo apaga el render), así que ninguna cámara desaparece bajo un subscriber por inactividad. **Pendiente:** la desuscripción de SSE en **bajas explícitas** (`DELETE /cameras/{id}` y cambio de fuente en `activate_camera`) sigue sin hacerse. **Trigger / fix acotado:** `RealtimeBroadcaster.disconnect_camera(camera_id)` (encola un sentinel a los subscribers de esa cámara) + cierre del generador en `streaming.py`, llamado desde `remove_camera`. Diferido a propósito para no diluir la verificación negativa de B1 Paso 0.
+   - **B5:** CLI legacy `main.py` con `analysis.total_count` inexistente (`AttributeError` latente) — se va con la limpieza de código muerto.
+
+3. **Alcance de runtime.** **11 cámaras contando en simultáneo a 1 Hz** (muestreador), con **aislamiento real** (bajar una no afecta a las otras). Validado en cómputo por **Benchmark 1** (11 inferencias @320, peor caso ~0.6 s < 1 s a 1 thread). El **MJPEG full-FPS (640)** queda **single-slot**: solo la cámara que el operador está mirando. Las 11 cuentan; una se ve en detalle. La arquitectura actual **no** implementa esto (monta 11 pipelines pesados que bloquean el loop, B1); el saneamiento debe converger hacia **un muestreador que recorra las 11**, no 11 pipelines independientes.
+
+4. **Calibración por operador (fase posterior, diseño no cerrado acá).** CRUD de cámaras con datos de calibración (lat/long, ángulo, distancia cámara–línea); definición de **tramos entre puntos** con su valor en metros asignado por el operador; **dibujo de zonas/líneas desde el front** (hoy el front manda `zones: {}` vacío — no existe UI).
+
+5. **Estado de sensor con NULL-con-motivo.** `vision_aggregates` debe distinguir **"0 vehículos medidos"** de **"no medido"**, y en este último caso el **motivo**: cámara caída, sin stream disponible, o en recalibración. La honestidad de datos se lleva al estado del sensor: YOLO **no persiste datos por las puras** cuando no hay señal válida.
+
+**Principio de migraciones (aplica de acá en adelante).**
+- Migraciones **aditivas y no destructivas**: agregar tablas/columnas, nunca recrear tablas existentes. Las columnas nuevas nacen **nullable o con default**; agregar una columna no borra data existente.
+- **DROP solo en migraciones explícitamente marcadas como destructivas**, nunca como efecto colateral de otro cambio.
+- **Excepción puntual de esta refundación:** el DROP/recreación de `vision_aggregates` y la baja de las zonas YAML **son destructivos a propósito**, y son seguros porque `vision_aggregates` está **vacía** (sin data real que perder). De ahí en adelante, régimen aditivo estricto.
+- Las columnas de las métricas diferidas (`occupancy`/`density`/`speed`/`flow`) se prevén en el esquema como **NULL-honesto**: existen, pero nadie las escribe hasta la calibración. Reincorporarlas es **activar escritura, no migrar estructura**.
+
+**Decisiones diferidas (con trigger).**
+- **Hot-reload vs. reinicio al calibrar.** Ideal: **hot-reload** (cambiar la config de zonas sin parar captura/inferencia, dado que las zonas se consumen en el cómputo espacial posterior, no en la captura). Viabilidad **no confirmada**: depende de si `ZoneCounter` consume las zonas desde una estructura mutable-en-caliente o si están horneadas en el pipeline. **Trigger:** auditoría dirigida a `ZoneCounter` en Fase 0. El modelo de datos se diseña **agnóstico**: en ambos casos la cámara entra en estado `recalibrating` (NULL-con-motivo) durante la calibración; solo cambia cuánto dura y si el MJPEG parpadea.
+- **Reincorporación de cada métrica diferida.** **Trigger** = su precondición de calibración respectiva: `occupancy`/`density` → zonas + denominador en metros; `speed` → homografía / `pixels_per_meter` validado; flujo-por-cruce → tracking estable + línea calibrada (ya diferido en `CIERRE-metricas-vision-flujo.md`).
+
+**Lo que NO es esta refundación.**
+- No se reescribe la tubería sana (captura, agregación, broadcast, repo): se **reusa previo saneamiento** de B1–B5.
+- **No se mergea a master.** Vive en rama propia post-demo.
+- **No compite con el demo** (predictivo con GRU); arranca **después** del demo.
+
+**Plan por fases (referencia; cada fase con su propio gate).**
+- **Fase 0:** saneamiento de tubería (B1–B5) + auditoría de `ZoneCounter` (resuelve hot-reload) + decisión de arquitectura del muestreador.
+- **Fase 1:** modelo de datos (`vision_zones`, calibración, tramos, estado de sensor NULL-con-motivo) — agnóstico a hot-reload/reinicio.
+- **Fase 2:** canal vivo (tap por-frame read-only desde `FrameAnalysis`, SSE sin BD) + canal agregado (`vision_aggregates` reducido a presencia: `count_mean`/`max`/`min`, `sample_count`, ventana 60 s).
+- **Fase 3:** UI de calibración (CRUD cámaras, dibujo de zonas/líneas, tramos).
+- **Transversal:** limpieza de código muerto (con auditoría dedicada previa).
+
+**Consecuencias.** **CLAUDE.md debe corregirse:** su rótulo del módulo de visión (*"subsistema mejor armado, con tests reales"*) refleja el estado **pre-refundación** y contradice este record. La corrección va en la **limpieza transversal de documentación** — junto con los `DATA_MODEL.md` obsoletos que aún documentan `vision_aggregates` como tabla *"a crear"* y `vision_tracks`/`vision_flows` ya dropeadas. Esta tarea **no toca CLAUDE.md ni `DATA_MODEL.md`**; solo deja registrada la acción pendiente.
+
+**Referencias.** Auditorías read-only de esta sesión (tubería + esquema de visión). Componentes citados: `edge_device/src/vision/application/services/multi_camera.py`, `.../pipelines/async_pipeline.py`, `.../aggregators/async_aggregator.py`, `.../infrastructure/persistence/postgres_repository.py`, `.../infrastructure/broadcast/realtime_broadcaster.py`, `.../domain/entities.py` (`FrameAnalysis`); ORM `shared/cerebrovial_shared/database/models.py` (`VisionAggregateDB`, `CameraDB`); seed `scripts/seed_intersections.py`; config `edge_device/conf/vision/default.yaml`. Decisiones relacionadas: D-005 (honestidad de datos), D-007 (visión como componente demostrable), D-016 (cámara como accesorio de intersección). Cierre previo: `documentation/docs/CIERRE-metricas-vision-flujo.md`.
+
+---
+
+## D-018 — Arquitectura del muestreador de visión (scheduler único, modelo compartido, instancia dueña de cámaras)
+**Fecha:** 2026-06-07 · **Estado:** Cerrada
+
+**Contexto.** Resuelve la decisión de arquitectura que el D-017 dejó como núcleo de Fase 0. Tres fuerzas la motivan:
+1. **El bug B1** — el event loop se bloquea porque `_run_camera_pipeline` itera un generador síncrono (`queue.get` + `time.sleep`) en el thread del loop, y el cableado actual monta **11 pipelines independientes** (11 modelos, 22 threads, 11 aggregators).
+2. **El requisito de muestreo permanente** — las 11 cámaras deben muestrear de forma continua, no on-demand.
+3. **La visión de producto escalable** — a futuro, muchas más cámaras que las 11.
+
+Una auditoría read-only de Fase 0 estableció que el modelo YOLO es **stateless por llamada** (modo predict, no `track(persist=)`), por lo que un único modelo puede inferir frames de varias cámaras en secuencia **sin contaminación de estado**. Un spike de carga sostenida (5 min, 11 clips reales, 1 modelo, 1 thread, con persistencia) confirmó la premisa física.
+
+**Validación por spike (números medidos, no asumidos).**
+- 11 cámaras a 1 Hz @imgsz 320, sostenido: **ciclo medio 0.118 s (~12 % del presupuesto de 1 s)**, p95 0.123 s, **0/300 desbordes**.
+- **Sin deriva temporal** en 5 min (Δ entre primeros y últimos 30 ciclos ≈ −0.002 s).
+- **Persistencia no es cuello:** 11 escrituras/ventana ≈ 18 ms con engine pooleado (~1.7 ms c/u).
+- **Margen** (extrapolación conservadora con el peor caso del Benchmark 1, 26 ms/inf @320): techo holgado en torno a **varias decenas de cámaras por instancia** a 320.
+- A **640 también entra** (0.324 s, ~32 % del presupuesto).
+
+**Decisión.**
+1. **Un scheduler único con UN modelo YOLO compartido por instancia de edge.** El scheduler recorre sus cámaras a 1 Hz e infiere con el modelo único en secuencia. Reemplaza los 11 pipelines independientes y el generador síncrono bloqueante (**sanea B1**: el scheduler cede el loop correctamente).
+2. **La instancia de edge es dueña de un CONJUNTO CONFIGURABLE de cámaras** (hoy las 11). El código asume *"mis cámaras"*, no *"todas las cámaras"* — costura para escalar horizontalmente a K instancias sin reescritura.
+3. **Dos salidas por cámara:** tap vivo por-frame (conteo instantáneo, SSE, sin DB) y agregado por-ventana (persistido). Ambas derivan del mismo muestreo.
+4. **Estado por-cámara LIVIANO** (tracker ByteTrack, buffer de ventana) se mantiene por-cámara; **el modelo NO se duplica**.
+5. **El MJPEG a 640 con boxes visibles es un consumidor adicional single-slot** sobre la cámara que el operador está mirando. Las 11 muestrean a 320 sin render (background); solo la activa renderiza a 640. No compiten.
+6. **`imgsz` y frecuencia de muestreo CONFIGURABLES, no horneados** (hoy no existe `imgsz`, corre a 640 default). Son las palancas de densidad de cámaras por modelo.
+7. **CONJUNTO DE CÁMARAS MUTABLE EN CALIENTE:** agregar o quitar una cámara del muestreo activo es operación de primera clase — el scheduler la incluye/excluye en el ciclo siguiente, **sin reiniciar ni reconstruir el modelo**. La cámara nueva aporta su propio estado liviano. (Contraparte runtime del conjunto configurable.)
+
+**Advertencia para la implementación de B1 (mordida anticipada, contemplar sí o sí).** El `POST /cameras/{id}` actual (del track de cámaras, modelo single-slot) hoy significa *"activá la única cámara, bajá las demás"*. Al pasar al scheduler debe **redefinirse** como *"sumá esta cámara al conjunto del scheduler"*, sin afectar a las otras. Si el diseño de B1 no contempla este cambio de semántica, hay choque seguro entre un endpoint que asume single-slot y un scheduler multi-cámara.
+
+**Riesgos conocidos con trigger (lo que el spike NO cubrió).**
+- **Captura HLS en vivo NO medida.** El spike usó `.mp4` local (captura 10 ms/11 frames). En producción son 11 streams HLS de Claro en vivo, con latencia y jitter de red. **Conclusión clave: el cuello de botella de escala de esta arquitectura es la I/O de red, NO el cómputo** (la inferencia tiene margen de sobra). **Trigger:** spike de captura HLS concurrente en vivo antes de producción. La palanca ante desborde de red no es `imgsz` (la inferencia no es el problema) sino el manejo de captura/concurrencia de red.
+- **RSS creció +388 MB en 5 min** (~1.3 MB/ciclo); el Δ por corrida decrece (388→152→27), consistente con caché de arranque que se aplana, y el tiempo de ciclo **NO derivó**. No concluyente: 5 min no descartan un leak lento. **Trigger:** corrida larga (horas) antes de deploy 24/7.
+- **Sesión-por-escritura del aggregator:** barata hoy con pool caliente (1.7 ms c/u), pero escala con cámaras × zonas. Revisar a mayor densidad.
+
+**Diferido con trigger.**
+- **Orquestación multi-instancia** (qué instancia maneja qué cámaras, balanceo, descubrimiento): **trigger** = cuando una sola instancia no alcance. Las costuras (instancia-dueña-de-cámaras, `imgsz`/frecuencia configurables) quedan listas ahora; el orquestador no se construye todavía.
+- **Alta de cámara ENTIDAD-NUEVA** (URL de stream nueva + datos de calibración, no sembrada en `cameras`): depende del modelo de datos (Fase 1) y del CRUD de calibración (Fase 3). El hot-reload de **runtime** (que el scheduler tome una cámara sin reiniciar) se diseña ahora; el alta de entidad completa llega con esas fases.
+
+**Relación.** Implementa el saneamiento de **B1 del D-017**. Precede al modelo de datos de **Fase 1** (el scheduler define dónde viven las zonas indexadas por cámara, lo que condiciona el hot-reload de zonas — ver auditoría de Fase 0). **Referencias:** auditoría de Fase 0 (ZoneCounter + acoplamiento del loop) y spike de carga sostenida, ambos de esta sesión. Benchmark 1 (costo de inferencia) en `documentation/docs/CIERRE-metricas-vision-flujo.md`.
 
 ---
 

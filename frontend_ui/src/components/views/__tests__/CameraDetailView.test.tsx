@@ -222,10 +222,10 @@ describe('CameraDetailView', () => {
 
     // ---- Carril de otras cámaras + reemplazo del detalle ------------------
 
-    // fetch que sirve la lista de intersecciones (para el carril) y OK para el resto.
+    // fetch que sirve la lista de cámaras (para el carril) y OK para el resto.
     const fetchWithIntersections = (cameras: Array<{ id: string; name: string; stream_url: string | null }>) =>
         vi.fn((url: RequestInfo | URL) => {
-            if (typeof url === 'string' && url.includes('/api/intersections')) {
+            if (typeof url === 'string' && url.includes('/api/cameras')) {
                 return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(cameras) } as Response);
             }
             return Promise.resolve({ ok: true, status: 200 } as Response);

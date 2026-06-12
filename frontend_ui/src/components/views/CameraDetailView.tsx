@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    X,
     Users,
     Activity,
     Car,
@@ -52,7 +51,9 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
 
     useEffect(() => {
         let cancelled = false;
-        fetch(`${CORE_API_URL}/api/intersections`)
+        // Carril liviano: /api/cameras (solo CameraDB, sin agregado Waze). El detalle no usa
+        // `status`, así que no debe pagar el query de congestión que sí necesita el dashboard.
+        fetch(`${CORE_API_URL}/api/cameras`)
             .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`core ${res.status}`))))
             .then((data: Array<{ id: string; name: string; stream_url: string | null }>) => {
                 if (!cancelled && Array.isArray(data)) {
@@ -80,9 +81,19 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
     };
 
     return (
-        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col animate-in fade-in duration-200">
-            {/* Header */}
-            <div className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#0A0A0A]">
+        // Detalle EMBEBIDO en el área de contenido (no overlay full-screen): vive dentro del
+        // <main>, a la derecha del sidebar y debajo del Header transversal, que quedan visibles.
+        // SIN marco/borde/fondo propio: llena el área directamente sobre el slate-950 de la app
+        // (como DashboardView en el mismo slot), sin verse como "caja dentro de caja". El detalle
+        // CRECE con su contenido (sin h-full/overflow-hidden); el scroll lo toma el wrapper externo
+        // de <main> (flex-1 min-h-0 overflow-y-auto) → un solo scroll, el externo. La barra de
+        // título se fija con `sticky top-0` (ver header). El back-flow (onBack →
+        // setSelectedCamera(null)) no cambia.
+        <div className="flex flex-col animate-in fade-in duration-200">
+            {/* Barra de título FIJA: sticky top-0 dentro del scroll del wrapper de <main>.
+                bg-slate-950 (mismo color del área, no #0A0A0A) la hace opaca para ocluir el
+                carril/contenido que scrollea por detrás, sin reintroducir la caja negra. */}
+            <div className="h-16 border-b border-white/10 flex items-center justify-between sticky top-0 z-10 bg-slate-950">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
@@ -156,18 +167,12 @@ export const CameraDetailView: React.FC<CameraDetailViewProps> = ({ cameraId, ca
                             </div>
                         </>
                     )}
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
                 </div>
             </div>
 
             {/* Carril de las otras cámaras: navegación horizontal, lazy HLS. Click → reemplaza
                 el panel de detalle por la cámara elegida (y sus métricas). */}
-            <div className="border-b border-white/10 bg-[#0A0A0A] px-4 pt-2">
+            <div className="border-b border-white/10 pt-2">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1 px-1">
                     Otras cámaras en vivo
                 </div>
@@ -346,7 +351,7 @@ const CameraDetailPanel: React.FC<{
     const congestionStyle = getCongestionStyles(metrics.congestionLevel);
 
     return (
-        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Left Panel: Stream or Chart */}
             <div className="lg:col-span-2 flex flex-col gap-6">

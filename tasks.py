@@ -375,6 +375,34 @@ def seed_rbac_smoke(c):
     c.run(f"{py} scripts/seed_rbac_smoke.py", pty=False)
 
 
+@task(pre=[check_env])
+def build_graph(c):
+    """Cargar el mapa real de Miraflores en graph_nodes / graph_edges.
+
+    Corre scripts/build_graph_geometry.py: puebla las 1660 aristas del LCC
+    (desde simulation/conf/network/miraflores.net.xml + el mapping canónico) y
+    sus junctions SUMO (node_id prefijado `sumo_`). Pisa las 6 edges sintéticas
+    de `invoke seed` (hace DELETE FROM graph_edges y reinserta). Los 5 nodos de
+    control quedan intactos.
+
+    POSICIÓN EN LA CADENA: después de `invoke seed`, antes de
+    `invoke seed-intersections` (cuyos edge_id son FK→graph_edges, que esta task
+    carga).
+
+    GUARDS DE ABORTO ESPERADOS (el script se protege de borrar edges con FK
+    apuntándolas; si corta, el motivo es uno de estos, NO un bug):
+      - aborta si `intersection_edges` tiene filas (FK→graph_edges; truncala
+        antes de re-correr, o usá `invoke db-reset`).
+      - aborta si `waze_jams` / `waze_alerts` tienen filas (congestión sembrada;
+        limpiala antes de re-correr).
+
+    Idempotente sobre base sin esos datos colgando. Corre desde el venv local.
+    """
+    py = _venv_python()
+    c.run(f"{py} scripts/build_graph_geometry.py", pty=False)
+    print("\n✓ Mapa real cargado (graph_nodes + graph_edges).")
+
+
 # El calendario de congestión siembra 10 días fechados (jun 1–10 2026).
 _TRAFFIC_DAYS_EXPECTED = 10
 

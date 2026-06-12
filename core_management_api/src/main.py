@@ -121,6 +121,36 @@ app.include_router(congestion_router)
 app.include_router(corridors_router)
 
 
+def _camera_display_name(cam: CameraDB) -> str:
+    """Nombre legible de la cámara desde ``intersection_id`` (snake_case → Title Case).
+
+    Cámara sin intersección mapeada (DEUDA-CAM-GEO) → "Desconocida".
+    """
+    if not cam.intersection_id:
+        return "Desconocida"
+    return " ".join(word.capitalize() for word in cam.intersection_id.split("_"))
+
+
+@app.get("/api/cameras")
+def get_cameras(db: Session = Depends(get_db)):
+    """Lista pura de cámaras (CameraDB) — NO toca Waze.
+
+    Carril liviano: id/name/stream_url + lat/lng, sin congestión. Lo consume el detalle
+    de cámara (``CameraDetailView``), que no usa ``status`` y no debe pagar el agregado
+    Waze. Para el color de congestión del dashboard está ``/api/intersections``.
+    """
+    return [
+        {
+            "id": cam.camera_id,
+            "name": _camera_display_name(cam),
+            "lat": cam.lat,
+            "lng": cam.lon,
+            "stream_url": cam.stream_url,  # B0: HLS de Claro (nominal, DEUDA-CAM-GEO)
+        }
+        for cam in db.query(CameraDB).all()
+    ]
+
+
 @app.get("/api/intersections")
 def get_intersections(db: Session = Depends(get_db)):
     """Lista de cámaras/intersecciones con su congestión REAL por intersección (B2).
@@ -136,11 +166,10 @@ def get_intersections(db: Session = Depends(get_db)):
     level_by_intersection = WazeJamsRepo(db).max_level_by_intersection()
     results = []
     for cam in cameras:
-        name = " ".join([word.capitalize() for word in cam.intersection_id.split("_")]) if cam.intersection_id else "Desconocida"
         level = level_by_intersection.get(cam.intersection_id)
         results.append({
             "id": cam.camera_id,
-            "name": name,
+            "name": _camera_display_name(cam),
             "lat": cam.lat,
             "lng": cam.lon,
             "stream_url": cam.stream_url,  # B0: HLS de Claro (nominal, DEUDA-CAM-GEO)

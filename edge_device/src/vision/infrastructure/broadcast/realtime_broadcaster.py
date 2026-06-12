@@ -23,7 +23,7 @@ que lo requiera (YAGNI en MVP1).
 Cruce thread→async (DHU del wiring, 6d): el broadcaster **se llama solo desde
 el event loop main**, nunca desde el worker thread del aggregator. El
 `AsyncTrafficAggregator-worker` deposita `TrafficData` en su `_output_queue`
-(thread-safe); el coroutine `MultiCameraManager._run_camera_pipeline` consume
+(thread-safe); el `CameraScheduler` (tick a 1 Hz, en el event loop) consume
 con `aggregator.flush()` (sync, no bloquea) y hace `await broadcaster.publish(td)`
 desde el event loop. Sin `run_coroutine_threadsafe`, sin event loop en el
 worker.
