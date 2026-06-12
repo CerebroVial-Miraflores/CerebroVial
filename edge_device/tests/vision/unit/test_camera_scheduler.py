@@ -367,6 +367,47 @@ async def test_route_render_off_muestreo_sigue():
 
 
 @pytest.mark.asyncio
+async def test_route_detections_se_escribe_ungated_por_render():
+    """Fase 4 Mitad A: el tap de detecciones (overlay del front) se escribe SIEMPRE
+    que haya frame, aunque render_enabled=False — con HLS directo nadie consume el
+    MJPEG, pero el overlay igual necesita las cajas. Guarda (analysis, w, h) con las
+    dims del frame de inferencia para normalizar a [0,1]."""
+    chain = MagicMock()
+    agg = MagicMock()
+    agg.flush.return_value = []
+    cam = _make_camera(chain, agg, render_enabled=False)
+    sch = _scheduler(cam, _FakeCapture(_dead()))
+
+    analysis = _analysis(detection_ran=True)
+    await sch._route(_frame(), analysis)
+
+    assert cam.state.latest_frame_processed is None        # render OFF
+    stored = cam.state.latest_detections                   # tap ON igual
+    assert stored is not None
+    assert stored[0] is analysis
+    assert stored[1:] == (2, 2)                            # dims del _frame() (2x2)
+
+
+@pytest.mark.asyncio
+async def test_route_detections_persiste_boxes_en_skip_frames():
+    """El tap persiste las cajas del último detection frame en los skip frames
+    (detection_ran=False), igual que el render, sin re-inferir."""
+    chain = MagicMock()
+    agg = MagicMock()
+    agg.flush.return_value = []
+    cam = _make_camera(chain, agg, render_enabled=False)
+    sch = _scheduler(cam, _FakeCapture(_dead()))
+
+    analysis_detect = _analysis(fid=0, detection_ran=True)
+    analysis_skip = _analysis(fid=1, detection_ran=False)
+    await sch._route(_frame(0), analysis_detect)
+    await sch._route(_frame(1), analysis_skip)
+
+    # El skip frame conserva el análisis con cajas (detect), no el vacío.
+    assert cam.state.latest_detections[0] is analysis_detect
+
+
+@pytest.mark.asyncio
 async def test_route_render_on_escribe_mjpeg_y_publica():
     """Con render_enabled=True el `_route` publica el TD del aggregator Y escribe el
     frame procesado vía renderer. Integra muestreo + render en un tick (convertido

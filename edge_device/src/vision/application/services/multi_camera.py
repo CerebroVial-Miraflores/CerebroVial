@@ -44,6 +44,14 @@ class CameraState:
     render_enabled: bool = True
     latest_frame_raw: Optional[Any] = None
     latest_frame_processed: Optional[Any] = None
+    # Último `(FrameAnalysis, width, height)` con detección, servido al overlay del
+    # front por `GET /detections/{id}/latest` (Fase 4 Mitad A, D-019). Lo escribe el
+    # scheduler en `_route` UNGATED por `render_enabled`: la inferencia corre
+    # permanente y el overlay sobre el video HLS debe consumir las cajas aunque
+    # nadie consuma el MJPEG (con el swap a HLS directo no hay consumidor MJPEG, así
+    # que el watchdog deja `render_enabled=False`). None hasta el primer frame con
+    # detección. Guarda las dims del frame de inferencia para normalizar a [0,1].
+    latest_detections: Optional[Any] = None
     renderer: Optional[FrameRenderer] = None  # Inyectado opcionalmente; Fase 6 lo cablea.
     # Conservado para drenar TrafficData y publicar al broadcaster desde el
     # coroutine. None si persistence.enabled=False (modo dev/test sin agregador).
@@ -344,6 +352,19 @@ class MultiCameraManager:
         if processed:
             return camera.state.latest_frame_processed
         return camera.state.latest_frame_raw
+
+    def get_latest_detections(self, camera_id: str):
+        """Último `(FrameAnalysis, width, height)` con detección de la cámara, o
+        None si no existe o aún no infirió (Fase 4 Mitad A, D-019).
+
+        Lo escribe el scheduler en cada tick ungated por `render_enabled` (la
+        inferencia es permanente; el overlay HLS no consume el MJPEG). La
+        normalización a [0,1] y el shaping JSON los hace el serializador de
+        presentation al servir `GET /detections/{id}/latest`."""
+        camera = self.cameras.get(camera_id)
+        if camera is None:
+            return None
+        return camera.state.latest_detections
 
     # ---- Conteo de consumidores + auto-liberación (C1, E4) ------------
 

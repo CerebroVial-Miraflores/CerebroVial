@@ -90,6 +90,10 @@ class CameraScheduler:
 
         self._prev_analysis: Optional[FrameAnalysis] = None
         self._last_render_analysis: Optional[FrameAnalysis] = None
+        # Fase 4 Mitad A: análogo a `_last_render_analysis` pero para el tap de
+        # detecciones (overlay del front), que NO está gateado por render_enabled.
+        # Persiste las cajas del último detection frame en los skip frames.
+        self._last_detections_analysis: Optional[FrameAnalysis] = None
         self._status: SensorStatus = SensorStatus.FUENTE_NO_DISPONIBLE
 
     # ---- Lifecycle -----------------------------------------------------
@@ -195,6 +199,24 @@ class CameraScheduler:
                 await self._broadcaster.publish(td)
 
         state = self._camera.state
+
+        # Tap de detecciones para el overlay del front (Fase 4 Mitad A, D-019).
+        # UNGATED por `render_enabled`: a diferencia del render MJPEG, esto corre
+        # siempre que haya frame — con el swap a HLS directo nadie consume el MJPEG
+        # y el watchdog deja `render_enabled=False`, pero el overlay igual necesita
+        # las cajas. Persiste las del último detection frame en los skip frames
+        # (detection_ran=False), igual que el render, sin tocar métricas. Guarda las
+        # dims del frame de inferencia para que el serializador normalice a [0,1].
+        if frame is not None and getattr(frame, "image", None) is not None:
+            det_analysis = analysis
+            if analysis is not None and analysis.detection_ran:
+                self._last_detections_analysis = analysis
+            elif self._last_detections_analysis is not None:
+                det_analysis = self._last_detections_analysis
+            if det_analysis is not None:
+                h, w = frame.image.shape[:2]
+                state.latest_detections = (det_analysis, w, h)
+
         if state.render_enabled and frame is not None and getattr(frame, "image", None) is not None:
             render_analysis = analysis
             if analysis is not None and analysis.detection_ran:
