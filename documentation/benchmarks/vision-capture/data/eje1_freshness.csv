@@ -1,0 +1,5 @@
+mechanism,burned_clock,system_clock_at_save,burned_minus_system_s,approx_lag_behind_live_s,verdict,frame
+native,10:50:05,10:50:00,5,0,live_edge,freshness_native.jpg
+sleep1,10:51:04,10:52:05,-61,66,stale_growing,freshness_sleep1.jpg
+kf_ffmpeg,10:54:06,10:54:09,-3,8,live_edge,freshness_kf_ffmpeg.jpg
+kf_pyav,10:56:13,10:56:14,-1,6,live_edge,freshness_kf_pyav.jpg

@@ -1,0 +1,3 @@
+timestamp_utc,target,origin_sent,http_status,content_type,access_control_allow_origin,access_control_allow_methods,access_control_allow_credentials,cross_origin_playable
+2026-06-12T15:48:56+00:00,master_m3u8,http://localhost:5173,200,application/vnd.apple.mpegurl,*,"PUT,POST,GET,DELETE,OPTIONS",true,True
+2026-06-12T15:48:56+00:00,segment_ts,http://localhost:5173,200,video/mp2t,*,"PUT,POST,GET,DELETE,OPTIONS",true,True
