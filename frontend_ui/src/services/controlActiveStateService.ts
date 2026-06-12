@@ -16,10 +16,20 @@ export interface ActiveStateResponse {
 }
 
 export const controlActiveStateService = {
-  async getActiveState(nodeId: string): Promise<ActiveStateResponse> {
-    const res = await httpClient.get<ActiveStateResponse>(
-      `/control/active-state/${nodeId}`,
-    );
+  // FASE 2 rediseño UI: `opts?: { signal? }` trailing para cancelación desde
+  // hooks. Sin signal, la llamada conserva su forma original (1 argumento).
+  async getActiveState(
+    nodeId: string,
+    opts?: { signal?: AbortSignal },
+  ): Promise<ActiveStateResponse> {
+    const res = opts?.signal
+      ? await httpClient.get<ActiveStateResponse>(
+          `/control/active-state/${nodeId}`,
+          { signal: opts.signal },
+        )
+      : await httpClient.get<ActiveStateResponse>(
+          `/control/active-state/${nodeId}`,
+        );
     return res.data;
   },
 };

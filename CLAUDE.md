@@ -167,7 +167,7 @@ Migraciones:
 ## Reglas para Claude Code
 
 ### Zonas que NO se tocan sin pedirlo
-- **ThesisModal + su botón en `Sidebar.tsx`** — documentación viva de la tesis
+- **ThesisModal + su acceso en AppShell (rail ≥md / botón en topbar <md)** — documentación viva de la tesis
   (autores, objetivo, stack, KPIs). NO es parte de la arquitectura de control;
   NO marcar como componente huérfano ni proponer su remoción.
 - **`CerebroVial/.gemini/settings.json`** — configuración intencional del flujo
@@ -355,3 +355,38 @@ important information, read the current plan at `specs/001-cerebrovial-mvp/plan.
 - `specs/001-cerebrovial-mvp/tasks.md` (dependency-ordered tasks)
 - `.specify/memory/constitution.md` (project constitution)
 <!-- SPECKIT END -->
+
+## Rediseño UI (feature/rediseno-ui)
+- Spec visual: design/cerebrovial-ui-concept.html. Antes de construir cualquier vista o
+  componente, leer la sección equivalente del prototipo y calcar estética e interacciones.
+- Mobile-first OBLIGATORIO: primero layout 390px, después md:/lg:. Rail solo ≥md; <md usa
+  bottom-nav. Drawers = sheet de pantalla completa en <md. Prohibido h-[calc(100vh-*)]:
+  alturas por flex/grid con min-h-0 y las vars --h-topbar/--w-rail/--h-bottomnav.
+- Tokens: todo color/radio/animación sale de src/styles/tokens.css (@theme). Prohibido hex
+  inline y paleta slate/indigo default en código nuevo. Única escala de estado: ok/warn/bad/
+  sev/info.
+- Reusar sin reescribir: services/*, auth/* (SessionContext, RoleGate, roles, authBridge),
+  utils/* (congestion, markerVisual, trafficLabels), HlsPlayer, TrafficLightCycle, Slider,
+  TimingBar, types/*.
+- Datos: todo acceso al core vía httpClient (JWT). Hooks de datos en src/hooks/. El edge
+  (EventSource y POST /cameras) queda como está: su auth es deuda backend. Toda cifra en la
+  UI declara su procedencia según una de cuatro categorías:
+  1. **Dato vivo real** — backend real consultado en runtime (core vía httpClient, edge vía
+     SSE/MJPEG). Sin rótulo extra; el estado de error/carga se muestra honesto.
+  2. **Mock señalizado** — sin backend real: se mockea con badge `DemoBadge`
+     ("Demo · datos simulados", paleta info, no verde con asterisco).
+  3. **Real-con-caveat** — dato real pero de alcance limitado (p. ej. métricas de visión:
+     velocidad "sin calibrar" DEUDA-SPEED-CALIB, flujo "presencia extrapolada"). Es real,
+     NO lleva DemoBadge; lleva caveat textual visible que acota su validez.
+  4. **Real-de-simulación** — resultados de la validación de la tesis en simulación SUMO
+     (p. ej. RD% net_timeLoss). Son reales (medidos, no inventados), por eso NO llevan
+     DemoBadge; pero NO son dato vivo. Se rotulan SIEMPRE con procedencia VISIBLE en la
+     card (pie/subtítulo, nunca solo tooltip): experimento, red/corredor, nº de seeds y
+     test estadístico. El rótulo acota el alcance honesto del resultado (p. ej. "no
+     generalizable a la red" cuando aplique).
+- ThesisModal y su acceso en la navegación: zona protegida. Migra, nunca se elimina.
+- Tests: componente nuevo = test nuevo. Stubs de entorno (IntersectionObserver,
+  EventSource, matchMedia) globales en setupTests.ts; mock de react-leaflet per-file
+  con captura de props, patrón CongestionMapView.test.
+- Disciplina de fases: plan mode antes de ejecutar; commit por fase completa validada, en
+  español, sin Co-Authored-By; PARAR al cerrar cada fase; sin push/PR sin pedido explícito.

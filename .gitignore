@@ -14,6 +14,8 @@ build/
 dist/
 __pycache__/
 *.pyc
+# Node.js deps de la raíz (frontend_ui/node_modules ya lo cubre frontend_ui/.gitignore).
+/node_modules/
 .DS_Store
 **/.DS_Store
 compose-*.log

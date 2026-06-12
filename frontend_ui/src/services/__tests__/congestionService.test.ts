@@ -112,3 +112,52 @@ describe('congestionService.getSeries', () => {
     expect(result.edges[0].levels).toEqual([0, 1, 2]);
   });
 });
+
+// FASE 2 rediseño UI — passthrough del signal de cancelación. Las firmas se
+// extendieron con `opts?: { signal? }` trailing; sin signal, las llamadas de
+// arriba conservan su forma original (lo garantizan los asserts existentes).
+describe('congestionService — passthrough de signal (FASE 2)', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    getMock.mockResolvedValue({ data: {} });
+  });
+
+  it('getGeometry pasa el signal a httpClient', async () => {
+    const controller = new AbortController();
+    await congestionService.getGeometry({ signal: controller.signal });
+    expect(getMock).toHaveBeenCalledWith('/congestion/geometry', {
+      signal: controller.signal,
+    });
+  });
+
+  it('getState pasa el signal a httpClient', async () => {
+    const controller = new AbortController();
+    await congestionService.getState({ signal: controller.signal });
+    expect(getMock).toHaveBeenCalledWith('/congestion/state', {
+      signal: controller.signal,
+    });
+  });
+
+  it('getSeries combina params y signal en el mismo config', async () => {
+    const controller = new AbortController();
+    await congestionService.getSeries('2026-06-10', { signal: controller.signal });
+    expect(getMock).toHaveBeenCalledWith('/congestion/series', {
+      params: { day: '2026-06-10' },
+      signal: controller.signal,
+    });
+  });
+
+  it('getPrediction combina t y signal; sin ninguno conserva la forma original', async () => {
+    const controller = new AbortController();
+    await congestionService.getPrediction(720, { signal: controller.signal });
+    expect(getMock).toHaveBeenCalledWith('/congestion/prediction', {
+      params: { t: 720 },
+      signal: controller.signal,
+    });
+
+    getMock.mockClear();
+    await congestionService.getPrediction();
+    // Forma original preservada: config undefined explícito cuando no hay nada.
+    expect(getMock).toHaveBeenCalledWith('/congestion/prediction', undefined);
+  });
+});

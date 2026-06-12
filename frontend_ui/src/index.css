@@ -1,11 +1,35 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 html,
 body {
-  @apply bg-slate-950;
+  @apply bg-canvas text-ink;
   margin: 0;
   padding: 0;
   height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1100px 700px at 78% -12%, rgba(124, 108, 255, 0.13), transparent 60%),
+    radial-gradient(900px 600px at -8% 112%, rgba(16, 185, 129, 0.06), transparent 55%),
+    linear-gradient(180deg, var(--color-canvas), var(--color-canvas-2));
+  background-attachment: fixed;
+  font-family: var(--font-sans);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foco visible SOLO con teclado (B0, migrado del prototipo — faltaba): anillo
+   brand consistente en toda la app; el click de mouse no deja ring persistente
+   (:focus-visible no se activa por puntero en botones). */
+:focus-visible {
+  outline: 2px solid var(--color-brand-2);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 /* Miniplayer del mapa (F3): neutraliza el card/tip/sombra default de Leaflet — solo el video
