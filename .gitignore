@@ -39,3 +39,6 @@ scratch/
 simulation/conf/miraflores_red_completa/runs/
 # Capturas masivas de los streams Claro (monitoreo 24h, NO material curado de benchmark).
 capturas_claro/
+# Dumps de respaldo de la BD (pg_dump custom format). Binarios pesados, reproducibles
+# vía pg_dump; NUNCA se versionan.
+*.dump

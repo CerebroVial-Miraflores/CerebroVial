@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dependencias del sistema para OpenCV, psycopg2, librerías nativas
+# Dependencias del sistema para OpenCV, psycopg2, librerías nativas, y ffmpeg
+# (captura HLS keyframe-only del HlsKeyframeSource, B-fase1; python:3.11-slim no lo trae).
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
     libgl1 \
     libglib2.0-0 \
     libpq-dev \

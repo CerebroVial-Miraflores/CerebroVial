@@ -1,0 +1,5 @@
+timestamp_utc,mechanism,stream,duration_s,frames,fps_effective,cpu_user_s,cpu_sys_s,cpu_cores,cpu_pct_per_cam,rss_mb_min,rss_mb_max,rss_mb_end,system_clock_at_save,freshness_frame
+2026-06-12T15:51:01+00:00,native,escuela_pnp,120.5,3221,26.73,11.7,1.01,0.105,10.5,150.4,155.4,154.1,10:50:00,freshness_native.jpg
+2026-06-12T15:53:05+00:00,sleep1,escuela_pnp,120.5,123,1.02,0.95,0.13,0.009,0.9,110.7,147.0,111.3,10:52:05,freshness_sleep1.jpg
+2026-06-12T15:55:10+00:00,kf_ffmpeg,escuela_pnp,120.5,61,0.51,1.15,0.39,0.013,1.3,91.8,138.0,100.0,10:54:09,freshness_kf_ffmpeg.jpg
+2026-06-12T15:57:15+00:00,kf_pyav,escuela_pnp,120.5,62,0.51,1.13,0.32,0.012,1.2,68.3,101.2,69.9,10:56:14,freshness_kf_pyav.jpg

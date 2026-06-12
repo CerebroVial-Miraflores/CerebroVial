@@ -14,7 +14,10 @@ import pytest
 from omegaconf import OmegaConf
 
 from src.vision.application.processors.smart_detection import DEFAULT_IMGSZ
-from src.vision.application.services.camera_scheduler import CameraScheduler
+from src.vision.application.services.camera_scheduler import (
+    CameraScheduler,
+    _DEFAULT_FRESH_THRESHOLD_S,
+)
 from src.vision.domain.entities import Frame, FrameAnalysis, FrameSnapshot
 from src.vision.domain.value_objects import SensorStatus
 from src.vision.infrastructure.sources.threaded_capture import ThreadedCapture
@@ -40,14 +43,20 @@ class _FakeCapture:
         self.stopped = True
 
 
-def _make_camera(chain, aggregator, *, render_enabled=False, renderer=None, imgsz=None):
+def _make_camera(chain, aggregator, *, render_enabled=False, renderer=None, imgsz=None, source=None):
     # config real (DictConfig): el scheduler relee cfg.vision.model.imgsz per-tick.
     model = {} if imgsz is None else {"imgsz": imgsz}
     config = OmegaConf.create({"vision": {"model": model}})
+    # B-fase1: `source` por defecto es un SimpleNamespace SIN `fresh_threshold_s`
+    # (no un MagicMock, cuyo getattr auto-crearía el atributo y corrompería el
+    # compare del umbral) → el scheduler cae al respaldo _DEFAULT_FRESH_THRESHOLD_S.
     state = SimpleNamespace(
         camera_id="camX",
         config=config,
-        pipeline=SimpleNamespace(source=MagicMock(), processor_chain=chain),
+        pipeline=SimpleNamespace(
+            source=source if source is not None else SimpleNamespace(),
+            processor_chain=chain,
+        ),
         aggregator=aggregator,
         is_running=True,
         render_enabled=render_enabled,
@@ -97,6 +106,31 @@ def _broadcaster():
     b = MagicMock()
     b.publish = AsyncMock()
     return b
+
+
+# ---- Umbral de frescura por-fuente (B-fase1) -------------------------
+
+def test_fresh_threshold_se_deriva_de_la_fuente():
+    # Sin param explícito: el scheduler toma el umbral declarado por la fuente.
+    cam = _make_camera(MagicMock(), MagicMock(), source=SimpleNamespace(fresh_threshold_s=4.5))
+    sch = CameraScheduler(cam, _broadcaster(), capture=_FakeCapture(_dead()))
+    assert sch._fresh_threshold_s == 4.5
+
+
+def test_fresh_threshold_param_explicito_gana():
+    # El param explícito (lo usan los tests) gana sobre la propiedad de la fuente.
+    cam = _make_camera(MagicMock(), MagicMock(), source=SimpleNamespace(fresh_threshold_s=4.5))
+    sch = CameraScheduler(
+        cam, _broadcaster(), capture=_FakeCapture(_dead()), fresh_threshold_s=2.5
+    )
+    assert sch._fresh_threshold_s == 2.5
+
+
+def test_fresh_threshold_respaldo_si_fuente_no_declara():
+    # Fuente sin el atributo (webcam/file viejos, o stub): respaldo al default.
+    cam = _make_camera(MagicMock(), MagicMock())  # source = SimpleNamespace() sin attr
+    sch = CameraScheduler(cam, _broadcaster(), capture=_FakeCapture(_dead()))
+    assert sch._fresh_threshold_s == _DEFAULT_FRESH_THRESHOLD_S
 
 
 # ---- No-inferir sin frame fresco -------------------------------------
