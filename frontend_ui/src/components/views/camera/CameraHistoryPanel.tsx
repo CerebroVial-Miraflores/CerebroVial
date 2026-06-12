@@ -75,7 +75,7 @@ export function CameraHistoryPanel({ cameraId, interval, onIntervalChange }: Cam
           ariaLabel="Intervalo de agregación"
           options={INTERVAL_OPTIONS}
           value={interval}
-          onChange={(v) => onIntervalChange(v as PredictionHistoryInterval)}
+          onChange={(v) => onIntervalChange(v)}
         />
       </div>
 

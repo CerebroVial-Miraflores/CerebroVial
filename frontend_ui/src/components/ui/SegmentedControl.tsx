@@ -3,12 +3,12 @@ import type { ReactNode } from 'react';
 // FASE 1 rediseño UI — control segmentado (spec: .seg del prototipo; lo usan el
 // toggle Operación/Gerencia y el selector Histórico/Ahora/Predicción).
 
-interface SegmentedOption<T extends string> {
+interface SegmentedOption<T extends string | number> {
   value: T;
   label: ReactNode;
 }
 
-interface SegmentedControlProps<T extends string> {
+interface SegmentedControlProps<T extends string | number> {
   options: readonly SegmentedOption<T>[];
   value: T;
   onChange: (value: T) => void;
@@ -16,7 +16,7 @@ interface SegmentedControlProps<T extends string> {
   className?: string;
 }
 
-export function SegmentedControl<T extends string>({
+export function SegmentedControl<T extends string | number>({
   options,
   value,
   onChange,
