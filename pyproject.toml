@@ -28,6 +28,7 @@ exclude = [
     "site-packages",
     "venv",
     "ia_prediction_service/notebooks", # Exclude problematic notebooks
+    "documentation/benchmarks", # spikes read-only, fuera de producción (no se lintean)
 ]
 
 # Same as Black.
