@@ -8,7 +8,6 @@ import { SegmentedControl } from '../../ui/SegmentedControl';
 import { CameraRail } from './CameraRail';
 import { CameraLivePanel } from './CameraLivePanel';
 import { CameraHistoryPanel } from './CameraHistoryPanel';
-import type { StreamType, Quality } from './cameraControls';
 
 // FASE 4 rediseño UI — detalle de cámara rediseñado (/camara/:id, tab dashboard
 // → operator). Reemplaza IN-PLACE el puente CameraDetailRoute + CameraDetailView
@@ -24,17 +23,6 @@ const VIEW_OPTIONS = [
   { value: 'history' as const, label: 'Histórico' },
 ];
 
-const STREAM_OPTIONS = [
-  { value: 'processed' as const, label: 'Procesado' },
-  { value: 'raw' as const, label: 'Raw' },
-];
-
-const QUALITY_OPTIONS = [
-  { value: 'low' as const, label: 'Baja' },
-  { value: 'medium' as const, label: 'Media' },
-  { value: 'high' as const, label: 'Alta' },
-];
-
 export function CameraDetailV2() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,8 +30,6 @@ export function CameraDetailV2() {
 
   // Controles fuera de la `key` del panel → persisten al navegar entre cámaras.
   const [viewMode, setViewMode] = useState<ViewMode>('live');
-  const [streamType, setStreamType] = useState<StreamType>('processed');
-  const [quality, setQuality] = useState<Quality>('high');
   const [interval, setInterval] = useState<PredictionHistoryInterval>(5);
 
   if (loading && cameras === null) {
@@ -107,32 +93,6 @@ export function CameraDetailV2() {
           value={viewMode}
           onChange={setViewMode}
         />
-        {viewMode === 'live' && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:ml-auto">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3">
-                Stream
-              </span>
-              <SegmentedControl
-                ariaLabel="Tipo de stream"
-                options={STREAM_OPTIONS}
-                value={streamType}
-                onChange={setStreamType}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3">
-                Calidad
-              </span>
-              <SegmentedControl
-                ariaLabel="Calidad del stream"
-                options={QUALITY_OPTIONS}
-                value={quality}
-                onChange={setQuality}
-              />
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Carril de otras cámaras (lazy HLS), navegable por la URL */}
@@ -148,8 +108,6 @@ export function CameraDetailV2() {
           key={camera.id}
           cameraId={camera.id}
           streamUrl={camera.stream_url}
-          streamType={streamType}
-          quality={quality}
         />
       ) : (
         <CameraHistoryPanel

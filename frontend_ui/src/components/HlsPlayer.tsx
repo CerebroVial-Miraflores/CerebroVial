@@ -16,11 +16,15 @@ interface HlsPlayerProps {
   /** Muestra los controles nativos del <video> (play/timeline/fullscreen). Default true
    *  (grilla/strip/detalle). El miniplayer del mapa pasa false: solo el preview, sin UI. */
   controls?: boolean;
+  /** Ajuste del video al contenedor. Default 'cover' (grilla/strip/mapa: llena sin
+   *  bandas). Fase 4 pasa 'contain' en el panel en vivo: el letterbox del video
+   *  coincide con el preserveAspectRatio del overlay SVG → las cajas alinean. */
+  objectFit?: 'cover' | 'contain';
 }
 
 type Engine = 'native' | 'hlsjs' | 'unsupported';
 
-export function HlsPlayer({ src, onStatusChange, offlineTimeoutMs = 9000, controls = true }: HlsPlayerProps) {
+export function HlsPlayer({ src, onStatusChange, offlineTimeoutMs = 9000, controls = true, objectFit = 'cover' }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<PlayerStatus>('loading');
 
@@ -127,7 +131,7 @@ export function HlsPlayer({ src, onStatusChange, offlineTimeoutMs = 9000, contro
       controls={controls}
       muted
       playsInline
-      style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#000' }}
+      style={{ width: '100%', height: '100%', objectFit, background: '#000' }}
     />
   );
 }

@@ -1,20 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Activity, AlertTriangle, Car, Gauge, Sparkles, Waves } from 'lucide-react';
 
 import { useVisionStream } from '../../../hooks/useVisionStream';
+import { useDetections } from '../../../hooks/useDetections';
 import { predictionService, type PredictionResult } from '../../../services/predictionService';
 import { congestionLabel, densityPercent } from '../../../utils/trafficLabels';
 import type { Status } from '../../ui/StatusChip';
 import { StatusChip } from '../../ui/StatusChip';
-import type { StreamType, Quality } from './cameraControls';
-import { qualityParams } from './cameraControls';
+import { HlsPlayer, type PlayerStatus } from '../../HlsPlayer';
+import { DetectionOverlay } from './DetectionOverlay';
 
-// FASE 4 rediseño UI — panel EN VIVO del detalle de cámara. Orquesta el flujo
+// FASE 4 Mitad A — panel EN VIVO del detalle de cámara. Orquesta el flujo
 // delicado de v1 (CameraDetailView), preservado 1:1 sobre el design system:
 //  - alta on-demand del YOLO en el edge (POST /cameras/{id}, sin JWT — deuda
 //    edge intacta; SIN DELETE en cleanup, lección StrictMode de v1);
 //  - SSE de métricas vía useVisionStream (gate isActive);
-//  - MJPEG del edge (<img> /video/{id});
+//  - VIDEO HLS directo de Claro vía HlsPlayer (object-fit:contain), reemplaza al
+//    MJPEG entrecortado del edge (DEUDA-MJPEG-BROWSER resuelta para esta vista);
+//  - OVERLAY de cajas (DetectionOverlay) sobre el video, alimentado por el polling
+//    de useDetections (GET /detections/{id}/latest). El POST de alta ahora alimenta
+//    el overlay (la inferencia), no el video — por eso se mantiene intacto;
 //  - Insights de IA vía predictionService.predictTraffic (backend real).
 // Política de datos: vehículos = REAL (conteo YOLO); flujo/ocupación =
 // REAL-CON-CAVEAT (presencia extrapolada); velocidad = REAL-CON-CAVEAT (sin
@@ -27,8 +32,6 @@ const EDGE_API_URL: string = import.meta.env?.VITE_EDGE_API_URL || 'http://local
 interface CameraLivePanelProps {
   cameraId: string;
   streamUrl: string | null;
-  streamType: StreamType;
-  quality: Quality;
 }
 
 function statusForLabel(label: string): Status {
@@ -37,7 +40,7 @@ function statusForLabel(label: string): Status {
   return 'ok';
 }
 
-export function CameraLivePanel({ cameraId, streamUrl, streamType, quality }: CameraLivePanelProps) {
+export function CameraLivePanel({ cameraId, streamUrl }: CameraLivePanelProps) {
   // Alta on-demand del YOLO. Init perezoso (el panel se re-monta por cámara vía
   // `key`): cargando si hay stream que dar de alta; error directo si no lo hay.
   const [isActive, setIsActive] = useState(false);
@@ -81,6 +84,21 @@ export function CameraLivePanel({ cameraId, streamUrl, streamType, quality }: Ca
   const vision = useVisionStream(cameraId, { enabled: isActive });
   const metrics = vision.data?.metrics ?? null;
 
+  // Polling de detecciones para el overlay (gate isActive, igual que el SSE de
+  // métricas). El hook ya filtra por frescura (~3s, reloj del edge).
+  const detections = useDetections(cameraId, { enabled: isActive });
+
+  // isLoading se limpia cuando el video HLS empieza a reproducir (ya no depende
+  // del MJPEG). 'offline' del player → señal honesta de pérdida de señal.
+  const handleStatus = useCallback((status: PlayerStatus) => {
+    if (status === 'playing') {
+      setIsLoading(false);
+    } else if (status === 'offline') {
+      setIsLoading(false);
+      setError('Se perdió la señal de la cámara.');
+    }
+  }, []);
+
   const vehicles = metrics ? Math.round(metrics.unique_vehicles) : 0;
   const flowPerHour = metrics ? Math.round(metrics.flow_vehicles_per_hour) : 0;
   const speed = metrics?.mean_speed_kmh ?? null;
@@ -119,8 +137,6 @@ export function CameraLivePanel({ cameraId, streamUrl, streamType, quality }: Ca
     };
   }, [cameraId, vehicles, flowPerHour, speed, occupancy]);
 
-  const mjpegUrl = `${EDGE_API_URL}/video/${cameraId}?type=${streamType}&${qualityParams(quality)}`;
-
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       {/* Player + insights */}
@@ -131,14 +147,19 @@ export function CameraLivePanel({ cameraId, streamUrl, streamType, quality }: Ca
               <AlertTriangle className="h-9 w-9 text-warn" aria-hidden="true" />
               <p className="max-w-xs text-[12.5px] text-ink-2">{error}</p>
             </div>
-          ) : isActive ? (
-            <img
-              src={mjpegUrl}
-              alt="Detección en vivo"
-              className="h-full w-full object-contain"
-              onLoad={() => setIsLoading(false)}
-              onError={() => setError('Se perdió la señal de la cámara.')}
-            />
+          ) : streamUrl ? (
+            <>
+              {/* Video HLS directo de Claro (fluido), independiente del alta. */}
+              <HlsPlayer
+                src={streamUrl}
+                controls={false}
+                objectFit="contain"
+                onStatusChange={handleStatus}
+              />
+              {/* Overlay de cajas: solo con el pipeline activo (isActive); el hook
+                  ya devuelve [] si las detecciones están stale o hay error. */}
+              {isActive && <DetectionOverlay boxes={detections.boxes} frame={detections.frame} />}
+            </>
           ) : null}
 
           {isLoading && !error && (
