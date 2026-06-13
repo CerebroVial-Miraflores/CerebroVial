@@ -28,6 +28,12 @@ def _build_camera_config(
       segundos, no al cerrar una ventana de 60s.
     - camera_id seteado: build_persistence() lo exige con persistence.enabled.
     """
+    # Topología B (15Hz): el path vivo HLS pasa a FULL-DECODE. El front manda
+    # "hls"/"stream"; acá se mapean a "hls_fulldecode" (decode completo + muestreo
+    # 15fps) para alimentar el batch worker. Tipos no-HLS (webcam/file) intactos.
+    if source_type in ("hls", "stream", "hls_keyframe"):
+        source_type = "hls_fulldecode"
+
     # Cada campo está anotado con su intención vs conf/vision/default.yaml
     # (match-default o override-live) para que una divergencia accidental salte
     # en code review — fue así como se colaron csv/interval/conf/n.

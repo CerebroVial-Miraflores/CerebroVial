@@ -52,6 +52,29 @@ class _RecordingPostChain:
         return analysis
 
 
+class _FakeAggregator:
+    """flush() devuelve TrafficData pendientes (stubs) una sola vez."""
+
+    def __init__(self, pending=None):
+        self._pending = list(pending or [])
+
+    def flush(self):
+        out, self._pending = self._pending, []
+        return out
+
+
+class _FakeBroadcaster:
+    def __init__(self):
+        self.published = []
+
+    async def publish(self, td):
+        self.published.append(td)
+
+
+class _FakeState:
+    latest_detections = None
+
+
 # ---- BoundedFrameQueue --------------------------------------------------
 
 
@@ -120,6 +143,34 @@ async def test_process_batch_propagates_frame_clock_ts():
     assert analysis.timestamp == 99.5  # frame-clock, no el frame.timestamp (7.0)
     assert analysis.detection_ran is True
     assert [v.id for v in analysis.vehicles] == ["v7"]
+
+
+@pytest.mark.asyncio
+async def test_demux_drains_aggregator_and_publishes():
+    detector = _StubDetector()
+    broadcaster = _FakeBroadcaster()
+    agg = _FakeAggregator(pending=["td1", "td2"])
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        worker = BatchInferenceWorker(detector, ex, broadcaster)
+        worker.register("a", _RecordingPostChain(), aggregator=agg)
+        await worker._process_batch([QueueItem("a", _frame(1), 1.0)])
+
+    assert broadcaster.published == ["td1", "td2"]  # drenado y publicado en orden
+
+
+@pytest.mark.asyncio
+async def test_demux_writes_latest_detections():
+    detector = _StubDetector()
+    state = _FakeState()
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        worker = BatchInferenceWorker(detector, ex)
+        worker.register("a", _RecordingPostChain(), state=state)
+        await worker._process_batch([QueueItem("a", _frame(3), 3.0)])
+
+    assert state.latest_detections is not None
+    analysis, w, h = state.latest_detections
+    assert (w, h) == (4, 4)  # dims del frame (4x4)
+    assert [v.id for v in analysis.vehicles] == ["v3"]  # análisis final (post-chain)
 
 
 @pytest.mark.asyncio

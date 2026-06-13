@@ -24,7 +24,8 @@ from ...domain.protocols import FrameRenderer
 from ...infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
 from ..aggregators.async_aggregator import AsyncTrafficAggregator
 from ..builders.pipeline_builder import VisionApplicationBuilder, create_detector
-from .camera_scheduler import CameraScheduler
+from .batch_inference import BatchInferenceWorker
+from .queue_push_producer import QueuePushProducer
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,13 @@ logger = logging.getLogger(__name__)
 class CameraState:
     camera_id: str
     config: DictConfig
-    pipeline: Any  # AsyncVisionPipeline
+    # Topología B (15Hz): la cámara ya NO arma un AsyncVisionPipeline ni un
+    # CameraScheduler. Tiene una `source` (la consume el producer-push) y una
+    # `post_chain` (la registra el batch worker para el demux). `pipeline` queda
+    # como None por compat de health (guard `if state.pipeline`).
+    pipeline: Any = None
+    source: Any = None       # FrameProducer (lo lee el QueuePushProducer)
+    post_chain: Any = None   # FrameProcessor (Tracking→...→Aggregation) para el demux
     is_running: bool = False
     # Separación muestreo/render (B1 Paso 0). El MUESTREO (loop del pipeline +
     # aggregator.flush()→publish) es permanente y NO depende de este flag. El
@@ -65,9 +72,9 @@ class CameraState:
     # vía broadcaster.subscribed_cameras(); el MJPEG no tiene registro propio,
     # así que lo lleva el generador de video.py (inc al entrar, dec en finally).
     mjpeg_consumers: int = 0
-    # B1 Paso 1b: si la cámara corre por el scheduler (captura threaded + inferencia
-    # secuencial a 1 Hz), acá vive su instancia; None = path viejo (pipeline.run()).
-    scheduler: Optional[Any] = None  # CameraScheduler
+    # Topología B: el producer-push per-cámara (corre source.read() en daemon thread
+    # y empuja a la cola compartida del batch worker). None = cámara no arrancada.
+    producer: Optional[Any] = None  # QueuePushProducer
     # Estado de sensor del último tick del scheduler (D-018, NULL-con-motivo) +
     # edad del último frame. Solo se pueblan en cámaras scheduled; health los lee
     # (seam §3, opción ii). None en el path viejo.
@@ -83,23 +90,22 @@ class CameraInstance:
         camera_id: str,
         config: DictConfig,
         builder: VisionApplicationBuilder,
-        detector: Any,
         renderer: Optional[FrameRenderer] = None,
     ) -> None:
-        # B1 Paso 4: el detector SIEMPRE se inyecta desde el manager (el singleton
-        # compartido). Es requerido: ya no hay fallback de construcción propia — el
-        # path viejo murió, así que un `CameraInstance` sin detector es un error de
-        # programación, no un modo de operación (falla fuerte y temprano en vez de
-        # cargar un modelo fantasma en silencio).
-        pipeline = builder.build_pipeline(detector=detector)
-        components = builder.get_components()
+        # Topología B: NO se arma el AsyncVisionPipeline (head de detección). La
+        # cámara aporta su `source` (la lee el producer-push) y su `post_chain`
+        # (Tracking→Speed→Zone→Aggregation, la registra el batch worker). La
+        # detección es central (un detector compartido en el worker), así que el
+        # CameraInstance ya NO recibe detector.
+        builder.build_source()
+        post_chain = builder.build_post_chain()
         self.state = CameraState(
             camera_id=camera_id,
             config=config,
-            pipeline=pipeline,
+            source=builder.source,
+            post_chain=post_chain,
             renderer=renderer,
-            aggregator=components.get("aggregator"),
-            detector=components.get("detector"),
+            aggregator=builder.aggregator,
         )
 
 
@@ -118,7 +124,6 @@ class MultiCameraManager:
     ) -> None:
         self.cameras: dict[str, CameraInstance] = {}
         self.broadcaster = broadcaster
-        self._tasks: dict[str, asyncio.Task] = {}
         # Auto-liberación por timeout sin consumidores (C1, E4). `_idle_since`
         # marca, por cámara, el monotonic en que se quedó sin consumidores;
         # se limpia al reaparecer alguno y dispara la baja al superar el timeout.
@@ -132,6 +137,11 @@ class MultiCameraManager:
         # `shutdown()`. Las cámaras del path viejo NO los usan (detector propio).
         self._shared_detector: Optional[Any] = None
         self._shared_executor: Optional[ThreadPoolExecutor] = None
+        # Topología B: worker de inferencia en lote singleton (uno por instancia de
+        # edge / una GPU). Lazy: se crea con la 1ª cámara JUNTO al detector (no al
+        # boot — respeta on-demand C1/D1 y el probe-not-load de FASE 1). Se apaga
+        # en shutdown().
+        self._batch_worker: Optional[BatchInferenceWorker] = None
         # Device de inferencia resuelto UNA vez en el arranque del server
         # (`select_device()` en run_server.py) e inyectado al detector compartido
         # cuando se crea lazy. `None` → el detector aplica su fallback cuda→mps→cpu
@@ -174,6 +184,23 @@ class MultiCameraManager:
             )
         return self._shared_executor
 
+    def _batch_worker_for(self, detector) -> BatchInferenceWorker:
+        """Batch worker singleton (topología B): lazy, se crea con la 1ª cámara
+        JUNTO al detector (cuidado (b): NO al boot — el detector es lazy y FASE 1
+        dejó el boot en probe-not-load). Comparte el executor de inferencia y el
+        broadcaster. Arranca su task asyncio acá (hay event loop: start_camera es
+        async). Se apaga en `shutdown()`.
+
+        INVARIANTE: este helper es síncrono (sin `await` entre el check y el set),
+        así el event loop no interleavea dos creaciones.
+        """
+        if self._batch_worker is None:
+            self._batch_worker = BatchInferenceWorker(
+                detector, self._shared_infer_executor(), self.broadcaster
+            )
+            self._batch_worker.start()
+        return self._batch_worker
+
     def add_camera(
         self,
         camera_id: str,
@@ -198,13 +225,12 @@ class MultiCameraManager:
                     zone_cfg['camera_id'] = camera_id
 
         builder = VisionApplicationBuilder(config)
-        # B1 Paso 4: el detector compartido se inyecta SIEMPRE (scheduler único;
-        # ya no hay path viejo ni ids fuera del scheduler). Todas las cámaras
-        # comparten el mismo singleton del manager.
-        shared_detector = self._shared_detector_for(config)
-        camera = CameraInstance(
-            camera_id, config, builder, detector=shared_detector, renderer=renderer
-        )
+        # Crea el detector compartido (lazy) acá, ANTES de que arranque el worker
+        # en start_camera (cuidado (b): el orden es detector → worker → registro →
+        # producer). El detector NO va al CameraInstance (la detección es central
+        # en el worker); el instance solo arma source + post_chain.
+        self._shared_detector_for(config)
+        camera = CameraInstance(camera_id, config, builder, renderer=renderer)
 
         self.cameras[camera_id] = camera
         logger.info("Added camera: %s", camera_id)
@@ -251,19 +277,30 @@ class MultiCameraManager:
             return
 
         camera.state.is_running = True
-        # B1 Paso 4: scheduler único. TODAS las cámaras corren por el
-        # `CameraScheduler` (captura threaded + inferencia secuencial a 1 Hz). El
-        # scheduler recibe el executor de inferencia COMPARTIDO (max_workers=1
-        # global) → toda la inferencia del modelo compartido se serializa en un
-        # solo worker. `_owns_executor=False` (porque se inyecta) hace que
-        # `scheduler.stop()` NO lo apague: lo apaga el `shutdown()` del manager.
-        scheduler = CameraScheduler(
-            camera, self.broadcaster, infer_executor=self._shared_infer_executor()
+        # Topología B — ORDEN ESTRICTO (cuidado (b)): detector creado → worker
+        # cableado con el detector → post-chain registrada → RECIÉN AHÍ arranca el
+        # producer. Así ningún frame fluye antes de que el worker tenga detector +
+        # post-chain (si no, frames encolados sin destino / sin modelo).
+        detector = self._shared_detector_for(camera.state.config)  # idempotente
+        worker = self._batch_worker_for(detector)
+        worker.register(
+            camera_id,
+            camera.state.post_chain,
+            aggregator=camera.state.aggregator,
+            state=camera.state,
         )
-        camera.state.scheduler = scheduler
-        task = asyncio.create_task(scheduler.run())
-        logger.info("Started camera (scheduler): %s", camera_id)
-        self._tasks[camera_id] = task
+        loop = asyncio.get_running_loop()
+        producer = QueuePushProducer(
+            camera_id,
+            camera.state.source,
+            worker,
+            camera.state,
+            broadcaster=self.broadcaster,
+            loop=loop,
+        )
+        camera.state.producer = producer
+        producer.start()
+        logger.info("Started camera (batched): %s", camera_id)
 
     async def stop_camera(self, camera_id: str) -> None:
         """Stops a specific camera."""
@@ -272,22 +309,22 @@ class MultiCameraManager:
 
         camera = self.cameras[camera_id]
         camera.state.is_running = False
-        # B1 Paso 4: scheduler único. La cámara dueña su teardown (captura + B2:
-        # aggregator force_flush+stop). El `pipeline` se construyó pero NUNCA se
-        # arrancó (`run()`/`start()`), así que no hay threads del pipeline que
-        # parar — el `ThreadedCapture` del scheduler es quien libera el source.
-        # `scheduler is None` solo si la cámara se agregó pero nunca se arrancó.
-        if camera.state.scheduler is not None:
-            camera.state.scheduler.stop()
-            camera.state.scheduler = None
-
-        if camera_id in self._tasks:
-            self._tasks[camera_id].cancel()
+        # Topología B teardown. ORDEN: desregistrar del worker (que el demux deje de
+        # rutear a esta post-chain) → parar el producer (corta el push + libera el
+        # source) → teardown del aggregator (force_flush+stop, antes lo hacía
+        # scheduler.stop()). `producer is None` solo si la cámara se agregó pero
+        # nunca se arrancó.
+        if self._batch_worker is not None:
+            self._batch_worker.unregister(camera_id)
+        if camera.state.producer is not None:
+            camera.state.producer.stop()
+            camera.state.producer = None
+        if camera.state.aggregator is not None:
             try:
-                await self._tasks[camera_id]
-            except asyncio.CancelledError:
-                pass
-            del self._tasks[camera_id]
+                camera.state.aggregator.force_flush()  # cierra la ventana en curso
+                camera.state.aggregator.stop()         # el worker thread no queda colgado
+            except Exception:
+                logger.exception("aggregator teardown falló")
 
         logger.info("Stopped camera: %s", camera_id)
 
@@ -332,6 +369,11 @@ class MultiCameraManager:
         contenedor el stop suele ser SIGKILL y esto no corre; queda para shutdown
         graceful, tests y deploys no-contenedor."""
         await self.stop_all()
+        # Topología B: apagar el batch worker (su task asyncio) antes de soltar el
+        # detector compartido que consume.
+        if self._batch_worker is not None:
+            await self._batch_worker.stop()
+            self._batch_worker = None
         if self._shared_detector is not None and hasattr(self._shared_detector, "release"):
             self._shared_detector.release()
         self._shared_detector = None

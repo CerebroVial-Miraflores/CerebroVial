@@ -64,8 +64,9 @@ def test_build_camera_config_uses_postgres_persistence():
     assert persistence.interval_seconds == 5  # ventana corta → conteo pronto
     # camera_id obligatorio para build_persistence con persistence.enabled.
     assert cfg.vision.camera_id == "cam_larco_benavides"
-    # El source/source_type llegan tal cual (ruteo hls).
-    assert cfg.vision.source_type == "hls"
+    # Topología B (15Hz): el path vivo HLS se mapea a full-decode para el batch
+    # worker ("hls"/"stream"/"hls_keyframe" → "hls_fulldecode").
+    assert cfg.vision.source_type == "hls_fulldecode"
 
 
 def test_build_camera_config_detection_tuning():

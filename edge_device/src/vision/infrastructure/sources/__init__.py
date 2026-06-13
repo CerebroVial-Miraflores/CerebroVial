@@ -8,6 +8,7 @@ from .youtube_source import YouTubeSource
 from .webcam_source import WebcamSource
 from .video_source import VideoFileSource
 from .hls_keyframe_source import HlsKeyframeSource
+from .full_decode_source import FullDecodeSource
 
 class YouTubeFactory(SourceFactory):
     def can_handle(self, config: str, source_type: str) -> bool:
@@ -81,6 +82,24 @@ class HlsFactory(SourceFactory):
         return VideoFileSource(config, source_config, capture=capture)
 
 
+class HlsFullDecodeFactory(SourceFactory):
+    """Productor full-decode 15fps (topología B): `source_type` EXPLÍCITO "hls_fulldecode".
+
+    Decodifica el segmento entero y muestrea a fps fijo (vs keyframe-only ~0.5fps).
+    Disjunto de "hls"/"stream" (que siguen ruteando al keyframe por defecto) → subir
+    a 15Hz es opt-in explícito, no cambia el default.
+    """
+
+    def can_handle(self, config: str, source_type: str) -> bool:
+        return source_type == "hls_fulldecode"
+
+    def create(self, config: str, **kwargs) -> FrameProducer:
+        capture = kwargs.pop("capture", None)
+        fps = kwargs.pop("fps", 15)
+        source_config = self._create_config(**kwargs)
+        return FullDecodeSource(config, source_config, capture=capture, fps=fps)
+
+
 class SourceRegistry:
     """
     Centralized registry for source factories.
@@ -109,6 +128,9 @@ _registry.register("webcam", WebcamFactory())
 # keyframe antes por intención (default gana si algún día se solapan).
 _registry.register("hls_keyframe", HlsKeyframeFactory())
 _registry.register("hls_opencv", HlsFactory())
+# Topología B (15Hz): full-decode opt-in explícito ("hls_fulldecode"); NO toca el
+# default keyframe de "hls"/"stream".
+_registry.register("hls_fulldecode", HlsFullDecodeFactory())
 _registry.register("file", VideoFileFactory())
 
 

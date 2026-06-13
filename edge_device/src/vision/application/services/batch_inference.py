@@ -52,6 +52,20 @@ class QueueItem:
     ts: float  # frame-clock (frame_index/15), NO wall-clock de lectura
 
 
+@dataclass
+class _Sink:
+    """Destino per-cámara del demux: la post-chain + lo necesario para el drain.
+
+    `aggregator`/`state` son opcionales (los tests de batching pasan solo la
+    post-chain). Con `aggregator` + broadcaster, el demux drena y publica; con
+    `state`, escribe `latest_detections` para el overlay del front (UNGATED).
+    """
+
+    post_chain: object  # FrameProcessor (duck-typed: .process(frame, analysis))
+    aggregator: object = None
+    state: object = None
+
+
 class BoundedFrameQueue:
     """Cola FIFO acotada con drop-oldest, thread-safe.
 
@@ -98,6 +112,7 @@ class BatchInferenceWorker:
         self,
         detector,
         executor,
+        broadcaster=None,
         *,
         max_batch: int = _DEFAULT_MAX_BATCH,
         max_wait_s: float = _DEFAULT_MAX_WAIT_S,
@@ -105,23 +120,30 @@ class BatchInferenceWorker:
     ) -> None:
         self._detector = detector
         self._executor = executor
+        self._broadcaster = broadcaster
         self._max_batch = max_batch
         self._max_wait_s = max_wait_s
         self.queue = BoundedFrameQueue(queue_maxsize)
-        self._post_chains: dict[str, "FrameProcessor"] = {}
+        self._sinks: dict[str, _Sink] = {}
         self._registry_lock = threading.Lock()
         self._running = False
         self._task: Optional[asyncio.Task] = None
 
-    # ---- Registro per-cámara (alta/baja en sub-fase 4) -----------------
+    # ---- Registro per-cámara (alta/baja desde el manager) --------------
 
-    def register(self, camera_id: str, post_chain: "FrameProcessor") -> None:
+    def register(
+        self,
+        camera_id: str,
+        post_chain: "FrameProcessor",
+        aggregator=None,
+        state=None,
+    ) -> None:
         with self._registry_lock:
-            self._post_chains[camera_id] = post_chain
+            self._sinks[camera_id] = _Sink(post_chain, aggregator, state)
 
     def unregister(self, camera_id: str) -> None:
         with self._registry_lock:
-            self._post_chains.pop(camera_id, None)
+            self._sinks.pop(camera_id, None)
 
     # ---- Ingreso (lo llama el producer thread per-cámara) --------------
 
@@ -188,8 +210,8 @@ class BatchInferenceWorker:
         )
         for it, dets in zip(batch, detections_per_frame):
             with self._registry_lock:
-                post_chain = self._post_chains.get(it.camera_id)
-            if post_chain is None:
+                sink = self._sinks.get(it.camera_id)
+            if sink is None:
                 # Cámara dada de baja entre encolar y procesar: se descarta sin ruido.
                 continue
             analysis = FrameAnalysis(
@@ -201,6 +223,33 @@ class BatchInferenceWorker:
                 detection_ran=True,
             )
             try:
-                post_chain.process(it.frame, analysis)
+                result = sink.post_chain.process(it.frame, analysis)
             except Exception:
                 logger.exception("post-chain falló para cámara %s", it.camera_id)
+                continue
+            await self._drain_and_route(it, sink, result)
+
+    async def _drain_and_route(self, it: QueueItem, sink: _Sink, result) -> None:
+        """Tras la post-chain: drena el aggregator → broadcaster y escribe
+        `latest_detections` (overlay del front, UNGATED). El crudo `latest_frame_raw`
+        lo escribe el producer (refinamiento #1: cada dato donde vive su fuente)."""
+        if sink.aggregator is not None and self._broadcaster is not None:
+            try:
+                for td in sink.aggregator.flush():
+                    await self._broadcaster.publish(td)
+            except Exception:
+                logger.exception("drain→publish falló para cámara %s", it.camera_id)
+        state = sink.state
+        if state is not None and getattr(it.frame, "image", None) is not None and result is not None:
+            h, w = it.frame.image.shape[:2]
+            # Overlay del front (UNGATED): el video HLS-directo lo consume aunque
+            # nadie mire el MJPEG.
+            state.latest_detections = (result, w, h)
+            # Render MJPEG (GATED por render_enabled, on-demand). detect_every_n=1
+            # → todo frame trae detección, sin persistencia de cajas en skip frames.
+            renderer = getattr(state, "renderer", None)
+            if getattr(state, "render_enabled", False) and renderer is not None:
+                try:
+                    state.latest_frame_processed = renderer.render(it.frame, result)
+                except Exception:
+                    logger.exception("render falló para cámara %s", it.camera_id)
