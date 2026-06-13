@@ -91,6 +91,18 @@ def _frame_two_zones(fid: int, ids_a: list[str], ids_b: list[str]) -> FrameAnaly
     )
 
 
+def _frame_zoneless(fid: int, ids: list[str]) -> FrameAnalysis:
+    """Frame SIN zonas calibradas (zones={}) — dispara el fallback zone-less."""
+    vehicles = [_veh(i) for i in ids]
+    return FrameAnalysis(
+        frame_id=fid,
+        timestamp=float(fid),
+        vehicles=vehicles,
+        unique_vehicles=len(ids),
+        zones={},
+    )
+
+
 def _aggregator(
     repo: _FakeRepository,
     *,
@@ -135,6 +147,28 @@ def test_force_flush_returns_computed_traffic_data_and_persists():
         # Counters limpios cuando no hay errores ni drops.
         assert aggregator.aggregation_errors == 0
         assert aggregator.data_dropped == 0
+    finally:
+        aggregator.stop()
+
+
+def test_zoneless_se_emite_al_panel_pero_no_se_persiste():
+    """Fix Fase 3: el TrafficData zone-less (zone_id 'all') va al output queue
+    (→ broadcaster → panel) pero NO se persiste en vision_aggregates. Presencia
+    extrapolada no calibrada: apropiada para el panel en vivo, no para guardar
+    como agregado medido."""
+    repo = _FakeRepository()
+    aggregator = _aggregator(repo)
+    try:
+        aggregator.add(_frame_zoneless(1, ["v1", "v2"]))
+        result = aggregator.force_flush()
+        # Emitido al panel: un TD zone-less con el conteo.
+        assert len(result) == 1
+        assert result[0].zone_id.value == "all"
+        assert result[0].unique_vehicles == 2
+        # NO persistido: repo vacío, y NO contado como error de save.
+        assert repo.saved == []
+        assert repo.save_call_count == 0
+        assert aggregator.aggregation_errors == 0
     finally:
         aggregator.stop()
 

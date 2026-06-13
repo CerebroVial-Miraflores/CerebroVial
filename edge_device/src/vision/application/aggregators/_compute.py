@@ -13,6 +13,13 @@ from datetime import datetime
 from ...domain.entities import FrameAnalysis, TrafficData
 from ...domain.value_objects import CameraId, VehicleId, ZoneId
 
+# Sentinel del fallback zone-less (Fase 3). El conteo zone-less es presencia
+# extrapolada NO calibrada: se EMITE al panel (SSE) pero NO se PERSISTE — la
+# persistencia (vision_aggregates) guarda solo agregados de zonas calibradas. El
+# aggregator excluye este zone_id del save (no del output queue). Single-source
+# para que el filtro de persistencia y el cómputo no se desincronicen.
+ZONELESS_ZONE_ID = "all"
+
 
 def compute_traffic_data(
     analyses: list[FrameAnalysis],
@@ -163,7 +170,7 @@ def _compute_zoneless(
     return [
         TrafficData(
             camera_id=camera_id,
-            zone_id=ZoneId("all"),
+            zone_id=ZoneId(ZONELESS_ZONE_ID),
             window_start=window_start,
             window_end=window_end,
             window_duration_seconds=window_duration_s,
