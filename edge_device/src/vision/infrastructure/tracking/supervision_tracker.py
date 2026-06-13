@@ -26,8 +26,11 @@ class SupervisionTracker(VehicleTracker):
             tracker = sv.ByteTrack(
                 track_activation_threshold=0.15,  # keep lower-confidence tracks alive
                 minimum_matching_threshold=0.8,   # IoU threshold for matching
-                lost_track_buffer=60,             # ~2s at 30fps
-                frame_rate=30,
+                # Sub-fase 5 (topología B, 15Hz): coherencia de cadencia. El Kalman
+                # de ByteTrack asume `frame_rate`; a 15fps reales debe ser 15 (no 30).
+                # `lost_track_buffer` en frames: 30 ≈ 2s @15fps (era 60 ≈ 2s @30fps).
+                lost_track_buffer=30,             # ~2s at 15fps
+                frame_rate=15,
             )
             if detections_factory is None:
                 detections_factory = sv.Detections

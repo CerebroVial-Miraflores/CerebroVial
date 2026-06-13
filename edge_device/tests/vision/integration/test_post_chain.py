@@ -134,6 +134,35 @@ def test_build_post_chain_flows_injected_detections_to_aggregator():
     assert "z1" in final.zones
 
 
+def test_post_chain_routes_frame_clock_to_speed_estimator():
+    """Sub-fase 5: el TrackingProcessor re-estampa los vehículos con el frame-clock
+    (analysis.timestamp), no con el ts que trae la detección — para que el speed
+    estimator compute Δt sobre la cadencia. El speed recibe el frame-clock."""
+    builder = VisionApplicationBuilder(_base_cfg())
+    tracker = _FakeTracker()
+    speed = _FakeSpeed()
+    builder.tracker = tracker
+    builder.speed_estimator = speed
+
+    head = builder.build_post_chain()
+    frame = _frame(fid=5)
+    # FrameAnalysis con frame-clock 14.0; detecciones con un ts distinto (0.0).
+    analysis = FrameAnalysis(
+        frame_id=frame.id,
+        timestamp=14.0,  # frame-clock (= 210/15)
+        vehicles=[
+            DetectedVehicle(id="raw0", type="car", confidence=0.9, bbox=(0, 0, 10, 10), timestamp=0.0),
+        ],
+        unique_vehicles=1,
+        zones={},
+        detection_ran=True,
+    )
+    head.process(frame, analysis)
+
+    # El speed estimator vio el frame-clock (14.0), NO el ts de la detección (0.0).
+    assert speed.seen[0].timestamp == 14.0
+
+
 def test_build_post_chain_tracker_only_when_others_disabled():
     """Sin speed/zone/persistence: la post-chain es solo Tracking y devuelve el
     análisis trackeado sin reventar."""

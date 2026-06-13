@@ -2,7 +2,7 @@
 
 Los dos xfails C1.7 previos (`test_interpolation_logic`, `test_trajectory_update`)
 testeaban funcionalidad que el refactor de Sesión 1 ya había marcado como
-movida al tracker (ByteTrack con `lost_track_buffer=60`) y que Sesión 3
+movida al tracker (ByteTrack con `lost_track_buffer=30`, ~2s @15fps) y que Sesión 3
 declaró fuera del scope de este processor (decisión #5d del plan de Fase 5).
 Verificación del tracker hecha en el paso 0 de 5d.
 
