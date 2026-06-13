@@ -43,6 +43,7 @@ from ..aggregators.async_aggregator import AsyncTrafficAggregator
 from ..pipelines.async_pipeline import AsyncVisionPipeline
 from ..processors import (
     AggregationProcessor,
+    FrameProcessor,
     SpeedEstimationProcessor,
     TrackingProcessor,
     ZoneProcessor,
@@ -275,6 +276,48 @@ class VisionApplicationBuilder:
             target_fps=perf_cfg.get('target_fps', 30),
         )
         return self.pipeline
+
+    def build_post_chain(self) -> FrameProcessor:
+        """Construye la POST-CHAIN headless (topología B, 15Hz).
+
+        Arranca en `TrackingProcessor` y recibe detecciones ya calculadas por el
+        batch worker central — la detección sale del head de la chain y se
+        centraliza. Orden: Tracking → Speed → Zone → Aggregation, reusando
+        `build_tracker/speed/zones/persistence`. Devuelve el head
+        (`TrackingProcessor`), un `FrameProcessor` que se invoca con un
+        `FrameAnalysis` que ya trae `vehicles` poblado (`detection_ran=True`).
+
+        NO toca `build_pipeline` (el path actual) ni construye source/detector: la
+        fuente la maneja el producer-push y el detector es el singleton compartido
+        del batch worker.
+        """
+        if not self.tracker:
+            self.build_tracker()
+        if not self.speed_estimator:
+            self.build_speed_estimator()
+        if not self.zone_counter:
+            self.build_zones()
+        if not self.aggregator:
+            self.build_persistence()
+
+        if not self.tracker:
+            raise ValueError("post-chain requiere un tracker")
+
+        head = TrackingProcessor(self.tracker, metrics_collector=self.metrics_collector)
+        current = head
+        if self.speed_estimator:
+            sp = SpeedEstimationProcessor(self.speed_estimator)
+            current.set_next(sp)
+            current = sp
+        if self.zone_counter:
+            zp = ZoneProcessor(self.zone_counter)
+            current.set_next(zp)
+            current = zp
+        if self.aggregator:
+            ap = AggregationProcessor(self.aggregator)
+            current.set_next(ap)
+            current = ap
+        return head
 
     def get_components(self) -> dict:
         """Componentes construidos, para consumo externo (e.g., Fase 6 cablea el renderer)."""
