@@ -233,3 +233,63 @@ def test_zone_with_zero_count_but_positive_occupancy_is_reported():
     assert td.flow_vehicles_per_hour == 0.0
     assert td.mean_speed_kmh is None
     assert td.mean_occupancy == pytest.approx(0.07)
+
+
+# ---------------------------------------------------------------------------
+# Fase 3 — fallback zone-less (zones == {} en todos los frames).
+# ---------------------------------------------------------------------------
+
+
+def test_zoneless_cuenta_sobre_analysis_vehicles():
+    # Sin zonas en NINGÚN frame → un solo TrafficData (zone_id="all") contado
+    # sobre analysis.vehicles, la misma fuente que el overlay (mata "0 con boxes").
+    # Dedup por id a nivel ventana: v1 aparece en los dos frames = 1 único.
+    f0 = _frame(0, [_veh("v1", "car"), _veh("v2", "bus")], {})
+    f1 = _frame(1, [_veh("v1", "car"), _veh("v3", "truck")], {})
+    result = compute_traffic_data([f0, f1], _CAM, _WS, _WE, {})
+
+    assert len(result) == 1
+    td = result[0]
+    assert td.zone_id == ZoneId("all")
+    assert td.unique_vehicles == 3  # v1, v2, v3
+    assert td.vehicles_by_type == {"car": 1, "bus": 1, "truck": 1}
+    # flujo = 3 / 60s * 3600
+    assert td.flow_vehicles_per_hour == pytest.approx(3 / 60 * 3600)
+
+
+def test_zoneless_ocupacion_cero_densidad_none():
+    # El fallback NO computa ocupación (relativa a polígono) ni densidad (sin
+    # segment_length): occupancy=0.0, density=None — límite honesto.
+    f0 = _frame(0, [_veh("v1", "car")], {})
+    td = compute_traffic_data([f0], _CAM, _WS, _WE, {})[0]
+    assert td.mean_occupancy == 0.0
+    assert td.density_vehicles_per_km is None
+
+
+def test_zoneless_velocidad_count_weighted():
+    # mean_speed_kmh count-weighted sobre frames con velocidades válidas.
+    f0 = _frame(0, [_veh("v1", "car", speed=40.0), _veh("v2", "car", speed=20.0)], {})
+    td = compute_traffic_data([f0], _CAM, _WS, _WE, {})[0]
+    # un frame, 2 vehículos: avg (40+20)/2 = 30
+    assert td.mean_speed_kmh == pytest.approx(30.0)
+
+
+def test_zoneless_sin_vehiculos_emite_cero_vivo():
+    # Frames sin vehículos y sin zonas → un TrafficData con 0 (estado vivo "0
+    # ahora"), no [] (que dejaría el panel sin payload/congelado).
+    f0 = _frame(0, [], {})
+    result = compute_traffic_data([f0], _CAM, _WS, _WE, {})
+    assert len(result) == 1
+    assert result[0].unique_vehicles == 0
+    assert result[0].zone_id == ZoneId("all")
+
+
+def test_fallback_cede_ante_zonas():
+    # Si AL MENOS un frame tiene zonas calibradas, el zone-less NO aplica: gana el
+    # camino por-zona (no aparece la zona sentinel "all").
+    f0 = _frame(0, [_veh("v1", "car")], {_ZONE_A: _zvc(_ZONE_A, ["v1"], occupancy=0.3)})
+    result = compute_traffic_data([f0], _CAM, _WS, _WE, {_ZONE_A: None})
+
+    zone_ids = {td.zone_id for td in result}
+    assert ZoneId("all") not in zone_ids
+    assert zone_ids == {_ZONE_A}

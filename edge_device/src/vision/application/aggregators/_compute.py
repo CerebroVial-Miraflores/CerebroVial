@@ -44,6 +44,14 @@ def compute_traffic_data(
     if not analyses:
         return []
 
+    # Fase 3 — fallback zone-less. Si NINGÚN frame tiene zonas calibradas, se
+    # cuenta sobre toda la imagen (`analysis.vehicles`). Es FALLBACK, no reemplazo:
+    # en cuanto aparece al menos una zona, gana el camino por-zona de abajo.
+    if not any(analysis.zones for analysis in analyses):
+        return _compute_zoneless(
+            analyses, camera_id, window_start, window_end, window_duration_s
+        )
+
     # Por zona: tipos observados por vehículo (para voto mayoritario),
     # pares (count, avg_speed) por frame con velocidades válidas (para
     # mean_speed_kmh count-weighted), y occupancies por frame.
@@ -108,6 +116,65 @@ def compute_traffic_data(
             )
         )
     return result
+
+
+def _compute_zoneless(
+    analyses: list[FrameAnalysis],
+    camera_id: CameraId,
+    window_start: datetime,
+    window_end: datetime,
+    window_duration_s: float,
+) -> list[TrafficData]:
+    """Fallback sin zonas calibradas (Fase 3): UN `TrafficData` único sobre TODOS
+    los `analysis.vehicles` de la ventana — la MISMA fuente que el overlay del
+    front, para que el contador del panel y las cajas sean coherentes (mata el
+    "0 con boxes").
+
+    Cubre conteo, tipos, flujo y velocidad (todo derivable del set de vehículos).
+    NO cubre ocupación ni densidad: la ocupación es relativa a un polígono y sin
+    calibración no se computa (occupancy=0.0); densidad necesita
+    segment_length_meters (None). Sin pseudo-zona full-frame y sin cv2 acá (la
+    función se mantiene pura). zone_id sentinel `all`.
+    """
+    # Dedup por id a nivel ventana (cada DetectedVehicle tiene type → listas no
+    # vacías → sum(vehicles_by_type) == unique_vehicles, invariante de TrafficData).
+    types_per_vehicle: dict[VehicleId, list[str]] = defaultdict(list)
+    speed_pairs: list[tuple[int, float]] = []
+
+    for analysis in analyses:
+        for v in analysis.vehicles:
+            types_per_vehicle[v.id].append(v.type)
+
+        valid_speeds = [
+            v.speed
+            for v in analysis.vehicles
+            if v.speed is not None and v.speed > 0  # type: ignore[operator]
+        ]
+        if analysis.vehicles and valid_speeds:
+            frame_avg_speed = sum(valid_speeds) / len(valid_speeds)
+            # Peso = vehículos del frame (mismo criterio que `zvc.count` en el
+            # camino por-zona: count-weighted, no speed-count-weighted).
+            speed_pairs.append((len(analysis.vehicles), frame_avg_speed))
+
+    unique_vehicles, vehicles_by_type = _resolve_vehicle_types(types_per_vehicle)
+    mean_speed_kmh = _count_weighted_speed(speed_pairs)
+    flow_vph = unique_vehicles / window_duration_s * 3600.0
+
+    return [
+        TrafficData(
+            camera_id=camera_id,
+            zone_id=ZoneId("all"),
+            window_start=window_start,
+            window_end=window_end,
+            window_duration_seconds=window_duration_s,
+            unique_vehicles=unique_vehicles,
+            vehicles_by_type=vehicles_by_type,
+            mean_speed_kmh=mean_speed_kmh,
+            flow_vehicles_per_hour=flow_vph,
+            mean_occupancy=0.0,
+            density_vehicles_per_km=None,
+        )
+    ]
 
 
 def _resolve_vehicle_types(
