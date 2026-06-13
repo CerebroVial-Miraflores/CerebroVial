@@ -30,6 +30,18 @@ class VehicleDetector(Protocol):
         self, frame: np.ndarray, frame_id: int, imgsz: Optional[int] = None
     ) -> list[DetectedVehicle]: ...
 
+    def detect_batch(
+        self,
+        frames: list[np.ndarray],
+        frame_ids: Optional[list[int]] = None,
+        imgsz: Optional[int] = None,
+    ) -> list[list[DetectedVehicle]]:
+        """Detección en lote (topología B/15Hz): una lista de detecciones por frame.
+
+        `detect_batch([f])[0]` equivale a `detect(f)` salvo el `timestamp` wall-clock.
+        """
+        ...
+
 
 class VehicleTracker(Protocol):
     """Protocol for assigning stable identities across frames."""
