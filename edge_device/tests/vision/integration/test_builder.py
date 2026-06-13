@@ -156,7 +156,11 @@ def test_create_detector_standalone():
         detector = create_detector(cfg.vision)
 
         assert detector is sentinel
-        MockYolo.assert_called_once_with(model_path='yolo11n.pt', conf_threshold=0.5)
+        # device por defecto None: el detector aplica su fallback cuda→mps→cpu
+        # (el device real se inyecta desde el arranque vía `select_device()`).
+        MockYolo.assert_called_once_with(
+            model_path='yolo11n.pt', conf_threshold=0.5, device=None
+        )
 
 
 def test_build_pipeline_accepts_injected_detector():

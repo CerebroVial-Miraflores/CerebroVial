@@ -132,6 +132,11 @@ class MultiCameraManager:
         # `shutdown()`. Las cámaras del path viejo NO los usan (detector propio).
         self._shared_detector: Optional[Any] = None
         self._shared_executor: Optional[ThreadPoolExecutor] = None
+        # Device de inferencia resuelto UNA vez en el arranque del server
+        # (`select_device()` en run_server.py) e inyectado al detector compartido
+        # cuando se crea lazy. `None` → el detector aplica su fallback cuda→mps→cpu
+        # (ej. tests que instancian el manager sin pasar por el arranque).
+        self.inference_device: Optional[str] = None
 
     def _shared_detector_for(self, config: DictConfig) -> Any:
         """Detector YOLO singleton de las cámaras del scheduler (D-018: UN modelo
@@ -146,7 +151,9 @@ class MultiCameraManager:
         o mete un `await` en el medio, hace falta un lock — si no, doble creación.
         """
         if self._shared_detector is None:
-            self._shared_detector = create_detector(config.vision)
+            self._shared_detector = create_detector(
+                config.vision, device=self.inference_device
+            )
         return self._shared_detector
 
     def _shared_infer_executor(self) -> ThreadPoolExecutor:

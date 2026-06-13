@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.vision.presentation.api import app
 from src.vision.presentation.api.routes import cameras
+from src.vision.infrastructure.detection.device import select_device
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
@@ -16,8 +17,15 @@ def main(cfg: DictConfig):
 
     vision_cfg = cfg.vision
 
+    # Probe de hardware UNA vez al levantar: imprime el banner (verde si hay
+    # GPU; ROJO si cae a CPU) y deja el device resuelto. NO carga el modelo
+    # (solo `is_available()`), así que respeta el on-demand C1/D1: el YOLO sigue
+    # cargando lazy en la 1ª cámara, con este device inyectado.
+    inference_device = select_device()
+
     # Initialize Manager
     manager = cameras.get_manager()
+    manager.inference_device = inference_device
 
     # C1 (D1): arranque on-demand. El server NO registra ni arranca cámaras al
     # iniciar — cero modelos YOLO en memoria. El frontend da de alta cada cámara

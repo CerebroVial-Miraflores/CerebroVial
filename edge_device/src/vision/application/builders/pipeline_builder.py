@@ -54,18 +54,25 @@ logger = logging.getLogger(__name__)
 _DEFAULT_VEHICLE_CLASSES = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
 
 
-def create_detector(vision_cfg: DictConfig) -> VehicleDetector:
+def create_detector(
+    vision_cfg: DictConfig, device: str | None = None
+) -> VehicleDetector:
     """Construye el detector/modelo a partir de la config de visión.
 
     Factory standalone (independiente de un builder por-cámara): permite
     construir el modelo UNA vez y compartirlo. B1 Paso 1a deja esta costura
     para que el scheduler de 1b inyecte el mismo detector a N cámaras vía
     `VisionApplicationBuilder.build_pipeline(detector=...)`.
+
+    `device` (resuelto en el arranque por `select_device()`): se pasa al
+    `YoloDetector`. `None` → el detector aplica su fallback cuda→mps→cpu sin
+    banner (path legacy / construcción directa).
     """
     logger.info("Loading model: %s", vision_cfg.model.path)
     return YoloDetector(
         model_path=vision_cfg.model.path,
         conf_threshold=vision_cfg.model.conf_threshold,
+        device=device,
     )
 
 

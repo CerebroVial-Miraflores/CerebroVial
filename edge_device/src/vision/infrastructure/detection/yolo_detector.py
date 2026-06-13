@@ -25,6 +25,7 @@ class YoloDetector(VehicleDetector):
         model_path: str = "yolo11n.pt",
         conf_threshold: float = 0.5,
         model=None,
+        device: str | None = None,
     ):
         self.conf_threshold = conf_threshold
         self.target_classes = dict(_TARGET_CLASSES)
@@ -40,7 +41,16 @@ class YoloDetector(VehicleDetector):
             import torch
             from ultralytics import YOLO
 
-            if torch.cuda.is_available():
+            if device is not None:
+                # Device resuelto en el arranque del server (`select_device()`):
+                # el banner ya se imprimió al boot, acá no se re-detecta ni se
+                # vuelve a anunciar.
+                pass
+            elif torch.cuda.is_available():
+                # Fallback para callers que no inyectan device (path legacy de
+                # `src/main.py`, construcción directa): misma política
+                # cuda→mps→cpu, sin banner. La fuente de verdad del banner es
+                # `select_device()` en el arranque.
                 device = "cuda"
             elif torch.backends.mps.is_available():
                 device = "mps"
