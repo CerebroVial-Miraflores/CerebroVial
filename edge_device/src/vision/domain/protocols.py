@@ -22,7 +22,7 @@ class VehicleDetector(Protocol):
     `imgsz` (B1 1c): resolución de inferencia POR LLAMADA (no estado del detector,
     para que un detector compartido entre cámaras —D-018/Paso 2— pueda inferir con
     imgsz distinto por cámara). `None` = "no especifico → el backend decide su
-    nativo"; NO es una política de 640. La única política de producto es
+    nativo"; NO es la política de default. La única política de producto es
     `DEFAULT_IMGSZ` (ver `application/processors/smart_detection.py`), que el
     scheduler aplica.
     """

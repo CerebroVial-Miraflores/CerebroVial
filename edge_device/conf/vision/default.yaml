@@ -84,9 +84,9 @@ model:
   conf_threshold: 0.3
   # imgsz (B1 1c): resolución de inferencia por-llamada, palanca per-cámara. Se deja
   # ausente a propósito: la política de default vive en UN solo lugar
-  # (DEFAULT_IMGSZ en application/processors/smart_detection.py, hoy 320), que el
-  # scheduler aplica cuando este campo no está. Descomentar SOLO para override
-  # per-cámara; calibración futura puede subirlo donde rinda.
-  # imgsz: 320
+  # (DEFAULT_IMGSZ en application/processors/smart_detection.py, hoy 640 — Fase 2),
+  # que el scheduler aplica cuando este campo no está. Descomentar SOLO para override
+  # per-cámara; el techo (768/GPU) se explora con datos en deploy centralizado.
+  # imgsz: 640
 
 display: true

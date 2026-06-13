@@ -170,7 +170,7 @@ class CameraScheduler:
 
     def _read_imgsz(self) -> int:
         """Política de imgsz para este tick: cfg.vision.model.imgsz, fallback a la
-        ÚNICA constante de política DEFAULT_IMGSZ (320). Leído per-tick → hot-reload."""
+        ÚNICA constante de política DEFAULT_IMGSZ (640). Leído per-tick → hot-reload."""
         model_cfg = self._camera.state.config.vision.get("model", {})
         return model_cfg.get("imgsz", DEFAULT_IMGSZ)
 
