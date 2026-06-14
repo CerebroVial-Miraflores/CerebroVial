@@ -50,6 +50,49 @@ def test_mps_disponible_devuelve_mps(inject_torch, capsys):
     assert out.err == ""
 
 
+# ---- device override (knob de config) ---------------------------------
+
+
+def test_forced_cpu_returns_cpu_sin_banner_rojo(inject_torch, capsys):
+    # MPS disponible pero se FUERZA cpu (legítimo en Mac): sin banner rojo.
+    inject_torch(cuda=False, mps=True)
+    assert device_mod.select_device(requested="cpu") == "cpu"
+    out = capsys.readouterr()
+    assert "cpu FORZADO" in out.out
+    assert out.err == ""
+
+
+def test_forced_cuda_available_returns_cuda(inject_torch, capsys):
+    inject_torch(cuda=True)
+    assert device_mod.select_device(requested="cuda") == "cuda"
+    assert "cuda FORZADO" in capsys.readouterr().out
+
+
+def test_forced_cuda_unavailable_raises(inject_torch):
+    inject_torch(cuda=False, mps=False)
+    with pytest.raises(RuntimeError, match="CUDA no está disponible"):
+        device_mod.select_device(requested="cuda")
+
+
+def test_forced_mps_unavailable_raises(inject_torch):
+    inject_torch(cuda=False, mps=False)
+    with pytest.raises(RuntimeError, match="MPS no está disponible"):
+        device_mod.select_device(requested="mps")
+
+
+def test_unknown_device_raises(inject_torch):
+    inject_torch(cuda=True)
+    with pytest.raises(ValueError, match="device desconocido"):
+        device_mod.select_device(requested="tpu")
+
+
+def test_auto_default_preserva_comportamiento(inject_torch, capsys):
+    # requested="auto" (default) = lógica cuda→mps→cpu de FASE 1.
+    inject_torch(cuda=False, mps=True)
+    assert device_mod.select_device() == "mps"
+    assert device_mod.select_device(requested="auto") == "mps"
+
+
 def test_cuda_gana_a_mps(inject_torch):
     # Prioridad cuda > mps cuando ambos están disponibles.
     inject_torch(cuda=True, mps=True)

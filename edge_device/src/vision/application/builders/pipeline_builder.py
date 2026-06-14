@@ -122,6 +122,12 @@ class VisionApplicationBuilder:
             self.vision_cfg.source_type,
         )
         perf_cfg = self.vision_cfg.get('performance', {})
+        # Knob analyze_fps: solo aplica a la fuente full-decode (topología B). Para
+        # otros source_type, pasar `fps` rompería SourceConfig (no lo conoce), así
+        # que se incluye condicionalmente. Default 15 = cadencia actual.
+        extra = {}
+        if self.vision_cfg.source_type == "hls_fulldecode":
+            extra["fps"] = int(self.vision_cfg.get('analyze_fps', 15))
         self.source = create_source(
             source_config=self.vision_cfg.source,
             source_type=self.vision_cfg.source_type,
@@ -130,6 +136,7 @@ class VisionApplicationBuilder:
             target_height=perf_cfg.get('target_height', None),
             format=perf_cfg.get('youtube_format', 'best'),
             loop=self.vision_cfg.get('loop', True),
+            **extra,
         )
         return self
 

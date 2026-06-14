@@ -139,6 +139,36 @@ def test_builder_builds_postgres_aggregator():
         MockRepo.assert_called_once()
 
 
+# ---- knob analyze_fps: build_source → FullDecodeSource(fps=...) --------------
+
+
+def test_build_source_passes_analyze_fps_to_fulldecode():
+    from src.vision.infrastructure.sources.full_decode_source import FullDecodeSource
+
+    cfg = OmegaConf.create({'vision': {
+        'source': 'https://x/index.m3u8', 'source_type': 'hls_fulldecode',
+        'analyze_fps': 10,
+        'performance': {'target_width': 1280, 'target_height': 720},
+    }})
+    builder = VisionApplicationBuilder(cfg)
+    builder.build_source()
+    assert isinstance(builder.source, FullDecodeSource)
+    assert builder.source._fps == 10  # knob propagado a la fuente
+
+
+def test_build_source_fulldecode_default_fps_15():
+    from src.vision.infrastructure.sources.full_decode_source import FullDecodeSource
+
+    cfg = OmegaConf.create({'vision': {
+        'source': 'https://x/index.m3u8', 'source_type': 'hls_fulldecode',
+        'performance': {'target_width': 1280, 'target_height': 720},
+    }})
+    builder = VisionApplicationBuilder(cfg)
+    builder.build_source()
+    assert isinstance(builder.source, FullDecodeSource)
+    assert builder.source._fps == 15  # default = comportamiento actual
+
+
 # ---- B1 Paso 1a: costura de inyección del detector (la que 1b consume) -------
 
 

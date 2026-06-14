@@ -147,6 +147,11 @@ class MultiCameraManager:
         # cuando se crea lazy. `None` → el detector aplica su fallback cuda→mps→cpu
         # (ej. tests que instancian el manager sin pasar por el arranque).
         self.inference_device: Optional[str] = None
+        # Knobs de config a nivel de instancia (run_server los setea desde cfg+env).
+        # Defaults = comportamiento actual: análisis a 15fps, imgsz 640 (= nativo de
+        # ultralytics). analyze_fps se inyecta a la fuente full-decode; imgsz al worker.
+        self.analyze_fps: int = 15
+        self.imgsz: int = 640
 
     def _shared_detector_for(self, config: DictConfig) -> Any:
         """Detector YOLO singleton de las cámaras del scheduler (D-018: UN modelo
@@ -196,7 +201,8 @@ class MultiCameraManager:
         """
         if self._batch_worker is None:
             self._batch_worker = BatchInferenceWorker(
-                detector, self._shared_infer_executor(), self.broadcaster
+                detector, self._shared_infer_executor(), self.broadcaster,
+                imgsz=self.imgsz,
             )
             self._batch_worker.start()
         return self._batch_worker
@@ -223,6 +229,11 @@ class MultiCameraManager:
             for zone_id, zone_cfg in config.vision.zones.items():
                 if isinstance(zone_cfg, dict) and 'camera_id' not in zone_cfg:
                     zone_cfg['camera_id'] = camera_id
+
+        # Knob de instancia: inyecta analyze_fps en el cfg de la cámara para que
+        # build_source lo pase a FullDecodeSource (cadencia de análisis; no toca el
+        # stream que ve el browser). Default 15 = comportamiento actual.
+        config.vision.analyze_fps = self.analyze_fps
 
         builder = VisionApplicationBuilder(config)
         # Crea el detector compartido (lazy) acá, ANTES de que arranque el worker

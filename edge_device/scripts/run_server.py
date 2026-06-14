@@ -17,15 +17,24 @@ def main(cfg: DictConfig):
 
     vision_cfg = cfg.vision
 
-    # Probe de hardware UNA vez al levantar: imprime el banner (verde si hay
-    # GPU; ROJO si cae a CPU) y deja el device resuelto. NO carga el modelo
-    # (solo `is_available()`), así que respeta el on-demand C1/D1: el YOLO sigue
-    # cargando lazy en la 1ª cámara, con este device inyectado.
-    inference_device = select_device()
+    # Knobs de config a nivel de instancia: cfg con override por env. Defaults
+    # (auto / 15 / 640) = comportamiento actual.
+    device_req = os.environ.get("VISION_DEVICE", str(vision_cfg.get("device", "auto")))
+    analyze_fps = int(os.environ.get("VISION_ANALYZE_FPS", vision_cfg.get("analyze_fps", 15)))
+    imgsz = int(os.environ.get("VISION_IMGSZ", vision_cfg.get("imgsz", 640)))
+
+    # Probe de hardware UNA vez al levantar: imprime el banner (verde si hay GPU o
+    # device forzado; ROJO si AUTO cae a CPU) y deja el device resuelto. NO carga el
+    # modelo (solo `is_available()`), así que respeta el on-demand C1/D1: el YOLO
+    # sigue cargando lazy en la 1ª cámara. `device` forzado no disponible → error
+    # claro al boot (sin fallback silencioso).
+    inference_device = select_device(requested=device_req)
 
     # Initialize Manager
     manager = cameras.get_manager()
     manager.inference_device = inference_device
+    manager.analyze_fps = analyze_fps
+    manager.imgsz = imgsz
 
     # C1 (D1): arranque on-demand. El server NO registra ni arranca cámaras al
     # iniciar — cero modelos YOLO en memoria. El frontend da de alta cada cámara

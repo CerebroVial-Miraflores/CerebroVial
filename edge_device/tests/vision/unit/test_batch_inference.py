@@ -41,6 +41,17 @@ class _StubDetector:
         ]
 
 
+class _ImgszRecordingDetector:
+    """Registra el imgsz con que se llama detect_batch (knob de config)."""
+
+    def __init__(self):
+        self.imgsz_seen = []
+
+    def detect_batch(self, frames, frame_ids=None, imgsz=None):
+        self.imgsz_seen.append(imgsz)
+        return [[] for _ in frames]
+
+
 class _RecordingPostChain:
     """Post-chain stub: registra (frame_id, analysis) de cada process()."""
 
@@ -143,6 +154,27 @@ async def test_process_batch_propagates_frame_clock_ts():
     assert analysis.timestamp == 99.5  # frame-clock, no el frame.timestamp (7.0)
     assert analysis.detection_ran is True
     assert [v.id for v in analysis.vehicles] == ["v7"]
+
+
+@pytest.mark.asyncio
+async def test_worker_passes_imgsz_to_detect_batch():
+    det = _ImgszRecordingDetector()
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        worker = BatchInferenceWorker(det, ex, imgsz=320)
+        worker.register("a", _RecordingPostChain())
+        await worker._process_batch([QueueItem("a", _frame(1), 1.0)])
+    assert det.imgsz_seen == [320]
+
+
+@pytest.mark.asyncio
+async def test_worker_default_imgsz_is_none():
+    """Default None = ultralytics nativo (comportamiento previo preservado)."""
+    det = _ImgszRecordingDetector()
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        worker = BatchInferenceWorker(det, ex)
+        worker.register("a", _RecordingPostChain())
+        await worker._process_batch([QueueItem("a", _frame(1), 1.0)])
+    assert det.imgsz_seen == [None]
 
 
 @pytest.mark.asyncio

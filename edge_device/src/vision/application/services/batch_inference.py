@@ -117,10 +117,14 @@ class BatchInferenceWorker:
         max_batch: int = _DEFAULT_MAX_BATCH,
         max_wait_s: float = _DEFAULT_MAX_WAIT_S,
         queue_maxsize: int = _DEFAULT_QUEUE_MAXSIZE,
+        imgsz: Optional[int] = None,
     ) -> None:
         self._detector = detector
         self._executor = executor
         self._broadcaster = broadcaster
+        # Resolución de inferencia (knob de config). None → ultralytics nativo (640),
+        # idéntico al comportamiento previo.
+        self._imgsz = imgsz
         self._max_batch = max_batch
         self._max_wait_s = max_wait_s
         self.queue = BoundedFrameQueue(queue_maxsize)
@@ -206,7 +210,7 @@ class BatchInferenceWorker:
         frame_ids = [it.frame.id for it in batch]
         loop = asyncio.get_running_loop()
         detections_per_frame = await loop.run_in_executor(
-            self._executor, self._detector.detect_batch, frames, frame_ids
+            self._executor, self._detector.detect_batch, frames, frame_ids, self._imgsz
         )
         for it, dets in zip(batch, detections_per_frame):
             with self._registry_lock:

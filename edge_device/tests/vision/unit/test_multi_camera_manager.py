@@ -65,6 +65,12 @@ def _patch_builder(MockBuilder):
     MockBuilder.return_value.aggregator = None
 
 
+def test_manager_default_knobs_preserve_behavior(manager):
+    """Defaults de los knobs de instancia = comportamiento actual (15fps / imgsz 640)."""
+    assert manager.analyze_fps == 15
+    assert manager.imgsz == 640
+
+
 def test_add_camera(manager):
     config = DictConfig({'vision': {'zones': {}}})
     with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
