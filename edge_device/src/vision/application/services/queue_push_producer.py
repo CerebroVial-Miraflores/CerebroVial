@@ -104,10 +104,37 @@ class QueuePushProducer:
     def _mark_ok(self, frame) -> None:
         self._state.sensor_status = SensorStatus.OK.value
         self._state.last_frame_age_seconds = 0.0
-        # latest_frame_raw (crudo) gated por render_enabled: el watchdog puede
-        # liberar memoria poniéndolo en False; respetamos eso (paridad scheduler).
-        if self._state.render_enabled and getattr(frame, "image", None) is not None:
-            self._state.latest_frame_raw = frame.image.copy()
+        # Desacople de fluidez (A1): el productor es el ÚNICO escritor de
+        # latest_frame_raw Y latest_frame_processed, ambos sobre el frame FRESCO y a
+        # tasa de DECODE. El batch worker dejó de escribir processed (solo guarda las
+        # cajas en latest_detections). Gated por render_enabled (solo con consumidor
+        # MJPEG; el watchdog lo apaga para liberar memoria). El render es copy+draws
+        # cv2 (~ms) ≪ 66ms/frame a 15fps → no bloquea el loop de decode.
+        if not (self._state.render_enabled and getattr(frame, "image", None) is not None):
+            return
+        self._state.latest_frame_raw = frame.image.copy()
+        self._state.latest_frame_processed = self._render_processed(frame)
+
+    def _render_processed(self, frame):
+        """Dibuja las últimas cajas conocidas (`latest_detections`, escritas por el
+        batch worker a tasa de inferencia) sobre el frame FRESCO. El drop-to-latest de
+        la cola (A2) mantiene esas cajas a ~1 inferencia de lag → alineadas con los
+        autos. Antes de la 1ª inferencia (`latest_detections` None) o sin renderer
+        inyectado devuelve el frame crudo: video fluido desde el arranque, las cajas
+        aparecen al entrar la 1ª detección."""
+        renderer = getattr(self._state, "renderer", None)
+        detections = self._state.latest_detections
+        if renderer is None or detections is None:
+            return frame.image.copy()
+        analysis = detections[0]  # (result, w, h) — result es FrameAnalysis-compatible
+        try:
+            return renderer.render(frame, analysis)
+        except Exception:
+            logger.exception(
+                "render falló en el productor para %s; processed = frame crudo",
+                self._camera_id,
+            )
+            return frame.image.copy()
 
     def _on_source_dead(self) -> None:
         self._state.sensor_status = SensorStatus.FUENTE_NO_DISPONIBLE.value

@@ -234,9 +234,11 @@ class BatchInferenceWorker:
             await self._drain_and_route(it, sink, result)
 
     async def _drain_and_route(self, it: QueueItem, sink: _Sink, result) -> None:
-        """Tras la post-chain: drena el aggregator → broadcaster y escribe
-        `latest_detections` (overlay del front, UNGATED). El crudo `latest_frame_raw`
-        lo escribe el producer (refinamiento #1: cada dato donde vive su fuente)."""
+        """Tras la post-chain: drena el aggregator → broadcaster y guarda las últimas
+        cajas en `latest_detections` (UNGATED). El render del MJPEG
+        (`latest_frame_processed`) ya NO se hace acá: lo escribe el PRODUCTOR a tasa de
+        DECODE sobre el frame fresco (desacople de fluidez, A1), leyendo estas cajas.
+        El crudo `latest_frame_raw` también lo escribe el productor."""
         if sink.aggregator is not None and self._broadcaster is not None:
             try:
                 for td in sink.aggregator.flush():
@@ -246,14 +248,8 @@ class BatchInferenceWorker:
         state = sink.state
         if state is not None and getattr(it.frame, "image", None) is not None and result is not None:
             h, w = it.frame.image.shape[:2]
-            # Overlay del front (UNGATED): el video HLS-directo lo consume aunque
-            # nadie mire el MJPEG.
+            # Cajas para el render del productor y el overlay HLS (UNGATED): la
+            # inferencia corre permanente; el productor las dibuja sobre el frame
+            # fresco si hay consumidor MJPEG (render_enabled). El swap de la tupla es
+            # atómico (GIL) y el FrameAnalysis es frozen → lectura cross-thread segura.
             state.latest_detections = (result, w, h)
-            # Render MJPEG (GATED por render_enabled, on-demand). detect_every_n=1
-            # → todo frame trae detección, sin persistencia de cajas en skip frames.
-            renderer = getattr(state, "renderer", None)
-            if getattr(state, "render_enabled", False) and renderer is not None:
-                try:
-                    state.latest_frame_processed = renderer.render(it.frame, result)
-                except Exception:
-                    logger.exception("render falló para cámara %s", it.camera_id)

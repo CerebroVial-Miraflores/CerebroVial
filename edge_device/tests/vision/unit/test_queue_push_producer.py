@@ -66,14 +66,29 @@ class _FakeAggregator:
         return []
 
 
-def _state(render_enabled=True, aggregator=None):
+def _state(render_enabled=True, aggregator=None, renderer=None, latest_detections=None):
     return types.SimpleNamespace(
         sensor_status=None,
         last_frame_age_seconds=None,
         render_enabled=render_enabled,
         latest_frame_raw=None,
+        latest_frame_processed=None,
+        latest_detections=latest_detections,
+        renderer=renderer,
         aggregator=aggregator,
     )
+
+
+class _RecordingRenderer:
+    """render(frame, analysis) registra lo recibido y devuelve un array sentinela."""
+
+    def __init__(self):
+        self.calls = []
+        self.output = np.full((4, 4, 3), 7, dtype=np.uint8)
+
+    def render(self, frame, analysis):
+        self.calls.append((frame.id, analysis))
+        return self.output
 
 
 def _frame(fid):
@@ -123,8 +138,42 @@ def test_skips_latest_frame_raw_when_render_disabled():
     prod.start()
     assert _wait_until(lambda: len(worker.submitted) == 1)
     prod.stop()
-    # Empujó el frame (muestreo permanente) pero NO escribió el crudo (watchdog off).
+    # Empujó el frame (muestreo permanente) pero NO escribió ni crudo ni processed
+    # (watchdog apagó el render).
     assert state.latest_frame_raw is None
+    assert state.latest_frame_processed is None
+
+
+def test_renders_processed_with_last_known_boxes(monkeypatch):
+    # Desacople de fluidez (A1): el productor dibuja las últimas cajas
+    # (latest_detections) sobre el frame fresco → latest_frame_processed.
+    worker = _RecordingWorker()
+    renderer = _RecordingRenderer()
+    analysis = object()  # FrameAnalysis-compatible: el fake renderer no lo inspecciona
+    state = _state(render_enabled=True, renderer=renderer, latest_detections=(analysis, 4, 4))
+    prod = QueuePushProducer("cam1", _LiveSource(), worker, state)
+    prod.start()
+    assert _wait_until(lambda: state.latest_frame_processed is not None)
+    prod.stop()
+    # processed = salida del renderer (cajas dibujadas sobre el frame fresco).
+    assert np.array_equal(state.latest_frame_processed, renderer.output)
+    # El renderer recibió las cajas guardadas (analysis), no el frame viejo.
+    assert renderer.calls and renderer.calls[-1][1] is analysis
+
+
+def test_processed_mirrors_raw_before_first_inference():
+    # Sin detecciones aún (latest_detections None): processed = frame crudo, para que
+    # el video sea fluido desde el arranque (las cajas aparecen con la 1ª inferencia).
+    worker = _RecordingWorker()
+    renderer = _RecordingRenderer()
+    state = _state(render_enabled=True, renderer=renderer, latest_detections=None)
+    prod = QueuePushProducer("cam1", _LiveSource(), worker, state)
+    prod.start()
+    assert _wait_until(lambda: state.latest_frame_processed is not None)
+    prod.stop()
+    # Es un frame crudo (4x4x3, ceros del _LiveSource), no la salida del renderer.
+    assert state.latest_frame_processed.shape == (4, 4, 3)
+    assert not renderer.calls  # no se invocó el renderer sin cajas
 
 
 def test_source_death_sets_status_and_force_flushes():
