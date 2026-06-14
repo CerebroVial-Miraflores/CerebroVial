@@ -13,6 +13,14 @@ vi.mock('../../../../hooks/usePredictionHistory', () => ({ usePredictionHistory:
 vi.mock('../../../HlsPlayer', () => ({
   HlsPlayer: ({ src }: { src: string }) => <div data-testid="hls-player">{src}</div>,
 }));
+// El panel en vivo monta AnnotatedCameraStream, que abre un fetch streaming a
+// /video/{id}?type=processed y lee response.body. El fetch stub de este test no trae
+// body → se mockea el componente (igual que HlsPlayer) para no disparar reconexión.
+vi.mock('../AnnotatedCameraStream', () => ({
+  AnnotatedCameraStream: ({ cameraId }: { cameraId: string }) => (
+    <div data-testid="annotated-stream">{cameraId}</div>
+  ),
+}));
 vi.mock('../../../../services/predictionService', () => ({
   predictionService: { predictTraffic: vi.fn(() => new Promise(() => {})) },
 }));

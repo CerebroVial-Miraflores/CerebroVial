@@ -2,24 +2,22 @@ import { useCallback, useEffect, useState } from 'react';
 import { Activity, AlertTriangle, Car, Gauge, Sparkles, Waves } from 'lucide-react';
 
 import { useVisionStream } from '../../../hooks/useVisionStream';
-import { useDetections } from '../../../hooks/useDetections';
 import { predictionService, type PredictionResult } from '../../../services/predictionService';
 import { congestionLabel, densityPercent } from '../../../utils/trafficLabels';
 import type { Status } from '../../ui/StatusChip';
 import { StatusChip } from '../../ui/StatusChip';
-import { HlsPlayer, type PlayerStatus } from '../../HlsPlayer';
-import { DetectionOverlay } from './DetectionOverlay';
+import { AnnotatedCameraStream, type StreamStatus } from './AnnotatedCameraStream';
 
 // FASE 4 Mitad A — panel EN VIVO del detalle de cámara. Orquesta el flujo
 // delicado de v1 (CameraDetailView), preservado 1:1 sobre el design system:
 //  - alta on-demand del YOLO en el edge (POST /cameras/{id}, sin JWT — deuda
 //    edge intacta; SIN DELETE en cleanup, lección StrictMode de v1);
 //  - SSE de métricas vía useVisionStream (gate isActive);
-//  - VIDEO HLS directo de Claro vía HlsPlayer (object-fit:contain), reemplaza al
-//    MJPEG entrecortado del edge (DEUDA-MJPEG-BROWSER resuelta para esta vista);
-//  - OVERLAY de cajas (DetectionOverlay) sobre el video, alimentado por el polling
-//    de useDetections (GET /detections/{id}/latest). El POST de alta ahora alimenta
-//    el overlay (la inferencia), no el video — por eso se mantiene intacto;
+//  - VIDEO = frame ANOTADO server-side (Opción B2): AnnotatedCameraStream pinta en un
+//    <canvas> el MJPEG processed del edge (GET /video/{id}?type=processed) vía fetch +
+//    ReadableStream, con reconexión propia. Las cajas ya vienen dibujadas en el frame
+//    (cero alineación cliente). Reemplaza el HLS-directo + overlay SVG: gana cajas
+//    correctas por construcción; trade-off aceptado de menos suavidad que el HLS.
 //  - Insights de IA vía predictionService.predictTraffic (backend real).
 // Política de datos: vehículos = REAL (conteo YOLO); flujo/ocupación =
 // REAL-CON-CAVEAT (presencia extrapolada); velocidad = REAL-CON-CAVEAT (sin
@@ -84,19 +82,11 @@ export function CameraLivePanel({ cameraId, streamUrl }: CameraLivePanelProps) {
   const vision = useVisionStream(cameraId, { enabled: isActive });
   const metrics = vision.data?.metrics ?? null;
 
-  // Polling de detecciones para el overlay (gate isActive, igual que el SSE de
-  // métricas). El hook ya filtra por frescura (~3s, reloj del edge).
-  const detections = useDetections(cameraId, { enabled: isActive });
-
-  // isLoading se limpia cuando el video HLS empieza a reproducir (ya no depende
-  // del MJPEG). 'offline' del player → señal honesta de pérdida de señal.
-  const handleStatus = useCallback((status: PlayerStatus) => {
-    if (status === 'playing') {
-      setIsLoading(false);
-    } else if (status === 'offline') {
-      setIsLoading(false);
-      setError('Se perdió la señal de la cámara.');
-    }
+  // isLoading se limpia con el primer frame anotado del server ('streaming'). El
+  // componente maneja su propia reconexión y muestra el badge "Reconectando…" en los
+  // cortes transitorios — no se setea un error duro desde el stream (reconecta solo).
+  const handleStatus = useCallback((status: StreamStatus) => {
+    if (status === 'streaming') setIsLoading(false);
   }, []);
 
   const vehicles = metrics ? Math.round(metrics.unique_vehicles) : 0;
@@ -148,18 +138,14 @@ export function CameraLivePanel({ cameraId, streamUrl }: CameraLivePanelProps) {
               <p className="max-w-xs text-[12.5px] text-ink-2">{error}</p>
             </div>
           ) : streamUrl ? (
-            <>
-              {/* Video HLS directo de Claro (fluido), independiente del alta. */}
-              <HlsPlayer
-                src={streamUrl}
-                controls={false}
-                objectFit="contain"
-                onStatusChange={handleStatus}
-              />
-              {/* Overlay de cajas: solo con el pipeline activo (isActive); el hook
-                  ya devuelve [] si las detecciones están stale o hay error. */}
-              {isActive && <DetectionOverlay boxes={detections.boxes} frame={detections.frame} />}
-            </>
+            /* Frame anotado server-side: las cajas vienen dibujadas por el edge. El
+               canvas consume el MJPEG processed con reconexión propia; enabled tras el
+               alta (isActive), espejo del gate del SSE de métricas. */
+            <AnnotatedCameraStream
+              cameraId={cameraId}
+              enabled={isActive}
+              onStatusChange={handleStatus}
+            />
           ) : null}
 
           {isLoading && !error && (
