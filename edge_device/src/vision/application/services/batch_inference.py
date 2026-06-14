@@ -1,18 +1,22 @@
-"""Batch inference worker + cola compartida acotada (topología B, 15Hz).
+"""Batch inference worker + cola keep-latest-por-cámara (topología B, 15Hz).
 
 Reemplaza el modelo "tick 1Hz → snapshot-latest → inferencia serial por cámara"
-por: los producers per-cámara EMPUJAN frames a una cola FIFO compartida acotada
-(drop-oldest), y UN solo worker central junta hasta `max_batch` / espera hasta
-`max_wait`, infiere en lote (`detect_batch`, una pasada GPU) y demuxea por
-`camera_id` a la post-chain registrada (`Tracking → Speed → Zone → Aggregation`,
-ver `pipeline_builder.build_post_chain`).
+por: los producers per-cámara EMPUJAN frames a una cola compartida que guarda SOLO
+el frame más reciente de cada cámara (drop-to-latest), y UN solo worker central
+junta el latest de hasta `max_batch` cámaras / espera hasta `max_wait`, infiere en
+lote (`detect_batch`, una pasada GPU) y demuxea por `camera_id` a la post-chain
+registrada (`Tracking → Speed → Zone → Aggregation`, ver
+`pipeline_builder.build_post_chain`).
 
 Claves (cerradas en el plan):
-- **UN worker (una GPU)** + **cola FIFO** → el orden per-cámara se preserva sin
-  sincronizar las cámaras (el detector es stateless por imagen).
-- **Cola acotada drop-oldest**: ni drenaje infinito (OOM) ni snapshot-latest. Si
-  dropea bajo carga, la cadencia baja parejo y el tracker lo banca (timestamps
-  reales + `lost_track_buffer`).
+- **UN worker (una GPU)** + **un frame por cámara por lote** → el orden per-cámara
+  se preserva sin sincronizar las cámaras (el detector es stateless por imagen).
+- **Cola keep-latest-por-cámara (A2)**: cuando el decode supera a la inferencia, el
+  worker infiere el frame MÁS RECIENTE de cada cámara y descarta los intermedios.
+  El throughput de inferencia no cambia (mismo nº de inferencias/s, solo CUÁLES
+  frames); las cajas quedan a ~1 inferencia de lag (alineadas) en vez de arrastrar
+  un backlog FIFO de varios segundos. El tracker banca el gap (timestamps reales +
+  `lost_track_buffer`).
 - **Concurrencia**: el worker corre como task asyncio; la inferencia GPU se
   off-loadea al executor compartido (igual que el scheduler viejo) y el demux corre
   en el loop. El `ts` del item es el **frame-clock** (`frame_index/15`), no el
@@ -28,7 +32,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
@@ -41,8 +44,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_MAX_BATCH = 16
 _DEFAULT_MAX_WAIT_S = 0.05      # 50 ms (rango sugerido 50-100 ms)
-_DEFAULT_QUEUE_MAXSIZE = 64
-_POLL_INTERVAL_S = 0.005        # granularidad del puente thread→asyncio
+_POLL_INTERVAL_S = 0.005        # granularidad del puente thread→asyncio (await sleep, no busy-spin)
 
 
 @dataclass(frozen=True)
@@ -66,38 +68,52 @@ class _Sink:
     state: object = None
 
 
-class BoundedFrameQueue:
-    """Cola FIFO acotada con drop-oldest, thread-safe.
+class LatestPerCameraQueue:
+    """Cola keep-latest POR CÁMARA, thread-safe (drop-to-latest).
 
-    La alimentan los producer threads per-cámara (`put`); el worker la drena
-    (`collect_batch`). Llena → se descarta el ítem más viejo y se cuenta en
-    `dropped`.
+    Reemplaza el FIFO drop-oldest: en vez de acumular un backlog y procesar los
+    frames más viejos, guarda SOLO el frame más reciente de cada cámara. El worker
+    infiere ese frame fresco y descarta los intermedios → las cajas quedan a ~1
+    inferencia de lag (alineadas), sin que el lag crezca con el tiempo.
+
+    La alimentan los producer threads per-cámara (`put`, sobrescribe el slot de la
+    cámara); el worker la drena (`collect_batch`, un frame por cámara). El número de
+    slots está acotado por el nº de cámaras vivas (no por un maxsize). `discard`
+    limpia el slot de una cámara dada de baja para no inferir frames muertos.
     """
 
-    def __init__(self, maxsize: int = _DEFAULT_QUEUE_MAXSIZE) -> None:
-        if maxsize < 1:
-            raise ValueError("maxsize debe ser >= 1")
-        self._maxsize = maxsize
-        self._dq: deque[QueueItem] = deque()
+    def __init__(self) -> None:
+        # dict ordenado por inserción → fairness entre cámaras en el drain.
+        self._latest: dict[str, QueueItem] = {}
         self._lock = threading.Lock()
         self._dropped = 0
 
     def put(self, item: QueueItem) -> None:
         with self._lock:
-            if len(self._dq) >= self._maxsize:
-                self._dq.popleft()  # drop-oldest
+            if item.camera_id in self._latest:
+                # Había un frame de esta cámara sin inferir → se descarta (drop-to-latest).
                 self._dropped += 1
-            self._dq.append(item)
+            self._latest[item.camera_id] = item
 
     def collect_batch(self, max_batch: int) -> list[QueueItem]:
-        """Saca hasta `max_batch` ítems en orden FIFO (no-bloqueante)."""
+        """Saca el frame más reciente de hasta `max_batch` cámaras (uno por cámara),
+        por orden de inserción (fairness). No-bloqueante."""
         with self._lock:
-            n = min(max_batch, len(self._dq))
-            return [self._dq.popleft() for _ in range(n)]
+            if max_batch >= len(self._latest):
+                items = list(self._latest.values())
+                self._latest.clear()
+                return items
+            cids = list(self._latest.keys())[:max_batch]
+            return [self._latest.pop(cid) for cid in cids]
+
+    def discard(self, camera_id: str) -> None:
+        """Limpia el slot de una cámara dada de baja (idempotente)."""
+        with self._lock:
+            self._latest.pop(camera_id, None)
 
     def __len__(self) -> int:
         with self._lock:
-            return len(self._dq)
+            return len(self._latest)
 
     @property
     def dropped(self) -> int:
@@ -116,7 +132,6 @@ class BatchInferenceWorker:
         *,
         max_batch: int = _DEFAULT_MAX_BATCH,
         max_wait_s: float = _DEFAULT_MAX_WAIT_S,
-        queue_maxsize: int = _DEFAULT_QUEUE_MAXSIZE,
         imgsz: Optional[int] = None,
     ) -> None:
         self._detector = detector
@@ -127,7 +142,8 @@ class BatchInferenceWorker:
         self._imgsz = imgsz
         self._max_batch = max_batch
         self._max_wait_s = max_wait_s
-        self.queue = BoundedFrameQueue(queue_maxsize)
+        # Cola keep-latest-por-cámara (A2): sin maxsize, acotada por nº de cámaras.
+        self.queue = LatestPerCameraQueue()
         self._sinks: dict[str, _Sink] = {}
         self._registry_lock = threading.Lock()
         self._running = False
@@ -148,6 +164,10 @@ class BatchInferenceWorker:
     def unregister(self, camera_id: str) -> None:
         with self._registry_lock:
             self._sinks.pop(camera_id, None)
+        # Limpia el slot encolado de la cámara dada de baja: el demux ya tolera
+        # sink=None (descarta sin romper), pero así no se gasta una inferencia en un
+        # frame de una cámara que ya no infiere (A2, confirmación #4).
+        self.queue.discard(camera_id)
 
     # ---- Ingreso (lo llama el producer thread per-cámara) --------------
 
@@ -187,20 +207,28 @@ class BatchInferenceWorker:
     # ---- Batching + demux ----------------------------------------------
 
     async def _collect_batch(self) -> list[QueueItem]:
-        """Espera el primer ítem; luego junta hasta `max_batch`, esperando hasta
-        `max_wait_s` por más si el lote viene parcial."""
+        """Espera el primer frame; abre una ventana de gather de `max_wait_s` para que
+        varias cámaras (y frames más nuevos que sobrescriben su slot) entren al mismo
+        lote GPU; luego saca el frame MÁS RECIENTE de cada cámara de una sola vez.
+
+        wait-then-collect-ONCE (A2): un único `collect_batch` al final garantiza UN
+        frame por cámara por lote. El viejo `batch.extend` en loop podía meter 2 frames
+        de la misma cámara (frame que llega durante la ventana) → rompía keep-latest.
+        Si ya hay `max_batch` cámaras encoladas, no espera. Usa `await asyncio.sleep`
+        (cede el loop, no es busy-spin; el CPU es el cuello, confirmación #2)."""
         while self._running and len(self.queue) == 0:
             await asyncio.sleep(_POLL_INTERVAL_S)
-        batch = self.queue.collect_batch(self._max_batch)
-        if len(batch) >= self._max_batch or not self._running:
-            return batch
-        # Lote parcial: completar hasta max_batch o hasta agotar max_wait.
+        if not self._running:
+            return self.queue.collect_batch(self._max_batch)
         loop = asyncio.get_running_loop()
         deadline = loop.time() + self._max_wait_s
-        while self._running and len(batch) < self._max_batch and loop.time() < deadline:
+        while (
+            self._running
+            and len(self.queue) < self._max_batch
+            and loop.time() < deadline
+        ):
             await asyncio.sleep(_POLL_INTERVAL_S)
-            batch.extend(self.queue.collect_batch(self._max_batch - len(batch)))
-        return batch
+        return self.queue.collect_batch(self._max_batch)
 
     async def _process_batch(self, batch: list[QueueItem]) -> None:
         """Infiere el lote en GPU (off-loop) y demuxea por camera_id, en orden."""

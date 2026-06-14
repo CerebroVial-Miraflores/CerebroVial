@@ -12,7 +12,8 @@ del lado del harness, costo cero en producción:
 - `_InstrumentedWorker` subclasea el worker y solo registra `len(batch)` antes de
   delegar en `super()._process_batch`.
 - `MetricsPostChain` envuelve la post-chain real y cuenta/timea por cámara.
-- `queue.dropped` ya está expuesto por `BoundedFrameQueue`.
+- `queue.dropped` ya está expuesto por `LatestPerCameraQueue` (frames superseded por
+  uno más nuevo de la misma cámara antes de inferir = drop-to-latest).
 
 Honestidad del resultado: el **N fiel** sale de los modos `file`/`hls` en **CUDA**
 (decode co-residente real). El modo `synthetic` da el **techo de inferencia** (sin
@@ -294,7 +295,7 @@ async def run_one(
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="harness-infer")
     worker = _InstrumentedWorker(
         detector, executor, None,
-        max_batch=max_batch, max_wait_s=max_wait, queue_maxsize=max(2 * n, 16),
+        max_batch=max_batch, max_wait_s=max_wait,
         metrics=metrics, clock=clock,
     )
     worker.start()

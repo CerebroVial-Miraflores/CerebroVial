@@ -14,6 +14,7 @@ correctitud del checkpoint de la sub-fase 4 (el throughput 11×15 real necesita
 CUDA homogéneo → cloud).
 """
 import asyncio
+import time
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -33,11 +34,19 @@ _CLARO = "https://live.smartechlatam.online/claro/x/index.m3u8"
 
 
 class _FakeStdout:
-    def __init__(self, chunks):
+    # Pace los frames a una cadencia de decode (~real): el ffmpeg real entrega a
+    # 15fps, no instantáneo. Sin esto el productor empuja los 24 frames de golpe y la
+    # cola keep-latest-por-cámara (A2) descarta casi todos antes de que el worker
+    # infiera → no quedaría secuencia para verificar el tracking.
+    def __init__(self, chunks, read_delay_s=0.02):
         self._chunks = list(chunks)
+        self._read_delay_s = read_delay_s
 
     def read(self, n):
-        return self._chunks.pop(0) if self._chunks else b""
+        if not self._chunks:
+            return b""
+        time.sleep(self._read_delay_s)
+        return self._chunks.pop(0)
 
 
 class _FakeProc:
@@ -124,7 +133,9 @@ async def test_batched_path_tracks_moving_object_at_15fps():
     state = _RecordingState()
 
     with ThreadPoolExecutor(max_workers=1) as ex:
-        worker = BatchInferenceWorker(_MovingBoxDetector(), ex, max_batch=4, max_wait_s=0.02)
+        # max_wait < cadencia del fake stdout (20ms) → el worker colecta cada frame
+        # fresco sin que dos caigan en la misma ventana → procesa la secuencia entera.
+        worker = BatchInferenceWorker(_MovingBoxDetector(), ex, max_batch=4, max_wait_s=0.005)
         worker.register("cam1", post_chain, aggregator=None, state=state)
         worker.start()
 
