@@ -5,7 +5,10 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel
 from typing import Optional, Dict
-from ....application.services.multi_camera import MultiCameraManager
+from ....application.services.multi_camera import (
+    InferenceCapacityError,
+    MultiCameraManager,
+)
 from ....infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
 from ...visualization import build_visualizer_from_vision_cfg
 
@@ -112,6 +115,15 @@ async def get_cameras_status():
     manager = get_manager()
     return manager.get_status()
 
+@app.get("/cameras/inference-status")
+async def get_inference_status():
+    """Estado del contenedor de inferencia: {inferring, count, cap, capacity_used}.
+
+    Lo consume la UX del front para mostrar capacidad usada / tope. (La UX no es
+    scope de este endpoint.)"""
+    manager = get_manager()
+    return manager.get_inference_status()
+
 class CameraConfig(BaseModel):
     source: str
     source_type: str
@@ -144,7 +156,11 @@ async def add_camera(camera_id: str, config: CameraConfig):
 
     cfg = _build_camera_config(camera_id, config.source, config.source_type, config.zones)
     renderer = build_visualizer_from_vision_cfg(cfg.vision)
-    await manager.activate_camera(camera_id, cfg, renderer=renderer)
+    try:
+        await manager.activate_camera(camera_id, cfg, renderer=renderer)
+    except InferenceCapacityError as e:
+        # Tope del contenedor alcanzado: 409, sin degradar en silencio.
+        raise HTTPException(status_code=409, detail=str(e)) from e
     return {"status": "started", "camera_id": camera_id}
 
 @app.delete("/cameras/{camera_id}")

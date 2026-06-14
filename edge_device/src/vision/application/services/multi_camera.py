@@ -30,6 +30,14 @@ from .queue_push_producer import QueuePushProducer
 logger = logging.getLogger(__name__)
 
 
+class InferenceCapacityError(Exception):
+    """El contenedor de inferencia llegó a su tope (`max_inference_cameras`).
+
+    Se levanta al intentar arrancar una cámara nueva cuando el set que ya infiere
+    está lleno. La capa de presentación la mapea a HTTP 409 (NO se degrada en
+    silencio: el tope real lo fija el operador según el harness de carga)."""
+
+
 @dataclass
 class CameraState:
     camera_id: str
@@ -152,6 +160,10 @@ class MultiCameraManager:
         # ultralytics). analyze_fps se inyecta a la fuente full-decode; imgsz al worker.
         self.analyze_fps: int = 15
         self.imgsz: int = 640
+        # Tope del contenedor de inferencia (cámaras infiriendo simultáneas). None =
+        # sin tope efectivo (default → no rompe despliegues actuales). El operador lo
+        # fija según el harness de carga (cámaras-por-contenedor a 15Hz).
+        self.max_inference_cameras: Optional[int] = None
 
     def _shared_detector_for(self, config: DictConfig) -> Any:
         """Detector YOLO singleton de las cámaras del scheduler (D-018: UN modelo
@@ -274,7 +286,12 @@ class MultiCameraManager:
             await self.remove_camera(camera_id)
 
         camera = self.add_camera(camera_id, config, renderer=renderer)
-        await self.start_camera(camera_id)
+        try:
+            await self.start_camera(camera_id)
+        except InferenceCapacityError:
+            # No dejar la cámara registrada-pero-sin-arrancar si el tope la rechazó.
+            await self.remove_camera(camera_id)
+            raise
         return camera
 
     async def start_camera(self, camera_id: str) -> None:
@@ -286,6 +303,16 @@ class MultiCameraManager:
         if camera.state.is_running:
             logger.info("Camera %s already running", camera_id)
             return
+
+        # Tope del contenedor: rechazar una cámara NUEVA si el set que ya infiere
+        # llegó al cap. No se degrada en silencio (error claro → 409 en presentación).
+        if self.max_inference_cameras is not None:
+            running = sum(1 for c in self.cameras.values() if c.state.is_running)
+            if running >= self.max_inference_cameras:
+                raise InferenceCapacityError(
+                    f"contenedor lleno: tope {self.max_inference_cameras} cámaras "
+                    f"infiriendo ({running} activas)"
+                )
 
         camera.state.is_running = True
         # Topología B — ORDEN ESTRICTO (cuidado (b)): detector creado → worker
@@ -401,6 +428,20 @@ class MultiCameraManager:
                 "zones": list(cam.state.config.vision.zones.keys()) if cam.state.config.vision.zones else []
             }
             for cam_id, cam in self.cameras.items()
+        }
+
+    def get_inference_status(self) -> dict:
+        """Estado del contenedor de inferencia (lo consume la UX del front).
+
+        `inferring` = ids de las cámaras corriendo; `count` = cuántas; `cap` = tope
+        (None = sin tope); `capacity_used` = count/cap (None si no hay tope)."""
+        inferring = [cid for cid, c in self.cameras.items() if c.state.is_running]
+        cap = self.max_inference_cameras
+        return {
+            "inferring": inferring,
+            "count": len(inferring),
+            "cap": cap,
+            "capacity_used": (len(inferring) / cap) if cap else None,
         }
 
     def get_latest_frame(self, camera_id: str, processed: bool = False):

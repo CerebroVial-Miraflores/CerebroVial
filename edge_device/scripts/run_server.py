@@ -22,6 +22,10 @@ def main(cfg: DictConfig):
     device_req = os.environ.get("VISION_DEVICE", str(vision_cfg.get("device", "auto")))
     analyze_fps = int(os.environ.get("VISION_ANALYZE_FPS", vision_cfg.get("analyze_fps", 15)))
     imgsz = int(os.environ.get("VISION_IMGSZ", vision_cfg.get("imgsz", 640)))
+    # Tope del contenedor: None/0/ausente = sin tope (default). El operador lo fija
+    # según el harness (cámaras-por-contenedor a 15Hz).
+    _cap_raw = os.environ.get("VISION_MAX_CAMERAS", vision_cfg.get("max_inference_cameras", None))
+    max_cameras = int(_cap_raw) if _cap_raw not in (None, "", "null", 0, "0") else None
 
     # Probe de hardware UNA vez al levantar: imprime el banner (verde si hay GPU o
     # device forzado; ROJO si AUTO cae a CPU) y deja el device resuelto. NO carga el
@@ -35,6 +39,7 @@ def main(cfg: DictConfig):
     manager.inference_device = inference_device
     manager.analyze_fps = analyze_fps
     manager.imgsz = imgsz
+    manager.max_inference_cameras = max_cameras
 
     # C1 (D1): arranque on-demand. El server NO registra ni arranca cámaras al
     # iniciar — cero modelos YOLO en memoria. El frontend da de alta cada cámara

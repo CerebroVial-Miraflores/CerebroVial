@@ -40,6 +40,31 @@ def test_add_camera(client, mock_manager):
     mock_manager.activate_camera.assert_called_once()
 
 
+def test_add_camera_at_cap_returns_409(client, mock_manager):
+    """Tope del contenedor: activate_camera levanta InferenceCapacityError → 409
+    (no se degrada en silencio)."""
+    from src.vision.application.services.multi_camera import InferenceCapacityError
+
+    mock_manager.activate_camera = AsyncMock(
+        side_effect=InferenceCapacityError("contenedor lleno: tope 8 cámaras infiriendo")
+    )
+    response = client.post("/cameras/cam9", json={"source": "x", "source_type": "hls", "zones": {}})
+    assert response.status_code == 409
+    assert "contenedor lleno" in response.json()["detail"]
+
+
+def test_inference_status_endpoint(client, mock_manager):
+    mock_manager.get_inference_status.return_value = {
+        "inferring": ["cam1", "cam2"], "count": 2, "cap": 8, "capacity_used": 0.25,
+    }
+    response = client.get("/cameras/inference-status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 2
+    assert body["cap"] == 8
+    assert body["inferring"] == ["cam1", "cam2"]
+
+
 def test_remove_camera(client, mock_manager):
     # C1/D3: la baja on-demand para + libera el modelo vía remove_camera.
     mock_manager.remove_camera = AsyncMock()

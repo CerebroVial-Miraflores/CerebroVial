@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 
 from src.vision.application.services.multi_camera import (
     CameraInstance,
+    InferenceCapacityError,
     MultiCameraManager,
 )
 
@@ -202,6 +203,58 @@ async def test_shutdown_stops_batch_worker(manager, stub_batched):
         await manager.shutdown()
         MockWorker.return_value.stop.assert_awaited_once()
         assert manager._batch_worker is None
+
+
+# ---- tope del contenedor de inferencia --------------------------------
+
+
+@pytest.mark.asyncio
+async def test_start_camera_rejected_beyond_cap(manager):
+    manager.max_inference_cameras = 1
+    with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
+        _patch_builder(MockBuilder)
+        await manager.activate_camera("cam1", DictConfig({'vision': {'source': 's1', 'zones': {}}}))
+
+        manager.add_camera("cam2", DictConfig({'vision': {'source': 's2', 'zones': {}}}))
+        with pytest.raises(InferenceCapacityError, match="tope 1"):
+            await manager.start_camera("cam2")
+        assert not manager.cameras["cam2"].state.is_running
+
+
+@pytest.mark.asyncio
+async def test_activate_beyond_cap_cleans_up_the_rejected_camera(manager):
+    manager.max_inference_cameras = 1
+    with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
+        _patch_builder(MockBuilder)
+        await manager.activate_camera("cam1", DictConfig({'vision': {'source': 's1', 'zones': {}}}))
+        with pytest.raises(InferenceCapacityError):
+            await manager.activate_camera("cam2", DictConfig({'vision': {'source': 's2', 'zones': {}}}))
+        # cam2 NO queda registrada-pero-sin-arrancar; cam1 sigue viva.
+        assert "cam2" not in manager.cameras
+        assert manager.cameras["cam1"].state.is_running
+
+
+@pytest.mark.asyncio
+async def test_get_inference_status_reports_set_count_cap(manager):
+    manager.max_inference_cameras = 4
+    with patch('src.vision.application.services.multi_camera.VisionApplicationBuilder') as MockBuilder:
+        _patch_builder(MockBuilder)
+        await manager.activate_camera("cam1", DictConfig({'vision': {'source': 's1', 'zones': {}}}))
+        await manager.activate_camera("cam2", DictConfig({'vision': {'source': 's2', 'zones': {}}}))
+
+        st = manager.get_inference_status()
+        assert set(st["inferring"]) == {"cam1", "cam2"}
+        assert st["count"] == 2
+        assert st["cap"] == 4
+        assert st["capacity_used"] == 0.5
+
+
+def test_inference_status_no_cap_default(manager):
+    """Default sin tope: cap None, capacity_used None."""
+    st = manager.get_inference_status()
+    assert st["cap"] is None
+    assert st["capacity_used"] is None
+    assert st["count"] == 0
 
 
 @pytest.mark.asyncio
