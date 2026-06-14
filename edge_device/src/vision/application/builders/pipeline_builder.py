@@ -43,6 +43,7 @@ from ..aggregators.async_aggregator import AsyncTrafficAggregator
 from ..pipelines.async_pipeline import AsyncVisionPipeline
 from ..processors import (
     AggregationProcessor,
+    FrameProcessor,
     SpeedEstimationProcessor,
     TrackingProcessor,
     ZoneProcessor,
@@ -54,18 +55,25 @@ logger = logging.getLogger(__name__)
 _DEFAULT_VEHICLE_CLASSES = {'car': 2, 'motorcycle': 3, 'bus': 5, 'truck': 7}
 
 
-def create_detector(vision_cfg: DictConfig) -> VehicleDetector:
+def create_detector(
+    vision_cfg: DictConfig, device: str | None = None
+) -> VehicleDetector:
     """Construye el detector/modelo a partir de la config de visión.
 
     Factory standalone (independiente de un builder por-cámara): permite
     construir el modelo UNA vez y compartirlo. B1 Paso 1a deja esta costura
     para que el scheduler de 1b inyecte el mismo detector a N cámaras vía
     `VisionApplicationBuilder.build_pipeline(detector=...)`.
+
+    `device` (resuelto en el arranque por `select_device()`): se pasa al
+    `YoloDetector`. `None` → el detector aplica su fallback cuda→mps→cpu sin
+    banner (path legacy / construcción directa).
     """
     logger.info("Loading model: %s", vision_cfg.model.path)
     return YoloDetector(
         model_path=vision_cfg.model.path,
         conf_threshold=vision_cfg.model.conf_threshold,
+        device=device,
     )
 
 
@@ -114,6 +122,12 @@ class VisionApplicationBuilder:
             self.vision_cfg.source_type,
         )
         perf_cfg = self.vision_cfg.get('performance', {})
+        # Knob analyze_fps: solo aplica a la fuente full-decode (topología B). Para
+        # otros source_type, pasar `fps` rompería SourceConfig (no lo conoce), así
+        # que se incluye condicionalmente. Default 15 = cadencia actual.
+        extra = {}
+        if self.vision_cfg.source_type == "hls_fulldecode":
+            extra["fps"] = int(self.vision_cfg.get('analyze_fps', 15))
         self.source = create_source(
             source_config=self.vision_cfg.source,
             source_type=self.vision_cfg.source_type,
@@ -122,6 +136,7 @@ class VisionApplicationBuilder:
             target_height=perf_cfg.get('target_height', None),
             format=perf_cfg.get('youtube_format', 'best'),
             loop=self.vision_cfg.get('loop', True),
+            **extra,
         )
         return self
 
@@ -268,6 +283,48 @@ class VisionApplicationBuilder:
             target_fps=perf_cfg.get('target_fps', 30),
         )
         return self.pipeline
+
+    def build_post_chain(self) -> FrameProcessor:
+        """Construye la POST-CHAIN headless (topología B, 15Hz).
+
+        Arranca en `TrackingProcessor` y recibe detecciones ya calculadas por el
+        batch worker central — la detección sale del head de la chain y se
+        centraliza. Orden: Tracking → Speed → Zone → Aggregation, reusando
+        `build_tracker/speed/zones/persistence`. Devuelve el head
+        (`TrackingProcessor`), un `FrameProcessor` que se invoca con un
+        `FrameAnalysis` que ya trae `vehicles` poblado (`detection_ran=True`).
+
+        NO toca `build_pipeline` (el path actual) ni construye source/detector: la
+        fuente la maneja el producer-push y el detector es el singleton compartido
+        del batch worker.
+        """
+        if not self.tracker:
+            self.build_tracker()
+        if not self.speed_estimator:
+            self.build_speed_estimator()
+        if not self.zone_counter:
+            self.build_zones()
+        if not self.aggregator:
+            self.build_persistence()
+
+        if not self.tracker:
+            raise ValueError("post-chain requiere un tracker")
+
+        head = TrackingProcessor(self.tracker, metrics_collector=self.metrics_collector)
+        current = head
+        if self.speed_estimator:
+            sp = SpeedEstimationProcessor(self.speed_estimator)
+            current.set_next(sp)
+            current = sp
+        if self.zone_counter:
+            zp = ZoneProcessor(self.zone_counter)
+            current.set_next(zp)
+            current = zp
+        if self.aggregator:
+            ap = AggregationProcessor(self.aggregator)
+            current.set_next(ap)
+            current = ap
+        return head
 
     def get_components(self) -> dict:
         """Componentes construidos, para consumo externo (e.g., Fase 6 cablea el renderer)."""

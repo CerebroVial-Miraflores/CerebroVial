@@ -20,13 +20,13 @@ nombre humano vía su propio mapping camera_id → street. F41 puede formalizar
 un `CameraMetadataProvider` inyectable si aparece un consumidor non-frontend
 que lo requiera (YAGNI en MVP1).
 
-Cruce thread→async (DHU del wiring, 6d): el broadcaster **se llama solo desde
-el event loop main**, nunca desde el worker thread del aggregator. El
-`AsyncTrafficAggregator-worker` deposita `TrafficData` en su `_output_queue`
-(thread-safe); el `CameraScheduler` (tick a 1 Hz, en el event loop) consume
-con `aggregator.flush()` (sync, no bloquea) y hace `await broadcaster.publish(td)`
-desde el event loop. Sin `run_coroutine_threadsafe`, sin event loop en el
-worker.
+Cruce thread→async (topología B / 15Hz): el broadcaster se llama desde el event
+loop main. El `AsyncTrafficAggregator-worker` deposita `TrafficData` en su
+`_output_queue` (thread-safe); el demux del `BatchInferenceWorker` (task asyncio,
+en el event loop) lo consume con `aggregator.flush()` (sync, no bloquea) y hace
+`await broadcaster.publish(td)`. Única excepción: el `QueuePushProducer` (daemon
+thread), al morir la fuente, cierra la ventana con `force_flush()` y publica el
+resultado vía `asyncio.run_coroutine_threadsafe(...)` sobre el loop main.
 """
 from __future__ import annotations
 

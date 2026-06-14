@@ -3,7 +3,7 @@
 Detección cada N frames; en frames intermedios el processor emite un
 `FrameAnalysis` con `vehicles=[]`, sin intentar interpolar bboxes. La
 continuidad temporal de IDs se delega al `VehicleTracker` downstream
-(ByteTrack con `lost_track_buffer=60`).
+(ByteTrack con `lost_track_buffer=60` → ~2s reales @15fps).
 
 La versión Sesión 1 mantenía `_vehicle_trajectories` + `get_analysis_for_frame`
 para "interpolar" detecciones en frames skip. Esa funcionalidad fue identificada
@@ -29,14 +29,20 @@ from . import FrameProcessor
 
 logger = logging.getLogger(__name__)
 
-# B1 1c — ÚNICA política de imgsz del producto, en un solo lugar. El spike validó
-# 11 cámaras a 1 Hz @320 con margen holgado (D-018). La aplica el scheduler
-# (relectura per-tick de cfg.vision.model.imgsz, fallback a esta constante).
+# B1 1c — ÚNICA política de imgsz del producto, en un solo lugar. La aplica el
+# scheduler (relectura per-tick de cfg.vision.model.imgsz, fallback a esta
+# constante), así que cambiar este valor flipea todas las cámaras.
+# Fase 2 (2026-06-12): default a 640. El spike de D-018 había fijado 320 por
+# presupuesto de cómputo, pero el benchmark de Fase 2 mostró que 640 cuesta
+# ~183 ms/ronda de 11 cámaras (≪ 1000 ms) y recupera ~el doble de detecciones
+# (320→~6 cajas, 640→~12-14). El 320 era innecesariamente conservador. imgsz
+# queda configurable per-cámara (cfg.vision.model.imgsz); el techo (768/GPU) se
+# explora con datos en deploy centralizado. Revisión registrada en D-018.
 # B1 Paso 4: con el path viejo retirado, ya NO hay caller de producción que
 # infiera con imgsz=None — el scheduler siempre aplica esta política. `imgsz=None`
 # sigue siendo una entrada válida del processor (nativo de ultralytics), pero
 # nadie la usa en producción; se conserva como capacidad de la API (ejercida en tests).
-DEFAULT_IMGSZ = 320
+DEFAULT_IMGSZ = 640
 
 
 class SmartDetectionProcessor(FrameProcessor):

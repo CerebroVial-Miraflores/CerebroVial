@@ -104,6 +104,87 @@ def test_detect_passes_imgsz_when_given():
     assert model.last_kwargs.get("imgsz") == 320
 
 
+class FakeBatchModel:
+    """Mimics ultralytics batch: model([f1, f2, ...]) -> [result1, result2, ...].
+
+    Un result por frame, con sus propias boxes (`boxes_per_frame[i]`). Captura los
+    kwargs igual que FakeModel.
+    """
+
+    def __init__(self, boxes_per_frame):
+        self._boxes_per_frame = boxes_per_frame
+        self.last_kwargs = None
+        self.last_input = None
+
+    def __call__(self, frames, verbose=False, conf=0.5, **kwargs):
+        self.last_kwargs = kwargs
+        self.last_input = frames
+        return [SimpleNamespace(boxes=b) for b in self._boxes_per_frame]
+
+
+def _fields(v):
+    """Campos deterministas de un DetectedVehicle (sin el timestamp wall-clock)."""
+    return (v.id, v.type, v.confidence, v.bbox)
+
+
+def test_detect_batch_equals_detect_per_frame():
+    """detect_batch([f])[i] == detect(fi) salvo el timestamp (wall-clock)."""
+    boxes_per_frame = [
+        [_box(2, [0, 0, 10, 10], 0.9)],
+        [_box(7, [5, 5, 20, 20], 0.8), _box(0, [1, 1, 2, 2], 0.95)],  # person → filtrado
+        [],
+    ]
+    frames = [np.zeros((10, 10, 3), dtype=np.uint8) for _ in boxes_per_frame]
+    frame_ids = [10, 20, 30]
+
+    det = YoloDetector(model=FakeBatchModel(boxes_per_frame), conf_threshold=0.5)
+    batched = det.detect_batch(frames, frame_ids=frame_ids)
+
+    assert len(batched) == len(frames)
+    for i, (fr, fid) in enumerate(zip(frames, frame_ids)):
+        single = _detector(boxes_per_frame[i]).detect(fr, frame_id=fid)
+        assert [_fields(v) for v in batched[i]] == [_fields(v) for v in single]
+
+
+def test_detect_batch_empty_input_returns_empty():
+    det = _detector([])
+    assert det.detect_batch([]) == []
+
+
+def test_detect_batch_frame_ids_length_mismatch_raises():
+    det = YoloDetector(model=FakeBatchModel([[], []]), conf_threshold=0.5)
+    frames = [np.zeros((10, 10, 3), dtype=np.uint8) for _ in range(2)]
+    try:
+        det.detect_batch(frames, frame_ids=[1])  # 2 frames, 1 id
+        assert False, "esperaba ValueError"
+    except ValueError:
+        pass
+
+
+def test_detect_batch_defaults_frame_ids_to_index():
+    """Sin frame_ids, el id temporal usa el índice del frame en el lote."""
+    boxes_per_frame = [[_box(2, [0, 0, 1, 1], 0.9)], [_box(5, [0, 0, 1, 1], 0.9)]]
+    det = YoloDetector(model=FakeBatchModel(boxes_per_frame), conf_threshold=0.5)
+    frames = [np.zeros((10, 10, 3), dtype=np.uint8) for _ in boxes_per_frame]
+    batched = det.detect_batch(frames)
+    assert batched[0][0].id == "0_0"
+    assert batched[1][0].id == "1_0"
+
+
+def test_detect_batch_passes_imgsz_when_given():
+    model = FakeBatchModel([[]])
+    det = YoloDetector(model=model, conf_threshold=0.5)
+    det.detect_batch([np.zeros((10, 10, 3), dtype=np.uint8)], imgsz=320)
+    assert model.last_kwargs.get("imgsz") == 320
+
+
+def test_detect_batch_omits_imgsz_when_none():
+    model = FakeBatchModel([[]])
+    det = YoloDetector(model=model, conf_threshold=0.5)
+    det.detect_batch([np.zeros((10, 10, 3), dtype=np.uint8)])
+    assert "imgsz" not in model.last_kwargs
+
+
 def test_release_drops_model_reference():
     """C1/E1: tras release() el modelo no queda referenciado (no toca torch en
     el path inyectado, `_device is None`). Idempotente."""

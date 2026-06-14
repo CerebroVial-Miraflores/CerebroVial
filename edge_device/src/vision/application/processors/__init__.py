@@ -91,6 +91,14 @@ class TrackingProcessor(FrameProcessor):
         if self.metrics_collector:
             self.metrics_collector.record_tracking(duration_ms)
 
+        # Sub-fase 5 (topología B, 15Hz): rutear el FRAME-CLOCK (analysis.timestamp,
+        # = frame_index/fps) a los vehículos trackeados, para que el speed estimator
+        # compute Δt sobre la cadencia y NO sobre el wall-clock que estampa el
+        # detector. Blinda la velocidad contra el jitter de entrega de ffmpeg
+        # (refinamiento #2). El detector deja de ser la fuente del ts de velocidad.
+        if tracked:
+            tracked = [replace(v, timestamp=analysis.timestamp) for v in tracked]
+
         return replace(
             analysis,
             vehicles=tracked,

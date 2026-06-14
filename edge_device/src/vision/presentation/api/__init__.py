@@ -3,7 +3,7 @@ API package.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import cameras, health, state, streaming, video
+from .routes import cameras, detections, health, state, streaming, video
 from ...infrastructure.broadcast.realtime_broadcaster import RealtimeBroadcaster
 
 # Initialize main app
@@ -24,6 +24,7 @@ app.include_router(streaming.app.router, tags=["streaming"])
 app.include_router(state.app.router, tags=["state"])
 app.include_router(health.app.router, tags=["health"])
 app.include_router(video.app.router, tags=["video"])
+app.include_router(detections.app.router, tags=["detections"])
 
 # Initialize shared components
 broadcaster = RealtimeBroadcaster()

@@ -22,13 +22,25 @@ class VehicleDetector(Protocol):
     `imgsz` (B1 1c): resolución de inferencia POR LLAMADA (no estado del detector,
     para que un detector compartido entre cámaras —D-018/Paso 2— pueda inferir con
     imgsz distinto por cámara). `None` = "no especifico → el backend decide su
-    nativo"; NO es una política de 640. La única política de producto es
+    nativo"; NO es la política de default. La única política de producto es
     `DEFAULT_IMGSZ` (ver `application/processors/smart_detection.py`), que el
     scheduler aplica.
     """
     def detect(
         self, frame: np.ndarray, frame_id: int, imgsz: Optional[int] = None
     ) -> list[DetectedVehicle]: ...
+
+    def detect_batch(
+        self,
+        frames: list[np.ndarray],
+        frame_ids: Optional[list[int]] = None,
+        imgsz: Optional[int] = None,
+    ) -> list[list[DetectedVehicle]]:
+        """Detección en lote (topología B/15Hz): una lista de detecciones por frame.
+
+        `detect_batch([f])[0]` equivale a `detect(f)` salvo el `timestamp` wall-clock.
+        """
+        ...
 
 
 class VehicleTracker(Protocol):

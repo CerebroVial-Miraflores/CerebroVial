@@ -7,6 +7,13 @@ source_type: "auto" # webcam, file, youtube, ip_cam, auto (dispatcher por conten
 loop: true # re-loop de archivos locales al EOF; false recupera la semántica EOF->None (no aplica a streams/webcam)
 camera_id: null
 
+# Knobs de inferencia a nivel de instancia (topología B / 15Hz). Override por env:
+# VISION_DEVICE / VISION_ANALYZE_FPS / VISION_IMGSZ. Defaults = comportamiento actual.
+device: auto          # auto (cuda→mps→cpu) | cpu | mps | cuda. Forzado no disponible → error al boot.
+analyze_fps: 15       # cadencia de ANÁLISIS de la fuente full-decode (no toca el stream del browser).
+imgsz: 640            # resolución de inferencia (calidad↔velocidad). 640 = nativo de ultralytics.
+max_inference_cameras: null  # tope de cámaras infiriendo a la vez (null = sin tope). El operador lo fija según el harness.
+
 # ROI Zones for counting
 zones:
   zone1:
@@ -84,9 +91,9 @@ model:
   conf_threshold: 0.3
   # imgsz (B1 1c): resolución de inferencia por-llamada, palanca per-cámara. Se deja
   # ausente a propósito: la política de default vive en UN solo lugar
-  # (DEFAULT_IMGSZ en application/processors/smart_detection.py, hoy 320), que el
-  # scheduler aplica cuando este campo no está. Descomentar SOLO para override
-  # per-cámara; calibración futura puede subirlo donde rinda.
-  # imgsz: 320
+  # (DEFAULT_IMGSZ en application/processors/smart_detection.py, hoy 640 — Fase 2),
+  # que el scheduler aplica cuando este campo no está. Descomentar SOLO para override
+  # per-cámara; el techo (768/GPU) se explora con datos en deploy centralizado.
+  # imgsz: 640
 
 display: true

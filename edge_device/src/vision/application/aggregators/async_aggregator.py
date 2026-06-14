@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from ...domain.entities import FrameAnalysis, TrafficData
 from ...domain.repositories import TrafficRepository
 from ...domain.value_objects import CameraId, ZoneId
-from ._compute import compute_traffic_data
+from ._compute import ZONELESS_ZONE_ID, compute_traffic_data
 
 logger = logging.getLogger(__name__)
 
@@ -206,15 +206,23 @@ class AsyncTrafficAggregator:
         for td in traffic_data:
             # §11.1 — save best-effort. INDEPENDIENTE del push a output queue
             # (DHU-026): un fallo de save NO impide ni revierte el push.
-            try:
-                self._repository.save(td)
-            except Exception:
-                logger.exception(
-                    "TrafficRepository.save falló para zone_id=%s; continuando (§11.1)",
-                    td.zone_id.value,
-                )
-                with self._counters_lock:
-                    self._aggregation_errors += 1
+            #
+            # Fix Fase 3: el sentinel zone-less (ZONELESS_ZONE_ID) NO se persiste.
+            # Es presencia extrapolada no calibrada (DemoBadge en el panel),
+            # apropiada para mostrar en vivo pero NO para guardar como agregado
+            # medido en vision_aggregates (perdería el disclaimer y se mezclaría
+            # con agregados calibrados por-zona). Se EXCLUYE solo del save; sigue
+            # yendo al output queue → broadcaster → panel (abajo, sin condición).
+            if td.zone_id.value != ZONELESS_ZONE_ID:
+                try:
+                    self._repository.save(td)
+                except Exception:
+                    logger.exception(
+                        "TrafficRepository.save falló para zone_id=%s; continuando (§11.1)",
+                        td.zone_id.value,
+                    )
+                    with self._counters_lock:
+                        self._aggregation_errors += 1
 
             # §11.2 — push best-effort a output queue. INDEPENDIENTE del
             # resultado del save: si save falló, el item igualmente entra a

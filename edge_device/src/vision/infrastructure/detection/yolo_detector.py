@@ -25,6 +25,7 @@ class YoloDetector(VehicleDetector):
         model_path: str = "yolo11n.pt",
         conf_threshold: float = 0.5,
         model=None,
+        device: str | None = None,
     ):
         self.conf_threshold = conf_threshold
         self.target_classes = dict(_TARGET_CLASSES)
@@ -40,7 +41,16 @@ class YoloDetector(VehicleDetector):
             import torch
             from ultralytics import YOLO
 
-            if torch.cuda.is_available():
+            if device is not None:
+                # Device resuelto en el arranque del server (`select_device()`):
+                # el banner ya se imprimió al boot, acá no se re-detecta ni se
+                # vuelve a anunciar.
+                pass
+            elif torch.cuda.is_available():
+                # Fallback para callers que no inyectan device (path legacy de
+                # `src/main.py`, construcción directa): misma política
+                # cuda→mps→cpu, sin banner. La fuente de verdad del banner es
+                # `select_device()` en el arranque.
                 device = "cuda"
             elif torch.backends.mps.is_available():
                 device = "mps"
@@ -96,30 +106,74 @@ class YoloDetector(VehicleDetector):
             kwargs = {"verbose": False, "conf": self.conf_threshold}
             if imgsz is not None:
                 kwargs["imgsz"] = imgsz
-            results = self._model(frame, **kwargs)[0]
-
-            vehicles: list[DetectedVehicle] = []
-            for box in results.boxes:
-                class_id = int(box.cls[0])
-                if class_id not in self.target_classes:
-                    continue
-
-                confidence = float(box.conf[0])
-                if confidence < self.conf_threshold:
-                    continue
-
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                vehicles.append(
-                    DetectedVehicle(
-                        id=f"{frame_id}_{len(vehicles)}",  # temporary; tracking assigns the stable id
-                        type=self.target_classes[class_id],
-                        confidence=confidence,
-                        bbox=(x1, y1, x2, y2),
-                        timestamp=time.time(),
-                    )
-                )
-
-            return vehicles
+            result = self._model(frame, **kwargs)[0]
+            return self._parse_result(result, frame_id)
         except Exception as e:
             self.logger.error(f"Detection failed on frame {frame_id}: {e}")
             raise DetectionError(f"YOLO inference failed: {e}") from e
+
+    @log_execution_time(logging.getLogger(__name__))
+    def detect_batch(
+        self,
+        frames: list[np.ndarray],
+        frame_ids: Optional[list[int]] = None,
+        imgsz: Optional[int] = None,
+    ) -> list[list[DetectedVehicle]]:
+        """Detect vehicles en un LOTE de frames → una lista de detecciones por frame.
+
+        Topología B (15Hz): el batch worker central junta frames de varias cámaras y
+        los infiere de una sola pasada en GPU. ultralytics acepta `model([f1, f2, ...])`
+        y devuelve un result por frame; cada uno se parsea con la MISMA lógica que
+        `detect` (misma fuente de verdad: `_parse_result`), así que
+        `detect_batch([f])[0] == detect(f)` salvo el `timestamp` (wall-clock).
+
+        `frame_ids` (opcional): ids por frame para los ids temporales de detección
+        (el tracker asigna el id estable downstream). Si falta, se usa el índice.
+        """
+        if not frames:
+            return []
+        if frame_ids is not None and len(frame_ids) != len(frames):
+            raise ValueError("frame_ids debe tener el mismo largo que frames")
+        try:
+            kwargs = {"verbose": False, "conf": self.conf_threshold}
+            if imgsz is not None:
+                kwargs["imgsz"] = imgsz
+            results = self._model(frames, **kwargs)
+            ids = frame_ids if frame_ids is not None else list(range(len(frames)))
+            return [
+                self._parse_result(result, fid)
+                for result, fid in zip(results, ids)
+            ]
+        except Exception as e:
+            self.logger.error(f"Batch detection failed ({len(frames)} frames): {e}")
+            raise DetectionError(f"YOLO batch inference failed: {e}") from e
+
+    def _parse_result(self, result, frame_id: int) -> list[DetectedVehicle]:
+        """Mapea un result de ultralytics → entidades de dominio (filtro clase + conf).
+
+        Fuente de verdad ÚNICA del parseo, compartida por `detect` (1 frame) y
+        `detect_batch` (lote). El id es temporal (`{frame_id}_{i}`); el tracker
+        asigna el id estable.
+        """
+        vehicles: list[DetectedVehicle] = []
+        for box in result.boxes:
+            class_id = int(box.cls[0])
+            if class_id not in self.target_classes:
+                continue
+
+            confidence = float(box.conf[0])
+            if confidence < self.conf_threshold:
+                continue
+
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            vehicles.append(
+                DetectedVehicle(
+                    id=f"{frame_id}_{len(vehicles)}",  # temporary; tracking assigns the stable id
+                    type=self.target_classes[class_id],
+                    confidence=confidence,
+                    bbox=(x1, y1, x2, y2),
+                    timestamp=time.time(),
+                )
+            )
+
+        return vehicles

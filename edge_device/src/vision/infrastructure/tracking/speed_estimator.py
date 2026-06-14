@@ -14,9 +14,11 @@ _MIN_TIME_DIFF = 0.1
 class SimpleSpeedEstimator(SpeedEstimator):
     """Estimates speed from the pixel distance the bbox bottom travels over time."""
 
-    def __init__(self, pixels_per_meter: float = 10.0, fps: float = 30.0):
+    def __init__(self, pixels_per_meter: float = 10.0):
+        # Sub-fase 5: se borró el param `fps` (muerto). La velocidad sale de los
+        # timestamps reales del track (Δt = t_last - t_first), NO de un fps fijo;
+        # esos timestamps son el frame-clock que rutea el TrackingProcessor.
         self.pixels_per_meter = pixels_per_meter
-        self.fps = fps
         self.history: Dict[str, List[Tuple[float, float]]] = {}  # id -> [(timestamp, center_y)]
 
     def estimate(self, vehicles: List[DetectedVehicle]) -> List[DetectedVehicle]:

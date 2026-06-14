@@ -42,3 +42,6 @@ capturas_claro/
 # Dumps de respaldo de la BD (pg_dump custom format). Binarios pesados, reproducibles
 # vía pg_dump; NUNCA se versionan.
 *.dump
+# Output dir de hydra del edge_device (run vivo del servidor de visión): logs/configs
+# por-corrida, regenerables. No es material versionable.
+edge_device/outputs/

@@ -102,14 +102,29 @@ class HlsKeyframeSource(FrameProducer):
         ]
         if self._needs_referer:
             cmd += ["-headers", f"Referer: {_REFERER}\r\n"]
+        cmd += self._input_frame_opts()
         cmd += [
-            "-skip_frame", "nokey",
             "-i", self._url,
             "-an", "-fps_mode", "passthrough",
-            "-vf", f"scale={self._w}:{self._h}",
+            "-vf", self._vf_filter(),
             "-f", "rawvideo", "-pix_fmt", "bgr24", "-",
         ]
         return cmd
+
+    def _input_frame_opts(self) -> list:
+        """Opciones de selección de frame ANTES de `-i`. Keyframe-only por defecto
+        (`-skip_frame nokey`). `FullDecodeSource` lo override a `[]` (decode completo)."""
+        return ["-skip_frame", "nokey"]
+
+    def _vf_filter(self) -> str:
+        """Filtro `-vf`. Solo escala (geometría determinística) por defecto.
+        `FullDecodeSource` antepone `fps=N` para muestrear a cadencia fija."""
+        return f"scale={self._w}:{self._h}"
+
+    def _frame_timestamp(self, frame_index: int) -> float:
+        """Timestamp del frame. Keyframe-only: wall-clock de captura.
+        `FullDecodeSource` lo override al frame-clock (`frame_index / fps`)."""
+        return time.time()
 
     def _default_spawn(self, cmd: list):
         """Spawner real (path de producción). cv2/ffmpeg viven en procesos distintos."""
@@ -194,7 +209,11 @@ class HlsKeyframeSource(FrameProducer):
                 # .copy(): np.frombuffer es vista read-only que aliasa `buf` (transitorio);
                 # el Frame debe ser dueño de su imagen.
                 img = np.frombuffer(buf, np.uint8).reshape(self._h, self._w, 3).copy()
-                frame = Frame(id=self._frame_id, timestamp=time.time(), image=img)
+                frame = Frame(
+                    id=self._frame_id,
+                    timestamp=self._frame_timestamp(self._frame_id),
+                    image=img,
+                )
                 self._frame_id += 1
                 return frame
 
