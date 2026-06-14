@@ -90,7 +90,10 @@ export function AnnotatedCameraStream({
     const drawLatest = async (jpegBytes: Uint8Array) => {
       let bitmap: ImageBitmap;
       try {
-        bitmap = await createImageBitmap(new Blob([jpegBytes], { type: 'image/jpeg' }));
+        // Copia a un ArrayBuffer concreto: el slice del parser es genérico sobre
+        // ArrayBufferLike y no satisface BlobPart (podría ser SharedArrayBuffer).
+        const blob = new Blob([new Uint8Array(jpegBytes)], { type: 'image/jpeg' });
+        bitmap = await createImageBitmap(blob);
       } catch {
         // Frame corrupto: descartar y seguir. No mata la lectura ni reconecta.
         return;
