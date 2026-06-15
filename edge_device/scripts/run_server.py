@@ -18,9 +18,9 @@ def main(cfg: DictConfig):
     vision_cfg = cfg.vision
 
     # Knobs de config a nivel de instancia: cfg con override por env. Defaults
-    # (auto / 15 / 640) = comportamiento actual.
+    # (auto / 25 / 640). analyze_fps=25 = nativo del HLS de Claro.
     device_req = os.environ.get("VISION_DEVICE", str(vision_cfg.get("device", "auto")))
-    analyze_fps = int(os.environ.get("VISION_ANALYZE_FPS", vision_cfg.get("analyze_fps", 15)))
+    analyze_fps = int(os.environ.get("VISION_ANALYZE_FPS", vision_cfg.get("analyze_fps", 25)))
     imgsz = int(os.environ.get("VISION_IMGSZ", vision_cfg.get("imgsz", 640)))
     # Tope del contenedor: None/0/ausente = sin tope (default). El operador lo fija
     # según el harness (cámaras-por-contenedor a 15Hz).

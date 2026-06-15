@@ -84,6 +84,18 @@ def test_build_cmd_keeps_referer_for_claro():
     assert "-headers" in cmd
 
 
+def test_build_cmd_adds_re_before_input():
+    """`-re` (pacing del decode bursty del HLS live) va como input option ANTES de -i."""
+    cmd = FullDecodeSource(_CLARO, _cfg(), fps=15)._build_cmd()
+    assert "-re" in cmd
+    assert cmd.index("-re") < cmd.index("-i")  # input option: antes de -i
+
+
+def test_keyframe_base_has_no_re():
+    """Regresión: el `-re` es solo del path live full-decode, no del base keyframe."""
+    assert "-re" not in HlsKeyframeSource(_CLARO, _cfg())._build_cmd()
+
+
 def test_keyframe_source_unchanged_still_skip_frame():
     """Regresión: el default keyframe NO cambió (sigue keyframe-only)."""
     cmd = HlsKeyframeSource(_CLARO, _cfg())._build_cmd()

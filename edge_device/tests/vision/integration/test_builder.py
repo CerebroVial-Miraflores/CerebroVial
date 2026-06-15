@@ -156,7 +156,7 @@ def test_build_source_passes_analyze_fps_to_fulldecode():
     assert builder.source._fps == 10  # knob propagado a la fuente
 
 
-def test_build_source_fulldecode_default_fps_15():
+def test_build_source_fulldecode_default_fps_25():
     from src.vision.infrastructure.sources.full_decode_source import FullDecodeSource
 
     cfg = OmegaConf.create({'vision': {
@@ -166,7 +166,7 @@ def test_build_source_fulldecode_default_fps_15():
     builder = VisionApplicationBuilder(cfg)
     builder.build_source()
     assert isinstance(builder.source, FullDecodeSource)
-    assert builder.source._fps == 15  # default = comportamiento actual
+    assert builder.source._fps == 25  # default = nativo del HLS de Claro
 
 
 # ---- B1 Paso 1a: costura de inyección del detector (la que 1b consume) -------

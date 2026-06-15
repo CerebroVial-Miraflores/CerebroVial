@@ -43,7 +43,12 @@ if TYPE_CHECKING:  # evita dependencia en runtime; el head es duck-typed (.proce
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MAX_BATCH = 16
-_DEFAULT_MAX_WAIT_S = 0.05      # 50 ms (rango sugerido 50-100 ms)
+# 5 ms: con 1 cámara el lote nunca se llena, así que la ventana de gather es latencia
+# pura por ciclo; a 50ms capeaba la inferencia a ~12/s, a 5ms llega a ~25/s (el techo
+# del stream). DEUDA N-cámaras: con varias cámaras la ventana batchea (eficiencia GPU)
+# → conviene un gather adaptativo (cortar al tener 1 frame por cámara activa). Ver
+# documentation/docs/.
+_DEFAULT_MAX_WAIT_S = 0.005
 _POLL_INTERVAL_S = 0.005        # granularidad del puente thread→asyncio (await sleep, no busy-spin)
 
 
