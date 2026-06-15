@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { EDGE_API_URL } from '../../../config/edge';
 import { MjpegParser } from './mjpegStreamParser';
 
 // FASE 4 (Opción B2) — cámara activa con frame ANOTADO server-side. Consume el MJPEG
@@ -19,9 +20,6 @@ import { MjpegParser } from './mjpegStreamParser';
 // decrementa el consumidor MJPEG y su watchdog apaga el render de esa cámara.
 
 export type StreamStatus = 'connecting' | 'streaming' | 'reconnecting';
-
-const EDGE_API_URL: string =
-  import.meta.env?.VITE_EDGE_API_URL || 'http://localhost:8000';
 
 // El server emite a ~25 fps (sleep 0.04 en video.py) → inter-frame ~40 ms. 2.5 s ≈ 60+
 // frames perdidos: por encima de hipos normales, pero un freeze real se nota en ≤2.5 s.

@@ -13,11 +13,9 @@
 // del alta on-demand al edge (POST /cameras/{id}, gate `isActive` de v1) —
 // sin alta el edge no emite y EventSource reintentaría en loop.
 import { useEffect, useState } from 'react';
+import { EDGE_API_URL } from '../config/edge';
 import type { VisionStreamPayload } from '../types/visionStream';
 import type { StreamConnectionState } from './types';
-
-const EDGE_API_URL: string =
-  import.meta.env?.VITE_EDGE_API_URL || 'http://localhost:8000';
 
 export interface UseVisionStreamResult {
   /** Último payload 'traffic_update' parseado. Uno malformado se ignora. */

@@ -23,10 +23,8 @@
 // último valor en el agregado (paridad con v1). DEUDA BACKEND heredada de
 // useVisionStream: el edge no exige JWT.
 import { useEffect, useMemo, useState } from 'react';
+import { EDGE_API_URL } from '../config/edge';
 import type { VisionStreamPayload } from '../types/visionStream';
-
-const EDGE_API_URL: string =
-  import.meta.env?.VITE_EDGE_API_URL || 'http://localhost:8000';
 
 export interface VisionSample {
   /** km/h experimental sin calibrar; null si la cámara carece de calibración. */

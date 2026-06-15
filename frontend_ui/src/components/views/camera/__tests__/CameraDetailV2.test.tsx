@@ -10,6 +10,11 @@ import type { RestResource } from '../../../../hooks/types';
 
 vi.mock('../../../../hooks/useCameras', () => ({ useCameras: vi.fn() }));
 vi.mock('../../../../hooks/usePredictionHistory', () => ({ usePredictionHistory: vi.fn() }));
+// useVisionStream abre un EventSource real al edge en ALTA; se mockea para que el
+// test del toggle no dependa del SSE (no es lo que se está ejercitando acá).
+vi.mock('../../../../hooks/useVisionStream', () => ({
+  useVisionStream: () => ({ data: null, lastUpdated: null, connection: 'idle' }),
+}));
 vi.mock('../../../HlsPlayer', () => ({
   HlsPlayer: ({ src }: { src: string }) => <div data-testid="hls-player">{src}</div>,
 }));
@@ -49,9 +54,32 @@ function camerasResource(over: Partial<RestResource<CameraSummary[]>>): RestReso
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
+/** fetch stub del edge: GET inference-status devuelve `inferring`; POST/DELETE 200.
+ *  `inferring` y `postStatus` se parametrizan por test. */
+function makeFetch(opts: { inferring?: string[]; postStatus?: number } = {}) {
+  const { inferring = [], postStatus = 200 } = opts;
+  return vi.fn((url: unknown, init?: RequestInit) => {
+    const u = String(url);
+    if (u.includes('/cameras/inference-status')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ inferring, count: inferring.length, cap: null, capacity_used: null }),
+      } as unknown as Response);
+    }
+    // POST (alta) / DELETE (baja) a /cameras/{id}
+    const method = init?.method ?? 'GET';
+    if (method === 'POST') {
+      return Promise.resolve({ ok: postStatus < 400, status: postStatus } as Response);
+    }
+    return Promise.resolve({ ok: true, status: 200 } as Response);
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  fetchMock = vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response));
+  fetchMock = makeFetch();
   globalThis.fetch = fetchMock as unknown as typeof fetch;
   useHistoryMock.mockReturnValue({
     data: null,
@@ -74,6 +102,11 @@ function renderAt(path: string) {
   );
 }
 
+const postCalls = () =>
+  fetchMock.mock.calls.filter((c) => (c[1] as RequestInit)?.method === 'POST');
+const deleteCalls = () =>
+  fetchMock.mock.calls.filter((c) => (c[1] as RequestInit)?.method === 'DELETE');
+
 describe('CameraDetailV2', () => {
   it('loading sin data muestra "Cargando cámara…"', () => {
     useCamerasMock.mockReturnValue(camerasResource({ data: null, loading: true }));
@@ -88,46 +121,109 @@ describe('CameraDetailV2', () => {
     expect(screen.getByRole('button', { name: /reintentar/i })).toBeInTheDocument();
   });
 
-  it('id desconocido es honesto y no da de alta nada en el edge', () => {
+  it('id desconocido es honesto y no consulta ni da de alta nada en el edge', () => {
     useCamerasMock.mockReturnValue(camerasResource({}));
     renderAt('/camara/cam_inexistente');
     expect(screen.getByText(/no existe en el inventario/i)).toBeInTheDocument();
-    const posted = fetchMock.mock.calls.some((c) => (c[1] as RequestInit)?.method === 'POST');
-    expect(posted).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('da de alta la cámara en el edge (POST con el stream de Claro como source)', async () => {
+  it('al montar SOLO consulta inference-status (GET) — no postea ni borra', async () => {
     useCamerasMock.mockReturnValue(camerasResource({}));
     renderAt('/camara/cam_a');
 
-    await waitFor(() => {
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(`${EDGE}/cameras/inference-status`, {}),
+    );
+    expect(postCalls()).toHaveLength(0);
+    expect(deleteCalls()).toHaveLength(0);
+  });
+
+  it('estado inicial refleja el GET: cámara fresca → BAJA (HlsPlayer directo)', async () => {
+    useCamerasMock.mockReturnValue(camerasResource({}));
+    renderAt('/camara/cam_a');
+
+    expect(await screen.findByTestId('hls-player')).toHaveTextContent('https://x/a.m3u8');
+    expect(screen.queryByTestId('annotated-stream')).not.toBeInTheDocument();
+  });
+
+  it('estado inicial refleja el GET: cámara ya infiriendo → ALTA (stream anotado)', async () => {
+    fetchMock = makeFetch({ inferring: ['cam_a'] });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    useCamerasMock.mockReturnValue(camerasResource({}));
+    renderAt('/camara/cam_a');
+
+    expect(await screen.findByTestId('annotated-stream')).toHaveTextContent('cam_a');
+    expect(screen.queryByTestId('hls-player')).not.toBeInTheDocument();
+    expect(postCalls()).toHaveLength(0); // no se re-postea lo que ya infiere
+  });
+
+  it('check (Detección) dispara POST y cambia a stream anotado', async () => {
+    useCamerasMock.mockReturnValue(camerasResource({}));
+    renderAt('/camara/cam_a');
+
+    await screen.findByTestId('hls-player');
+    fireEvent.click(screen.getByRole('button', { name: 'Detección' }));
+
+    await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         `${EDGE}/cameras/cam_a`,
         expect.objectContaining({ method: 'POST' }),
-      );
-    });
-    const postCall = fetchMock.mock.calls.find((c) => (c[1] as RequestInit)?.method === 'POST');
-    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+      ),
+    );
+    const body = JSON.parse((postCalls()[0][1] as RequestInit).body as string);
     expect(body).toEqual({ source: 'https://x/a.m3u8', source_type: 'hls', zones: {} });
+    expect(await screen.findByTestId('annotated-stream')).toBeInTheDocument();
   });
 
-  it('NO da de baja en unmount (la baja la posee el edge)', async () => {
+  it('uncheck (Directo) dispara DELETE y vuelve al HlsPlayer directo', async () => {
+    fetchMock = makeFetch({ inferring: ['cam_a'] });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    useCamerasMock.mockReturnValue(camerasResource({}));
+    renderAt('/camara/cam_a');
+
+    await screen.findByTestId('annotated-stream');
+    fireEvent.click(screen.getByRole('button', { name: 'Directo' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EDGE}/cameras/cam_a`,
+        expect.objectContaining({ method: 'DELETE' }),
+      ),
+    );
+    expect(await screen.findByTestId('hls-player')).toBeInTheDocument();
+  });
+
+  it('409 al activar revierte a BAJA con aviso y sin tapar el video', async () => {
+    fetchMock = makeFetch({ postStatus: 409 });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    useCamerasMock.mockReturnValue(camerasResource({}));
+    renderAt('/camara/cam_a');
+
+    await screen.findByTestId('hls-player');
+    fireEvent.click(screen.getByRole('button', { name: 'Detección' }));
+
+    expect(await screen.findByText(/a capacidad/i)).toBeInTheDocument();
+    // Sigue en BAJA: HlsPlayer visible, sin stream anotado.
+    expect(screen.getByTestId('hls-player')).toBeInTheDocument();
+    expect(screen.queryByTestId('annotated-stream')).not.toBeInTheDocument();
+  });
+
+  it('NO da de baja en unmount (la baja solo la dispara el uncheck del toggle)', async () => {
     useCamerasMock.mockReturnValue(camerasResource({}));
     const { unmount } = renderAt('/camara/cam_a');
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     unmount();
-    const deleted = fetchMock.mock.calls.some((c) => (c[1] as RequestInit)?.method === 'DELETE');
-    expect(deleted).toBe(false);
+    expect(deleteCalls()).toHaveLength(0);
   });
 
-  it('cámara sin stream: estado honesto y sin POST', () => {
+  it('cámara sin stream: estado honesto y sin tocar el edge', () => {
     useCamerasMock.mockReturnValue(
       camerasResource({ data: [{ id: 'cam_a', name: 'Cámara A', stream_url: null }] }),
     );
     renderAt('/camara/cam_a');
     expect(screen.getByText(/no tiene un stream configurado/i)).toBeInTheDocument();
-    const posted = fetchMock.mock.calls.some((c) => (c[1] as RequestInit)?.method === 'POST');
-    expect(posted).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('señaliza los caveats real-con-caveat de las métricas de visión', async () => {
@@ -138,29 +234,26 @@ describe('CameraDetailV2', () => {
     expect(screen.getByTitle(/sin calibrar/i)).toBeInTheDocument();
     // Pie de la card de estado: presencia extrapolada (no aforo calibrado).
     expect(screen.getByText(/presencia extrapolada/i)).toBeInTheDocument();
-    // Flush del alta on-demand (setState async del POST) dentro de act.
+    // Flush del GET de estado (setState async) dentro de act.
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   });
 
-  it('navegar por el carril cambia la cámara activa y re-da de alta', async () => {
+  it('navegar por el carril cambia la cámara y re-consulta el estado (sin auto-POST)', async () => {
     useCamerasMock.mockReturnValue(camerasResource({}));
     renderAt('/camara/cam_a');
 
     expect(screen.getByRole('heading', { name: 'Cámara A' })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(`${EDGE}/cameras/cam_a`, expect.objectContaining({ method: 'POST' })),
-    );
+    await screen.findByTestId('hls-player');
 
     // El carril muestra la OTRA cámara (cam_b); click → navega y re-resuelve.
     fireEvent.click(screen.getByTitle('Ver Cámara B'));
 
     expect(screen.getByRole('heading', { name: 'Cámara B' })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(`${EDGE}/cameras/cam_b`, expect.objectContaining({ method: 'POST' })),
-    );
+    expect(await screen.findByTestId('hls-player')).toHaveTextContent('https://x/b.m3u8');
+    expect(postCalls()).toHaveLength(0); // navegar no da de alta solo
   });
 
-  it('toggle Histórico monta la historia de predicción', () => {
+  it('toggle Histórico monta la historia de predicción', async () => {
     useCamerasMock.mockReturnValue(camerasResource({}));
     renderAt('/camara/cam_a');
 
@@ -169,5 +262,6 @@ describe('CameraDetailV2', () => {
 
     expect(screen.getByText('Historial y predicción')).toBeInTheDocument();
     expect(screen.queryByText('Métricas en vivo')).not.toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   });
 });
