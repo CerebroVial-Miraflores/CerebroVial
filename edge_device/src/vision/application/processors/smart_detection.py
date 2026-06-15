@@ -3,7 +3,8 @@
 Detección cada N frames; en frames intermedios el processor emite un
 `FrameAnalysis` con `vehicles=[]`, sin intentar interpolar bboxes. La
 continuidad temporal de IDs se delega al `VehicleTracker` downstream
-(ByteTrack con `lost_track_buffer=60` → ~2s reales @15fps).
+(ByteTrack con `lost_track_buffer=60` → ~2s reales de oclusión, independiente del
+fps operativo; ver supervision_tracker).
 
 La versión Sesión 1 mantenía `_vehicle_trajectories` + `get_analysis_for_frame`
 para "interpolar" detecciones en frames skip. Esa funcionalidad fue identificada

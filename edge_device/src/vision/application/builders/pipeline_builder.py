@@ -124,10 +124,10 @@ class VisionApplicationBuilder:
         perf_cfg = self.vision_cfg.get('performance', {})
         # Knob analyze_fps: solo aplica a la fuente full-decode (topología B). Para
         # otros source_type, pasar `fps` rompería SourceConfig (no lo conoce), así
-        # que se incluye condicionalmente. Default 15 = cadencia actual.
+        # que se incluye condicionalmente. Default 25 = nativo del HLS de Claro.
         extra = {}
         if self.vision_cfg.source_type == "hls_fulldecode":
-            extra["fps"] = int(self.vision_cfg.get('analyze_fps', 15))
+            extra["fps"] = int(self.vision_cfg.get('analyze_fps', 25))
         self.source = create_source(
             source_config=self.vision_cfg.source,
             source_type=self.vision_cfg.source_type,
@@ -143,7 +143,11 @@ class VisionApplicationBuilder:
     def build_tracker(self) -> 'VisionApplicationBuilder':
         logger.info("Initializing tracking")
         vehicle_classes = _load_vehicle_classes()
-        self.tracker = SupervisionTracker(vehicle_classes)
+        # frame_rate alineado al fps operativo (analyze_fps): el Kalman de ByteTrack y
+        # el buffer de oclusión asumen el frame_rate real. Default 25 (nativo HLS Claro).
+        self.tracker = SupervisionTracker(
+            vehicle_classes, frame_rate=int(self.vision_cfg.get('analyze_fps', 25))
+        )
         return self
 
     def build_speed_estimator(self) -> 'VisionApplicationBuilder':

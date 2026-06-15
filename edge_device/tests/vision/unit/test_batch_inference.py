@@ -1,10 +1,10 @@
-"""Batch inference worker + cola acotada (topología B / 15Hz).
+"""Batch inference worker + cola keep-latest-por-cámara (topología B / 15Hz).
 
 Tests sintéticos (detector stub, post-chains stub) — sin GPU, sin cámaras vivas:
-- cola FIFO acotada drop-oldest + contador `dropped` (backpressure);
-- formación de lote por tamaño y por espera (`max_wait`);
-- demux por camera_id con **orden per-cámara preservado** (FIFO + un worker);
-- baja de cámara entre encolar y procesar (se descarta sin romper);
+- cola keep-latest-por-cámara + contador `dropped` (drop-to-latest, A2);
+- formación de lote por tamaño y por espera (`max_wait`, un frame por cámara);
+- demux por camera_id con **orden per-cámara preservado** (un worker);
+- baja de cámara: descarta el frame al procesar Y limpia el slot encolado;
 - el `ts` frame-clock se propaga como `FrameAnalysis.timestamp`.
 """
 import asyncio
@@ -15,7 +15,7 @@ import pytest
 
 from src.vision.application.services.batch_inference import (
     BatchInferenceWorker,
-    BoundedFrameQueue,
+    LatestPerCameraQueue,
     QueueItem,
 )
 from src.vision.domain.entities import DetectedVehicle, Frame
@@ -86,29 +86,38 @@ class _FakeState:
     latest_detections = None
 
 
-# ---- BoundedFrameQueue --------------------------------------------------
+# ---- LatestPerCameraQueue (keep-latest-por-cámara, A2) ------------------
 
 
-def test_queue_fifo_and_max_batch_cap():
-    q = BoundedFrameQueue(maxsize=10)
-    for i in range(5):
+def test_queue_keeps_latest_per_camera():
+    q = LatestPerCameraQueue()
+    for i in range(5):  # mismo cam → cada put sobrescribe el slot
         q.put(QueueItem("a", _frame(i), float(i)))
-    batch = q.collect_batch(3)
-    assert [it.frame.id for it in batch] == [0, 1, 2]  # FIFO + tope max_batch
-    assert len(q) == 2
+    assert len(q) == 1
+    assert q.dropped == 4  # 4 frames descartados sin inferir (drop-to-latest)
+    assert [it.frame.id for it in q.collect_batch(10)] == [4]  # solo el más reciente
 
 
-def test_queue_drop_oldest_on_overflow():
-    q = BoundedFrameQueue(maxsize=3)
-    for i in range(5):  # 0,1 se dropean; quedan 2,3,4
-        q.put(QueueItem("a", _frame(i), float(i)))
-    assert q.dropped == 2
-    assert [it.frame.id for it in q.collect_batch(10)] == [2, 3, 4]
+def test_queue_one_slot_per_camera_and_max_batch_cap():
+    q = LatestPerCameraQueue()
+    for cid in ("a", "b", "c"):
+        q.put(QueueItem(cid, _frame(0), 0.0))
+        q.put(QueueItem(cid, _frame(1), 1.0))  # sobrescribe → queda el frame 1
+    assert len(q) == 3  # un slot por cámara
+    batch = q.collect_batch(2)  # tope max_batch
+    assert [it.camera_id for it in batch] == ["a", "b"]  # 2 cámaras, orden de inserción
+    assert all(it.frame.id == 1 for it in batch)  # el más reciente de cada una
+    assert len(q) == 1  # queda "c"
 
 
-def test_queue_rejects_bad_maxsize():
-    with pytest.raises(ValueError):
-        BoundedFrameQueue(maxsize=0)
+def test_queue_discard_removes_camera_slot():
+    q = LatestPerCameraQueue()
+    q.put(QueueItem("a", _frame(0), 0.0))
+    q.put(QueueItem("b", _frame(0), 0.0))
+    q.discard("a")  # cámara dada de baja
+    assert len(q) == 1
+    assert [it.camera_id for it in q.collect_batch(10)] == ["b"]
+    q.discard("nope")  # idempotente, no rompe
 
 
 # ---- Demux / orden per-cámara ------------------------------------------
@@ -219,35 +228,51 @@ async def test_process_batch_skips_unregistered_camera():
     assert [fid for fid, _ in pc.received] == [1]
 
 
+def test_unregister_discards_queued_slot():
+    # Dar de baja una cámara limpia su slot encolado: no se gasta una inferencia en
+    # un frame de una cámara que ya no infiere (A2, confirmación #4).
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        worker = BatchInferenceWorker(_StubDetector(), ex)
+        worker.register("a", _RecordingPostChain())
+        worker.submit("a", _frame(0), 0.0)
+        assert len(worker.queue) == 1
+        worker.unregister("a")
+    assert len(worker.queue) == 0
+
+
 # ---- Formación de lote (tamaño / espera) -------------------------------
 
 
 @pytest.mark.asyncio
 async def test_collect_batch_by_size_returns_immediately():
+    # Con max_batch cámaras ya encoladas (un slot c/u), no abre la ventana de espera.
     with ThreadPoolExecutor(max_workers=1) as ex:
         worker = BatchInferenceWorker(detector=_StubDetector(), executor=ex, max_batch=3)
         worker._running = True
-        for i in range(5):
-            worker.submit("a", _frame(i), float(i))
+        for i in range(5):  # 5 cámaras distintas → 5 slots, len >= max_batch
+            worker.submit(f"cam{i}", _frame(i), float(i))
         batch = await worker._collect_batch()
-    assert [it.frame.id for it in batch] == [0, 1, 2]  # tope max_batch, sin esperar
+    # Tope max_batch: 3 cámaras por orden de inserción, sin esperar.
+    assert [it.camera_id for it in batch] == ["cam0", "cam1", "cam2"]
 
 
 @pytest.mark.asyncio
-async def test_collect_batch_by_wait_returns_partial():
+async def test_collect_batch_waits_then_collects_latest_per_camera():
+    # Una sola cámara con frames sucesivos: keep-latest deja el más reciente; el
+    # worker abre la ventana de gather (~max_wait) y luego saca un frame por cámara.
     with ThreadPoolExecutor(max_workers=1) as ex:
         worker = BatchInferenceWorker(
             detector=_StubDetector(), executor=ex, max_batch=10, max_wait_s=0.02
         )
         worker._running = True
         worker.submit("a", _frame(1), 1.0)
-        worker.submit("a", _frame(2), 2.0)
+        worker.submit("a", _frame(2), 2.0)  # sobrescribe → queda el 2
         loop = asyncio.get_running_loop()
         start = loop.time()
-        batch = await worker._collect_batch()  # parcial: 2 < max_batch=10
+        batch = await worker._collect_batch()
         elapsed = loop.time() - start
-    assert [it.frame.id for it in batch] == [1, 2]
-    assert elapsed >= 0.02  # esperó ~max_wait por más antes de devolver el parcial
+    assert [it.frame.id for it in batch] == [2]  # solo el más reciente de "a"
+    assert elapsed >= 0.02  # abrió la ventana de gather antes de devolver
 
 
 # ---- Lifecycle (run/stop sobre la cola viva) ---------------------------
@@ -255,19 +280,23 @@ async def test_collect_batch_by_wait_returns_partial():
 
 @pytest.mark.asyncio
 async def test_run_processes_submitted_frames_then_stops():
+    # Cámaras distintas: keep-latest guarda un frame por cámara → run() las demuxea
+    # todas (con frames de la MISMA cámara solo sobreviviría el más reciente).
     detector = _StubDetector()
     with ThreadPoolExecutor(max_workers=1) as ex:
         worker = BatchInferenceWorker(detector, ex, max_batch=4, max_wait_s=0.01)
-        pc = _RecordingPostChain()
-        worker.register("a", pc)
+        pcs = {cid: _RecordingPostChain() for cid in ("a", "b", "c")}
+        for cid, pc in pcs.items():
+            worker.register(cid, pc)
         worker.start()
-        for i in range(3):
-            worker.submit("a", _frame(i), float(i))
+        for cid in ("a", "b", "c"):
+            worker.submit(cid, _frame(0), 0.0)
         # Dar tiempo a que el worker drene la cola.
         for _ in range(50):
-            if len(pc.received) == 3:
+            if all(pc.received for pc in pcs.values()):
                 break
             await asyncio.sleep(0.005)
         await worker.stop()
 
-    assert [fid for fid, _ in pc.received] == [0, 1, 2]
+    # run() drenó la cola y demuxeó: cada cámara recibió su frame.
+    assert all(len(pc.received) == 1 for pc in pcs.values())

@@ -67,8 +67,8 @@ def _patch_builder(MockBuilder):
 
 
 def test_manager_default_knobs_preserve_behavior(manager):
-    """Defaults de los knobs de instancia = comportamiento actual (15fps / imgsz 640)."""
-    assert manager.analyze_fps == 15
+    """Defaults de los knobs de instancia: 25fps (nativo HLS de Claro) / imgsz 640."""
+    assert manager.analyze_fps == 25
     assert manager.imgsz == 640
 
 

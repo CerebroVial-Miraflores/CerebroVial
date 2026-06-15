@@ -24,9 +24,10 @@ from typing import Optional
 from .base import SourceConfig
 from .hls_keyframe_source import HlsKeyframeSource, Spawner
 
-# Cadencia de muestreo por defecto (15 fps; topología B).
-_DEFAULT_FPS = 15
-# Umbral de frescura por-fuente: a 15fps la cadencia es ~67ms; 1.0s da margen
+# Cadencia de muestreo por defecto (25 fps = nativo del HLS de Claro). A 25 se
+# entrega 1:1 sin duplicar (30 sobre 25 nativo duplicaría frames).
+_DEFAULT_FPS = 25
+# Umbral de frescura por-fuente: a 25fps la cadencia es ~40ms; 1.0s da margen
 # holgado sobre un par de frames perdidos sin marcar la fuente como rancia.
 _FULLDECODE_FRESH_THRESHOLD_S = 1.0
 
@@ -49,6 +50,19 @@ class FullDecodeSource(HlsKeyframeSource):
         # si no, queda el class-attr full-decode (1.0s), no el 4.5s keyframe.
         super().__init__(source, config, capture=capture)
         self._fps = fps
+
+    def _build_cmd(self) -> list:
+        """Igual que el base pero con `-re` (lee el input a su cadencia NATIVA) ANTES
+        de `-i`. El HLS live entrega cada segmento en ráfaga sub-ms + stall de ~2s
+        (cadencia de segmento, TARGETDURATION); sin `-re` esa entrega bursty starvea al
+        worker de inferencia (infiere ~1/s, ByteTrack no confirma). `-re` la pacea a
+        ~fps reales → el worker se alimenta parejo (~25/s) y los tracks confirman.
+        Costo: latencia acotada ~≤2s (libera los frames a ritmo real-time en vez de en
+        ráfaga). Solo en el path live full-decode; las fuentes file/webcam usan otras
+        clases. Ver `documentation/docs/` (hallazgo entrega bursty del HLS)."""
+        cmd = super()._build_cmd()
+        cmd.insert(cmd.index("-i"), "-re")
+        return cmd
 
     def _input_frame_opts(self) -> list:
         return []  # decode completo (sin -skip_frame nokey)

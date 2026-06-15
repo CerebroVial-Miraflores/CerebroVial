@@ -19,27 +19,30 @@ class SupervisionTracker(VehicleTracker):
     real ByteTrack (and `sv.Detections` as the factory) are imported lazily.
     """
 
-    def __init__(self, vehicle_classes: Dict[str, int], tracker=None, detections_factory=None):
+    def __init__(self, vehicle_classes: Dict[str, int], tracker=None,
+                 detections_factory=None, frame_rate: int = 25):
         if tracker is None:
             import supervision as sv
 
             tracker = sv.ByteTrack(
                 track_activation_threshold=0.15,  # keep lower-confidence tracks alive
                 minimum_matching_threshold=0.8,   # IoU threshold for matching
-                # Topología B (15Hz): coherencia de cadencia. El Kalman de ByteTrack
-                # asume `frame_rate`; a 15fps reales debe ser 15 (no 30). OJO con el
-                # buffer: supervision computa `max_time_lost = int(frame_rate/30 *
-                # lost_track_buffer)`; con frame_rate=15 → int(0.5*lost_track_buffer).
-                # Para 2s reales @15fps (30 frames) hace falta lost_track_buffer=60
-                # (int(0.5*60)=30); con 30 daba solo 1s.
-                lost_track_buffer=60,             # → 30 frames = ~2s reales @15fps
-                frame_rate=15,
+                # Coherencia de cadencia: el Kalman de ByteTrack asume `frame_rate`, que
+                # debe ser el fps OPERATIVO real (analyze_fps; 25 con el HLS de Claro
+                # paceado por -re). Buffer de oclusión: supervision computa
+                # `max_time_lost = int(frame_rate/30 * lost_track_buffer)`, así que el
+                # TIEMPO de oclusión = lost_track_buffer/30 segundos, INDEPENDIENTE del
+                # frame_rate. lost_track_buffer=60 → 2s reales a cualquier fps (a 25fps =
+                # 50 frames; a 15fps = 30 frames).
+                lost_track_buffer=60,             # → 2s reales (= int(frame_rate/30*60) frames)
+                frame_rate=frame_rate,
             )
             if detections_factory is None:
                 detections_factory = sv.Detections
 
         self.tracker = tracker
         self._detections_factory = detections_factory
+        self.frame_rate = frame_rate  # fps operativo (observabilidad; lo usa el Kalman)
         # class id (int) <-> class name (str)
         self.id_to_name = {v: k for k, v in vehicle_classes.items()}
         self.name_to_id = vehicle_classes

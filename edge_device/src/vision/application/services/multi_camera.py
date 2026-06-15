@@ -156,9 +156,11 @@ class MultiCameraManager:
         # (ej. tests que instancian el manager sin pasar por el arranque).
         self.inference_device: Optional[str] = None
         # Knobs de config a nivel de instancia (run_server los setea desde cfg+env).
-        # Defaults = comportamiento actual: análisis a 15fps, imgsz 640 (= nativo de
+        # análisis a 25fps (nativo del HLS de Claro; pacea con `-re` en FullDecodeSource
+        # → worker alimentado parejo, ByteTrack confirma), imgsz 640 (= nativo de
         # ultralytics). analyze_fps se inyecta a la fuente full-decode; imgsz al worker.
-        self.analyze_fps: int = 15
+        # Override por env VISION_ANALYZE_FPS (p.ej. bajarlo en Docker-CPU con N cámaras).
+        self.analyze_fps: int = 25
         self.imgsz: int = 640
         # Tope del contenedor de inferencia (cámaras infiriendo simultáneas). None =
         # sin tope efectivo (default → no rompe despliegues actuales). El operador lo

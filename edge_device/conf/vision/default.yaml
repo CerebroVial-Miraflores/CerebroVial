@@ -10,7 +10,7 @@ camera_id: null
 # Knobs de inferencia a nivel de instancia (topología B / 15Hz). Override por env:
 # VISION_DEVICE / VISION_ANALYZE_FPS / VISION_IMGSZ. Defaults = comportamiento actual.
 device: auto          # auto (cuda→mps→cpu) | cpu | mps | cuda. Forzado no disponible → error al boot.
-analyze_fps: 15       # cadencia de ANÁLISIS de la fuente full-decode (no toca el stream del browser).
+analyze_fps: 25       # cadencia de ANÁLISIS de la fuente full-decode = nativo del HLS de Claro (paceado con -re). No toca el stream del browser.
 imgsz: 640            # resolución de inferencia (calidad↔velocidad). 640 = nativo de ultralytics.
 max_inference_cameras: null  # tope de cámaras infiriendo a la vez (null = sin tope). El operador lo fija según el harness.
 
