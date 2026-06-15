@@ -24,6 +24,8 @@
 | D-016 | Cerrada | 2026-06-05 | `intersections` como entidad de primera clase; cámara accesorio; puente al grafo vía `intersection_edges` (Fase A) |
 | D-017 | Cerrada | 2026-06-07 | Refundación del módulo de visión (contenido refundado, tubería reusada previo saneamiento) |
 | D-018 | Cerrada | 2026-06-07 | Arquitectura del muestreador de visión (scheduler único, modelo compartido, instancia dueña de cámaras) |
+| D-019 | Pendiente registro | 2026-06 | Tap de detecciones por-frame (`latest_detections` → overlay del front, Fase 4 Mitad A); ya referenciado en código (`multi_camera`, `detections`, serializers). ADR formal pendiente |
+| D-020 | Cerrada | 2026-06-12 | Edge como servicio de inferencia centralizada sobre streams remotos (enmienda D-004: se descarta el edge computing IoT distribuido) |
 | D-PENDING-001 | **Resuelta por D-006** | — | Modelo: reutilizar `time_then_space.py` o GRU desde cero |
 
 ---
@@ -690,6 +692,35 @@ Una auditoría read-only de Fase 0 estableció que el modelo YOLO es **stateless
 **Relación.** Implementa el saneamiento de **B1 del D-017**. Precede al modelo de datos de **Fase 1** (el scheduler define dónde viven las zonas indexadas por cámara, lo que condiciona el hot-reload de zonas — ver auditoría de Fase 0). **Referencias:** auditoría de Fase 0 (ZoneCounter + acoplamiento del loop) y spike de carga sostenida, ambos de esta sesión. Benchmark 1 (costo de inferencia) en `documentation/docs/CIERRE-metricas-vision-flujo.md`.
 
 **Revisión (Fase 2, 2026-06-12) — default a 640.** El rationale original de arriba fijó **320** como default del muestreo por presupuesto de cómputo (decisión 6: `imgsz` configurable, no horneado). Esta sección NO se reescribe; se registra que el default **se revisa con evidencia posterior**. El benchmark de Fase 2 (sobre la cámara viva de Claro, no el spike de `.mp4`) mostró que **320 pierde ~la mitad de las detecciones** (320 → ~6 cajas; 640 → ~12-14 sobre vehículos chicos/lejanos de ángulo alto) y que el presupuesto a **640 es holgado**: **~183 ms/ronda de 11 cámaras** a 1 Hz (≪ 1000 ms), consistente con lo que el propio D-018 ya intuía ("A 640 también entra"). Conclusión: el 320 era **innecesariamente conservador para la calidad de detección**. Se mueve el default a **640** (un solo punto: `DEFAULT_IMGSZ` en `application/processors/smart_detection.py`). La palanca de configurabilidad (decisión 6) queda intacta: `imgsz` sigue siendo per-cámara vía `cfg.vision.model.imgsz` (hot-reload per-tick), y el techo (768 / GPU en deploy centralizado) se explora con datos cuando se quiera. El device auto-detect (cpu/mps/cuda en `yolo_detector.py`) no se toca; en Docker da `cpu`, correcto.
+
+---
+
+## D-020 — Edge como servicio de inferencia centralizada sobre streams remotos (enmienda a D-004)
+**Fecha:** 2026-06-12 · **Estado:** Cerrada
+
+**Decisión.** CerebroVial adopta **inferencia centralizada sobre streams remotos** (HLS de Claro) y **descarta el edge computing con dispositivos IoT distribuidos** (Raspberry Pi por cámara o grupo). El "edge" deja de ser un *lugar físico* (un dispositivo en la calle) y pasa a ser un *rol de software*: el componente que infiere (`edge_device/`), corriendo en contenedores/servicios del centro, escalable horizontalmente.
+
+**Contexto.** El diseño original (y el espíritu IoT del documento de tesis) contemplaba hardware en campo haciendo inferencia local por cámara. Se evaluó como **ineficiente e innecesario**: los streams HLS de las cámaras de Claro ya son accesibles por red, así que la inferencia puede correr en el centro sin desplegar ni mantener hardware nuevo. **Fase 1 (B-fase1) ya materializó el giro**: `HlsKeyframeSource` consume el stream HLS remoto de Claro por red (captura keyframe-only), no una cámara conectada localmente a un dispositivo.
+
+**Justificación.**
+- **Cero hardware nuevo** que aprovisionar, calibrar o mantener en campo. El sistema corre íntegro en infraestructura central contenerizada (consistente con D-003, Docker local).
+- **El cuello de botella de escala ya estaba identificado como I/O de red, no cómputo** (D-018: la inferencia tiene margen holgado de decenas de cámaras por instancia). Centralizar no agrava ese límite — lo concentra en un lugar gestionable.
+- **Robustez operacional:** un servicio centralizado se monitorea, actualiza y escala con prácticas estándar de cloud; una flota de dispositivos distribuidos multiplica la superficie de fallo y mantenimiento.
+
+**Impacto.**
+- **El término "edge" en el proyecto refiere de acá en más al servicio de inferencia, no a un dispositivo.** El crecimiento se absorbe en el centro vía **réplicas de software**. Esto da contexto a la **épica futura de auto-scaling horizontal** del edge (profiling de capacidad por contenedor + partición de cámaras entre réplicas) — cuyas costuras D-018 ya dejó listas: *"la instancia de edge es dueña de un conjunto CONFIGURABLE de cámaras"*, `imgsz`/frecuencia configurables, conjunto mutable en caliente. El orquestador multi-instancia sigue diferido (trigger D-018: cuando una instancia no alcance).
+- **Coherencia narrativa:** conviene que CLAUDE.md, el SDD y la comunicación con stakeholders/jurado hablen del edge como servicio, no como Raspberry Pi en la calle. La reconciliación de los documentos que aún dicen lo contrario está **señalada al cierre de esta decisión** (barrido aparte, no ejecutado acá).
+
+**Trade aceptado.** La inferencia centralizada **depende de la disponibilidad de los streams remotos** (Claro hoy) y de la capacidad del centro; **pierde la resiliencia teórica del cómputo distribuido en campo** (un nodo caído ≠ sistema entero caído). Se acepta porque la **simplicidad operacional y el cero-hardware superan ese beneficio** para el alcance del proyecto (tesis/demo, no operación 24/7 de misión crítica).
+
+**Relación.** **Enmienda a D-004** ("Pi física: demostración conceptual, no entrega"): D-004 conservaba el modelo edge-en-Pi como arquitectura-objetivo desplegable (solo no se entregaba el hardware); D-020 va más lejos y **descarta ese modelo como objetivo** — la inferencia centralizada sobre streams remotos no es un fallback sino la arquitectura. La premisa de despliegue de D-004 (y los docs derivados) queda **superada y flaggeada** para reconciliación. Construye sobre **D-018** (scheduler único, instancia dueña de un conjunto configurable de cámaras) y **D-003** (Docker local). Coherente con la materialización ya hecha en **Fase 1** (`HlsKeyframeSource`).
+
+**Deuda de documentación señalada (para reconciliación posterior, NO reescrita en esta decisión):**
+- `documentation/lean-inception/4-decisiones/DECISIONS.md` — **D-004**: "qué módulos correrían en Pi (edge_device)".
+- `documentation/sdd/SDD_CEREBROVIAL.md` — §3/§6/§11 y el bloque ADR D-004 (≈ líneas 83, 257, 267, 282, 388): mapeo "edge físico/servidor" y "desplegar `edge_device` en hardware edge (p. ej. Raspberry Pi)".
+- `documentation/docs/ARCHITECTURE_TARGET.md` (≈ línea 190) — "Edge Device | Raspberry Pi 4 (5 unidades para piloto)".
+- `documentation/docs/RNF02_LATENCY_REPORT.md` (≈ líneas 14, 23) — diagrama "[Cámara] → [YOLOv8 Edge Device]".
+- `CLAUDE.md` — **no** llama al edge "dispositivo IoT" (describe `edge_device/` como *módulo* de visión); único residuo es el nombre de carpeta, ya coherente con el rol-de-software. Sin cambio urgente.
 
 ---
 
