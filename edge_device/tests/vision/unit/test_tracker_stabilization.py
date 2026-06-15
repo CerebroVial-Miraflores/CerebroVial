@@ -49,6 +49,18 @@ def _tracker(classes):
     return SupervisionTracker(classes, tracker=FakeByteTrack(), detections_factory=FakeDetections)
 
 
+def test_frame_rate_default_is_25():
+    """Default = fps operativo (nativo del HLS de Claro)."""
+    assert SupervisionTracker({"car": 1}, tracker=FakeByteTrack(),
+                              detections_factory=FakeDetections).frame_rate == 25
+
+
+def test_frame_rate_is_configurable():
+    t = SupervisionTracker({"car": 1}, tracker=FakeByteTrack(),
+                           detections_factory=FakeDetections, frame_rate=10)
+    assert t.frame_rate == 10
+
+
 def test_class_stabilization_majority_vote():
     tracker = _tracker({"car": 1, "truck": 2})
     bbox = (100, 100, 200, 200)

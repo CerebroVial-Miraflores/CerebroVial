@@ -156,6 +156,17 @@ def test_build_source_passes_analyze_fps_to_fulldecode():
     assert builder.source._fps == 10  # knob propagado a la fuente
 
 
+def test_build_tracker_uses_analyze_fps_as_frame_rate():
+    """build_tracker alinea el frame_rate de ByteTrack al fps operativo (analyze_fps)."""
+    cfg = OmegaConf.create({'vision': {
+        'source': 'https://x/index.m3u8', 'source_type': 'hls_fulldecode',
+        'analyze_fps': 25,
+    }})
+    builder = VisionApplicationBuilder(cfg)
+    builder.build_tracker()
+    assert builder.tracker.frame_rate == 25
+
+
 def test_build_source_fulldecode_default_fps_25():
     from src.vision.infrastructure.sources.full_decode_source import FullDecodeSource
 

@@ -143,7 +143,11 @@ class VisionApplicationBuilder:
     def build_tracker(self) -> 'VisionApplicationBuilder':
         logger.info("Initializing tracking")
         vehicle_classes = _load_vehicle_classes()
-        self.tracker = SupervisionTracker(vehicle_classes)
+        # frame_rate alineado al fps operativo (analyze_fps): el Kalman de ByteTrack y
+        # el buffer de oclusión asumen el frame_rate real. Default 25 (nativo HLS Claro).
+        self.tracker = SupervisionTracker(
+            vehicle_classes, frame_rate=int(self.vision_cfg.get('analyze_fps', 25))
+        )
         return self
 
     def build_speed_estimator(self) -> 'VisionApplicationBuilder':
