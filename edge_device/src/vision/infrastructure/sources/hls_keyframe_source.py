@@ -49,6 +49,10 @@ _REFERER = "https://claro.com.pe/"
 # con el watchdog completo (fase aparte) para afinarlos en concierto.
 _RW_TIMEOUT_US = 8_000_000
 
+# Backoff máximo de reconexión in-process de ffmpeg (P1). Ante corte de red, ffmpeg
+# reintenta con backoff capado a este valor y resume al volver la red, sin morir.
+_RECONNECT_DELAY_MAX_S = 4
+
 # Supervisión del subproceso.
 _MAX_RESPAWN = 20          # respawns CONSECUTIVOS sin frame bueno antes del give-up
 _BACKOFF_BASE_S = 0.25     # backoff exponencial capado: 0.25, 0.5, 1.0, 2.0, 2.0...
@@ -98,6 +102,14 @@ class HlsKeyframeSource(FrameProducer):
         cmd = [
             "ffmpeg", "-hide_banner", "-loglevel", "error",
             "-fflags", "nobuffer",
+            # Resiliencia de red (P1): ante corte/EOF del CDN, ffmpeg RECONECTA in-process
+            # en vez de morir → evita el respawn storm (baseline: ~13 respawns/9s, blackout
+            # ~10-12s con frames dropeados). Opciones del protocolo HTTP(S), aplican al
+            # fetch de la playlist y los segmentos HLS. Deben ir ANTES de `-i` (input opts).
+            "-reconnect", "1",
+            "-reconnect_streamed", "1",
+            "-reconnect_on_network_error", "1",
+            "-reconnect_delay_max", str(_RECONNECT_DELAY_MAX_S),
             "-rw_timeout", str(_RW_TIMEOUT_US),
         ]
         if self._needs_referer:

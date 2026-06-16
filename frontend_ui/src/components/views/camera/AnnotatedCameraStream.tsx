@@ -31,6 +31,11 @@ const INITIAL_TIMEOUT_MS = 10000;
 const WATCHDOG_INTERVAL_MS = 500;
 const BACKOFF_BASE_MS = 500;
 const BACKOFF_CAP_MS = 5000;
+// Stall de CONTENIDO (P1): el edge sigue mandando bytes durante un corte de red río
+// arriba, pero reenvía el MISMO frame (latest_frame_processed congelado mientras el
+// decode reconecta). El watchdog de "sin bytes" no lo caza (los bytes fluyen); este
+// umbral detecta "sin frame NUEVO" comparando la firma del jpeg → overlay "Reconectando…".
+const STALE_CONTENT_MS = 2000;
 
 interface AnnotatedCameraStreamProps {
   cameraId: string;
@@ -45,6 +50,7 @@ interface AnnotatedCameraStreamProps {
   watchdogIntervalMs?: number;
   backoffBaseMs?: number;
   backoffCapMs?: number;
+  staleContentMs?: number;
 }
 
 export function AnnotatedCameraStream({
@@ -57,6 +63,7 @@ export function AnnotatedCameraStream({
   watchdogIntervalMs = WATCHDOG_INTERVAL_MS,
   backoffBaseMs = BACKOFF_BASE_MS,
   backoffCapMs = BACKOFF_CAP_MS,
+  staleContentMs = STALE_CONTENT_MS,
 }: AnnotatedCameraStreamProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<StreamStatus>('connecting');
@@ -75,9 +82,17 @@ export function AnnotatedCameraStream({
     let closed = false; // true solo en el cleanup deliberado (distingue de un abort del watchdog)
     let gotFirstFrame = false;
     let attempt = 0;
-    let lastFrameAt = Date.now();
+    let lastFrameAt = Date.now();      // último frame con BYTES (para el watchdog de stream muerto)
+    let lastNovelAt = Date.now();      // último frame con CONTENIDO nuevo (para el stall de decode)
+    let lastSig = '';                   // firma del último jpeg (detecta frame reenviado idéntico)
     let controller: AbortController | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // Firma barata del jpeg: largo + 3 bytes muestreados. Un frame reenviado es
+    // byte-idéntico (misma firma); uno nuevo casi siempre difiere. La ventana de 2s
+    // (~50 frames) hace despreciable una colisión de firma puntual.
+    const sigOf = (b: Uint8Array): string =>
+      `${b.length}:${b[0]}:${b[b.length >> 1]}:${b[b.length - 1]}`;
 
     const emit = (s: StreamStatus) => {
       if (closed) return;
@@ -105,10 +120,18 @@ export function AnnotatedCameraStream({
       } finally {
         bitmap.close();
       }
-      lastFrameAt = Date.now();
+      lastFrameAt = Date.now(); // llegaron bytes (aunque el contenido sea el mismo)
       gotFirstFrame = true;
       attempt = 0; // un stream que dropea tras estar sano reconecta rápido
-      emit('streaming');
+      // Novedad de CONTENIDO: solo un frame nuevo marca "streaming" y resetea el reloj
+      // de staleness. Un frame reenviado (decode congelado río arriba) NO lo resetea →
+      // el watchdog mostrará "Reconectando…" tras `staleContentMs`.
+      const sig = sigOf(jpegBytes);
+      if (sig !== lastSig) {
+        lastSig = sig;
+        lastNovelAt = Date.now();
+        emit('streaming');
+      }
     };
 
     const scheduleReconnect = () => {
@@ -165,13 +188,19 @@ export function AnnotatedCameraStream({
       }
     };
 
-    // Watchdog del freeze SILENCIOSO: si no llega frame nuevo en `timeout`, abortar el
-    // fetch (el catch de connect reconecta). Antes del 1er frame usa el timeout laxo.
+    // Watchdog: dos fallas distintas.
+    //  1) Sin BYTES (stream/edge muerto) → abortar el fetch (el catch reconecta).
+    //  2) Sin CONTENIDO nuevo pero con bytes (decode río arriba congelado, el edge
+    //     reenvía el mismo frame) → solo overlay "Reconectando…", NO abortar (reabrir el
+    //     MJPEG no ayuda; el fix real es la reconexión in-process de ffmpeg). Al volver
+    //     frames nuevos, `drawLatest` emite 'streaming' y el overlay se va.
     const watchdog = setInterval(() => {
       const timeout = gotFirstFrame ? freezeTimeoutMs : initialTimeoutMs;
       if (Date.now() - lastFrameAt > timeout) {
         lastFrameAt = Date.now(); // no re-abortar durante el backoff
         controller?.abort();
+      } else if (gotFirstFrame && Date.now() - lastNovelAt > staleContentMs) {
+        emit('reconnecting');
       }
     }, watchdogIntervalMs);
 
@@ -191,6 +220,7 @@ export function AnnotatedCameraStream({
     watchdogIntervalMs,
     backoffBaseMs,
     backoffCapMs,
+    staleContentMs,
   ]);
 
   return (
