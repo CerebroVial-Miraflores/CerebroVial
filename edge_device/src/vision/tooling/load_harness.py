@@ -232,13 +232,15 @@ class StubDetector:
         return [[] for _ in frames]
 
 
-def _make_detector(stub: bool, imgsz: int):
+def _make_detector(stub: bool, imgsz: int, model_path: str = "yolo11n.pt", device=None):
     if stub:
         return StubDetector()
-    # Detector real (auto-device de FASE 1: cuda/mps/cpu). Necesita yolo11n.pt.
+    # Detector real (auto-device de FASE 1: cuda/mps/cpu). device=None → auto.
+    # PASO B (benchmark, no producción): model_path/device parametrizados para barrer
+    # {yolo11n,yolo26n} × {cpu,mps}. La config de producción NO se toca.
     from ..infrastructure.detection.yolo_detector import YoloDetector
 
-    return YoloDetector(model_path="yolo11n.pt", conf_threshold=0.25)
+    return YoloDetector(model_path=model_path, conf_threshold=0.25, device=device)
 
 
 # ---- Fuentes / post-chains -------------------------------------------
@@ -287,6 +289,7 @@ async def run_one(
     max_wait: float,
     width: int,
     height: int,
+    imgsz: Optional[int] = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> dict:
     """Una corrida con N cámaras: warmup → ventana de medición → fila de métricas."""
@@ -296,6 +299,7 @@ async def run_one(
     worker = _InstrumentedWorker(
         detector, executor, None,
         max_batch=max_batch, max_wait_s=max_wait,
+        imgsz=imgsz,  # PASO B: resolución de INFERENCIA (llega a detect_batch vía el worker)
         metrics=metrics, clock=clock,
     )
     worker.start()
@@ -363,7 +367,11 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--warmup", type=float, default=8.0, help="descarte de arranque (s)")
     p.add_argument("--source", type=str, default="synthetic",
                    help="synthetic | file:<path[,path]> | hls:<url[,url]>")
-    p.add_argument("--imgsz", type=int, default=640)
+    p.add_argument("--imgsz", type=int, default=640, help="resolución de INFERENCIA (detect_batch)")
+    p.add_argument("--model", type=str, default="yolo11n.pt",
+                   help="PASO B (benchmark): peso a medir, ej yolo26n.pt. NO cambia producción.")
+    p.add_argument("--device", type=str, default=None,
+                   help="cpu | mps | cuda | None(auto). Etiqueta el device de la medición.")
     p.add_argument("--max-batch", type=int, default=16)
     p.add_argument("--max-wait", type=float, default=0.05)
     p.add_argument("--width", type=int, default=640)
@@ -379,13 +387,14 @@ async def _amain(args: argparse.Namespace) -> str:
         else [args.cameras] if args.cameras
         else [2]
     )
-    detector = _make_detector(args.stub_detector, args.imgsz)
+    detector = _make_detector(args.stub_detector, args.imgsz, args.model, args.device)
     rows = []
     for n in sweep:
         row = await run_one(
             n, fps=args.fps, duration=args.duration, warmup=args.warmup,
             source=args.source, detector=detector, max_batch=args.max_batch,
             max_wait=args.max_wait, width=args.width, height=args.height,
+            imgsz=args.imgsz,
         )
         rows.append(row)
         print(f"[harness] N={n} listo: fps_mean={row['fps_mean']:.1f} dropped={row['dropped']}")
