@@ -1,23 +1,22 @@
-// FASE 3 rediseño UI — tarjeta del mapa operativo (spec: .map-card del
-// prototipo): head con capas/modos/controles temporales + MapCanvas con la
-// capa GeoJSON remontada por key (caveat react-leaflet en edgeStyle.ts) y los
-// NodeMarkers reales.
+// FASE 4 migración MapLibre — tarjeta del mapa operativo (spec: .map-card del
+// prototipo): head con capas/modos/controles temporales + MapCanvas con la capa
+// de aristas (Source/Layer + paint data-driven; recolor in-place por setData, sin
+// remount) y los NodeMarkers reales. Tooltip de arista por hover (Popup).
 //
 // Presentacional: todo el estado llega por props (la URL es la fuente de
 // verdad en CommandView). El slider de timestep es un <input type="range">
 // propio con tokens — NO se reusa control/Slider (v1 slate, zona "reusar sin
 // reescribir" del playground) — decisión D10.
-import { useEffect, useState } from 'react';
-import { GeoJSON } from 'react-leaflet';
-import type { Layer } from 'leaflet';
-import type { Feature, FeatureCollection } from 'geojson';
+import { useCallback, useEffect, useState } from 'react';
+import { Source, Layer, Popup, type MapMouseEvent } from 'react-map-gl/maplibre';
+import type { FeatureCollection } from 'geojson';
 
 import { MapCanvas } from '../../map/MapCanvas';
 import { MapLegend } from '../../map/MapLegend';
 import { MapModeBadge } from '../../map/MapModeBadge';
 import { NodeMarker } from '../../map/NodeMarker';
 import { LayerChips } from '../../map/LayerChips';
-import { jamLevelPathOptions } from '../../map/edgeStyle';
+import { jamLevelPaint } from '../../map/edgeStyle';
 import { SegmentedControl } from '../../ui/SegmentedControl';
 import { StatusChip } from '../../ui/StatusChip';
 import { HChip } from '../../ui/Chip';
@@ -33,6 +32,7 @@ import {
 
 const MAP_CENTER: [number, number] = [-12.122, -77.028];
 const MAP_ZOOM = 14;
+const EDGE_LAYER_ID = 'command-edges';
 
 const MODE_OPTIONS = [
   { value: 'historico', label: 'Histórico' },
@@ -56,7 +56,6 @@ export interface CommandMapProps {
   serieStepS: number;
   onChangeT: (i: number) => void;
   features: MergedCongestionFeature[] | null;
-  geoKey: string;
   markers: CommandMarker[];
   onNodeClick: (cameraId: string) => void;
   live: { lastUpdated: number | null; isStale: boolean };
@@ -78,12 +77,6 @@ function useElapsedLabel(lastUpdated: number | null): string | null {
   return `· hace ${Math.max(0, Math.round((now - lastUpdated) / 1000))} s`;
 }
 
-function onEachFeature(feature: Feature, layer: Layer) {
-  const props = (feature as MergedCongestionFeature).properties;
-  const nivel = props.congestion_level === null ? 'sin dato' : `nivel ${props.congestion_level}`;
-  layer.bindTooltip(`${props.edge_id} · ${nivel}`, { sticky: true });
-}
-
 export function CommandMap({
   mode,
   onChangeMode,
@@ -99,7 +92,6 @@ export function CommandMap({
   serieStepS,
   onChangeT,
   features,
-  geoKey,
   markers,
   onNodeClick,
   live,
@@ -110,6 +102,21 @@ export function CommandMap({
   const elapsed = useElapsedLabel(live.lastUpdated);
   const tLabel = formatHourLabel(serieT0, serieStepS, t);
   const legend = legendForMode(mode, tLabel);
+
+  // Tooltip de arista en hover (paridad con el bindTooltip de Leaflet): el
+  // interactiveLayerIds del <Map> + onMouseMove leen la feature bajo el cursor.
+  const [hover, setHover] = useState<{ lng: number; lat: number; text: string } | null>(null);
+  const onEdgeHover = useCallback((e: MapMouseEvent) => {
+    const feat = e.features?.[0];
+    if (!feat) {
+      setHover(null);
+      return;
+    }
+    const props = feat.properties ?? {};
+    const level = props.congestion_level;
+    const nivel = level === null || level === undefined ? 'sin dato' : `nivel ${level}`;
+    setHover({ lng: e.lngLat.lng, lat: e.lngLat.lat, text: `${props.edge_id} · ${nivel}` });
+  }, []);
 
   return (
     <section
@@ -205,6 +212,10 @@ export function CommandMap({
         center={MAP_CENTER}
         zoom={MAP_ZOOM}
         className="min-h-[420px] md:min-h-[520px]"
+        interactiveLayerIds={layers.traffic && features !== null ? [EDGE_LAYER_ID] : undefined}
+        cursor={hover ? 'pointer' : undefined}
+        onMouseMove={onEdgeHover}
+        onMouseLeave={() => setHover(null)}
         legend={<MapLegend title={legend.title} items={legend.items} />}
         modeBadge={
           <MapModeBadge
@@ -222,16 +233,18 @@ export function CommandMap({
         }
       >
         {layers.traffic && features !== null && (
-          <GeoJSON
-            key={geoKey}
+          <Source
+            id={EDGE_LAYER_ID}
+            type="geojson"
             data={{ type: 'FeatureCollection', features } as unknown as FeatureCollection}
-            style={(feature) =>
-              jamLevelPathOptions(
-                (feature as MergedCongestionFeature | undefined)?.properties.congestion_level,
-              )
-            }
-            onEachFeature={onEachFeature}
-          />
+          >
+            <Layer
+              id={EDGE_LAYER_ID}
+              type="line"
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={jamLevelPaint()}
+            />
+          </Source>
         )}
         {layers.nodes &&
           markers.map((marker) => (
@@ -243,6 +256,18 @@ export function CommandMap({
               onClick={() => onNodeClick(marker.id)}
             />
           ))}
+        {hover && (
+          <Popup
+            longitude={hover.lng}
+            latitude={hover.lat}
+            closeButton={false}
+            closeOnClick={false}
+            anchor="bottom"
+            offset={12}
+          >
+            <span className="num text-[11px]">{hover.text}</span>
+          </Popup>
+        )}
       </MapCanvas>
     </section>
   );

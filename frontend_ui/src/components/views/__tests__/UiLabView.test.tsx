@@ -5,19 +5,14 @@ import type { ReactNode } from 'react';
 import UiLabView from '../UiLabView';
 import { ToastProvider } from '../../ui/Toast';
 
-// Smoke de la galería /ui-lab (solo DEV). Mock per-file de react-leaflet/leaflet
-// (patrón CongestionMapView.test): acá solo importa que todo monte.
-vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="map-container">{children}</div>
-  ),
-  TileLayer: () => <div data-testid="tile-layer" />,
-  GeoJSON: () => <div data-testid="geojson-layer" />,
-  Marker: () => <div data-testid="marker" />,
-}));
-
-vi.mock('leaflet', () => ({
-  divIcon: vi.fn(() => ({})),
+// Smoke de la galería /ui-lab (solo DEV). Mock per-file de react-map-gl/maplibre
+// (FASE 4 migración MapLibre): acá solo importa que todo monte.
+vi.mock('react-map-gl/maplibre', () => ({
+  Map: ({ children }: { children?: ReactNode }) => <div data-testid="map">{children}</div>,
+  Source: ({ children }: { children?: ReactNode }) => <div data-testid="edge-source">{children}</div>,
+  Layer: () => <div data-testid="edge-layer" />,
+  Marker: ({ children }: { children?: ReactNode }) => <div data-testid="marker">{children}</div>,
+  Popup: ({ children }: { children?: ReactNode }) => <div data-testid="popup">{children}</div>,
 }));
 
 // FASE 2: la sección "Datos en vivo" consume hooks de datos REALES
@@ -53,7 +48,7 @@ describe('UiLabView', () => {
     ]) {
       expect(screen.getByRole('heading', { name: section })).toBeInTheDocument();
     }
-    expect(screen.getByTestId('geojson-layer')).toBeInTheDocument();
+    expect(screen.getByTestId('edge-layer')).toBeInTheDocument();
     expect(screen.getAllByTestId('marker').length).toBeGreaterThanOrEqual(3);
     expect(screen.getByTestId('live-data-section')).toBeInTheDocument();
   });

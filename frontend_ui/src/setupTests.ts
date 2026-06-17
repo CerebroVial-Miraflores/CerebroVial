@@ -24,10 +24,25 @@ class StubEventSource {
   close() {}
 }
 
+// react-map-gl/maplibre observa el tamaño del contenedor con ResizeObserver, que
+// jsdom no implementa. Los tests del mapa mockean react-map-gl/maplibre, pero el
+// stub cubre cualquier ruta que toque el real (FASE 4 migración MapLibre).
+class StubResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 Object.defineProperty(globalThis, 'IntersectionObserver', {
   configurable: true,
   writable: true,
   value: StubIntersectionObserver,
+});
+
+Object.defineProperty(globalThis, 'ResizeObserver', {
+  configurable: true,
+  writable: true,
+  value: StubResizeObserver,
 });
 
 Object.defineProperty(globalThis, 'EventSource', {

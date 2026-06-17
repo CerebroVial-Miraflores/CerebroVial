@@ -1,44 +1,77 @@
 import { describe, expect, it } from 'vitest';
 
-import { JAM_LEVEL_LEGEND, jamLevelPathOptions, jamLevelStyle } from '../edgeStyle';
+import { JAM_LEVEL_LEGEND, jamLevelPaint } from '../edgeStyle';
 
-describe('jamLevelStyle', () => {
+// FASE 4 migración MapLibre — el estilo es un paint data-driven (expresión
+// `match`) en vez de PathOptions/className de Leaflet. Helpers para leer un valor
+// por nivel de una expresión ['match', input, l0, v0, l1, v1, ..., fallback].
+function matchInput(expr: unknown): unknown {
+  return (expr as unknown[])[1];
+}
+function matchFallback(expr: unknown): unknown {
+  const arr = expr as unknown[];
+  return arr[arr.length - 1];
+}
+function matchValue(expr: unknown, level: number): unknown {
+  const arr = expr as unknown[];
+  for (let i = 2; i < arr.length - 1; i += 2) {
+    if (arr[i] === level) return arr[i + 1];
+  }
+  return undefined;
+}
+
+describe('jamLevelPaint — color', () => {
+  const paint = jamLevelPaint();
+  const color = paint?.['line-color'];
+
+  it('lee congestion_level por default', () => {
+    expect(matchInput(color)).toEqual(['get', 'congestion_level']);
+  });
+
   it.each([
-    [0, 'edge-jam-0'],
-    [1, 'edge-jam-1'],
-    [2, 'edge-jam-2'],
-    [3, 'edge-jam-3'],
-    [4, 'edge-jam-4'],
-    [5, 'edge-jam-5'],
-  ])('nivel %i → %s', (level, className) => {
-    expect(jamLevelStyle(level).className).toBe(className);
+    [0, '#0fae79'],
+    [1, '#0fae79'],
+    [2, '#f59e0b'],
+    [3, '#f59e0b'],
+    [4, '#ef4444'],
+    [5, '#a855f7'],
+  ])('nivel %i → %s (mapeo cromático histórico)', (level, hex) => {
+    expect(matchValue(color, level)).toBe(hex);
   });
 
-  it.each([null, undefined, NaN, 2.5, -1, 6])('inválido (%s) → neutro tenue', (level) => {
-    const style = jamLevelStyle(level as number | null | undefined);
-    expect(style.className).toBe('edge-jam-none');
-    expect(style.opacity).toBe(0.35);
-    expect(style.weight).toBe(3);
+  it('sin dato (fallback) → neutro ink-3', () => {
+    expect(matchFallback(color)).toBe('#5b6275');
   });
 
-  it('los pesos crecen con la severidad (3 → 9)', () => {
-    const weights = [0, 1, 2, 3, 4, 5].map((l) => jamLevelStyle(l).weight);
-    for (let i = 1; i < weights.length; i++) {
-      expect(weights[i]).toBeGreaterThanOrEqual(weights[i - 1]);
-    }
-    expect(weights[0]).toBe(3);
-    expect(weights[5]).toBe(9);
+  it('acepta otra propiedad (demo /ui-lab usa jam_level)', () => {
+    expect(matchInput(jamLevelPaint('jam_level')?.['line-color'])).toEqual(['get', 'jam_level']);
   });
 });
 
-describe('jamLevelPathOptions', () => {
-  it('traduce a PathOptions con className y sin fill', () => {
-    expect(jamLevelPathOptions(5)).toEqual({
-      className: 'edge-jam-5',
-      weight: 9,
-      opacity: 1,
-      fill: false,
-    });
+describe('jamLevelPaint — grosor (escala fina 2→5, CA-22.3)', () => {
+  const width = jamLevelPaint()?.['line-width'];
+
+  it('arranca en 2 y crece hasta 5', () => {
+    expect(matchValue(width, 0)).toBe(2);
+    expect(matchValue(width, 5)).toBe(5);
+    expect(matchFallback(width)).toBe(2);
+  });
+
+  it('los pesos crecen (o se mantienen) con la severidad — redundancia no-cromática', () => {
+    const weights = [0, 1, 2, 3, 4, 5].map((l) => matchValue(width, l) as number);
+    for (let i = 1; i < weights.length; i++) {
+      expect(weights[i]).toBeGreaterThanOrEqual(weights[i - 1]);
+    }
+  });
+});
+
+describe('jamLevelPaint — opacidad', () => {
+  const opacity = jamLevelPaint()?.['line-opacity'];
+
+  it('nivel crítico opaco; sin dato tenue', () => {
+    expect(matchValue(opacity, 4)).toBe(1);
+    expect(matchValue(opacity, 5)).toBe(1);
+    expect(matchFallback(opacity)).toBe(0.35);
   });
 });
 

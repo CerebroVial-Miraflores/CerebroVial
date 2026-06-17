@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GeoJSON } from 'react-leaflet';
+import { Source, Layer } from 'react-map-gl/maplibre';
 
 import { Button } from '../ui/Button';
 import { Chip, HChip } from '../ui/Chip';
@@ -20,7 +20,7 @@ import { NodeMarker } from '../map/NodeMarker';
 import { MapLegend } from '../map/MapLegend';
 import { MapModeBadge, type MapMode } from '../map/MapModeBadge';
 import { LayerChips } from '../map/LayerChips';
-import { jamLevelPathOptions } from '../map/edgeStyle';
+import { jamLevelPaint } from '../map/edgeStyle';
 import { MIRAFLORES_CENTER, MOCK_EDGES } from '../map/mockGeo';
 import { LiveDataSection } from './uilab/LiveDataSection';
 
@@ -350,10 +350,14 @@ function LabContent() {
               }
             >
               {trafficOn && (
-                <GeoJSON
-                  data={MOCK_EDGES}
-                  style={(feature) => jamLevelPathOptions(feature?.properties?.jam_level)}
-                />
+                <Source id="uilab-mock-edges" type="geojson" data={MOCK_EDGES}>
+                  <Layer
+                    id="uilab-mock-edges"
+                    type="line"
+                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+                    paint={jamLevelPaint('jam_level')}
+                  />
+                </Source>
               )}
               {nodesOn && (
                 <>
