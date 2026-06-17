@@ -23,6 +23,7 @@ import { LayerChips } from '../map/LayerChips';
 import { jamLevelPathOptions } from '../map/edgeStyle';
 import { MIRAFLORES_CENTER, MOCK_EDGES } from '../map/mockGeo';
 import { LiveDataSection } from './uilab/LiveDataSection';
+import { MapLibreSpike } from './uilab/MapLibreSpike';
 
 // FASE 1 rediseño UI — galería del design system (/ui-lab). SOLO existe en DEV
 // (router: import.meta.env.DEV + route.lazy → fuera del bundle de producción).
@@ -42,6 +43,7 @@ const SECTIONS = [
   { id: 'modal', label: 'Modal' },
   { id: 'drawer', label: 'Drawer' },
   { id: 'mapa', label: 'Mapa' },
+  { id: 'maplibre-spike', label: 'MapLibre (spike)' },
   { id: 'live', label: 'Datos en vivo' },
 ] as const;
 
@@ -373,6 +375,12 @@ function LabContent() {
             Tramos por jam_level (mapping provisional de edgeStyle) y nodos ok/warn/bad — el rojo
             es crítico (halo) y abre el Drawer.
           </p>
+        </Section>
+
+        {/* FASE 0 migración MapLibre — spike de plumbing (DEV-only). Datos REALES
+            del backend (1660 aristas), sin DemoBadge. Aislado de producción. */}
+        <Section id="maplibre-spike" title="MapLibre — spike Fase 0 (plumbing)">
+          <MapLibreSpike />
         </Section>
 
         {/* FASE 2 — datos REALES del backend local (sin DemoBadge: ver intro
