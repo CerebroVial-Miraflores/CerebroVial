@@ -2,8 +2,8 @@
  * CommandView — KPI strip (FASE 3): política de paridad por card con hooks de
  * datos mockeados a nivel módulo (real / real-con-caveat / mock / degradado).
  *
- * Mock per-file de react-leaflet (regla vigente) + leaflet (divIcon del
- * NodeMarker). ToastProvider en el harness (el provider real vive en AppShell).
+ * Mock per-file de react-map-gl/maplibre (FASE 4 migración MapLibre). El mapa es
+ * telón de fondo acá; ToastProvider en el harness (el provider real vive en AppShell).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -20,15 +20,13 @@ import { useCongestionPrediction } from '../../../../hooks/useCongestionPredicti
 import { useVisionAggregates } from '../../../../hooks/useVisionAggregates';
 import { useAdaptiveNodes } from '../useAdaptiveNodes';
 
-vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="map-container">{children}</div>
-  ),
-  TileLayer: () => <div data-testid="tile-layer" />,
-  GeoJSON: () => <div data-testid="geojson-layer" />,
-  Marker: () => <div data-testid="marker" />,
+vi.mock('react-map-gl/maplibre', () => ({
+  Map: ({ children }: { children?: ReactNode }) => <div data-testid="map">{children}</div>,
+  Source: ({ children }: { children?: ReactNode }) => <div data-testid="edge-source">{children}</div>,
+  Layer: () => <div data-testid="edge-layer" />,
+  Marker: ({ children }: { children?: ReactNode }) => <div data-testid="marker">{children}</div>,
+  Popup: ({ children }: { children?: ReactNode }) => <div data-testid="popup">{children}</div>,
 }));
-vi.mock('leaflet', () => ({ divIcon: vi.fn(() => ({})) }));
 
 // Overlays stubeados (tests propios en IntersectionDrawer.test / KpiModal.test).
 vi.mock('../IntersectionDrawer', () => ({

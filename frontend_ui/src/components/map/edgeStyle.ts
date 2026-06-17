@@ -1,59 +1,75 @@
-import type { PathOptions } from 'leaflet';
+import type { ExpressionSpecification, LineLayerSpecification } from 'maplibre-gl';
 
-// FASE 1 rediseño UI — estilo de tramos por jam_level con tokens (función pura,
-// reutilizable en Fase 3 cuando las vistas de mapa migren al rediseño).
+// FASE 4 migración MapLibre — estilo de tramos por jam_level como expresión
+// data-driven (función pura). Reemplaza al enfoque className/PathOptions de
+// Leaflet: MapLibre no resuelve var() en un paint, así que los colores van como
+// literales byte-alineados a tokens.css (mapeo de map.css: 0-1 ok-road / 2-3
+// warn / 4 bad / 5 sev / sin-dato ink-3). El recolor en vivo lo da source.setData
+// (sin remontar la capa), por eso muere el remount-por-key (geoJsonKeyFor).
 //
-// Por qué className y no color: Leaflet aplica PathOptions.color con
-// path.setAttribute('stroke', …) y los atributos de presentación SVG NO procesan
-// var(); el color del token se aplica vía CSS en map.css
-// (.edge-jam-N { stroke: var(--color-…) }), cuyas reglas pisan al atributo.
-// Requiere el renderer SVG (el default de react-leaflet).
-//
-// Caveat Fase 3: Leaflet asigna className solo al CREAR el path (setStyle no la
-// actualiza) → recolorear = remontar la capa por `key`, exactamente el patrón
-// que CongestionMapView ya usa y documenta en sus tests.
-//
-// Mapping VALIDADO al integrar en Fase 3 (cierre del caveat de Fase 1) contra
-// la semántica real de jam_level (D-009: constructo Waze ordinal 0-5, 0 flujo
-// libre … 5 vía cerrada): 0-1 → ok-road / 2-3 → warn / 4 → bad / 5 → sev.
-// La ordinalidad fina dentro de cada bucket cromático se preserva por GROSOR
-// creciente (weight 3→9), la redundancia no-cromática que v1 ya usaba (CA-22.3).
-//
-// Predicción (escala timeLoss 0-4 de D-015, sin nivel 5): REUSA estas mismas
-// pathOptions — el prototipo pinta predicción con las mismas clases de tramo —
-// con leyenda propia PREDICTION_LEGEND en términos de demora.
+// Grosor: escala FINA 2→5 (D-Fase4) — variable por nivel para preservar la
+// redundancia no-cromática de CA-22.3 (el nivel se lee también por grosor, no
+// solo por color: daltonismo), pero con líneas base delgadas y limpias. Es un
+// refinamiento deliberado del 3→9 anterior; calibrable a ojo contra las 1660
+// aristas reales (subir el techo si las congestionadas no se distinguen).
 
 export type JamLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
-export interface EdgeStyle {
-  className: string;
+interface LevelStyle {
+  color: string;
   weight: number;
   opacity: number;
 }
 
-const STYLE_BY_LEVEL: Record<JamLevel, EdgeStyle> = {
-  0: { className: 'edge-jam-0', weight: 3, opacity: 0.85 },
-  1: { className: 'edge-jam-1', weight: 4, opacity: 0.85 },
-  2: { className: 'edge-jam-2', weight: 5, opacity: 0.92 },
-  3: { className: 'edge-jam-3', weight: 6, opacity: 0.92 },
-  4: { className: 'edge-jam-4', weight: 7.5, opacity: 1 },
-  5: { className: 'edge-jam-5', weight: 9, opacity: 1 },
+// Color (token), grosor fino y opacidad por nivel. Mapeo cromático idéntico al
+// histórico (map.css): 0-1 ok-road, 2-3 warn, 4 bad, 5 sev.
+const STYLE_BY_LEVEL: Record<JamLevel, LevelStyle> = {
+  0: { color: '#0fae79', weight: 2, opacity: 0.85 }, // --color-ok-road
+  1: { color: '#0fae79', weight: 2.4, opacity: 0.85 },
+  2: { color: '#f59e0b', weight: 2.8, opacity: 0.92 }, // --color-warn
+  3: { color: '#f59e0b', weight: 3.4, opacity: 0.92 },
+  4: { color: '#ef4444', weight: 4.2, opacity: 1 }, // --color-bad
+  5: { color: '#a855f7', weight: 5, opacity: 1 }, // --color-sev
 };
 
-// Tramo sin dato (edge huérfano, level inválido): neutro tenue, nunca rojo.
-const NEUTRAL_STYLE: EdgeStyle = { className: 'edge-jam-none', weight: 3, opacity: 0.35 };
+// Tramo sin dato (edge huérfano, nivel inválido/null): neutro tenue, nunca rojo.
+const NEUTRAL_STYLE: LevelStyle = { color: '#5b6275', weight: 2, opacity: 0.35 }; // --color-ink-3
 
-export function jamLevelStyle(level: number | null | undefined): EdgeStyle {
-  if (level == null || !Number.isInteger(level) || level < 0 || level > 5) {
-    return NEUTRAL_STYLE;
-  }
-  return STYLE_BY_LEVEL[level as JamLevel];
-}
+const LEVELS: JamLevel[] = [0, 1, 2, 3, 4, 5];
 
-// Azúcar para <GeoJSON style={...}> de react-leaflet.
-export function jamLevelPathOptions(level: number | null | undefined): PathOptions {
-  const style = jamLevelStyle(level);
-  return { className: style.className, weight: style.weight, opacity: style.opacity, fill: false };
+/**
+ * Paint data-driven para una capa `line` de MapLibre: color/grosor/opacidad por
+ * nivel de congestión leído de `property` (default `congestion_level`; el demo
+ * de /ui-lab usa `jam_level`). Entrada null/ausente (arista sin estado, pre-merge)
+ * → cae al fallback neutro.
+ */
+export function jamLevelPaint(
+  property = 'congestion_level',
+): LineLayerSpecification['paint'] {
+  const input: ExpressionSpecification = ['get', property];
+  const colorExpr = [
+    'match',
+    input,
+    ...LEVELS.flatMap((l) => [l, STYLE_BY_LEVEL[l].color]),
+    NEUTRAL_STYLE.color,
+  ] as ExpressionSpecification;
+  const widthExpr = [
+    'match',
+    input,
+    ...LEVELS.flatMap((l) => [l, STYLE_BY_LEVEL[l].weight]),
+    NEUTRAL_STYLE.weight,
+  ] as ExpressionSpecification;
+  const opacityExpr = [
+    'match',
+    input,
+    ...LEVELS.flatMap((l) => [l, STYLE_BY_LEVEL[l].opacity]),
+    NEUTRAL_STYLE.opacity,
+  ] as ExpressionSpecification;
+  return {
+    'line-color': colorExpr,
+    'line-width': widthExpr,
+    'line-opacity': opacityExpr,
+  };
 }
 
 // Escala semántica para la leyenda — misma fuente que el mapping de arriba.

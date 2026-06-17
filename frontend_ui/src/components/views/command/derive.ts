@@ -134,26 +134,6 @@ export function featuresForMode(args: {
   return mergeCongestionAtIndex(geometry, prediction, clampIndex(horizon - 1, len));
 }
 
-/**
- * Key compuesta del <GeoJSON> — CONTRATO del remount-por-key (Leaflet asigna
- * className solo al crear el path; ver edgeStyle.ts). En vivo, cada refetch
- * exitoso (wake SSE) avanza lastUpdated → remount → recolor.
- */
-export function geoJsonKeyFor(
-  mode: CommandMode,
-  parts: {
-    lastUpdated: number | null;
-    dia: string;
-    tClamped: number;
-    horizon: PredictionHorizon;
-    baseTimestep: number | null;
-  },
-): string {
-  if (mode === 'ahora') return `live-${parts.lastUpdated ?? 'init'}`;
-  if (mode === 'historico') return `h-${parts.dia}-${parts.tClamped}`;
-  return `p-${parts.horizon}-${parts.baseTimestep ?? 'na'}`;
-}
-
 /** Hoy en YYYY-MM-DD LOCAL (sin bias UTC). Migrado de CongestionMapView (v1). */
 export function todayIsoLocal(): string {
   const d = new Date();

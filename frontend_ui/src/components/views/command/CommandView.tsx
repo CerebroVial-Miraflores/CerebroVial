@@ -29,7 +29,6 @@ import {
   clampIndex,
   edgeLevelForNode,
   featuresForMode,
-  geoJsonKeyFor,
   markersFrom,
   networkCongestionIndex,
   predictionLabelAt,
@@ -162,14 +161,6 @@ export function CommandView() {
     [idxModalSource.data],
   );
 
-  const geoKey = geoJsonKeyFor(url.mode, {
-    lastUpdated: congestionState.lastUpdated,
-    dia: url.dia,
-    tClamped,
-    horizon,
-    baseTimestep: prediction.data?.base_timestep ?? null,
-  });
-
   // Estado honesto del recurso del modo activo (política de paridad).
   const modePanel = useMemo(() => {
     if (url.mode === 'historico') {
@@ -272,7 +263,6 @@ export function CommandView() {
           serieStepS={series.data?.step_s ?? 60}
           onChangeT={url.setT}
           features={features}
-          geoKey={geoKey}
           markers={markers}
           onNodeClick={openNode}
           live={{ lastUpdated: congestionState.lastUpdated, isStale: congestionState.isStale }}

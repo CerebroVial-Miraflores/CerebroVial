@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GeoJSON } from 'react-leaflet';
+import { Source, Layer } from 'react-map-gl/maplibre';
 
 import { Button } from '../ui/Button';
 import { Chip, HChip } from '../ui/Chip';
@@ -20,10 +20,9 @@ import { NodeMarker } from '../map/NodeMarker';
 import { MapLegend } from '../map/MapLegend';
 import { MapModeBadge, type MapMode } from '../map/MapModeBadge';
 import { LayerChips } from '../map/LayerChips';
-import { jamLevelPathOptions } from '../map/edgeStyle';
+import { jamLevelPaint } from '../map/edgeStyle';
 import { MIRAFLORES_CENTER, MOCK_EDGES } from '../map/mockGeo';
 import { LiveDataSection } from './uilab/LiveDataSection';
-import { MapLibreSpike } from './uilab/MapLibreSpike';
 
 // FASE 1 rediseño UI — galería del design system (/ui-lab). SOLO existe en DEV
 // (router: import.meta.env.DEV + route.lazy → fuera del bundle de producción).
@@ -43,7 +42,6 @@ const SECTIONS = [
   { id: 'modal', label: 'Modal' },
   { id: 'drawer', label: 'Drawer' },
   { id: 'mapa', label: 'Mapa' },
-  { id: 'maplibre-spike', label: 'MapLibre (spike)' },
   { id: 'live', label: 'Datos en vivo' },
 ] as const;
 
@@ -352,10 +350,14 @@ function LabContent() {
               }
             >
               {trafficOn && (
-                <GeoJSON
-                  data={MOCK_EDGES}
-                  style={(feature) => jamLevelPathOptions(feature?.properties?.jam_level)}
-                />
+                <Source id="uilab-mock-edges" type="geojson" data={MOCK_EDGES}>
+                  <Layer
+                    id="uilab-mock-edges"
+                    type="line"
+                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+                    paint={jamLevelPaint('jam_level')}
+                  />
+                </Source>
               )}
               {nodesOn && (
                 <>
@@ -375,12 +377,6 @@ function LabContent() {
             Tramos por jam_level (mapping provisional de edgeStyle) y nodos ok/warn/bad — el rojo
             es crítico (halo) y abre el Drawer.
           </p>
-        </Section>
-
-        {/* FASE 0 migración MapLibre — spike de plumbing (DEV-only). Datos REALES
-            del backend (1660 aristas), sin DemoBadge. Aislado de producción. */}
-        <Section id="maplibre-spike" title="MapLibre — spike Fase 0 (plumbing)">
-          <MapLibreSpike />
         </Section>
 
         {/* FASE 2 — datos REALES del backend local (sin DemoBadge: ver intro

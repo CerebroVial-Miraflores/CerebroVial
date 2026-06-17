@@ -1,15 +1,15 @@
 /**
- * CommandView — modos del mapa por query params (FASE 3).
+ * CommandView — modos del mapa por query params (FASE 4 migración MapLibre).
  *
- * Mock per-file de react-leaflet con vi.hoisted: captura props del GeoJSON y
- * CUENTA MONTAJES (el recolor por remonte-con-key es contrato — ver
- * edgeStyle.ts). Hooks de datos mockeados a nivel módulo; el "wake SSE" se
- * simula avanzando lastUpdated del estado y re-renderizando.
+ * Mock per-file de react-map-gl/maplibre con vi.hoisted: captura el `data` del
+ * <Source> (FeatureCollection mergeada). El recolor ya NO es por remonte-con-key
+ * (murió geoJsonKeyFor): es por setData → el contrato acá es que el data del
+ * Source se actualiza con el merge correcto en cada cambio (wake, slider, modo).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { CommandView } from '../CommandView';
 import { ToastProvider } from '../../../ui/Toast';
@@ -22,29 +22,29 @@ import { useVisionAggregates } from '../../../../hooks/useVisionAggregates';
 import { useAdaptiveNodes } from '../useAdaptiveNodes';
 
 const captured = vi.hoisted(() => ({
-  geo: null as Record<string, unknown> | null,
-  mounts: 0,
-  markerClicks: [] as Array<() => void>,
+  sourceData: null as Record<string, unknown> | null,
+  markerClicks: [] as Array<(e: { originalEvent: { stopPropagation: () => void } }) => void>,
 }));
 
-vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="map-container">{children}</div>
-  ),
-  TileLayer: () => <div data-testid="tile-layer" />,
-  GeoJSON: (props: Record<string, unknown>) => {
-    captured.geo = props;
-    useEffect(() => {
-      captured.mounts += 1;
-    }, []);
-    return <div data-testid="geojson-layer" />;
+vi.mock('react-map-gl/maplibre', () => ({
+  Map: ({ children }: { children?: ReactNode }) => <div data-testid="map">{children}</div>,
+  Source: ({ data, children }: { data?: Record<string, unknown>; children?: ReactNode }) => {
+    captured.sourceData = data ?? null;
+    return <div data-testid="edge-source">{children}</div>;
   },
-  Marker: (props: { eventHandlers?: { click?: () => void } }) => {
-    if (props.eventHandlers?.click) captured.markerClicks.push(props.eventHandlers.click);
-    return <div data-testid="marker" />;
+  Layer: () => <div data-testid="edge-layer" />,
+  Marker: ({
+    onClick,
+    children,
+  }: {
+    onClick?: (e: { originalEvent: { stopPropagation: () => void } }) => void;
+    children?: ReactNode;
+  }) => {
+    if (onClick) captured.markerClicks.push(onClick);
+    return <div data-testid="marker">{children}</div>;
   },
+  Popup: ({ children }: { children?: ReactNode }) => <div data-testid="popup">{children}</div>,
 }));
-vi.mock('leaflet', () => ({ divIcon: vi.fn(() => ({})) }));
 
 // Overlays stubeados: el drawer real monta HLS + useActiveStrategy (servicios
 // reales) y tiene test propio (IntersectionDrawer.test); acá solo el cableado.
@@ -86,7 +86,7 @@ function res<T>(data: T | null, extra: Record<string, unknown> = {}) {
 }
 
 // Fixture chico (~2 aristas): la fidelidad del merge la cubren congestion.test
-// y derive.test — acá solo el cableado y el remonte.
+// y derive.test — acá solo el cableado y el setData.
 const GEO = {
   type: 'FeatureCollection' as const,
   count: 2,
@@ -101,6 +101,15 @@ const STATE = {
   edges: [
     { edge_id: 'e1', congestion_level: 4, snapshot_timestamp: '2026-06-08T12:00:00' },
     { edge_id: 'e2', congestion_level: 1, snapshot_timestamp: '2026-06-08T12:00:00' },
+  ],
+  count: 2,
+};
+
+// Estado posterior a un wake: e1 baja de 4 a 2 (para verificar el setData).
+const STATE_WAKE = {
+  edges: [
+    { edge_id: 'e1', congestion_level: 2, snapshot_timestamp: '2026-06-08T12:01:00' },
+    { edge_id: 'e2', congestion_level: 1, snapshot_timestamp: '2026-06-08T12:01:00' },
   ],
   count: 2,
 };
@@ -181,14 +190,17 @@ function mount(initialEntry = '/') {
 }
 
 function geoFeatures() {
-  const data = captured.geo?.data as { features: { properties: Record<string, unknown> }[] };
-  return data.features;
+  const data = captured.sourceData as { features: { properties: Record<string, unknown> }[] } | null;
+  return data?.features ?? [];
+}
+
+function levelOf(edgeId: string): unknown {
+  return geoFeatures().find((f) => f.properties.edge_id === edgeId)?.properties.congestion_level;
 }
 
 beforeEach(() => {
   vi.useFakeTimers();
-  captured.geo = null;
-  captured.mounts = 0;
+  captured.sourceData = null;
   captured.markerClicks = [];
   setDefaults();
 });
@@ -199,27 +211,24 @@ afterEach(() => {
 });
 
 describe('modo Ahora (default)', () => {
-  it('pinta el merge geometry × state y monta la capa una vez', () => {
+  it('pinta el merge geometry × state en el data del Source', () => {
     mount();
-    expect(captured.mounts).toBe(1);
-    const features = geoFeatures();
-    expect(features.find((f) => f.properties.edge_id === 'e1')?.properties.congestion_level).toBe(4);
+    expect(levelOf('e1')).toBe(4);
     expect(screen.getByText('EN VIVO')).toBeInTheDocument();
     expect(screen.getByText('Observado')).toBeInTheDocument();
   });
 
-  it('wake SSE (lastUpdated avanza) → remonta la capa (recolor por key)', () => {
+  it('wake SSE (estado nuevo) → el Source recibe el merge actualizado (setData, sin remonte)', () => {
     mount();
-    expect(captured.mounts).toBe(1);
+    expect(levelOf('e1')).toBe(4);
 
-    // El wake real refetchea y avanza lastUpdated; acá se actualiza el mock y
-    // se fuerza un re-render de la vista con una interacción inocua (toggle de
-    // Semáforos, que NO toca la capa GeoJSON). La key live-<lastUpdated> nueva
-    // debe remontar la capa.
-    stateMock.mockReturnValue(stateRes({ lastUpdated: 1_700_000_060_000 }));
+    // El wake real refetchea y trae un estado nuevo; acá se actualiza el mock y
+    // se fuerza un re-render con una interacción inocua (toggle de Semáforos, que
+    // NO toca la capa de aristas). El data del Source debe reflejar el nivel nuevo.
+    stateMock.mockReturnValue(stateRes({ data: STATE_WAKE, lastUpdated: 1_700_000_060_000 }));
     fireEvent.click(screen.getByRole('button', { name: 'Semáforos' }));
 
-    expect(captured.mounts).toBe(2);
+    expect(levelOf('e1')).toBe(2);
   });
 
   it('isStale → aviso "DATOS VIEJOS" visible', () => {
@@ -228,13 +237,13 @@ describe('modo Ahora (default)', () => {
     expect(screen.getByText('DATOS VIEJOS')).toBeInTheDocument();
   });
 
-  it('apagar la capa Tráfico desmonta el GeoJSON; Semáforos controla los markers', () => {
+  it('apagar la capa Tráfico desmonta la capa de aristas; Semáforos controla los markers', () => {
     mount();
-    expect(screen.getByTestId('geojson-layer')).toBeInTheDocument();
+    expect(screen.getByTestId('edge-layer')).toBeInTheDocument();
     expect(screen.getAllByTestId('marker').length).toBe(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Tráfico' }));
-    expect(screen.queryByTestId('geojson-layer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edge-layer')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Semáforos' }));
     expect(screen.queryByTestId('marker')).not.toBeInTheDocument();
@@ -243,7 +252,7 @@ describe('modo Ahora (default)', () => {
   it('click en un nodo abre el drawer por ?nodo= (B3 — reemplaza la costura 3A)', () => {
     const { router } = mount();
     act(() => {
-      captured.markerClicks[0]();
+      captured.markerClicks[0]({ originalEvent: { stopPropagation: () => {} } });
     });
     expect(router.state.location.pathname).toBe('/');
     expect(new URLSearchParams(router.state.location.search).get('nodo')).toBe(
@@ -259,35 +268,33 @@ describe('modo Histórico (?modo=historico&dia=&t=)', () => {
     mount('/?modo=historico&dia=2026-06-05&t=1');
 
     expect(seriesMock).toHaveBeenCalledWith('2026-06-05');
-    expect(geoFeatures().find((f) => f.properties.edge_id === 'e1')?.properties.congestion_level).toBe(3);
+    expect(levelOf('e1')).toBe(3);
     // t0 08:00 + 1*3600s = 09:00 (slider label + badge del modo)
     expect(screen.getAllByText(/09:00/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('mover el slider escribe ?t= y remonta la capa con el nivel nuevo', () => {
+  it('mover el slider escribe ?t= y el Source recibe el nivel nuevo', () => {
     seriesMock.mockReturnValue(res(SERIES));
     const { router } = mount('/?modo=historico&dia=2026-06-05');
-    const mountsBefore = captured.mounts;
 
     fireEvent.change(screen.getByLabelText('Paso temporal'), { target: { value: '2' } });
 
     expect(new URLSearchParams(router.state.location.search).get('t')).toBe('2');
-    expect(captured.mounts).toBeGreaterThan(mountsBefore);
-    expect(geoFeatures().find((f) => f.properties.edge_id === 'e1')?.properties.congestion_level).toBe(5);
+    expect(levelOf('e1')).toBe(5);
   });
 
   it('?t= fuera de rango se clampea al último índice de la serie', () => {
     seriesMock.mockReturnValue(res(SERIES));
     mount('/?modo=historico&dia=2026-06-05&t=999');
     expect(screen.getByLabelText('Paso temporal')).toHaveValue('2');
-    expect(geoFeatures().find((f) => f.properties.edge_id === 'e1')?.properties.congestion_level).toBe(5);
+    expect(levelOf('e1')).toBe(5);
   });
 
   it('día sin datos (t0 null) → empty honesto, sin capa', () => {
     seriesMock.mockReturnValue(res({ ...SERIES, t0: null, step_s: null, edges: [] }));
     mount('/?modo=historico&dia=2026-06-09');
     expect(screen.getByText('El día 2026-06-09 no tiene datos de congestión.')).toBeInTheDocument();
-    expect(screen.queryByTestId('geojson-layer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edge-layer')).not.toBeInTheDocument();
   });
 });
 
@@ -296,19 +303,19 @@ describe('modo Predicción (?modo=prediccion)', () => {
     mount('/?modo=prediccion');
     expect(screen.getByText('Servicio de predicción no disponible.')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Reintentar' }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByTestId('geojson-layer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edge-layer')).not.toBeInTheDocument();
   });
 
-  it('con dato pinta el horizonte +15 y el hchip +30 remonta la capa', () => {
+  it('con dato pinta el horizonte +15 con la leyenda de predicción; +30 cambia el badge', () => {
     predictionMock.mockReturnValue(res(PREDICTION));
     mount('/?modo=prediccion');
     expect(screen.getByText('PREDICCIÓN · +15 MIN')).toBeInTheDocument();
+    // Leyenda propia del modo predicción (PREDICTION_LEGEND), no la del estado vivo.
     expect(screen.getByText('Demora prevista')).toBeInTheDocument();
-    const mountsBefore = captured.mounts;
+    expect(levelOf('e1')).toBe(2);
 
     fireEvent.click(screen.getByRole('button', { name: '+30' }));
 
-    expect(captured.mounts).toBeGreaterThan(mountsBefore);
     expect(screen.getByText('PREDICCIÓN · +30 MIN')).toBeInTheDocument();
   });
 });

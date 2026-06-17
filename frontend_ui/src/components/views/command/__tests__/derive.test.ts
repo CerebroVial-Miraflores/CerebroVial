@@ -11,7 +11,6 @@ import {
   edgeLevelForNode,
   featuresForMode,
   formatHourLabel,
-  geoJsonKeyFor,
   legendForMode,
   markersFrom,
   networkCongestionIndex,
@@ -246,18 +245,6 @@ describe('featuresForMode', () => {
         horizon: 15,
       }),
     ).toBeNull();
-  });
-});
-
-describe('geoJsonKeyFor (contrato del remount)', () => {
-  const parts = { lastUpdated: 1700000000000, dia: '2026-06-05', tClamped: 7, horizon: 30 as const, baseTimestep: 720 };
-
-  it('las tres formas', () => {
-    expect(geoJsonKeyFor('ahora', parts)).toBe('live-1700000000000');
-    expect(geoJsonKeyFor('ahora', { ...parts, lastUpdated: null })).toBe('live-init');
-    expect(geoJsonKeyFor('historico', parts)).toBe('h-2026-06-05-7');
-    expect(geoJsonKeyFor('prediccion', parts)).toBe('p-30-720');
-    expect(geoJsonKeyFor('prediccion', { ...parts, baseTimestep: null })).toBe('p-30-na');
   });
 });
 
