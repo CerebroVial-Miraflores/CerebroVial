@@ -12,6 +12,7 @@ import type { ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { Button } from '../../ui/Button';
+import { Chip } from '../../ui/Chip';
 import { StatusChip, type Status } from '../../ui/StatusChip';
 import { useCongestionGeometry } from '../../../hooks/useCongestionGeometry';
 import { useCongestionState } from '../../../hooks/useCongestionState';
@@ -20,9 +21,24 @@ import { jamLevelStyle, JAM_LEVEL_LEGEND, type JamLevel } from '../../map/edgeSt
 import { mergeCongestion } from '../../../utils/congestion';
 import { markersFrom } from '../command/derive';
 import { buildNodeIconHtml, NODE_ICON_SIZE } from '../../map/nodeIcon';
+import { TomTomAttribution } from '../../../tomtom/TomTomAttribution';
 import type { StreamConnectionState } from '../../../hooks/types';
 
 const EDGE_LAYER_ID = 'network-geometry-lines';
+
+// Capa raster de Traffic Flow de TomTom (Fase 3). Mirror byte-a-byte de
+// TomTomFlowLayer.tsx: mismo display key (VITE_TOMTOM_KEY, protegida por
+// domain-whitelist, va al bundle a propósito) y mismo template de tiles raster
+// v4. NO se importa el builder porque está inline en el componente de producción
+// y extraerlo implicaría editarlo (fuera de alcance del spike). Si producción
+// cambia el template/estilo, sincronizar acá. ToS: los tiles los pide el browser
+// directo a api.tomtom.com, sin persistir.
+const TOMTOM_KEY: string | undefined = import.meta.env.VITE_TOMTOM_KEY;
+const TOMTOM_FLOW_STYLE = 'relative0-dark'; // default de producción (TomTomFlowLayer)
+const TOMTOM_FLOW_URL: string | null = TOMTOM_KEY
+  ? `https://api.tomtom.com/traffic/map/4/tile/flow/${TOMTOM_FLOW_STYLE}/{z}/{x}/{y}.png` +
+    `?key=${TOMTOM_KEY}`
+  : null;
 
 // FASE 1 migración MapLibre — color data-driven + estado vivo, SOLO DEV (chunk
 // lazy de UiLabView). NO toca CommandView/CommandMap.
@@ -127,6 +143,8 @@ export function MapLibreSpike() {
   // Intersección clickeada (paridad interactiva con el NodeMarker de producción,
   // que abre el drawer; acá el spike solo muestra cuál se seleccionó).
   const [selected, setSelected] = useState<string | null>(null);
+  // Toggle de la capa raster de TomTom (Fase 3).
+  const [tomtomOn, setTomtomOn] = useState(false);
 
   const onEdgeHover = useCallback((e: MapMouseEvent) => {
     const feat = e.features?.[0];
@@ -208,6 +226,14 @@ export function MapLibreSpike() {
             Seleccionada: <span className="font-semibold text-ink">{selected}</span>
           </span>
         )}
+        <Chip on={tomtomOn} onToggle={setTomtomOn}>
+          Tráfico TomTom
+        </Chip>
+        {tomtomOn && !TOMTOM_FLOW_URL && (
+          <span className="text-[11px] text-warn">
+            sin VITE_TOMTOM_KEY — capa no disponible (degradación limpia, sin error)
+          </span>
+        )}
       </div>
 
       {/* Leyenda de la escala real (JAM_LEVEL_LEGEND de edgeStyle.ts). */}
@@ -252,6 +278,25 @@ export function MapLibreSpike() {
           onMouseMove={onEdgeHover}
           onMouseLeave={() => setHover(null)}
         >
+          {/* Capa raster TomTom — bajo las líneas de congestión (beforeId) para
+              que ambas se vean. Solo si el toggle está on y hay display key. */}
+          {tomtomOn && TOMTOM_FLOW_URL && (
+            <Source
+              id="tomtom-flow"
+              type="raster"
+              tiles={[TOMTOM_FLOW_URL]}
+              tileSize={256}
+              attribution='Traffic &copy; <a href="https://www.tomtom.com">TomTom</a>'
+            >
+              <Layer
+                id="tomtom-flow-layer"
+                type="raster"
+                beforeId={EDGE_LAYER_ID}
+                paint={{ 'raster-opacity': 1 }}
+              />
+            </Source>
+          )}
+
           {featureCollection && (
             <Source id="network-geometry" type="geojson" data={featureCollection}>
               <Layer
@@ -309,12 +354,16 @@ export function MapLibreSpike() {
             </Popup>
           )}
         </MapGL>
+        {/* Atribución TomTom reusada de producción — visible y no removible (ToS
+            17.3) mientras la capa esté activa. */}
+        {tomtomOn && TOMTOM_FLOW_URL && <TomTomAttribution />}
       </div>
 
       <p className="text-[11px] text-ink-3">
-        Fase 2: markers de intersección (mismo ícono/halo que producción, clickeables) y tooltip
-        de arista al pasar el mouse (edge_id + nivel). El color por nivel, el recolor en vivo y el
-        flyTo de Fases 0-1 siguen andando.
+        Fase 3: el toggle "Tráfico TomTom" prende una capa raster de flujo (mirror de
+        TomTomFlowLayer) bajo las líneas de congestión, con atribución visible; apagalo y
+        desaparece. Sin VITE_TOMTOM_KEY degrada limpio (no monta la capa, sin error). Markers,
+        tooltip, color por nivel, recolor en vivo y flyTo (Fases 0-2) siguen andando.
       </p>
     </div>
   );
