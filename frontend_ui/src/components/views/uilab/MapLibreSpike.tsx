@@ -1,5 +1,13 @@
-import { useMemo, useRef } from 'react';
-import { Map as MapGL, Source, Layer, type MapRef } from 'react-map-gl/maplibre';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Map as MapGL,
+  Source,
+  Layer,
+  Marker,
+  Popup,
+  type MapRef,
+  type MapMouseEvent,
+} from 'react-map-gl/maplibre';
 import type { ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -7,9 +15,14 @@ import { Button } from '../../ui/Button';
 import { StatusChip, type Status } from '../../ui/StatusChip';
 import { useCongestionGeometry } from '../../../hooks/useCongestionGeometry';
 import { useCongestionState } from '../../../hooks/useCongestionState';
+import { useIntersections } from '../../../hooks/useIntersections';
 import { jamLevelStyle, JAM_LEVEL_LEGEND, type JamLevel } from '../../map/edgeStyle';
 import { mergeCongestion } from '../../../utils/congestion';
+import { markersFrom } from '../command/derive';
+import { buildNodeIconHtml, NODE_ICON_SIZE } from '../../map/nodeIcon';
 import type { StreamConnectionState } from '../../../hooks/types';
+
+const EDGE_LAYER_ID = 'network-geometry-lines';
 
 // FASE 1 migración MapLibre — color data-driven + estado vivo, SOLO DEV (chunk
 // lazy de UiLabView). NO toca CommandView/CommandMap.
@@ -97,6 +110,39 @@ export function MapLibreSpike() {
   const mapRef = useRef<MapRef | null>(null);
   const geometry = useCongestionGeometry();
   const state = useCongestionState({ staleAfterMs: 90_000 });
+  const intersections = useIntersections();
+
+  // Markers de intersección desde el mismo derive de producción (markersFrom):
+  // {id, name, position:[lat,lng], status, critical}.
+  const markers = useMemo(() => markersFrom(intersections.data), [intersections.data]);
+
+  // Hover sobre una arista → tooltip edge_id + nivel (paridad con el bindTooltip
+  // de CommandMap). lngLat para anclar el Popup; level null = "sin dato".
+  const [hover, setHover] = useState<{
+    lng: number;
+    lat: number;
+    edgeId: string;
+    level: number | null;
+  } | null>(null);
+  // Intersección clickeada (paridad interactiva con el NodeMarker de producción,
+  // que abre el drawer; acá el spike solo muestra cuál se seleccionó).
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const onEdgeHover = useCallback((e: MapMouseEvent) => {
+    const feat = e.features?.[0];
+    if (!feat) {
+      setHover(null);
+      return;
+    }
+    const props = feat.properties ?? {};
+    const raw = props.congestion_level;
+    setHover({
+      lng: e.lngLat.lng,
+      lat: e.lngLat.lat,
+      edgeId: String(props.edge_id ?? ''),
+      level: raw === null || raw === undefined ? null : Number(raw),
+    });
+  }, []);
 
   // GeoJSON ya coloreable: geometry × state por edge_id. Antes de que llegue el
   // primer /state, las features van sin congestion_level → el match las pinta
@@ -126,9 +172,10 @@ export function MapLibreSpike() {
   return (
     <div className="space-y-4">
       <p className="text-[12px] leading-relaxed text-ink-2">
-        Fase 1: las 1660 aristas pintan por nivel de congestión 0-5 (misma escala que
-        edgeStyle.ts) y recolorean en vivo al llegar un wake SSE — sin remontar la capa. Consume el
-        backend REAL (core 8001, JWT, rol operator/admin). Para forzar wakes observables:{' '}
+        Las 1660 aristas pintan por nivel de congestión 0-5 (misma escala que edgeStyle.ts) y
+        recolorean en vivo al llegar un wake SSE — sin remontar la capa. Markers de intersección
+        clickeables y tooltip de arista en hover (Fase 2). Consume el backend REAL (core 8001, JWT,
+        rol operator/admin). Para forzar wakes observables:{' '}
         <span className="num">
           .venv/bin/python scripts/replay_congestion.py --mode vivo --day seed051 --speedup 60
         </span>
@@ -156,6 +203,11 @@ export function MapLibreSpike() {
         <span className="text-[11px] text-ink-3">
           últ. estado: <span className="num">{timeLabel(state.lastUpdated)}</span>
         </span>
+        {selected && (
+          <span className="rounded-btn border border-line bg-panel-2 px-2 py-1 text-[11px] text-ink-2">
+            Seleccionada: <span className="font-semibold text-ink">{selected}</span>
+          </span>
+        )}
       </div>
 
       {/* Leyenda de la escala real (JAM_LEVEL_LEGEND de edgeStyle.ts). */}
@@ -195,11 +247,15 @@ export function MapLibreSpike() {
           mapStyle={LIBERTY_STYLE}
           initialViewState={MIRAFLORES_OVERVIEW}
           style={{ width: '100%', height: '100%' }}
+          interactiveLayerIds={[EDGE_LAYER_ID]}
+          cursor={hover ? 'pointer' : ''}
+          onMouseMove={onEdgeHover}
+          onMouseLeave={() => setHover(null)}
         >
           {featureCollection && (
             <Source id="network-geometry" type="geojson" data={featureCollection}>
               <Layer
-                id="network-geometry-lines"
+                id={EDGE_LAYER_ID}
                 type="line"
                 layout={{ 'line-cap': 'round', 'line-join': 'round' }}
                 paint={{
@@ -210,13 +266,55 @@ export function MapLibreSpike() {
               />
             </Source>
           )}
+
+          {markers.map((m) => (
+            <Marker
+              key={m.id}
+              longitude={m.position[1]}
+              latitude={m.position[0]}
+              anchor="center"
+              onClick={(e) => {
+                e.originalEvent.stopPropagation();
+                setSelected(m.name);
+                mapRef.current?.flyTo({
+                  center: [m.position[1], m.position[0]],
+                  zoom: 16,
+                  duration: 1500,
+                });
+              }}
+            >
+              {/* Mismo SVG/divIcon que producción (nodeIcon.ts): var() y el halo
+                  animate-halo-ping funcionan igual en un marker DOM. */}
+              <div
+                style={{ width: NODE_ICON_SIZE, height: NODE_ICON_SIZE, cursor: 'pointer' }}
+                dangerouslySetInnerHTML={{
+                  __html: buildNodeIconHtml(m.status, { critical: m.critical }),
+                }}
+              />
+            </Marker>
+          ))}
+
+          {hover && (
+            <Popup
+              longitude={hover.lng}
+              latitude={hover.lat}
+              closeButton={false}
+              closeOnClick={false}
+              anchor="bottom"
+              offset={12}
+            >
+              <span className="num text-[11px]">
+                {hover.edgeId} · {hover.level === null ? 'sin dato' : `nivel ${hover.level}`}
+              </span>
+            </Popup>
+          )}
         </MapGL>
       </div>
 
       <p className="text-[11px] text-ink-3">
-        Criterio de cierre: las aristas pintan por nivel con la escala verde→ámbar→rojo→violeta
-        (no el placeholder azul de Fase 0), y recolorean solas al llegar un wake del replay, sin
-        parpadeo de remonte.
+        Fase 2: markers de intersección (mismo ícono/halo que producción, clickeables) y tooltip
+        de arista al pasar el mouse (edge_id + nivel). El color por nivel, el recolor en vivo y el
+        flyTo de Fases 0-1 siguen andando.
       </p>
     </div>
   );
