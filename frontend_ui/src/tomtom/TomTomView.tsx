@@ -10,8 +10,9 @@
  * MapContainer PROPIO (no reusa el de CongestionMapView). center/zoom sobre
  * Miraflores, coherentes con el resto del front.
  */
-import { MapContainer, TileLayer } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map as MapGL } from 'react-map-gl/maplibre';
+import type { StyleSpecification } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { Navigation, AlertTriangle } from 'lucide-react';
 
 import { TomTomFlowLayer } from './TomTomFlowLayer';
@@ -25,7 +26,21 @@ const DEFAULT_ZOOM = 14;
 // Fase A: estilo de tile de diseño para UI oscura (decisión de producto, 1 línea).
 const FLOW_STYLE: TomTomFlowStyle = 'relative0-dark';
 
-const HAS_KEY = Boolean(import.meta.env.VITE_TOMTOM_KEY);
+// FASE 4 migración MapLibre: basemap OSM como raster source (mismas tiles que el
+// TileLayer de Leaflet; {s} → sharding a-c). Contenedor propio (no MapCanvas).
+const OSM_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.openstreetmap.org/{z}/{x}/{y}.png`),
+      tileSize: 256,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
 
 /** Escala relativa del flujo (relativo al free-flow). Solo lectura, leyenda visual. */
 const FLOW_LEGEND: readonly { color: string; label: string }[] = [
@@ -36,23 +51,23 @@ const FLOW_LEGEND: readonly { color: string; label: string }[] = [
 ];
 
 export const TomTomView = () => {
+  // Se lee en el render (no a nivel de módulo) para ser determinista en test.
+  const hasKey = Boolean(import.meta.env.VITE_TOMTOM_KEY);
   return (
     <div className="relative w-full h-[calc(100vh-7rem)] min-h-[600px] flex flex-col">
       <div className="relative flex-1 rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
-        <MapContainer
-          center={MIRAFLORES_CENTER}
-          zoom={DEFAULT_ZOOM}
+        <MapGL
+          mapStyle={OSM_STYLE}
+          initialViewState={{
+            longitude: MIRAFLORES_CENTER[1],
+            latitude: MIRAFLORES_CENTER[0],
+            zoom: DEFAULT_ZOOM,
+          }}
           style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
         >
-          {/* Basemap OSM, igual al resto del front. */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
           {/* Capa de tráfico TomTom encima del basemap. Si no hay key, no monta. */}
           <TomTomFlowLayer style={FLOW_STYLE} />
-        </MapContainer>
+        </MapGL>
 
         {/* Título / rótulo de la vista (esquina superior izquierda). */}
         <div className="absolute top-4 left-4 z-[500] flex flex-col gap-1 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700 px-4 py-3 shadow-lg">
@@ -69,7 +84,7 @@ export const TomTomView = () => {
         </div>
 
         {/* Aviso de degradación cuando falta la display key (no rompe la vista). */}
-        {!HAS_KEY && (
+        {!hasKey && (
           <div className="absolute top-4 right-4 z-[500] flex items-start gap-2 max-w-xs rounded-xl bg-amber-500/10 border border-amber-500/40 px-4 py-3 shadow-lg">
             <AlertTriangle size={16} className="text-amber-400 mt-0.5 shrink-0" />
             <span className="text-xs text-amber-200">
