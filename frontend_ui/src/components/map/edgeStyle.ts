@@ -3,9 +3,9 @@ import type { ExpressionSpecification, LineLayerSpecification } from 'maplibre-g
 // FASE 4 migración MapLibre — estilo de tramos por jam_level como expresión
 // data-driven (función pura). Reemplaza al enfoque className/PathOptions de
 // Leaflet: MapLibre no resuelve var() en un paint, así que los colores van como
-// literales byte-alineados a tokens.css (mapeo de map.css: 0-1 ok-road / 2-3
+// literales byte-alineados a tokens.css (mapeo histórico: 0-1 ok-road / 2-3
 // warn / 4 bad / 5 sev / sin-dato ink-3). El recolor en vivo lo da source.setData
-// (sin remontar la capa), por eso muere el remount-por-key (geoJsonKeyFor).
+// (sin remontar la capa), por eso muere el remount-por-key.
 //
 // Grosor: escala FINA 2→5 (D-Fase4) — variable por nivel para preservar la
 // redundancia no-cromática de CA-22.3 (el nivel se lee también por grosor, no
@@ -22,7 +22,7 @@ interface LevelStyle {
 }
 
 // Color (token), grosor fino y opacidad por nivel. Mapeo cromático idéntico al
-// histórico (map.css): 0-1 ok-road, 2-3 warn, 4 bad, 5 sev.
+// histórico: 0-1 ok-road, 2-3 warn, 4 bad, 5 sev.
 const STYLE_BY_LEVEL: Record<JamLevel, LevelStyle> = {
   0: { color: '#0fae79', weight: 2, opacity: 0.85 }, // --color-ok-road
   1: { color: '#0fae79', weight: 2.4, opacity: 0.85 },

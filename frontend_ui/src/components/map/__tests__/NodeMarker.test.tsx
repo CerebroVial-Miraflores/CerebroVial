@@ -6,9 +6,8 @@ import { buildNodeIconHtml } from '../nodeIcon';
 import { NodeMarker } from '../NodeMarker';
 
 // FASE 4 migración MapLibre — mock per-file de react-map-gl/maplibre con captura
-// de props del <Marker> (patrón heredado del mock de react-leaflet). El Marker
-// stub invoca onClick con un evento sintético (originalEvent.stopPropagation),
-// como hace MapLibre.
+// de props del <Marker>. El Marker stub invoca onClick con un evento sintético
+// (originalEvent.stopPropagation), como hace MapLibre.
 const captured = vi.hoisted(() => ({
   markerProps: null as Record<string, unknown> | null,
 }));
